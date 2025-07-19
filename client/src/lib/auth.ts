@@ -1,46 +1,43 @@
 import { apiRequest } from "./queryClient";
-import type { User } from "@shared/schema";
-
-export interface AuthResponse {
-  message: string;
-  user?: User;
-  userId?: number;
-}
+import type { 
+  User, 
+  AuthResponse, 
+  SignupRequest, 
+  SigninRequest, 
+  VerifyOtpRequest, 
+  ResetPasswordRequest, 
+  ConfirmResetPasswordRequest,
+  ResendOtpRequest 
+} from "@/types/api";
 
 export const authAPI = {
-  signup: async (userData: {
-    fullName: string;
-    email: string;
-    phone: string;
-    password: string;
-    role: "CONSUMER" | "MERCHANT" | "DRIVER";
-  }): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/signup", userData);
+  signup: async (userData: SignupRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/signup", userData);
     return response.json();
   },
 
-  verifyOtp: async (data: { email: string; otp: string }): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/verify-otp", data);
+  verifyOtp: async (data: VerifyOtpRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/verify-otp", data);
     return response.json();
   },
 
-  signin: async (data: { email: string; password: string }): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/signin", data);
+  signin: async (data: SigninRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/signin", data);
     return response.json();
   },
 
-  resendOtp: async (email: string): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/resend-otp", { email });
+  resendOtp: async (data: ResendOtpRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/resend-email-otp", data);
     return response.json();
   },
 
-  resetPassword: async (data: { email: string }): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/reset-password", data);
+  resetPassword: async (data: ResetPasswordRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/reset-password", data);
     return response.json();
   },
 
-  confirmResetPassword: async (data: { token: string; password: string }): Promise<AuthResponse> => {
-    const response = await apiRequest("POST", "/api/auth/confirm-reset-password", data);
+  confirmResetPassword: async (data: ConfirmResetPasswordRequest): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/auth/confirm-reset-password", data);
     return response.json();
   },
 };
