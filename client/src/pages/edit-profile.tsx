@@ -128,162 +128,125 @@ export default function EditProfilePage() {
       <form onSubmit={handleSubmit} className="px-6 py-8">
         {/* Profile Picture */}
         <div className="text-center mb-8">
-          <ImagePicker
-            currentImage={user?.profilePicture}
-            onImageSelect={(file) => setFormData(prev => ({ ...prev, profilePicture: file }))}
-            onError={(error) => {
-              setErrorMessage(error);
-              setShowErrorModal(true);
-            }}
-            maxSize={5}
-          />
-          <p className="text-xs text-[var(--brill-text-light)] mt-2">
-            Tap camera to change photo (Max 5MB)
-          </p>
+          <div className="relative inline-block">
+            <div 
+              className="w-24 h-24 rounded-full mx-auto mb-2 cursor-pointer transition-transform duration-200 hover:scale-105 overflow-hidden bg-gradient-to-br from-[var(--brill-primary)] to-[var(--brill-secondary)] flex items-center justify-center text-white text-3xl font-bold"
+              onClick={() => document.getElementById('profile-image-input')?.click()}
+            >
+              {user?.profilePicture ? (
+                <img 
+                  src={user.profilePicture} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span>{user?.fullName?.charAt(0) || "U"}</span>
+              )}
+              {/* Plus Icon */}
+              <div className="absolute bottom-0 right-0 w-7 h-7 bg-[var(--brill-primary)] rounded-full flex items-center justify-center border-3 border-white">
+                <span className="text-white text-lg font-bold">+</span>
+              </div>
+            </div>
+            <input
+              id="profile-image-input"
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  setFormData(prev => ({ ...prev, profilePicture: file }));
+                }
+              }}
+              className="hidden"
+            />
+          </div>
         </div>
 
         {/* Form Fields */}
         <div className="space-y-6">
-          <div className="space-y-2">
-            <Label htmlFor="fullName" className="text-[var(--brill-text)] font-medium">
-              <User className="inline w-4 h-4 mr-2" />
-              Full Name
-            </Label>
+          <div className="mb-6">
+            <div className="text-center mb-2">
+              <Label htmlFor="fullName" className="text-[var(--brill-text)] text-lg font-bold">
+                Full Name
+              </Label>
+            </div>
             <Input
               id="fullName"
               value={formData.fullName}
               onChange={(e) => handleInputChange("fullName", e.target.value)}
               placeholder="Enter your full name"
-              className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]"
+              className="w-full px-4 py-4 rounded-3xl border-gray-300 focus:ring-2 focus:ring-[var(--brill-primary)] focus:border-[var(--brill-primary)] text-base"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="email" className="text-[var(--brill-text)] font-medium">
-              <Mail className="inline w-4 h-4 mr-2" />
-              Email Address
-            </Label>
+          <div className="mb-6">
+            <div className="text-center mb-2">
+              <Label htmlFor="email" className="text-[var(--brill-text)] text-lg font-bold">
+                Email
+              </Label>
+            </div>
             <Input
               id="email"
               type="email"
               value={formData.email}
               onChange={(e) => handleInputChange("email", e.target.value)}
               placeholder="Enter your email"
-              className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]"
+              className="w-full px-4 py-4 rounded-3xl border-gray-300 focus:ring-2 focus:ring-[var(--brill-primary)] focus:border-[var(--brill-primary)] text-base"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="phone" className="text-[var(--brill-text)] font-medium">
-              <Phone className="inline w-4 h-4 mr-2" />
-              Phone Number
-            </Label>
+          <div className="mb-6">
+            <div className="text-center mb-2">
+              <Label htmlFor="phone" className="text-[var(--brill-text)] text-lg font-bold">
+                Number
+              </Label>
+            </div>
             <Input
               id="phone"
               type="tel"
               value={formData.phone}
               onChange={(e) => handleInputChange("phone", e.target.value)}
               placeholder="+234 801 234 5678"
-              className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]"
+              className="w-full px-4 py-4 rounded-3xl border-gray-300 focus:ring-2 focus:ring-[var(--brill-primary)] focus:border-[var(--brill-primary)] text-base"
               required
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="bio" className="text-[var(--brill-text)] font-medium">
-              About Me
-            </Label>
-            <Textarea
-              id="bio"
-              value={formData.bio}
-              onChange={(e) => handleInputChange("bio", e.target.value)}
-              placeholder="Tell us about yourself..."
-              rows={3}
-              className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)] resize-none"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="address" className="text-[var(--brill-text)] font-medium">
-              <MapPin className="inline w-4 h-4 mr-2" />
-              Street Address
-            </Label>
+          <div className="mb-8">
+            <div className="text-center mb-2">
+              <Label htmlFor="address" className="text-[var(--brill-text)] text-lg font-bold">
+                Location
+              </Label>
+            </div>
             <Input
               id="address"
-              value={formData.address}
-              onChange={(e) => handleInputChange("address", e.target.value)}
-              placeholder="Enter your street address"
-              className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]"
+              value={`${formData.city}${formData.state ? ', ' + formData.state : ''}`}
+              onChange={(e) => {
+                const parts = e.target.value.split(',');
+                handleInputChange("city", parts[0]?.trim() || '');
+                handleInputChange("state", parts[1]?.trim() || '');
+              }}
+              placeholder="Jahi, Abuja"
+              className="w-full px-4 py-4 rounded-3xl border-gray-300 focus:ring-2 focus:ring-[var(--brill-primary)] focus:border-[var(--brill-primary)] text-base"
+              required
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="city" className="text-[var(--brill-text)] font-medium">
-                City
-              </Label>
-              <Input
-                id="city"
-                value={formData.city}
-                onChange={(e) => handleInputChange("city", e.target.value)}
-                placeholder="City"
-                className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]"
-              />
-            </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="state" className="text-[var(--brill-text)] font-medium">
-                State
-              </Label>
-              <Select
-                value={formData.state}
-                onValueChange={(value) => handleInputChange("state", value)}
-              >
-                <SelectTrigger className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]">
-                  <SelectValue placeholder="Select state" />
-                </SelectTrigger>
-                <SelectContent>
-                  {nigerianStates.map((state) => (
-                    <SelectItem key={state} value={state}>
-                      {state}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="country" className="text-[var(--brill-text)] font-medium">
-              Country
-            </Label>
-            <Select
-              value={formData.country}
-              onValueChange={(value) => handleInputChange("country", value)}
-            >
-              <SelectTrigger className="rounded-xl border-gray-300 focus:border-[var(--brill-primary)]">
-                <SelectValue placeholder="Select country" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="Nigeria">Nigeria</SelectItem>
-                <SelectItem value="Ghana">Ghana</SelectItem>
-                <SelectItem value="Kenya">Kenya</SelectItem>
-                <SelectItem value="South Africa">South Africa</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
 
-        <LoadingButton
-          type="submit"
-          loading={updateProfileMutation.isPending}
-          className="w-full mt-8 py-3 rounded-xl bg-[var(--brill-primary)] hover:bg-[var(--brill-secondary)]"
-        >
-          <Save className="w-4 h-4 mr-2" />
-          Save Changes
-        </LoadingButton>
+        <div className="flex justify-center mb-8">
+          <LoadingButton
+            type="submit"
+            loading={updateProfileMutation.isPending}
+            className="w-48 bg-[var(--brill-secondary)] text-white py-4 px-4 rounded-3xl font-medium hover:bg-[var(--brill-active)] transition duration-200 text-lg flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save
+          </LoadingButton>
+        </div>
       </form>
 
       {/* Success Modal */}
