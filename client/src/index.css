@@ -1,0 +1,160 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@200;300;400;500;600;700;800&display=swap');
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(60, 4.8%, 95.9%);
+  --secondary-foreground: hsl(24, 9.8%, 10%);
+  --accent: hsl(60, 4.8%, 95.9%);
+  --accent-foreground: hsl(24, 9.8%, 10%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+
+  /* Brillprime Custom Colors */
+  --brill-primary: hsl(221, 82%, 19%);
+  --brill-secondary: hsl(207, 44%, 49%);
+  --brill-active: hsl(232, 100%, 71%);
+  --brill-text: hsl(0, 0%, 7%);
+  --brill-text-light: hsl(0, 0%, 71%);
+  --brill-success: hsl(158, 64%, 52%);
+  --brill-error: hsl(0, 84%, 60%);
+  --brill-warning: hsl(43, 96%, 56%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(207, 90%, 54%);
+  --primary-foreground: hsl(211, 100%, 99%);
+  --secondary: hsl(240, 3.7%, 15.9%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(240, 3.7%, 15.9%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-montserrat antialiased bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .gradient-bg {
+    background: linear-gradient(135deg, var(--brill-secondary) 0%, var(--brill-active) 100%);
+  }
+  
+  .btn-scale {
+    transition: transform 0.15s ease;
+  }
+  
+  .btn-scale:active {
+    transform: scale(0.95);
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease-in;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .shake {
+    animation: shake 0.5s ease-in-out;
+  }
+  
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); }
+  }
+  
+  .brill-primary {
+    color: var(--brill-primary);
+  }
+  
+  .bg-brill-primary {
+    background-color: var(--brill-primary);
+  }
+  
+  .brill-secondary {
+    color: var(--brill-secondary);
+  }
+  
+  .bg-brill-secondary {
+    background-color: var(--brill-secondary);
+  }
+  
+  .brill-text {
+    color: var(--brill-text);
+  }
+  
+  .brill-text-light {
+    color: var(--brill-text-light);
+  }
+  
+  .border-brill-secondary {
+    border-color: var(--brill-secondary);
+  }
+  
+  .border-brill-error {
+    border-color: var(--brill-error);
+  }
+  
+  .text-brill-error {
+    color: var(--brill-error);
+  }
+  
+  .text-brill-success {
+    color: var(--brill-success);
+  }
+  
+  .bg-brill-success {
+    background-color: var(--brill-success);
+  }
+  
+  .rounded-brill {
+    border-radius: 25px;
+  }
+  
+  .rounded-brill-modal {
+    border-radius: 30px;
+  }
+  
+  .font-montserrat {
+    font-family: 'Montserrat', Helvetica, Arial, sans-serif;
+  }
+}
