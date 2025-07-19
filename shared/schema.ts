@@ -10,6 +10,12 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
   isVerified: boolean("is_verified").default(false),
+  profilePicture: text("profile_picture"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country").default("Nigeria"),
+  bio: text("bio"),
   createdAt: timestamp("created_at").defaultNow(),
 });
 

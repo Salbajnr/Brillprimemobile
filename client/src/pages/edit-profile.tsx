@@ -1,5 +1,5 @@
-import { useState, useRef } from "react";
-import { ArrowLeft, Camera, Save, MapPin, Phone, Mail, User } from "lucide-react";
+import { useState } from "react";
+import { ArrowLeft, Save, MapPin, Phone, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,7 +10,7 @@ import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
 import { NotificationModal } from "@/components/ui/notification-modal";
 import { LoadingButton } from "@/components/ui/loading-button";
-import { useToast } from "@/hooks/use-toast";
+import { ImagePicker } from "@/components/ui/image-picker";
 
 interface ProfileFormData {
   fullName: string;
@@ -35,8 +35,6 @@ const nigerianStates = [
 export default function EditProfilePage() {
   const { user, updateUser } = useAuth();
   const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [formData, setFormData] = useState<ProfileFormData>({
     fullName: user?.fullName || "",
@@ -50,29 +48,48 @@ export default function EditProfilePage() {
     profilePicture: null,
   });
 
-  const [profileImagePreview, setProfileImagePreview] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: ProfileFormData) => {
-      // Simulate API call
-      const formDataToSend = new FormData();
-      Object.entries(data).forEach(([key, value]) => {
-        if (value !== null && value !== undefined) {
-          formDataToSend.append(key, value as string | Blob);
-        }
-      });
-      
-      // Simulate success
-      return new Promise((resolve) => {
-        setTimeout(() => resolve({ success: true }), 1500);
-      });
+      // Simulate API call with profile picture handling
+      if (data.profilePicture) {
+        // In a real app, you would upload the image to a storage service
+        // For now, we'll create a data URL for preview
+        const reader = new FileReader();
+        return new Promise((resolve) => {
+          reader.onload = () => {
+            const imageUrl = reader.result as string;
+            setTimeout(() => resolve({ success: true, imageUrl }), 1500);
+          };
+          reader.readAsDataURL(data.profilePicture);
+        });
+      } else {
+        return new Promise((resolve) => {
+          setTimeout(() => resolve({ success: true }), 1500);
+        });
+      }
     },
-    onSuccess: () => {
-      // Update user in auth context
-      updateUser({ ...user, ...formData });
+    onSuccess: (result: any) => {
+      // Update user in auth context with new profile data
+      const updatedProfile: any = {
+        fullName: formData.fullName,
+        email: formData.email,
+        phone: formData.phone,
+        address: formData.address,
+        city: formData.city,
+        state: formData.state,
+        country: formData.country,
+        bio: formData.bio,
+      };
+
+      if (result.imageUrl) {
+        updatedProfile.profilePicture = result.imageUrl;
+      }
+
+      updateUser(updatedProfile);
       setShowSuccessModal(true);
     },
     onError: (error: any) => {
@@ -85,40 +102,12 @@ export default function EditProfilePage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setErrorMessage("Image size must be less than 5MB");
-        setShowErrorModal(true);
-        return;
-      }
-
-      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-      if (!allowedTypes.includes(file.type)) {
-        setErrorMessage("Please upload a JPEG, PNG, or WebP image");
-        setShowErrorModal(true);
-        return;
-      }
-
-      setFormData(prev => ({ ...prev, profilePicture: file }));
-      
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        setProfileImagePreview(e.target?.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     updateProfileMutation.mutate(formData);
   };
 
-  const getInitials = (name: string) => {
-    return name.split(" ").map(n => n[0]).join("").toUpperCase();
-  };
+
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white">
@@ -139,32 +128,16 @@ export default function EditProfilePage() {
       <form onSubmit={handleSubmit} className="px-6 py-8">
         {/* Profile Picture */}
         <div className="text-center mb-8">
-          <div className="relative inline-block">
-            <div className="w-24 h-24 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden">
-              {profileImagePreview ? (
-                <img src={profileImagePreview} alt="Profile" className="w-full h-full object-cover" />
-              ) : (
-                <span className="text-white text-2xl font-bold">
-                  {getInitials(formData.fullName || "User")}
-                </span>
-              )}
-            </div>
-            <Button 
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className="absolute -bottom-1 -right-1 w-8 h-8 bg-[var(--brill-secondary)] rounded-full text-white flex items-center justify-center shadow-lg p-0 hover:bg-[var(--brill-secondary)]/90"
-            >
-              <Camera className="h-4 w-4" />
-            </Button>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/jpeg,image/jpg,image/png,image/webp"
-              onChange={handleImageUpload}
-              className="hidden"
-            />
-          </div>
-          <p className="text-xs text-[var(--brill-text-light)]">
+          <ImagePicker
+            currentImage={user?.profilePicture}
+            onImageSelect={(file) => setFormData(prev => ({ ...prev, profilePicture: file }))}
+            onError={(error) => {
+              setErrorMessage(error);
+              setShowErrorModal(true);
+            }}
+            maxSize={5}
+          />
+          <p className="text-xs text-[var(--brill-text-light)] mt-2">
             Tap camera to change photo (Max 5MB)
           </p>
         </div>

@@ -7,6 +7,7 @@ interface AuthState {
   selectedRole: "CONSUMER" | "MERCHANT" | "DRIVER" | null;
   setUser: (user: User | null) => void;
   setSelectedRole: (role: "CONSUMER" | "MERCHANT" | "DRIVER" | null) => void;
+  updateUser: (updates: Partial<User>) => void;
   signOut: () => void;
   isAuthenticated: () => boolean;
 }
@@ -27,6 +28,15 @@ export const useAuth = create<AuthState>((set, get) => ({
       localStorage.setRole(role);
     }
     set({ selectedRole: role });
+  },
+
+  updateUser: (updates) => {
+    const currentUser = get().user;
+    if (currentUser) {
+      const updatedUser = { ...currentUser, ...updates };
+      localStorage.setUser(updatedUser);
+      set({ user: updatedUser });
+    }
   },
   
   signOut: () => {
