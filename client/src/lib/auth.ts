@@ -38,4 +38,9 @@ export const authAPI = {
     const response = await apiRequest("POST", "/api/auth/reset-password", data);
     return response.json();
   },
+
+  confirmResetPassword: async (data: { token: string; password: string }): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/api/auth/confirm-reset-password", data);
+    return response.json();
+  },
 };
