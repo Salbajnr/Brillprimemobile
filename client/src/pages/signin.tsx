@@ -130,6 +130,7 @@ export default function SignInPage() {
               <Button
                 type="button"
                 variant="link"
+                onClick={() => setLocation("/forgot-password")}
                 className="text-[var(--brill-secondary)] text-sm font-medium p-0 h-auto"
               >
                 Forgot Password?

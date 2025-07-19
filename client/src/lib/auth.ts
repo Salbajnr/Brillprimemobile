@@ -33,4 +33,9 @@ export const authAPI = {
     const response = await apiRequest("POST", "/api/auth/resend-otp", { email });
     return response.json();
   },
+
+  resetPassword: async (data: { email: string }): Promise<AuthResponse> => {
+    const response = await apiRequest("POST", "/api/auth/reset-password", data);
+    return response.json();
+  },
 };
