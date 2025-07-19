@@ -8,7 +8,7 @@ export default function SplashPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setLocation("/onboarding");
-    }, 2500); // Show splash for 2.5 seconds
+    }, 4000); // Show splash for 4 seconds
 
     return () => clearTimeout(timer);
   }, [setLocation]);

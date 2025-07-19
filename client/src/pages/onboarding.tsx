@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
@@ -27,9 +27,26 @@ const onboardingData = [
 
 export default function OnboardingPage() {
   const [currentStep, setCurrentStep] = useState(1);
+  const [imagesLoaded, setImagesLoaded] = useState(false);
   const [, setLocation] = useLocation();
 
   const currentData = onboardingData[currentStep - 1];
+
+  // Preload all images
+  useEffect(() => {
+    const imagePromises = onboardingData.map((data) => {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = data.image;
+      });
+    });
+
+    Promise.all(imagePromises)
+      .then(() => setImagesLoaded(true))
+      .catch(() => setImagesLoaded(true)); // Still show content even if images fail
+  }, []);
 
   const handleNext = () => {
     if (currentStep < onboardingData.length) {
@@ -38,6 +55,19 @@ export default function OnboardingPage() {
       setLocation("/role-selection");
     }
   };
+
+  // Show loading screen until images are preloaded
+  if (!imagesLoaded) {
+    return (
+      <div className="w-full max-w-md mx-auto min-h-screen bg-white flex items-center justify-center">
+        <div className="flex space-x-2">
+          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white relative overflow-hidden">
