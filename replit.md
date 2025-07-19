@@ -20,17 +20,230 @@ The application follows a monorepo structure with clear separation between clien
 - **Shared**: Common schemas and types between frontend and backend
 - **Styling**: Tailwind CSS with shadcn/ui component library
 
-### Directory Structure
+### Complete Directory Structure
+
+### 📁 **Root Directory**
 ```
-├── client/          # React frontend application
-│   └── src/
-│       └── assets/
-│           └── images/  # All image and icon assets (44 files)
-├── server/          # Express.js backend API
-├── shared/          # Shared schemas and types
-├── attached_assets/ # Static assets and documentation
-└── migrations/      # Database migration files
+brillprime/
+├── 📄 package.json                 # ✅ Dependencies and scripts
+├── 📄 package-lock.json           # ✅ Lockfile
+├── 📄 tsconfig.json               # ✅ TypeScript configuration
+├── 📄 vite.config.ts              # ✅ Frontend build config
+├── 📄 tailwind.config.ts          # ✅ Tailwind CSS setup
+├── 📄 postcss.config.js           # ✅ CSS processing
+├── 📄 drizzle.config.ts           # ✅ Database ORM config
+├── 📄 components.json             # ✅ shadcn/ui component config
+├── 📄 replit.md                   # ✅ Project documentation
+├── 📄 .env.example                # ✅ Environment variables template
+├── 📄 .gitignore                  # ✅ Git ignore rules
+├── 📄 .replit                     # ✅ Replit configuration
+└── 📄 test-login.html             # ✅ Authentication testing page
 ```
+
+### 📁 **Client Directory (Frontend - React + TypeScript)**
+```
+client/
+├── 📄 index.html                  # ✅ Main HTML entry point
+├── 📁 public/                     # ✅ Public assets
+│   ├── 📄 manifest.json           # ✅ PWA manifest
+│   └── 📄 sw.js                   # ✅ Service worker
+└── 📁 src/                        # ✅ Source code
+    ├── 📄 App.tsx                 # ✅ Main app component
+    ├── 📄 main.tsx                # ✅ React entry point
+    ├── 📄 index.css               # ✅ Global styles
+    │
+    ├── 📁 assets/images/ (44 files) # ✅ Image assets
+    │   ├── 📄 logo.png             # ✅ App logo
+    │   ├── 📄 google_icon.png      # ✅ Google login icon
+    │   ├── 📄 apple_icon.png       # ✅ Apple login icon
+    │   ├── 📄 facebook_logo.png    # ✅ Facebook login logo
+    │   ├── 📄 congratulations_icon.png # ✅ Success modal icon
+    │   ├── 📄 confirmation_fail_img.png # ✅ Error modal icon
+    │   ├── 📄 mailbox.png          # ✅ Email modal icon
+    │   ├── 📄 onboarding_img1.png  # ✅ Onboarding screen 1
+    │   ├── 📄 onboarding_img2.png  # ✅ Onboarding screen 2
+    │   ├── 📄 onboarding_img3.png  # ✅ Onboarding screen 3
+    │   ├── 📄 camera_icon.png      # ✅ Profile picture upload
+    │   ├── 📄 dropdown_arrow_icon.png # ✅ Dropdown arrows
+    │   ├── 📄 edit_icon.png        # ✅ Edit profile icon
+    │   ├── 📄 delete_icon.png      # ✅ Delete icon
+    │   ├── 📄 account_circle.svg   # ✅ Account icon
+    │   ├── 📄 back_arrow.svg       # ✅ Navigation back
+    │   ├── 📄 email_icon.svg       # ✅ Email input icon
+    │   ├── 📄 lock.svg             # ✅ Password input icon
+    │   ├── 📄 plus_icon.svg        # ✅ Add/plus button
+    │   ├── 📄 minus_icon.svg       # ✅ Minus/remove button
+    │   ├── 📄 filled_star.svg      # ✅ Rating stars
+    │   ├── 📄 empty_rating_.svg    # ✅ Empty rating stars
+    │   ├── 📄 arrow_forward_white.svg # ✅ Navigation arrows
+    │   └── 📄 [25+ other icons]    # ✅ Payment, commerce, UI icons
+    │
+    ├── 📁 components/ui/ (50+ files) # ✅ Reusable UI components
+    │   ├── 📄 accordion.tsx        # ✅ Collapsible content
+    │   ├── 📄 alert-dialog.tsx     # ✅ Modal dialogs
+    │   ├── 📄 alert.tsx            # ✅ Alert notifications
+    │   ├── 📄 avatar.tsx           # ✅ User avatar display
+    │   ├── 📄 badge.tsx            # ✅ Status badges
+    │   ├── 📄 button.tsx           # ✅ Button components
+    │   ├── 📄 card.tsx             # ✅ Card layouts
+    │   ├── 📄 carousel.tsx         # ✅ Image/content slider
+    │   ├── 📄 checkbox.tsx         # ✅ Form checkboxes
+    │   ├── 📄 dialog.tsx           # ✅ Modal dialogs
+    │   ├── 📄 dropdown-menu.tsx    # ✅ Dropdown menus
+    │   ├── 📄 form.tsx             # ✅ Form components
+    │   ├── 📄 input.tsx            # ✅ Input fields
+    │   ├── 📄 label.tsx            # ✅ Form labels
+    │   ├── 📄 select.tsx           # ✅ Select dropdowns
+    │   ├── 📄 textarea.tsx         # ✅ Multi-line input
+    │   ├── 📄 tabs.tsx             # ✅ Tabbed interface
+    │   ├── 📄 toast.tsx            # ✅ Toast notifications
+    │   ├── 📄 tooltip.tsx          # ✅ Hover tooltips
+    │   ├── 📄 loading-button.tsx   # ✅ Loading state buttons
+    │   ├── 📄 notification-modal.tsx # ✅ Custom modal system
+    │   ├── 📄 otp-input.tsx        # ✅ 5-digit OTP input
+    │   ├── 📄 role-card.tsx        # ✅ Role selection cards
+    │   ├── 📄 biometric-auth.tsx   # ✅ Biometric authentication
+    │   ├── 📄 image-picker.tsx     # ✅ Profile picture upload
+    │   └── 📄 [30+ other components] # ✅ Complete UI library
+    │
+    ├── 📁 hooks/ (3 files)        # ✅ Custom React hooks
+    │   ├── 📄 use-auth.ts          # ✅ Authentication state (Zustand)
+    │   ├── 📄 use-toast.ts         # ✅ Toast notifications
+    │   └── 📄 use-mobile.tsx       # ✅ Mobile detection
+    │
+    ├── 📁 lib/ (5 files)          # ✅ Utility libraries
+    │   ├── 📄 auth.ts              # ✅ Authentication API calls
+    │   ├── 📄 queryClient.ts       # ✅ TanStack Query setup
+    │   ├── 📄 social-auth.ts       # ✅ Social login integration
+    │   ├── 📄 storage.ts           # ✅ Local storage utilities
+    │   └── 📄 utils.ts             # ✅ General utilities (cn, etc.)
+    │
+    └── 📁 pages/ (17 files)       # ✅ Application pages
+        ├── 📄 splash.tsx           # ✅ App launch screen (4s)
+        ├── 📄 onboarding.tsx       # ✅ 3-screen onboarding
+        ├── 📄 role-selection.tsx   # ✅ Consumer/Merchant/Driver
+        ├── 📄 signin.tsx           # ✅ Sign in with social auth
+        ├── 📄 signup.tsx           # ✅ Registration with role selection
+        ├── 📄 otp-verification.tsx # ✅ 5-digit email verification
+        ├── 📄 forgot-password.tsx  # ✅ Password reset request
+        ├── 📄 reset-password.tsx   # ✅ New password form
+        ├── 📄 dashboard.tsx        # ✅ Role-based dashboard
+        ├── 📄 profile.tsx          # ✅ User profile view
+        ├── 📄 edit-profile.tsx     # ✅ Profile editing with image upload
+        ├── 📄 account-settings.tsx # ✅ Security/Notifications/Privacy tabs
+        ├── 📄 biometric-setup.tsx  # ✅ Fingerprint/Face ID setup
+        ├── 📄 not-found.tsx        # ✅ 404 error page
+        │
+        └── 📁 TODO: Core App Pages  # 🚧 Next Phase Implementation
+            ├── 📄 home.tsx          # 🟡 Consumer/Merchant/Driver home
+            ├── 📄 wallet.tsx        # 🟡 Digital wallet interface
+            ├── 📄 payment-methods.tsx # 🟡 Add/manage cards
+            ├── 📄 transactions.tsx  # 🟡 Transaction history
+            ├── 📄 qr-scanner.tsx    # 🟡 QR code scanning
+            ├── 📄 qr-generator.tsx  # 🟡 QR code generation
+            ├── 📄 merchant-search.tsx # 🟡 Find nearby merchants
+            ├── 📄 bill-payments.tsx # 🟡 Utility bill payments
+            ├── 📄 fuel-ordering.tsx # 🟡 Fuel delivery orders
+            ├── 📄 toll-payments.tsx # 🟡 Toll gate purchases
+            ├── 📄 commodities.tsx   # 🟡 Marketplace items
+            ├── 📄 orders.tsx        # 🟡 Order management
+            ├── 📄 notifications.tsx # 🟡 Push notifications
+            ├── 📄 support.tsx       # 🟡 Help & customer support
+            └── 📄 settings.tsx      # 🟡 App preferences
+```
+
+### 📁 **Server Directory (Backend - Express.js + TypeScript)**
+```
+server/
+├── 📄 index.ts                    # ✅ Server entry point
+├── 📄 routes.ts                   # ✅ API route handlers
+├── 📄 storage.ts                  # ✅ Data storage layer (Memory/DB)
+├── 📄 db.ts                       # ✅ PostgreSQL configuration
+├── 📄 vite.ts                     # ✅ Vite development setup
+│
+└── 📁 TODO: Backend Features      # 🚧 Next Phase Implementation
+    ├── 📄 middleware/             # 🟡 Authentication, CORS, rate limiting
+    │   ├── 📄 auth.ts             # 🟡 JWT token validation
+    │   ├── 📄 cors.ts             # 🟡 Cross-origin setup
+    │   └── 📄 rateLimit.ts        # 🟡 API rate limiting
+    ├── 📄 services/               # 🟡 Business logic services
+    │   ├── 📄 payment.ts          # 🟡 Payment gateway integration
+    │   ├── 📄 email.ts            # 🟡 Email service (OTP, notifications)
+    │   ├── 📄 sms.ts              # 🟡 SMS service integration
+    │   ├── 📄 push-notifications.ts # 🟡 Push notification service
+    │   └── 📄 qr-code.ts          # 🟡 QR code generation/validation
+    ├── 📄 controllers/            # 🟡 Route controllers
+    │   ├── 📄 payment.ts          # 🟡 Payment processing
+    │   ├── 📄 transactions.ts     # 🟡 Transaction management
+    │   ├── 📄 merchants.ts        # 🟡 Merchant operations
+    │   └── 📄 orders.ts           # 🟡 Order management
+    └── 📄 utils/                  # 🟡 Server utilities
+        ├── 📄 validation.ts       # 🟡 Input validation
+        ├── 📄 encryption.ts       # 🟡 Data encryption
+        └── 📄 logger.ts           # 🟡 Logging system
+```
+
+### 📁 **Shared Directory**
+```
+shared/
+├── 📄 schema.ts                   # ✅ Database schemas (Users, OTP)
+│
+└── 📁 TODO: Extended Schemas      # 🚧 Next Phase Implementation
+    ├── 📄 payment-schemas.ts      # 🟡 Payment, transactions, wallets
+    ├── 📄 merchant-schemas.ts     # 🟡 Merchant, products, orders
+    ├── 📄 notification-schemas.ts # 🟡 Push notifications, alerts
+    └── 📄 api-types.ts            # 🟡 API request/response types
+```
+
+### 📁 **Documentation & Assets**
+```
+attached_assets/
+├── 📄 BRILLPRIME API.postman_collection.json # ✅ API documentation
+├── 📄 Brillprime design.docx                 # ✅ Design specifications
+├── 📄 [Flow documentation files]             # ✅ User flow specs
+│
+└── 📁 TODO: Additional Documentation         # 🚧 Future Documentation
+    ├── 📄 api-documentation.md               # 🟡 Complete API docs
+    ├── 📄 deployment-guide.md                # 🟡 Production deployment
+    ├── 📄 user-manual.md                     # 🟡 End-user guide
+    └── 📄 development-setup.md               # 🟡 Developer onboarding
+```
+
+### 📊 **Implementation Status Summary**
+
+**✅ Completed (130+ files)**
+- Complete authentication system with social login and biometrics
+- Enhanced profile management with image upload
+- Account settings with security/notifications/privacy tabs
+- Responsive UI with 44 image assets and 50+ components
+- Database integration with PostgreSQL
+- PWA setup with service worker and manifest
+
+**🚧 In Progress**
+- Testing and debugging authentication flow
+- Performance optimization
+- Error handling improvements
+
+**🟡 TODO - Core Features (35+ files)**
+- Payment gateway integration
+- Digital wallet functionality
+- QR code scanning/generation
+- Merchant search and discovery
+- Bill payments and fuel ordering
+- Transaction history and management
+- Push notifications system
+- Order management for merchants
+- Real-time features
+
+**🔴 TODO - Advanced Features (20+ files)**
+- Admin dashboard and user management
+- Analytics and reporting
+- Advanced security features
+- Performance monitoring
+- Automated testing suite
+- CI/CD pipeline
+- Multi-language support
+- Accessibility improvements
 
 ## Key Components
 
