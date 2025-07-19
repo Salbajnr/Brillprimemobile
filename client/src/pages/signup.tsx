@@ -17,6 +17,8 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
+import { NotificationModal } from "@/components/ui/notification-modal";
+import confirmationFailImg from "../assets/images/confirmation_fail_img.png";
 
 const signupSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
@@ -34,6 +36,8 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { selectedRole } = useAuth();
@@ -82,6 +86,100 @@ export default function SignupPage() {
       password: data.password,
       role: selectedRole,
     });
+  };
+
+  // Social login handlers
+  const handleGoogleSignup = async () => {
+    if (!selectedRole) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a role first",
+      });
+      setLocation("/role-selection");
+      return;
+    }
+
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Google signup success:", profile);
+          // TODO: Send profile to backend for registration
+          setLocation("/otp-verification");
+        },
+        (error) => {
+          setErrorMessage("Google sign-up failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithGoogle();
+    } catch (error) {
+      setErrorMessage("Google sign-up is not available at the moment.");
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleAppleSignup = async () => {
+    if (!selectedRole) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a role first",
+      });
+      setLocation("/role-selection");
+      return;
+    }
+
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Apple signup success:", profile);
+          // TODO: Send profile to backend for registration
+          setLocation("/otp-verification");
+        },
+        (error) => {
+          setErrorMessage("Apple sign-up failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithApple();
+    } catch (error) {
+      setErrorMessage("Apple sign-up is not available at the moment.");
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleFacebookSignup = async () => {
+    if (!selectedRole) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Please select a role first",
+      });
+      setLocation("/role-selection");
+      return;
+    }
+
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Facebook signup success:", profile);
+          // TODO: Send profile to backend for registration
+          setLocation("/otp-verification");
+        },
+        (error) => {
+          setErrorMessage("Facebook sign-up failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithFacebook();
+    } catch (error) {
+      setErrorMessage("Facebook sign-up is not available at the moment.");
+      setShowErrorModal(true);
+    }
   };
 
   return (
@@ -267,6 +365,7 @@ export default function SignupPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleGoogleSignup}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
@@ -274,6 +373,7 @@ export default function SignupPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleAppleSignup}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={appleIcon} alt="Apple" className="w-5 h-5" />
@@ -281,6 +381,7 @@ export default function SignupPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleFacebookSignup}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
@@ -300,6 +401,17 @@ export default function SignupPage() {
             </Button>
           </p>
         </div>
+
+        {/* Error Modal */}
+        <NotificationModal
+          isOpen={showErrorModal}
+          onClose={() => setShowErrorModal(false)}
+          type="error"
+          title="Sign Up Failed"
+          message={errorMessage}
+          imageSrc={confirmationFailImg}
+          buttonText="Try Again"
+        />
       </div>
     </div>
   );

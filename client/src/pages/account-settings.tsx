@@ -380,6 +380,20 @@ export default function AccountSettingsPage() {
                 />
               </div>
 
+              <Button
+                onClick={() => setLocation("/biometric-setup")}
+                variant="ghost"
+                className="w-full p-4 bg-gray-50 hover:bg-gray-100 rounded-xl flex items-center justify-between text-left"
+              >
+                <div>
+                  <h3 className="font-medium text-[var(--brill-text)]">Biometric Authentication</h3>
+                  <p className="text-sm text-[var(--brill-text-light)]">
+                    Use fingerprint or face recognition to secure your account
+                  </p>
+                </div>
+                <ChevronRight className="w-5 h-5 text-[var(--brill-text-light)]" />
+              </Button>
+
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div>
                   <h3 className="font-medium text-[var(--brill-text)]">Data Sharing</h3>

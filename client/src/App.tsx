@@ -18,6 +18,7 @@ import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
 import EditProfilePage from "@/pages/edit-profile";
 import AccountSettingsPage from "@/pages/account-settings";
+import BiometricSetupPage from "@/pages/biometric-setup";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -45,6 +46,7 @@ function Router() {
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/edit-profile" component={() => <ProtectedRoute component={EditProfilePage} />} />
       <Route path="/account-settings" component={() => <ProtectedRoute component={AccountSettingsPage} />} />
+      <Route path="/biometric-setup" component={() => <ProtectedRoute component={BiometricSetupPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

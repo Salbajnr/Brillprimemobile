@@ -58,6 +58,70 @@ export default function SignInPage() {
     signInMutation.mutate(data);
   };
 
+  // Social login handlers
+  const handleGoogleLogin = async () => {
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Google login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
+        },
+        (error) => {
+          setErrorMessage("Google sign-in failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithGoogle();
+    } catch (error) {
+      setErrorMessage("Google sign-in is not available at the moment.");
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleAppleLogin = async () => {
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Apple login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
+        },
+        (error) => {
+          setErrorMessage("Apple sign-in failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithApple();
+    } catch (error) {
+      setErrorMessage("Apple sign-in is not available at the moment.");
+      setShowErrorModal(true);
+    }
+  };
+
+  const handleFacebookLogin = async () => {
+    try {
+      const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        (profile) => {
+          console.log("Facebook login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
+        },
+        (error) => {
+          setErrorMessage("Facebook sign-in failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithFacebook();
+    } catch (error) {
+      setErrorMessage("Facebook sign-in is not available at the moment.");
+      setShowErrorModal(true);
+    }
+  };
+
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white">
       <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
@@ -163,6 +227,7 @@ export default function SignInPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleGoogleLogin}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
@@ -170,6 +235,7 @@ export default function SignInPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleAppleLogin}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={appleIcon} alt="Apple" className="w-5 h-5" />
@@ -177,6 +243,7 @@ export default function SignInPage() {
             <Button
               type="button"
               variant="outline"
+              onClick={handleFacebookLogin}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
