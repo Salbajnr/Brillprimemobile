@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import cameraIcon from "../assets/images/camera_icon.png";
+import dropdownArrowIcon from "../assets/images/dropdown_arrow_icon.png";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -82,7 +83,7 @@ export default function ProfilePage() {
               <Edit className="h-5 w-5 text-[var(--brill-secondary)]" />
               <span className="text-[var(--brill-text)] font-medium">Edit Profile</span>
             </div>
-            <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
+            <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
 
           <Button 
@@ -93,7 +94,7 @@ export default function ProfilePage() {
               <Shield className="h-5 w-5 text-[var(--brill-secondary)]" />
               <span className="text-[var(--brill-text)] font-medium">Account Settings</span>
             </div>
-            <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
+            <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
 
           <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
@@ -101,7 +102,7 @@ export default function ProfilePage() {
               <Bell className="h-5 w-5 text-[var(--brill-secondary)]" />
               <span className="text-[var(--brill-text)] font-medium">Notifications</span>
             </div>
-            <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
+            <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
 
           <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
@@ -109,7 +110,7 @@ export default function ProfilePage() {
               <HelpCircle className="h-5 w-5 text-[var(--brill-secondary)]" />
               <span className="text-[var(--brill-text)] font-medium">Help & Support</span>
             </div>
-            <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
+            <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
         </div>
 
