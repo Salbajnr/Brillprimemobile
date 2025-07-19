@@ -27,11 +27,12 @@
   --radius: 0.5rem;
 
   /* Brillprime Custom Colors */
-  --brill-primary: hsl(221, 82%, 19%);
-  --brill-secondary: hsl(207, 44%, 49%);
-  --brill-active: hsl(232, 100%, 71%);
-  --brill-text: hsl(0, 0%, 7%);
-  --brill-text-light: hsl(0, 0%, 71%);
+  --brill-primary: #4682b4;    /* Steel Blue */
+  --brill-secondary: #0b1a51;  /* Dark Navy */
+  --brill-active: #010e42;     /* Very Dark Blue */
+  --brill-text: #131313;       /* Dark Gray */
+  --brill-text-light: #131313; /* Dark Gray */
+  --brill-white: #ffffff;      /* White */
   --brill-success: hsl(158, 64%, 52%);
   --brill-error: hsl(0, 84%, 60%);
   --brill-warning: hsl(43, 96%, 56%);

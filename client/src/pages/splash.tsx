@@ -28,9 +28,9 @@ export default function SplashPage() {
         
         {/* Loading animation */}
         <div className="mt-8 flex space-x-2">
-          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce"></div>
-          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-          <div className="w-3 h-3 bg-[var(--brill-secondary)] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+          <div className="w-3 h-3 bg-[var(--brill-primary)] rounded-full animate-bounce"></div>
+          <div className="w-3 h-3 bg-[var(--brill-primary)] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          <div className="w-3 h-3 bg-[var(--brill-primary)] rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
         </div>
       </div>
     </div>

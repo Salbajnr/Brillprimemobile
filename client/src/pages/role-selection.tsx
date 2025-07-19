@@ -49,7 +49,7 @@ export default function RoleSelectionPage() {
         <Button
           onClick={handleContinue}
           disabled={!selectedRole}
-          className="w-full h-10 sm:h-12 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
+          className="w-full h-10 sm:h-12 rounded-brill font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base bg-[var(--brill-secondary)] text-[var(--brill-white)] hover:bg-[var(--brill-active)]"
         >
           Continue
         </Button>
