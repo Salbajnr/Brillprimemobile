@@ -4,9 +4,9 @@ import { localStorage } from "@/lib/storage";
 
 interface AuthState {
   user: User | null;
-  selectedRole: "DRIVER" | "VENDOR" | null;
+  selectedRole: "CONSUMER" | "MERCHANT" | "DRIVER" | null;
   setUser: (user: User | null) => void;
-  setSelectedRole: (role: "DRIVER" | "VENDOR" | null) => void;
+  setSelectedRole: (role: "CONSUMER" | "MERCHANT" | "DRIVER" | null) => void;
   signOut: () => void;
   isAuthenticated: () => boolean;
 }

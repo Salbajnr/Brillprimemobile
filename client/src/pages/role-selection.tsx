@@ -6,7 +6,7 @@ import { RoleCard } from "@/components/ui/role-card";
 import { useAuth } from "@/hooks/use-auth";
 
 export default function RoleSelectionPage() {
-  const [selectedRole, setSelectedRole] = useState<"DRIVER" | "VENDOR" | null>(null);
+  const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
   const [, setLocation] = useLocation();
   const { setSelectedRole: setAuthRole } = useAuth();
 
@@ -30,14 +30,19 @@ export default function RoleSelectionPage() {
 
         <div className="space-y-4 mb-8">
           <RoleCard
+            role="CONSUMER"
+            isSelected={selectedRole === "CONSUMER"}
+            onSelect={() => setSelectedRole("CONSUMER")}
+          />
+          <RoleCard
+            role="MERCHANT"
+            isSelected={selectedRole === "MERCHANT"}
+            onSelect={() => setSelectedRole("MERCHANT")}
+          />
+          <RoleCard
             role="DRIVER"
             isSelected={selectedRole === "DRIVER"}
             onSelect={() => setSelectedRole("DRIVER")}
-          />
-          <RoleCard
-            role="VENDOR"
-            isSelected={selectedRole === "VENDOR"}
-            onSelect={() => setSelectedRole("VENDOR")}
           />
         </div>
 

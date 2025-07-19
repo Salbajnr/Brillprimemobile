@@ -8,7 +8,7 @@ export const users = pgTable("users", {
   email: text("email").notNull().unique(),
   phone: text("phone").notNull(),
   password: text("password").notNull(),
-  role: text("role", { enum: ["DRIVER", "VENDOR"] }).notNull(),
+  role: text("role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
   isVerified: boolean("is_verified").default(false),
   createdAt: timestamp("created_at").defaultNow(),
 });
