@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { User } from "@/types/api";
+import type { User } from "@shared/schema";
 import { localStorage } from "@/lib/storage";
 
 interface AuthState {
