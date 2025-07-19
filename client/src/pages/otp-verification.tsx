@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { Shield, Mail } from "lucide-react";
 import logo from "../assets/images/logo.png";
 import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 
 import { OtpInput } from "@/components/ui/otp-input";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -15,6 +16,7 @@ export default function OtpVerificationPage() {
   const [resendTimer, setResendTimer] = useState(0);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { setUser } = useAuth();
 
   const verificationEmail = localStorage.getItem("verification-email") || "";
 
@@ -33,13 +35,23 @@ export default function OtpVerificationPage() {
 
   const verifyOtpMutation = useMutation({
     mutationFn: authAPI.verifyOtp,
-    onSuccess: () => {
+    onSuccess: (data) => {
       localStorage.removeItem("verification-email");
-      toast({
-        title: "Account Verified!",
-        description: "Your account has been successfully verified. Welcome to Brillprime!",
-      });
-      setLocation("/signin");
+      if (data.user) {
+        // Set user in auth context since registration is now complete
+        setUser(data.user);
+        toast({
+          title: "Registration Complete!",
+          description: "Your account has been successfully verified. Welcome to Brillprime!",
+        });
+        setLocation("/dashboard");
+      } else {
+        toast({
+          title: "Account Verified!",
+          description: "Your account has been successfully verified. Please sign in to continue.",
+        });
+        setLocation("/signin");
+      }
     },
     onError: (error: Error) => {
       toast({
