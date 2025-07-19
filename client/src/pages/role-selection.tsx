@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { RoleCard } from "@/components/ui/role-card";
 import { useAuth } from "@/hooks/use-auth";
+import signUpLogo from "../assets/images/sign_up_option_logo.png";
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
@@ -18,13 +18,13 @@ export default function RoleSelectionPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
-      <div className="px-6 py-8 pt-16">
-        <div className="text-center mb-12">
-          <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center mx-auto mb-6">
-            <Users className="text-white h-6 w-6" />
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
+      <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
+        <div className="text-center mb-8 sm:mb-12">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <img src={signUpLogo} alt="Sign Up" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
-          <h1 className="text-xl font-extrabold text-[var(--brill-primary)] mb-3">Choose Your Role</h1>
+          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-3">Choose Your Role</h1>
           <p className="text-[var(--brill-text-light)] font-light text-sm">Select how you'll be using Brillprime</p>
         </div>
 
@@ -49,7 +49,7 @@ export default function RoleSelectionPage() {
         <Button
           onClick={handleContinue}
           disabled={!selectedRole}
-          className="w-full h-14 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-10 sm:h-12 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base"
         >
           Continue
         </Button>
