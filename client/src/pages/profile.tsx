@@ -74,7 +74,10 @@ export default function ProfilePage() {
 
         {/* Profile Actions */}
         <div className="space-y-3 mb-8">
-          <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
+          <Button 
+            onClick={() => setLocation("/edit-profile")}
+            className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50"
+          >
             <div className="flex items-center space-x-3">
               <Edit className="h-5 w-5 text-[var(--brill-secondary)]" />
               <span className="text-[var(--brill-text)] font-medium">Edit Profile</span>
@@ -82,10 +85,13 @@ export default function ProfilePage() {
             <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
           </Button>
 
-          <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
+          <Button 
+            onClick={() => setLocation("/account-settings")}
+            className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50"
+          >
             <div className="flex items-center space-x-3">
               <Shield className="h-5 w-5 text-[var(--brill-secondary)]" />
-              <span className="text-[var(--brill-text)] font-medium">Security Settings</span>
+              <span className="text-[var(--brill-text)] font-medium">Account Settings</span>
             </div>
             <ArrowLeft className="h-4 w-4 text-[var(--brill-text-light)] rotate-180" />
           </Button>

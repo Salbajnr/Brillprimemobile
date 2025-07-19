@@ -16,6 +16,8 @@ import ResetPasswordPage from "@/pages/reset-password";
 import OtpVerificationPage from "@/pages/otp-verification";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
+import EditProfilePage from "@/pages/edit-profile";
+import AccountSettingsPage from "@/pages/account-settings";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -41,6 +43,8 @@ function Router() {
       <Route path="/otp-verification" component={OtpVerificationPage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
+      <Route path="/edit-profile" component={() => <ProtectedRoute component={EditProfilePage} />} />
+      <Route path="/account-settings" component={() => <ProtectedRoute component={AccountSettingsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );
