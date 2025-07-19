@@ -43,11 +43,11 @@ export default function OnboardingPage() {
     <div className="w-full max-w-md mx-auto min-h-screen bg-white relative overflow-hidden">
       <div className="px-4 sm:px-6 py-6 sm:py-8 flex flex-col min-h-screen">
         <div className="flex-1 flex flex-col justify-center items-center text-center">
-          <div className="w-full max-w-xs sm:max-w-sm md:max-w-md h-40 sm:h-48 md:h-56 lg:h-64 mb-6 sm:mb-8 flex items-center justify-center mx-auto">
+          <div className="w-48 sm:w-56 md:w-64 h-56 sm:h-64 md:h-72 lg:h-80 mb-6 sm:mb-8 flex items-center justify-center mx-auto">
             <img
               src={currentData.image}
               alt="Financial illustration"
-              className="w-full h-full object-contain rounded-xl shadow-lg"
+              className="w-full h-full object-cover rounded-xl shadow-lg"
             />
           </div>
 
