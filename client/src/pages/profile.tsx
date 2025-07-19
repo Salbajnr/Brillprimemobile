@@ -18,7 +18,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
       {/* Header */}
       <div className="flex items-center justify-between p-6 pt-12 border-b border-gray-100">
         <Button
