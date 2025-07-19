@@ -23,6 +23,9 @@ The application follows a monorepo structure with clear separation between clien
 ### Directory Structure
 ```
 ├── client/          # React frontend application
+│   └── src/
+│       └── assets/
+│           └── images/  # All image and icon assets (44 files)
 ├── server/          # Express.js backend API
 ├── shared/          # Shared schemas and types
 ├── attached_assets/ # Static assets and documentation
@@ -135,3 +138,12 @@ To connect to your existing backend API:
 - `tsconfig.json`: TypeScript configuration for monorepo structure
 
 The application includes PWA capabilities with service worker for offline functionality and app manifest for mobile installation.
+
+## Recent Changes
+
+### Asset Organization (July 19, 2025)
+- ✓ Created `client/src/assets/images/` directory structure
+- ✓ Moved 44 image and icon files from root directory to organized asset folder
+- ✓ Assets include app icons, logos, onboarding images, UI icons, and payment logos
+- ✓ Root directory cleaned up for better project organization
+- ✓ Assets now accessible via `@assets/images/filename.ext` import path
