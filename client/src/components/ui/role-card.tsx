@@ -1,27 +1,34 @@
 import { cn } from "@/lib/utils";
-import { Check, Car, Store } from "lucide-react";
+import { Check, Car, Store, ShoppingCart } from "lucide-react";
 
 interface RoleCardProps {
-  role: "DRIVER" | "VENDOR";
+  role: "CONSUMER" | "MERCHANT" | "DRIVER";
   isSelected: boolean;
   onSelect: () => void;
 }
 
 export function RoleCard({ role, isSelected, onSelect }: RoleCardProps) {
   const roleConfig = {
+    CONSUMER: {
+      icon: ShoppingCart,
+      title: "Consumer",
+      description: "Personal transactions and payments",
+      iconBg: "bg-purple-100",
+      iconColor: "text-purple-600",
+    },
+    MERCHANT: {
+      icon: Store,
+      title: "Merchant",
+      description: "Business and merchant services",
+      iconBg: "bg-green-100",
+      iconColor: "text-[var(--brill-success)]",
+    },
     DRIVER: {
       icon: Car,
       title: "Driver",
       description: "Transport services and delivery",
       iconBg: "bg-blue-100",
       iconColor: "text-[var(--brill-secondary)]",
-    },
-    VENDOR: {
-      icon: Store,
-      title: "Vendor",
-      description: "Business and merchant services",
-      iconBg: "bg-green-100",
-      iconColor: "text-[var(--brill-success)]",
     },
   };
 

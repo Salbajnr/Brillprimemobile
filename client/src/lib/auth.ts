@@ -13,7 +13,7 @@ export const authAPI = {
     email: string;
     phone: string;
     password: string;
-    role: "DRIVER" | "VENDOR";
+    role: "CONSUMER" | "MERCHANT" | "DRIVER";
   }): Promise<AuthResponse> => {
     const response = await apiRequest("POST", "/api/auth/signup", userData);
     return response.json();

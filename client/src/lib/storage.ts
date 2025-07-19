@@ -20,12 +20,12 @@ export const localStorage = {
     }
   },
 
-  setRole: (role: "DRIVER" | "VENDOR") => {
+  setRole: (role: "CONSUMER" | "MERCHANT" | "DRIVER") => {
     window.localStorage.setItem(STORAGE_KEYS.ROLE, role);
   },
 
-  getRole: (): "DRIVER" | "VENDOR" | null => {
-    return window.localStorage.getItem(STORAGE_KEYS.ROLE) as "DRIVER" | "VENDOR" | null;
+  getRole: (): "CONSUMER" | "MERCHANT" | "DRIVER" | null => {
+    return window.localStorage.getItem(STORAGE_KEYS.ROLE) as "CONSUMER" | "MERCHANT" | "DRIVER" | null;
   },
 
   clearAuth: () => {

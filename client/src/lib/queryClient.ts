@@ -12,9 +12,17 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  // Use environment variable or fallback for external backend
+  const baseUrl = import.meta.env.VITE_API_BASE_URL || "";
+  const fullUrl = url.startsWith("http") ? url : `${baseUrl}${url}`;
+  
+  const res = await fetch(fullUrl, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      "Content-Type": "application/json",
+      "Accept": "application/json",
+      ...(!data ? {} : {}),
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });

@@ -7,6 +7,8 @@ Brillprime is a full-stack financial services web application built with a moder
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
+User roles: Updated to CONSUMER, MERCHANT, DRIVER (instead of DRIVER, VENDOR)
+Backend: User has existing backend API - frontend connects to external API endpoints
 
 ## System Architecture
 
@@ -38,10 +40,10 @@ The application follows a monorepo structure with clear separation between clien
 - **Styling**: Tailwind CSS with custom design tokens for Brillprime brand
 
 ### Backend Architecture
-- **Express.js**: RESTful API server with middleware for logging and error handling
-- **Authentication**: Bcrypt for password hashing, OTP-based email verification
-- **Data Layer**: Drizzle ORM with PostgreSQL database
-- **Storage**: Abstracted storage interface with in-memory implementation for development
+- **External API**: Connects to user's existing backend via REST API endpoints
+- **Authentication**: API handles bcrypt password hashing, OTP-based email verification
+- **Data Layer**: External backend manages PostgreSQL database with Drizzle ORM
+- **Frontend Only**: This implementation serves as frontend client only
 
 ### Database Schema
 The application uses two main tables:
@@ -83,13 +85,48 @@ The application uses two main tables:
 
 The application is configured for deployment on Replit with:
 
-- **Development**: Vite dev server with HMR and Express API
-- **Production**: Static frontend served by Express with API routes
-- **Database**: PostgreSQL via Neon Database (serverless)
+- **Development**: Vite dev server with HMR serving frontend only
+- **Production**: Static frontend served by Express
+- **External API**: Connects to user's existing backend API
 - **Environment**: Node.js with ES modules
 - **Build Process**: 
   - Frontend: Vite builds to `dist/public`
-  - Backend: esbuild bundles server to `dist/index.js`
+  - Server: Simple Express server serving static files
+
+## Backend API Configuration
+
+To connect to your existing backend API:
+
+1. Create a `.env` file (copy from `.env.example`)
+2. Set `VITE_API_BASE_URL` to your backend URL
+3. Your API should support these endpoints:
+   - `POST /auth/signup` - User registration
+   - `POST /auth/verify-otp` - OTP verification
+   - `POST /auth/signin` - User login
+   - `POST /auth/resend-email-otp` - Resend OTP
+   - `POST /auth/reset-password` - Password reset
+
+### API Request/Response Format
+
+**Signup Request:**
+```json
+{
+  "email": "user@example.com",
+  "fullName": "John Doe",
+  "password": "password123",
+  "phone": "1234567890",
+  "role": "CONSUMER" | "MERCHANT" | "DRIVER"
+}
+```
+
+**Success Response:**
+```json
+{
+  "status": "Success",
+  "message": "User registered successfully",
+  "data": { "userId": "uuid" }
+}
+```
 
 ### Key Configuration Files
 - `vite.config.ts`: Frontend build configuration with Replit-specific plugins
