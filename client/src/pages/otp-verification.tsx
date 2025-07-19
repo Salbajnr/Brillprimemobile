@@ -10,10 +10,14 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
+import { NotificationModal } from "@/components/ui/notification-modal";
 
 export default function OtpVerificationPage() {
   const [otp, setOtp] = useState("");
   const [resendTimer, setResendTimer] = useState(0);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setUser } = useAuth();
@@ -40,11 +44,7 @@ export default function OtpVerificationPage() {
       if (data.user) {
         // Set user in auth context since registration is now complete
         setUser(data.user);
-        toast({
-          title: "Registration Complete!",
-          description: "Your account has been successfully verified. Welcome to Brillprime!",
-        });
-        setLocation("/dashboard");
+        setShowSuccessModal(true);
       } else {
         toast({
           title: "Account Verified!",
@@ -54,11 +54,8 @@ export default function OtpVerificationPage() {
       }
     },
     onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Verification Failed",
-        description: error.message,
-      });
+      setErrorMessage(error.message || "Invalid verification code. Please try again.");
+      setShowErrorModal(true);
       setOtp("");
     },
   });
@@ -152,6 +149,28 @@ export default function OtpVerificationPage() {
           Verify Code
         </LoadingButton>
       </div>
+
+      {/* Success Modal */}
+      <NotificationModal
+        isOpen={showSuccessModal}
+        onClose={() => setShowSuccessModal(false)}
+        type="success"
+        title="Registration Complete!"
+        description="Your account has been successfully verified. Welcome to Brillprime!"
+        actionText="Continue to Dashboard"
+        onAction={() => setLocation("/dashboard")}
+      />
+
+      {/* Error Modal */}
+      <NotificationModal
+        isOpen={showErrorModal}
+        onClose={() => setShowErrorModal(false)}
+        type="error"
+        title="Verification Failed"
+        description={errorMessage}
+        actionText="Try Again"
+        onAction={() => setShowErrorModal(false)}
+      />
     </div>
   );
 }
