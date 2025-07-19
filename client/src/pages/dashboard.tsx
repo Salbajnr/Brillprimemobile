@@ -7,6 +7,12 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Redirect consumers to their dedicated home page
+  if (user?.role === "CONSUMER") {
+    setLocation("/consumer-home");
+    return null;
+  }
+
   const getInitials = (name: string) => {
     return name.split(" ").map(n => n[0]).join("").toUpperCase();
   };

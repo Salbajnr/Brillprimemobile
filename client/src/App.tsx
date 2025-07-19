@@ -15,6 +15,8 @@ import ForgotPasswordPage from "@/pages/forgot-password";
 import ResetPasswordPage from "@/pages/reset-password";
 import OtpVerificationPage from "@/pages/otp-verification";
 import DashboardPage from "@/pages/dashboard";
+import ConsumerHomePage from "@/pages/consumer-home";
+import WalletFundPage from "@/pages/wallet-fund";
 import ProfilePage from "@/pages/profile";
 import EditProfilePage from "@/pages/edit-profile";
 import AccountSettingsPage from "@/pages/account-settings";
@@ -43,6 +45,8 @@ function Router() {
       <Route path="/reset-password/:token" component={ResetPasswordPage} />
       <Route path="/otp-verification" component={OtpVerificationPage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
+      <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
+      <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/edit-profile" component={() => <ProtectedRoute component={EditProfilePage} />} />
       <Route path="/account-settings" component={() => <ProtectedRoute component={AccountSettingsPage} />} />
