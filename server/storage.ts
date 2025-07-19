@@ -21,6 +21,34 @@ export class MemStorage implements IStorage {
     this.otpCodes = new Map();
     this.currentUserId = 1;
     this.currentOtpId = 1;
+    
+    // Add test user with provided credentials
+    this.initTestUser();
+  }
+
+  private async initTestUser() {
+    const bcrypt = await import("bcrypt");
+    const hashedPassword = await bcrypt.hash("8Characterslong", 10);
+    
+    const testUser: User = {
+      id: 1,
+      fullName: "Isaiah Salba",
+      email: "isaiahsalba2020@gmail.com",
+      phone: "+234 801 234 5678",
+      password: hashedPassword,
+      role: "CONSUMER",
+      isVerified: true,
+      profilePicture: null,
+      address: null,
+      city: "Lagos",
+      state: "Lagos",
+      country: "Nigeria",
+      bio: null,
+      createdAt: new Date()
+    };
+
+    this.users.set(1, testUser);
+    this.currentUserId = 2;
   }
 
   async getUser(id: number): Promise<User | undefined> {
