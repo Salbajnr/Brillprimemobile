@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield } from "lucide-react";
+import { Shield, Mail } from "lucide-react";
+import logo from "../assets/images/logo.png";
 import { useMutation } from "@tanstack/react-query";
 
 import { OtpInput } from "@/components/ui/otp-input";
@@ -69,7 +70,7 @@ export default function OtpVerificationPage() {
   });
 
   const handleVerify = () => {
-    if (otp.length === 6) {
+    if (otp.length === 5) {
       verifyOtpMutation.mutate({
         email: verificationEmail,
         otp,
@@ -84,22 +85,25 @@ export default function OtpVerificationPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
-      <div className="px-6 py-8 pt-16">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
+      <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center mx-auto mb-6">
-            <Shield className="text-white h-6 w-6" />
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <img src={logo} alt="Brillprime Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
-          <h1 className="text-xl font-extrabold text-[var(--brill-primary)] mb-2">Verify Your Email</h1>
-          <p className="text-[var(--brill-text-light)] font-light text-sm mb-2">
-            We've sent a verification code to
-          </p>
+          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-2">Verify it's you</h1>
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <Mail className="h-4 w-4 text-[var(--brill-secondary)]" />
+            <p className="text-[var(--brill-text-light)] font-light text-sm">
+              A verification code has been sent to
+            </p>
+          </div>
           <p className="text-[var(--brill-secondary)] font-medium text-sm">{verificationEmail}</p>
         </div>
 
         <div className="mb-8">
           <OtpInput
-            length={6}
+            length={5}
             value={otp}
             onChange={setOtp}
             className="mb-6"
@@ -130,7 +134,7 @@ export default function OtpVerificationPage() {
           onClick={handleVerify}
           loading={verifyOtpMutation.isPending}
           loadingText="Verifying..."
-          disabled={otp.length !== 6}
+          disabled={otp.length !== 5}
           className="w-full h-14"
         >
           Verify Code

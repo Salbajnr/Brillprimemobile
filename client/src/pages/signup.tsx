@@ -3,6 +3,9 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, User, Mail, Phone, Lock } from "lucide-react";
+import googleIcon from "../assets/images/google_icon.png";
+import appleIcon from "../assets/images/apple_icon.png";
+import facebookLogo from "../assets/images/facebook_logo.png";
 import { useMutation } from "@tanstack/react-query";
 import { z } from "zod";
 import logo from "../assets/images/logo.png";
@@ -234,6 +237,56 @@ export default function SignupPage() {
             </LoadingButton>
           </form>
         </Form>
+
+        {/* Terms & Privacy */}
+        <div className="text-center mb-6">
+          <p className="text-xs text-[var(--brill-text-light)]">
+            By creating an account, you agree to our{" "}
+            <Button variant="link" className="text-[var(--brill-secondary)] p-0 h-auto text-xs">
+              Terms of Service
+            </Button>{" "}
+            and{" "}
+            <Button variant="link" className="text-[var(--brill-secondary)] p-0 h-auto text-xs">
+              Privacy Policy
+            </Button>
+          </p>
+        </div>
+
+        {/* Social Login Options */}
+        <div className="space-y-4 mb-6">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-white px-2 text-[var(--brill-text-light)]">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+            >
+              <img src={googleIcon} alt="Google" className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+            >
+              <img src={appleIcon} alt="Apple" className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+            >
+              <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
+            </Button>
+          </div>
+        </div>
 
         <div className="text-center">
           <p className="text-[var(--brill-text-light)] text-sm">
