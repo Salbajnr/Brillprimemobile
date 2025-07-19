@@ -1,17 +1,33 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import logo from "../assets/images/logo.png";
 
 export default function SplashPage() {
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      setLocation("/onboarding");
-    }, 4000); // Show splash for 4 seconds
+      // Check user authentication state after splash screen
+      if (isAuthenticated() && user) {
+        // Returning user with valid session → Dashboard
+        setLocation("/dashboard");
+      } else {
+        // Check if user has seen onboarding before
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        if (hasSeenOnboarding) {
+          // Returning user (invalid session) → Account Type Selection
+          setLocation("/role-selection");
+        } else {
+          // First-time user → Onboarding
+          setLocation("/onboarding");
+        }
+      }
+    }, 3000); // Show splash for 3 seconds as per documentation
 
     return () => clearTimeout(timer);
-  }, [setLocation]);
+  }, [setLocation, user, isAuthenticated]);
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden">
