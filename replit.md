@@ -61,10 +61,19 @@ The application uses two main tables:
 
 ## Data Flow
 
-1. **User Registration**: Client submits user data → Server validates and creates user → OTP generated and stored → User receives verification email
-2. **OTP Verification**: Client submits OTP → Server validates against stored code → Account marked as verified
-3. **Authentication**: Client submits credentials → Server validates → User session established
-4. **Protected Routes**: Client checks authentication state → Redirects to sign-in if unauthorized
+The application follows the comprehensive flow documentation exactly:
+
+### App Launch Flow
+1. **Splash Screen** (3s): Logo display → User state check → Navigation decision
+   - First-time user → Onboarding flow
+   - Returning user (valid session) → Dashboard
+   - Returning user (invalid session) → Account type selection
+
+### Authentication Flow
+2. **User Registration**: Client submits user data → Server validates and creates user → OTP generated and stored → User receives verification email
+3. **OTP Verification**: Client submits OTP → Server validates → Registration completed → Auto-login → Dashboard
+4. **Authentication**: Client submits credentials → Server validates → User session established
+5. **Protected Routes**: Client checks authentication state → Redirects to sign-in if unauthorized
 
 ## External Dependencies
 
@@ -217,3 +226,6 @@ Based on the comprehensive user flow documentation, the following features are p
 - ✓ Added email indicator with mail icon in verification screen
 - ✓ Updated OTP verification to complete user registration and navigate to role-based dashboard
 - ✓ Social login buttons now display as perfect circles with round borders
+- ✓ Implemented smart navigation in splash screen with user state checking
+- ✓ Added onboarding completion tracking for returning users
+- ✓ Aligned app flow perfectly with comprehensive documentation

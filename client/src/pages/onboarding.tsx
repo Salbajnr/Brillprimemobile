@@ -52,6 +52,8 @@ export default function OnboardingPage() {
     if (currentStep < onboardingData.length) {
       setCurrentStep(currentStep + 1);
     } else {
+      // Mark that user has seen onboarding
+      localStorage.setItem("hasSeenOnboarding", "true");
       setLocation("/role-selection");
     }
   };
