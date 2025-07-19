@@ -162,21 +162,21 @@ export default function SignInPage() {
             <Button
               type="button"
               variant="outline"
-              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
             >
               <img src={appleIcon} alt="Apple" className="w-5 h-5" />
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-12 border-[var(--brill-secondary)] hover:bg-gray-50"
+              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
             >
               <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
             </Button>
