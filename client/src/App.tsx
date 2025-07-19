@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect } from "react";
 
+import SplashPage from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
 import RoleSelectionPage from "@/pages/role-selection";
 import SignupPage from "@/pages/signup";
@@ -28,7 +29,8 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={OnboardingPage} />
+      <Route path="/" component={SplashPage} />
+      <Route path="/onboarding" component={OnboardingPage} />
       <Route path="/role-selection" component={RoleSelectionPage} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/signin" component={SignInPage} />
@@ -46,7 +48,7 @@ function App() {
   // Initialize the app state on load
   useEffect(() => {
     // If user is already logged in, redirect to dashboard
-    if (user && window.location.pathname === "/") {
+    if (user && (window.location.pathname === "/" || window.location.pathname === "/onboarding")) {
       window.location.pathname = "/dashboard";
     }
   }, [user]);

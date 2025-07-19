@@ -40,45 +40,39 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white relative overflow-hidden">
-      <div className="px-6 py-8 flex flex-col min-h-screen">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white relative overflow-hidden">
+      <div className="px-4 sm:px-6 py-6 sm:py-8 flex flex-col min-h-screen">
         <div className="flex-1 flex flex-col justify-center items-center text-center">
-          {currentStep === 1 ? (
-            <div className="w-32 h-32 rounded-full gradient-bg flex items-center justify-center mb-8 shadow-lg">
-              <span className="text-white text-5xl font-bold">B</span>
-            </div>
-          ) : (
-            <div className="w-64 h-48 mb-8 flex items-center justify-center">
-              <img
-                src={currentData.image}
-                alt="Financial illustration"
-                className="w-full h-full object-cover rounded-xl shadow-lg"
-              />
-            </div>
-          )}
+          <div className="w-full max-w-xs sm:max-w-sm md:max-w-md h-40 sm:h-48 md:h-56 lg:h-64 mb-6 sm:mb-8 flex items-center justify-center mx-auto">
+            <img
+              src={currentData.image}
+              alt="Financial illustration"
+              className="w-full h-full object-contain rounded-xl shadow-lg"
+            />
+          </div>
 
-          <h1 className="text-2xl font-extrabold text-[var(--brill-primary)] mb-4 leading-tight whitespace-pre-line">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[var(--brill-primary)] mb-3 sm:mb-4 leading-tight whitespace-pre-line px-2">
             {currentData.title}
           </h1>
-          <p className="text-[var(--brill-text-light)] font-light text-base mb-8 max-w-sm leading-relaxed">
+          <p className="text-[var(--brill-text-light)] font-light text-sm sm:text-base mb-6 sm:mb-8 max-w-xs sm:max-w-sm leading-relaxed px-2">
             {currentData.description}
           </p>
         </div>
 
-        <div className="flex justify-between items-center pt-8">
+        <div className="flex justify-between items-center pt-6 sm:pt-8 px-2">
           <ProgressIndicator totalSteps={3} currentStep={currentStep} />
           
           {currentStep < onboardingData.length ? (
             <Button
               onClick={handleNext}
-              className="w-16 h-16 gradient-bg rounded-full text-white shadow-lg btn-scale p-0"
+              className="w-12 h-12 sm:w-16 sm:h-16 gradient-bg rounded-full text-white shadow-lg btn-scale p-0"
             >
-              <ArrowRight className="h-5 w-5" />
+              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           ) : (
             <Button
               onClick={handleNext}
-              className="w-40 h-12 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale"
+              className="w-32 sm:w-40 h-10 sm:h-12 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale text-sm sm:text-base"
             >
               Get Started
             </Button>

@@ -19,7 +19,7 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
       {/* Dashboard Header */}
       <div className="gradient-bg px-6 pt-12 pb-8 text-white">
         <div className="flex justify-between items-start mb-6">

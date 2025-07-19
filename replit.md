@@ -141,9 +141,18 @@ The application includes PWA capabilities with service worker for offline functi
 
 ## Recent Changes
 
-### Asset Organization (July 19, 2025)
+### Asset Organization & Responsive Design (July 19, 2025)
 - ✓ Created `client/src/assets/images/` directory structure
 - ✓ Moved 44 image and icon files from root directory to organized asset folder
 - ✓ Assets include app icons, logos, onboarding images, UI icons, and payment logos
 - ✓ Root directory cleaned up for better project organization
-- ✓ Assets now accessible via `@assets/images/filename.ext` import path
+- ✓ Fixed import paths to use relative imports (../assets/images/) due to vite config constraints
+
+### UI/UX Enhancements (July 19, 2025)
+- ✓ Created splash screen with Brillprime logo and loading animation
+- ✓ Updated app routing: "/" → splash → "/onboarding" → role selection
+- ✓ Replaced external Unsplash images with local onboarding images
+- ✓ Added responsive design across all pages with sm/md/lg breakpoints
+- ✓ Enhanced signin/signup pages with actual logo instead of "B" placeholder
+- ✓ Improved profile page with local camera icon
+- ✓ Made images and layouts automatically fit different screen sizes

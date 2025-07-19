@@ -56,13 +56,13 @@ export default function SignInPage() {
   };
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white">
-      <div className="px-6 py-8 pt-16">
-        <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
-            <img src={logo} alt="Brillprime Logo" className="w-16 h-16 object-contain" />
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
+      <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
+        <div className="text-center mb-6 sm:mb-8">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
+            <img src={logo} alt="Brillprime Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
-          <h1 className="text-xl font-extrabold text-[var(--brill-primary)] mb-2">Welcome Back</h1>
+          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-2">Welcome Back</h1>
           <p className="text-[var(--brill-text-light)] font-light text-sm">Sign in to your account</p>
         </div>
 
