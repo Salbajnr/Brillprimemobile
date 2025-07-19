@@ -3,22 +3,25 @@ import { useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { ProgressIndicator } from "@/components/ui/progress-indicator";
 import { Button } from "@/components/ui/button";
+import onboardingImg1 from "../assets/images/onboarding_img1.png";
+import onboardingImg2 from "../assets/images/onboarding_img2.png";
+import onboardingImg3 from "../assets/images/onboarding_img3.png";
 
 const onboardingData = [
   {
     title: "Welcome to\nBrillprime",
     description: "Your trusted financial partner for secure transactions and seamless money management",
-    image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
+    image: onboardingImg1,
   },
   {
     title: "Smart Financial\nManagement",
     description: "Track your expenses, manage multiple accounts, and make informed financial decisions with our advanced analytics",
-    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
+    image: onboardingImg2,
   },
   {
     title: "Bank-Level\nSecurity",
     description: "Your data is protected with end-to-end encryption, biometric authentication, and advanced fraud detection",
-    image: "https://images.unsplash.com/photo-1563013544-824ae1b704d3?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600",
+    image: onboardingImg3,
   },
 ];
 

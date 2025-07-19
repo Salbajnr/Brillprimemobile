@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
+import logo from "../assets/images/logo.png";
 
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -58,8 +59,8 @@ export default function SignInPage() {
     <div className="max-w-md mx-auto min-h-screen bg-white">
       <div className="px-6 py-8 pt-16">
         <div className="text-center mb-8">
-          <div className="w-20 h-20 gradient-bg rounded-full flex items-center justify-center mx-auto mb-6">
-            <span className="text-white text-2xl font-bold">B</span>
+          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+            <img src={logo} alt="Brillprime Logo" className="w-16 h-16 object-contain" />
           </div>
           <h1 className="text-xl font-extrabold text-[var(--brill-primary)] mb-2">Welcome Back</h1>
           <p className="text-[var(--brill-text-light)] font-light text-sm">Sign in to your account</p>

@@ -1,7 +1,8 @@
-import { ArrowLeft, Camera, Edit, Shield, Bell, HelpCircle, LogOut } from "lucide-react";
+import { ArrowLeft, Edit, Shield, Bell, HelpCircle, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
+import cameraIcon from "../assets/images/camera_icon.png";
 
 export default function ProfilePage() {
   const { user, signOut } = useAuth();
@@ -41,7 +42,7 @@ export default function ProfilePage() {
               </span>
             </div>
             <Button className="absolute -bottom-1 -right-1 w-8 h-8 bg-[var(--brill-secondary)] rounded-full text-white flex items-center justify-center shadow-lg p-0 hover:bg-[var(--brill-secondary)]/90">
-              <Camera className="h-3 w-3" />
+              <img src={cameraIcon} alt="Camera" className="h-4 w-4" />
             </Button>
           </div>
           <h2 className="text-xl font-bold text-[var(--brill-text)] mb-1">{user?.fullName || "User"}</h2>
