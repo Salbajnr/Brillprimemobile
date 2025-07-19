@@ -108,8 +108,27 @@ export default function AccountSettingsPage() {
       return;
     }
 
+    // Enhanced password validation
     if (newPassword.length < 8) {
       setErrorMessage("Password must be at least 8 characters long");
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!/(?=.*[a-z])/.test(newPassword)) {
+      setErrorMessage("Password must contain at least one lowercase letter");
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!/(?=.*[A-Z])/.test(newPassword)) {
+      setErrorMessage("Password must contain at least one uppercase letter");
+      setShowErrorModal(true);
+      return;
+    }
+
+    if (!/(?=.*\d)/.test(newPassword)) {
+      setErrorMessage("Password must contain at least one number");
       setShowErrorModal(true);
       return;
     }
@@ -240,6 +259,29 @@ export default function AccountSettingsPage() {
                     )}
                   </Button>
                 </div>
+                {/* Password Strength Indicator */}
+                {newPassword && (
+                  <div className="mt-2">
+                    <div className="text-xs space-y-1">
+                      <div className={`flex items-center space-x-2 ${newPassword.length >= 8 ? 'text-green-600' : 'text-red-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${newPassword.length >= 8 ? 'bg-green-600' : 'bg-red-500'}`}></div>
+                        <span>At least 8 characters</span>
+                      </div>
+                      <div className={`flex items-center space-x-2 ${/(?=.*[a-z])/.test(newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${/(?=.*[a-z])/.test(newPassword) ? 'bg-green-600' : 'bg-red-500'}`}></div>
+                        <span>One lowercase letter</span>
+                      </div>
+                      <div className={`flex items-center space-x-2 ${/(?=.*[A-Z])/.test(newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${/(?=.*[A-Z])/.test(newPassword) ? 'bg-green-600' : 'bg-red-500'}`}></div>
+                        <span>One uppercase letter</span>
+                      </div>
+                      <div className={`flex items-center space-x-2 ${/(?=.*\d)/.test(newPassword) ? 'text-green-600' : 'text-red-500'}`}>
+                        <div className={`w-2 h-2 rounded-full ${/(?=.*\d)/.test(newPassword) ? 'bg-green-600' : 'bg-red-500'}`}></div>
+                        <span>One number</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-2">
