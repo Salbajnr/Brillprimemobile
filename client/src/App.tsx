@@ -11,6 +11,7 @@ import OnboardingPage from "@/pages/onboarding";
 import RoleSelectionPage from "@/pages/role-selection";
 import SignupPage from "@/pages/signup";
 import SignInPage from "@/pages/signin";
+import ForgotPasswordPage from "@/pages/forgot-password";
 import OtpVerificationPage from "@/pages/otp-verification";
 import DashboardPage from "@/pages/dashboard";
 import ProfilePage from "@/pages/profile";
@@ -34,6 +35,7 @@ function Router() {
       <Route path="/role-selection" component={RoleSelectionPage} />
       <Route path="/signup" component={SignupPage} />
       <Route path="/signin" component={SignInPage} />
+      <Route path="/forgot-password" component={ForgotPasswordPage} />
       <Route path="/otp-verification" component={OtpVerificationPage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
