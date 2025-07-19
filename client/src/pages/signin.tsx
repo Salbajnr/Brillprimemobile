@@ -158,25 +158,25 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="flex justify-center gap-4">
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
+              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={googleIcon} alt="Google" className="w-5 h-5" />
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
+              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={appleIcon} alt="Apple" className="w-5 h-5" />
             </Button>
             <Button
               type="button"
               variant="outline"
-              className="h-12 w-12 rounded-full border-[var(--brill-secondary)] hover:bg-gray-50 p-0"
+              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
               <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
             </Button>
