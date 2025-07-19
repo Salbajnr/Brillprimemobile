@@ -16,12 +16,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
-import { z } from "zod";
-
-const signInSchema = z.object({
-  email: z.string().email("Please enter a valid email"),
-  password: z.string().min(1, "Password is required"),
-});
+import { signInSchema } from "@shared/schema";
 
 type SignInFormData = {
   email: string;
@@ -74,20 +69,14 @@ export default function SignInPage() {
           setLocation("/dashboard");
         },
         (error) => {
-          toast({
-            variant: "destructive",
-            title: "Sign In Failed",
-            description: "Google sign-in failed. Please try again.",
-          });
+          setErrorMessage("Google sign-in failed. Please try again.");
+          setShowErrorModal(true);
         }
       );
       await socialAuth.signInWithGoogle();
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign In Error",
-        description: "Google sign-in is not available at the moment.",
-      });
+      setErrorMessage("Google sign-in is not available at the moment.");
+      setShowErrorModal(true);
     }
   };
 
@@ -101,20 +90,14 @@ export default function SignInPage() {
           setLocation("/dashboard");
         },
         (error) => {
-          toast({
-            variant: "destructive",
-            title: "Sign In Failed", 
-            description: "Apple sign-in failed. Please try again.",
-          });
+          setErrorMessage("Apple sign-in failed. Please try again.");
+          setShowErrorModal(true);
         }
       );
       await socialAuth.signInWithApple();
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign In Error",
-        description: "Apple sign-in is not available at the moment.",
-      });
+      setErrorMessage("Apple sign-in is not available at the moment.");
+      setShowErrorModal(true);
     }
   };
 
@@ -128,20 +111,14 @@ export default function SignInPage() {
           setLocation("/dashboard");
         },
         (error) => {
-          toast({
-            variant: "destructive",
-            title: "Sign In Failed",
-            description: "Facebook sign-in failed. Please try again.",
-          });
+          setErrorMessage("Facebook sign-in failed. Please try again.");
+          setShowErrorModal(true);
         }
       );
       await socialAuth.signInWithFacebook();
     } catch (error) {
-      toast({
-        variant: "destructive", 
-        title: "Sign In Error",
-        description: "Facebook sign-in is not available at the moment.",
-      });
+      setErrorMessage("Facebook sign-in is not available at the moment.");
+      setShowErrorModal(true);
     }
   };
 
