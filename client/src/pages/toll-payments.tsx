@@ -157,7 +157,7 @@ export default function TollPayments() {
   const handlePurchase = () => {
     if (selectedTollGate) {
       const selectedGate = tollGates.find(g => g.id === selectedTollGate);
-      const amount = selectedGate?.pricePerVehicle[selectedVehicle as keyof typeof selectedGate.pricePerVehicle];
+      const amount = selectedGate?.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']];
       setLocation(`/payment/confirm?type=toll&gate=${selectedTollGate}&vehicle=${selectedVehicle}&amount=${amount}`);
     }
   };
@@ -337,7 +337,7 @@ export default function TollPayments() {
                   <span>Total Amount:</span>
                   <span className="text-[#4682b4]">
                     {getSelectedTollGate() && formatCurrency(
-                      getSelectedTollGate()!.pricePerVehicle[selectedVehicle as keyof typeof getSelectedTollGate()!.pricePerVehicle]
+                      getSelectedTollGate()!.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']]
                     )}
                   </span>
                 </div>
