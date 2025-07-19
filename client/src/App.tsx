@@ -21,6 +21,10 @@ import FuelOrderingPage from "@/pages/fuel-ordering";
 import QRScannerPage from "@/pages/qr-scanner";
 import TollPaymentsPage from "@/pages/toll-payments";
 import CommoditiesPage from "@/pages/commodities";
+import MapHomePage from "@/pages/map-home";
+import LocationSetupPage from "@/pages/location-setup";
+import SideMenuPage from "@/pages/side-menu";
+import SearchResultsPage from "@/pages/search-results";
 import ProfilePage from "@/pages/profile";
 import EditProfilePage from "@/pages/edit-profile";
 import AccountSettingsPage from "@/pages/account-settings";
@@ -55,6 +59,10 @@ function Router() {
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
       <Route path="/commodities" component={() => <ProtectedRoute component={CommoditiesPage} />} />
+      <Route path="/map-home" component={() => <ProtectedRoute component={MapHomePage} />} />
+      <Route path="/location-setup" component={() => <ProtectedRoute component={LocationSetupPage} />} />
+      <Route path="/side-menu" component={() => <ProtectedRoute component={SideMenuPage} />} />
+      <Route path="/search-results" component={() => <ProtectedRoute component={SearchResultsPage} />} />
       <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
       <Route path="/edit-profile" component={() => <ProtectedRoute component={EditProfilePage} />} />
       <Route path="/account-settings" component={() => <ProtectedRoute component={AccountSettingsPage} />} />
