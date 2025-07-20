@@ -12,6 +12,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   role: text("role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
   isVerified: boolean("is_verified").default(false),
+  isPhoneVerified: boolean("is_phone_verified").default(false),
+  isIdentityVerified: boolean("is_identity_verified").default(false),
   profilePicture: text("profile_picture"),
   address: text("address"),
   city: text("city"),
@@ -301,6 +303,43 @@ export const supportTickets = pgTable("support_tickets", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
   resolvedAt: timestamp("resolved_at"),
+});
+
+// Identity Verification tables
+export const identityVerifications = pgTable("identity_verifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  verificationStatus: text("verification_status", { enum: ["PENDING", "APPROVED", "REJECTED"] }).default("PENDING"),
+  faceImageUrl: text("face_image_url"),
+  verificationDate: timestamp("verification_date"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const driverVerifications = pgTable("driver_verifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  licenseNumber: text("license_number").notNull(),
+  licenseExpiryDate: text("license_expiry_date").notNull(),
+  licenseImageUrl: text("license_image_url"),
+  vehicleType: text("vehicle_type").notNull(),
+  vehiclePlate: text("vehicle_plate").notNull(),
+  vehicleModel: text("vehicle_model"),
+  vehicleYear: text("vehicle_year"),
+  verificationStatus: text("verification_status", { enum: ["PENDING", "APPROVED", "REJECTED"] }).default("PENDING"),
+  verificationDate: timestamp("verification_date"),
+  rejectionReason: text("rejection_reason"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const phoneVerifications = pgTable("phone_verifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  phoneNumber: text("phone_number").notNull(),
+  otpCode: text("otp_code").notNull(),
+  isVerified: boolean("is_verified").default(false),
+  expiresAt: timestamp("expires_at").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Relations

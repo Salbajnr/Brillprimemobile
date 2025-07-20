@@ -734,6 +734,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Support Tickets API Endpoints
+  // Identity verification
+  app.post("/api/auth/verify-identity", async (req, res) => {
+    try {
+      // Simple mock verification endpoint
+      const { userId, role } = req.body;
+      
+      console.log(`Identity verification submitted for user ${userId} with role ${role}`);
+      
+      res.json({
+        status: 'Success',
+        message: 'Identity verification submitted successfully',
+        data: { verificationId: 'mock-verification-id' }
+      });
+      
+    } catch (error) {
+      console.error('Identity verification error:', error);
+      res.status(500).json({
+        status: 'Error',
+        message: 'Failed to submit identity verification'
+      });
+    }
+  });
+
   app.post("/api/support/tickets", async (req, res) => {
     try {
       const ticketData = insertSupportTicketSchema.parse(req.body);

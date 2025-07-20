@@ -308,25 +308,37 @@ function DriverDashboardContent() {
               </div>
             </div>
 
-            <Button
-              onClick={() => {
-                setIsOnline(!isOnline);
-                addNotification({
-                  type: isOnline ? 'info' : 'success',
-                  title: isOnline ? 'You are now offline' : 'You are now online',
-                  message: isOnline ? 'You will not receive new orders' : 'You will now receive new pickup orders',
-                  duration: 3000
-                });
-              }}
-              className="w-full rounded-xl py-3 transition-all duration-300"
-              style={{
-                backgroundColor: isOnline ? '#22c55e' : COLORS.PRIMARY,
-                color: COLORS.WHITE
-              }}
-            >
-              <div className={`w-3 h-3 rounded-full mr-3 ${isOnline ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
-              {isOnline ? "Available for Orders" : "Currently Offline"}
-            </Button>
+            <div className="space-y-3">
+              <Button
+                onClick={() => {
+                  setIsOnline(!isOnline);
+                  addNotification({
+                    type: isOnline ? 'info' : 'success',
+                    title: isOnline ? 'You are now offline' : 'You are now online',
+                    message: isOnline ? 'You will not receive new orders' : 'You will now receive new pickup orders',
+                    duration: 3000
+                  });
+                }}
+                className="w-full rounded-xl py-3 transition-all duration-300"
+                style={{
+                  backgroundColor: isOnline ? '#22c55e' : COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                }}
+              >
+                <div className={`w-3 h-3 rounded-full mr-3 ${isOnline ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
+                {isOnline ? "Available for Orders" : "Currently Offline"}
+              </Button>
+              
+              <Link href="/identity-verification">
+                <Button 
+                  variant="outline" 
+                  className="w-full py-2 rounded-xl border-2 font-medium transition-all hover:bg-blue-50" 
+                  style={{ borderColor: COLORS.PRIMARY, color: COLORS.PRIMARY }}
+                >
+                  Complete Identity Verification
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Navigation Menu */}
