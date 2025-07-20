@@ -13,7 +13,12 @@ export default function RoleSelectionPage() {
   const handleContinue = () => {
     if (selectedRole) {
       setAuthRole(selectedRole);
-      setLocation("/signup");
+      if (selectedRole === "DRIVER") {
+        // Drivers need tier selection before continuing to signup
+        setLocation("/driver-tier-selection");
+      } else {
+        setLocation("/signup");
+      }
     }
   };
 
