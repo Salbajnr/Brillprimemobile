@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -86,8 +86,10 @@ function DriverDashboardContent() {
   const [selectedTab, setSelectedTab] = useState("jobs");
   const [isOnline, setIsOnline] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // Sample data for demonstration
   const sampleJobs: DeliveryJob[] = [
@@ -205,6 +207,23 @@ function DriverDashboardContent() {
       default: return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
+    };
+
+    if (showNotifications) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showNotifications]);
 
   return (
     <div className="h-screen flex overflow-hidden w-full max-w-full mx-auto" style={{ background: `linear-gradient(to bottom right, #f9fafb, #dbeafe)` }}>{/*Responsive container*/}
@@ -440,13 +459,100 @@ function DriverDashboardContent() {
               <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-full hidden sm:inline-flex">
                 {isOnline ? "Available" : "Offline"}
               </Badge>
-              <Button 
-                variant="outline" 
-                size="icon"
-                className="rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50"
-              >
-                <Bell className="h-4 w-4 text-[#0b1a51]" />
-              </Button>
+              <div className="relative" ref={notificationRef}>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setShowNotifications(!showNotifications)}
+                  className="rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 relative"
+                >
+                  <Bell className="h-4 w-4 text-[#0b1a51]" />
+                  {/* Notification badge */}
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+                    3
+                  </span>
+                </Button>
+
+                {/* Notification Dropdown */}
+                {showNotifications && (
+                  <div className="absolute right-0 top-12 w-80 bg-white rounded-xl shadow-2xl border-2 border-blue-200 z-50 max-h-96 overflow-y-auto">
+                    {/* Header */}
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-semibold text-[#0b1a51]">Notifications</h3>
+                        <Button 
+                          variant="ghost" 
+                          size="sm"
+                          onClick={() => setShowNotifications(false)}
+                          className="text-gray-500 hover:text-gray-700"
+                        >
+                          ×
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Notification List */}
+                    <div className="p-2">
+                      {/* Sample notifications - replace with real data */}
+                      <div className="space-y-2">
+                        <div className="p-3 rounded-lg hover:bg-blue-50 cursor-pointer border-l-4 border-blue-500">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <Package className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">New delivery request</p>
+                              <p className="text-xs text-gray-500">Fuel delivery to Allen Avenue - ₦2,500</p>
+                              <p className="text-xs text-gray-400 mt-1">2 minutes ago</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-lg hover:bg-green-50 cursor-pointer border-l-4 border-green-500">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
+                              <DollarSign className="h-4 w-4 text-green-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">Payment received</p>
+                              <p className="text-xs text-gray-500">₦1,800 added to your earnings</p>
+                              <p className="text-xs text-gray-400 mt-1">15 minutes ago</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 rounded-lg hover:bg-yellow-50 cursor-pointer border-l-4 border-yellow-500">
+                          <div className="flex items-start space-x-3">
+                            <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center">
+                              <Clock className="h-4 w-4 text-yellow-600" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900">Delivery reminder</p>
+                              <p className="text-xs text-gray-500">Pickup scheduled for 3:30 PM today</p>
+                              <p className="text-xs text-gray-400 mt-1">1 hour ago</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="p-4 border-t border-gray-200">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full text-[#4682b4] border-[#4682b4] hover:bg-blue-50"
+                        onClick={() => {
+                          setShowNotifications(false);
+                          setLocation("/notifications");
+                        }}
+                      >
+                        View All Notifications
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
