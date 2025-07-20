@@ -131,7 +131,7 @@ export default function LocationSetup() {
 
       {/* Content */}
       <div 
-        className="relative z-10 flex items-end justify-center min-h-[80vh] p-4 pb-8"
+        className="relative z-10 flex items-center justify-center min-h-[80vh] p-4 pt-20"
         style={{
           backgroundImage: `url(${mapBackground})`,
           backgroundSize: 'cover',
@@ -140,7 +140,7 @@ export default function LocationSetup() {
         }}
       >
         {/* Background overlay for better text readability - gradient from transparent to semi-opaque */}
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/30 to-white/85"></div>
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/40 to-white/80"></div>
         <div className="relative z-10 w-full max-w-md space-y-6">
           {/* Location Icon */}
           <div className="text-center mb-8">
