@@ -2,6 +2,7 @@ import {
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
   driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
+  identityVerifications, driverVerifications, phoneVerifications,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
@@ -91,6 +92,15 @@ export interface IStorage {
   getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]>;
   getSupportTicket(ticketId: string): Promise<SupportTicket | undefined>;
   updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket>;
+
+  // Identity verification
+  createIdentityVerification(data: any): Promise<any>;
+  getIdentityVerificationByUserId(userId: number): Promise<any | null>;
+  createDriverVerification(data: any): Promise<any>;
+  getDriverVerificationByUserId(userId: number): Promise<any | null>;
+  createPhoneVerification(data: any): Promise<any>;
+  verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null>;
+  updateUser(userId: number, data: any): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1070,6 +1080,77 @@ export class DatabaseStorage implements IStorage {
       .where(eq(supportTickets.id, ticketId))
       .returning();
     return updatedTicket;
+  }
+
+  // Identity verification methods
+  async createIdentityVerification(data: any): Promise<any> {
+    const [verification] = await db
+      .insert(identityVerifications)
+      .values(data)
+      .returning();
+    return verification;
+  }
+
+  async getIdentityVerificationByUserId(userId: number): Promise<any | null> {
+    const [verification] = await db
+      .select()
+      .from(identityVerifications)
+      .where(eq(identityVerifications.userId, userId));
+    return verification || null;
+  }
+
+  async createDriverVerification(data: any): Promise<any> {
+    const [verification] = await db
+      .insert(driverVerifications)
+      .values(data)
+      .returning();
+    return verification;
+  }
+
+  async getDriverVerificationByUserId(userId: number): Promise<any | null> {
+    const [verification] = await db
+      .select()
+      .from(driverVerifications)
+      .where(eq(driverVerifications.userId, userId));
+    return verification || null;
+  }
+
+  async createPhoneVerification(data: any): Promise<any> {
+    const [verification] = await db
+      .insert(phoneVerifications)
+      .values(data)
+      .returning();
+    return verification;
+  }
+
+  async verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null> {
+    const [verification] = await db
+      .select()
+      .from(phoneVerifications)
+      .where(and(
+        eq(phoneVerifications.userId, userId),
+        eq(phoneVerifications.otpCode, otpCode),
+        eq(phoneVerifications.isVerified, false),
+        gte(phoneVerifications.expiresAt, new Date())
+      ));
+
+    if (verification) {
+      await db
+        .update(phoneVerifications)
+        .set({ isVerified: true })
+        .where(eq(phoneVerifications.id, verification.id));
+      return verification;
+    }
+    return null;
+  }
+
+  async updateUser(userId: number, data: any): Promise<any> {
+    const [user] = await db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, userId))
+      .returning();
+    return user;
   }
 }
 

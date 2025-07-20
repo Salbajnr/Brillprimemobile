@@ -47,6 +47,7 @@ import OrderHistory from "@/pages/order-history";
 import OrderHistoryDetail from "@/pages/order-history-detail";
 import Support from "@/pages/support";
 import Messages from "@/pages/messages";
+import IdentityVerification from "@/pages/identity-verification-simple";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -101,6 +102,7 @@ function Router() {
       <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
       <Route path="/support" component={() => <ProtectedRoute component={Support} />} />
       <Route path="/messages" component={() => <ProtectedRoute component={Messages} />} />
+      <Route path="/identity-verification" component={() => <ProtectedRoute component={IdentityVerification} />} />
       <Route component={NotFound} />
     </Switch>
   );
