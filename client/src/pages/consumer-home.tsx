@@ -176,8 +176,7 @@ export default function ConsumerHome() {
         {/* Live Location Map Card */}
         <Card className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] text-white">
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Your Live Location</h2>
+            <div className="flex items-center justify-end mb-4">
               <Button
                 variant="ghost"
                 size="icon"
