@@ -28,7 +28,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
+    <div className="w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto min-h-screen bg-white px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
       <div className="flex items-center justify-between p-6 pt-12 border-b border-gray-100">
         <Button

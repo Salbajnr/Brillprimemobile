@@ -173,7 +173,7 @@ export default function MerchantDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
+    <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-full xl:max-w-full mx-auto px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
