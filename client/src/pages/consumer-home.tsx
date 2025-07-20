@@ -41,8 +41,18 @@ interface LocationData {
   error: string | null;
 }
 
+// Color constants
+const COLORS = {
+  PRIMARY: '#4682b4',
+  SECONDARY: '#0b1a51', 
+  ACTIVE: '#010e42',
+  TEXT: '#131313',
+  WHITE: '#ffffff'
+} as const;
+
 export default function ConsumerHome() {
   const [, setLocation] = useLocation();
+  const [location] = useLocation();
   const { user } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [showBalance, setShowBalance] = useState(true);
@@ -504,6 +514,67 @@ export default function ConsumerHome() {
             </div>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Bottom Navigation Bar */}
+      <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t-2 border-blue-100 shadow-lg z-50">
+        <div className="flex justify-around items-center py-2 px-4">
+          <button
+            onClick={() => setLocation("/consumer-home")}
+            className="flex flex-col items-center p-2 rounded-lg transition-all duration-300 hover:bg-blue-50"
+            style={{ color: location === "/consumer-home" ? COLORS.PRIMARY : COLORS.TEXT }}
+          >
+            <div className="w-8 h-8 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+              </svg>
+            </div>
+            <span className="text-xs font-medium mt-1">Home</span>
+          </button>
+
+          <button
+            onClick={() => setLocation("/search-results")}
+            className="flex flex-col items-center p-2 rounded-lg transition-all duration-300 hover:bg-blue-50"
+            style={{ color: location === "/search-results" ? COLORS.PRIMARY : COLORS.TEXT }}
+          >
+            <div className="w-8 h-8 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+              </svg>
+            </div>
+            <span className="text-xs font-medium mt-1">Search</span>
+          </button>
+
+          <button
+            onClick={() => setLocation("/messages")}
+            className="flex flex-col items-center p-2 rounded-lg transition-all duration-300 hover:bg-blue-50 relative"
+            style={{ color: location === "/messages" ? COLORS.PRIMARY : COLORS.TEXT }}
+          >
+            <div className="w-8 h-8 flex items-center justify-center relative">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+              </svg>
+              {/* Notification badge for unread messages */}
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
+                <span className="text-xs text-white font-bold">3</span>
+              </div>
+            </div>
+            <span className="text-xs font-medium mt-1">Messages</span>
+          </button>
+
+          <button
+            onClick={() => setLocation("/profile")}
+            className="flex flex-col items-center p-2 rounded-lg transition-all duration-300 hover:bg-blue-50"
+            style={{ color: location === "/profile" ? COLORS.PRIMARY : COLORS.TEXT }}
+          >
+            <div className="w-8 h-8 flex items-center justify-center">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+              </svg>
+            </div>
+            <span className="text-xs font-medium mt-1">Profile</span>
+          </button>
+        </div>
       </div>
     </div>
   );
