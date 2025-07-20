@@ -25,6 +25,8 @@ type SignInFormData = {
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setUser } = useAuth();
@@ -40,12 +42,29 @@ export default function SignInPage() {
   const signInMutation = useMutation({
     mutationFn: authAPI.signin,
     onSuccess: (data) => {
+      console.log("Sign in successful:", data);
       if (data.user) {
+        console.log("Setting user data:", data.user, "Role:", data.user.role);
         setUser(data.user);
-        setLocation("/dashboard");
+        
+        // Direct role-based navigation instead of going through dashboard
+        if (data.user.role === "CONSUMER") {
+          console.log("Navigating CONSUMER to /consumer-home");
+          setLocation("/consumer-home");
+        } else if (data.user.role === "MERCHANT") {
+          console.log("Navigating MERCHANT to /merchant-dashboard");
+          setLocation("/merchant-dashboard");
+        } else if (data.user.role === "DRIVER") {
+          console.log("Navigating DRIVER to /driver-dashboard");
+          setLocation("/driver-dashboard");
+        } else {
+          // Fallback to dashboard for unknown roles
+          setLocation("/dashboard");
+        }
       }
     },
     onError: (error: Error) => {
+      console.error("Sign in error:", error);
       toast({
         variant: "destructive",
         title: "Sign In Failed",
