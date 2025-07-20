@@ -5,6 +5,7 @@ import { relations } from "drizzle-orm";
 
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(), // Unique user ID (e.g., BP-000001)
   fullName: text("full_name").notNull(),
   email: text("email").notNull().unique(),
   phone: text("phone").notNull(),
@@ -17,6 +18,8 @@ export const users = pgTable("users", {
   state: text("state"),
   country: text("country").default("Nigeria"),
   bio: text("bio"),
+  socialProvider: text("social_provider"), // For social login tracking
+  socialId: text("social_id"), // External ID from social provider
   createdAt: timestamp("created_at").defaultNow(),
 });
 
