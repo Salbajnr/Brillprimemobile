@@ -34,6 +34,8 @@ import BiometricSetupPage from "@/pages/biometric-setup";
 import PaymentMethodsPage from "@/pages/payment-methods";
 import AddPaymentMethodPage from "@/pages/add-payment-method";
 import CartPage from "@/pages/cart";
+import NotificationsPage from "@/pages/notifications";
+import MerchantsPage from "@/pages/merchants";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -77,6 +79,8 @@ function Router() {
       <Route path="/payment-methods" component={() => <ProtectedRoute component={PaymentMethodsPage} />} />
       <Route path="/add-payment-method" component={() => <ProtectedRoute component={AddPaymentMethodPage} />} />
       <Route path="/cart" component={() => <ProtectedRoute component={CartPage} />} />
+      <Route path="/notifications" component={() => <ProtectedRoute component={NotificationsPage} />} />
+      <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
       <Route component={NotFound} />
     </Switch>
   );
