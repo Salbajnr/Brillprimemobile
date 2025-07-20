@@ -10,11 +10,15 @@ export default function DashboardPage() {
 
   // Redirect users to their role-specific dashboards
   useEffect(() => {
+    console.log("Dashboard redirect check - User:", user, "Role:", user?.role);
     if (user?.role === "CONSUMER") {
+      console.log("Redirecting CONSUMER to /consumer-home");
       setLocation("/consumer-home");
     } else if (user?.role === "MERCHANT") {
+      console.log("Redirecting MERCHANT to /merchant-dashboard");
       setLocation("/merchant-dashboard");
     } else if (user?.role === "DRIVER") {
+      console.log("Redirecting DRIVER to /driver-dashboard");
       setLocation("/driver-dashboard");
     }
   }, [user, setLocation]);

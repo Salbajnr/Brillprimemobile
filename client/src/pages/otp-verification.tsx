@@ -158,7 +158,23 @@ export default function OtpVerificationPage() {
         title="Registration Complete!"
         description="Your account has been successfully verified. Welcome to Brillprime!"
         actionText="Continue to Dashboard"
-        onAction={() => setLocation("/dashboard")}
+        onAction={() => {
+          const user = localStorage.getItem("brillprime_user");
+          if (user) {
+            const userData = JSON.parse(user);
+            if (userData.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (userData.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (userData.role === "DRIVER") {
+              setLocation("/driver-dashboard");
+            } else {
+              setLocation("/dashboard");
+            }
+          } else {
+            setLocation("/dashboard");
+          }
+        }}
       />
 
       {/* Error Modal */}

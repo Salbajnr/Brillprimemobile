@@ -17,10 +17,13 @@ export const useAuth = create<AuthState>((set, get) => ({
   selectedRole: localStorage.getRole(),
   
   setUser: (user) => {
+    console.log("useAuth.setUser called with:", user);
     if (user) {
       localStorage.setUser(user);
+      // Also store the role for consistency
+      localStorage.setRole(user.role);
     }
-    set({ user });
+    set({ user, selectedRole: user?.role || null });
   },
   
   setSelectedRole: (role) => {

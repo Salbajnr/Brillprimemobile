@@ -9,10 +9,23 @@ export default function SplashPage() {
 
   useEffect(() => {
     const timer = setTimeout(() => {
+      console.log("Splash navigation - User:", user, "Role:", user?.role, "Authenticated:", isAuthenticated());
       // Check user authentication state after splash screen
       if (isAuthenticated() && user) {
-        // Returning user with valid session → Dashboard
-        setLocation("/dashboard");
+        // Direct role-based navigation instead of going through dashboard
+        if (user.role === "CONSUMER") {
+          console.log("Splash: Redirecting CONSUMER to /consumer-home");
+          setLocation("/consumer-home");
+        } else if (user.role === "MERCHANT") {
+          console.log("Splash: Redirecting MERCHANT to /merchant-dashboard");
+          setLocation("/merchant-dashboard");
+        } else if (user.role === "DRIVER") {
+          console.log("Splash: Redirecting DRIVER to /driver-dashboard");
+          setLocation("/driver-dashboard");
+        } else {
+          // Fallback to dashboard for unknown roles
+          setLocation("/dashboard");
+        }
       } else {
         // Check if user has seen onboarding before
         const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
