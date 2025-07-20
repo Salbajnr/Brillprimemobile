@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import cameraIcon from "../assets/images/camera_icon.png";
+import accountCircleIcon from "../assets/images/account_circle.svg";
+import editIcon from "../assets/images/edit_icon_white.png";
 import dropdownArrowIcon from "../assets/images/dropdown_arrow_icon.png";
 
 export default function ProfilePage() {
@@ -37,10 +39,20 @@ export default function ProfilePage() {
       <div className="px-6 py-8">
         <div className="text-center mb-8">
           <div className="relative inline-block">
-            <div className="w-24 h-24 gradient-bg rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg">
-              <span className="text-white text-2xl font-bold">
-                {user ? getInitials(user.fullName) : "U"}
-              </span>
+            <div className="w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg overflow-hidden bg-gray-100">
+              {user?.profilePicture ? (
+                <img 
+                  src={user.profilePicture} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <img 
+                  src={accountCircleIcon} 
+                  alt="Default Profile" 
+                  className="w-full h-full object-cover"
+                />
+              )}
             </div>
             <Button className="absolute -bottom-1 -right-1 w-8 h-8 bg-[var(--brill-secondary)] rounded-full text-white flex items-center justify-center shadow-lg p-0 hover:bg-[var(--brill-secondary)]/90">
               <img src={cameraIcon} alt="Camera" className="h-4 w-4" />
@@ -80,7 +92,7 @@ export default function ProfilePage() {
             className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50"
           >
             <div className="flex items-center space-x-3">
-              <Edit className="h-5 w-5 text-[var(--brill-secondary)]" />
+              <img src={editIcon} alt="Edit" className="h-5 w-5" />
               <span className="text-[var(--brill-text)] font-medium">Edit Profile</span>
             </div>
             <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />

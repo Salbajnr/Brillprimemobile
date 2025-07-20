@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "../assets/images/logo.png";
+import globeIcon from "../assets/images/globe_img.png";
 
 interface LocationData {
   latitude: number;
@@ -132,11 +133,11 @@ export default function LocationSetup() {
         <div className="w-full max-w-md space-y-6">
           {/* Location Icon */}
           <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-[#4682b4] rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl">
-              <MapPin className="w-12 h-12 text-white" />
+            <div className="w-24 h-24 bg-[#4682b4] rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl overflow-hidden">
+              <img src={globeIcon} alt="Globe" className="w-16 h-16" />
             </div>
             <h1 className="text-2xl font-bold text-[#131313] mb-2">
-              Enable Location Access
+              Where are you?
             </h1>
             <p className="text-gray-600">
               We need your location to find nearby fuel stations and provide accurate delivery services
