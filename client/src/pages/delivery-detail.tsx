@@ -87,14 +87,16 @@ function DeliveryDetailContent() {
   };
 
   const handleContact = (type: 'call' | 'chat') => {
-    addNotification({
-      type: 'info',
-      title: type === 'call' ? 'Calling Customer' : 'Opening Chat',
-      message: type === 'call' 
-        ? `Initiating call to ${delivery.customerName}`
-        : `Opening chat with ${delivery.customerName}`,
-      duration: 3000
-    });
+    if (type === 'chat') {
+      setLocation('/chat');
+    } else {
+      addNotification({
+        type: 'info',
+        title: 'Calling Customer',
+        message: `Initiating call to ${delivery.customerName}`,
+        duration: 3000
+      });
+    }
   };
 
   const getStatusColor = (status: string) => {

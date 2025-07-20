@@ -19,6 +19,16 @@ import {
   Mail
 } from "lucide-react";
 import accountCircleIcon from "../assets/images/account_circle.svg";
+import cameraIcon from "../assets/images/camera_icon.png";
+
+// Color constants
+const COLORS = {
+  PRIMARY: '#4682b4',
+  SECONDARY: '#0b1a51', 
+  ACTIVE: '#010e42',
+  TEXT: '#131313',
+  WHITE: '#ffffff'
+} as const;
 
 interface ChatMessage {
   id: string;
@@ -79,14 +89,20 @@ export default function ChatPage() {
 
   // Send message mutation
   const sendMessageMutation = useMutation({
-    mutationFn: (data: { conversationId: string; content: string; messageType?: string }) =>
-      apiRequest('/api/messages', {
+    mutationFn: async (data: { conversationId: string; content: string; messageType?: string }) => {
+      const response = await fetch('/api/messages', {
         method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           ...data,
           senderId: user?.id
         })
-      }),
+      });
+      if (!response.ok) throw new Error('Failed to send message');
+      return response.json();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', user?.id] });
@@ -235,7 +251,7 @@ export default function ChatPage() {
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: COLORS.WHITE }}>
                 {loadingMessages ? (
                   <div className="text-center text-gray-500">Loading messages...</div>
                 ) : (
@@ -248,11 +264,13 @@ export default function ChatPage() {
                       >
                         <div className={`max-w-[70%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
                           <div
-                            className={`rounded-lg p-3 ${
-                              isOwnMessage
-                                ? 'bg-[#4682b4] text-white'
-                                : 'bg-white border border-gray-200'
-                            }`}
+                            className="rounded-2xl p-3"
+                            style={{
+                              backgroundColor: isOwnMessage ? COLORS.PRIMARY : COLORS.SECONDARY,
+                              color: COLORS.WHITE,
+                              fontFamily: 'Montserrat',
+                              fontWeight: '500'
+                            }}
                           >
                             {message.messageType === "QUOTE_REQUEST" && (
                               <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-2">
@@ -275,10 +293,10 @@ export default function ChatPage() {
                             <p className="text-sm">{message.content}</p>
                             
                             <div className="flex items-center justify-between mt-2">
-                              <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-500'}`}>
+                              <span className="text-xs opacity-80">
                                 {message.senderName}
                               </span>
-                              <span className={`text-xs ${isOwnMessage ? 'text-blue-100' : 'text-gray-400'}`}>
+                              <span className="text-xs opacity-70">
                                 {new Date(message.createdAt).toLocaleTimeString()}
                               </span>
                             </div>
@@ -298,22 +316,48 @@ export default function ChatPage() {
                 <div ref={messagesEndRef} />
               </div>
 
-              {/* Message Input */}
-              <div className="p-4 bg-white border-t border-gray-200">
-                <div className="flex items-center space-x-2">
-                  <Input
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    placeholder="Type your message..."
-                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                    className="flex-1"
-                  />
+              {/* Message Input - Standardized Chat UI */}
+              <div className="p-5 bg-white">
+                <div className="flex items-center space-x-3">
+                  {/* Message Input Container */}
+                  <div className="flex-1 relative">
+                    <div 
+                      className="rounded-3xl border-3 px-4 py-4"
+                      style={{ borderColor: COLORS.PRIMARY }}
+                    >
+                      <input
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        placeholder="Message..."
+                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                        className="w-full bg-transparent outline-none text-base"
+                        style={{ 
+                          color: newMessage ? COLORS.TEXT : '#D9D9D9',
+                          fontFamily: 'Montserrat',
+                          fontWeight: '400'
+                        }}
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Camera Button */}
                   <Button
-                    onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                    className="bg-[#4682b4] hover:bg-[#0b1a51] text-white"
+                    onClick={() => {
+                      // In real app, would open camera/image picker
+                      console.log('Camera button clicked');
+                    }}
+                    className="w-15 h-15 p-0 rounded-full border-3"
+                    style={{ 
+                      borderColor: COLORS.PRIMARY,
+                      backgroundColor: COLORS.WHITE
+                    }}
                   >
-                    <Send className="h-4 w-4" />
+                    <img 
+                      src={cameraIcon} 
+                      alt="Camera" 
+                      className="w-10 h-10"
+                      style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                    />
                   </Button>
                 </div>
               </div>
