@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import logo from "../assets/images/logo.png";
 import globeIcon from "../assets/images/globe_img.png";
+import mapBackground from "../assets/images/map_background.png";
 
 interface LocationData {
   latitude: number;
@@ -129,8 +130,18 @@ export default function LocationSetup() {
       </div>
 
       {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-[80vh] p-4">
-        <div className="w-full max-w-md space-y-6">
+      <div 
+        className="relative z-10 flex items-center justify-center min-h-[80vh] p-4"
+        style={{
+          backgroundImage: `url(${mapBackground})`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat'
+        }}
+      >
+        {/* Background overlay for better text readability */}
+        <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
+        <div className="relative z-10 w-full max-w-md space-y-6">
           {/* Location Icon */}
           <div className="text-center mb-8">
             <div className="w-24 h-24 bg-[#4682b4] rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl overflow-hidden">
