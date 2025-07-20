@@ -141,26 +141,26 @@ export default function LocationSetup() {
       >
         {/* Background overlay for better text readability - gradient from transparent to semi-opaque */}
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/40 to-white/80"></div>
-        <div className="relative z-10 w-full max-w-md space-y-6">
+        <div className="relative z-10 w-full max-w-lg space-y-4">
           {/* Location Icon */}
-          <div className="text-center mb-8">
-            <div className="w-24 h-24 bg-[#4682b4] rounded-full flex items-center justify-center mx-auto mb-4 shadow-xl overflow-hidden">
-              <img src={globeIcon} alt="Globe" className="w-16 h-16" />
+          <div className="text-center mb-4">
+            <div className="w-20 h-20 bg-[#4682b4] rounded-full flex items-center justify-center mx-auto mb-3 shadow-xl overflow-hidden">
+              <img src={globeIcon} alt="Globe" className="w-14 h-14" />
             </div>
-            <h1 className="text-2xl font-bold text-[#131313] mb-2">
+            <h1 className="text-xl font-bold text-[#131313] mb-2">
               Where are you?
             </h1>
-            <p className="text-gray-600">
+            <p className="text-gray-600 text-sm">
               We need your location to find nearby fuel stations and provide accurate delivery services
             </p>
           </div>
 
           {/* Action Buttons */}
-          <div className="space-y-4">
+          <div className="space-y-3">
             <Button
               onClick={handleAutomaticLocation}
               disabled={isLoading}
-              className="w-full h-14 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-xl shadow-lg"
+              className="w-full h-12 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-xl shadow-lg"
             >
               <div className="flex items-center space-x-3">
                 <Navigation className="w-6 h-6" />
@@ -176,7 +176,7 @@ export default function LocationSetup() {
             <Button
               variant="outline"
               onClick={() => setShowManualInput(!showManualInput)}
-              className="w-full h-14 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10 rounded-xl shadow-lg"
+              className="w-full h-12 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10 rounded-xl shadow-lg"
             >
               <div className="flex items-center space-x-3">
                 <MapPin className="w-6 h-6" />
