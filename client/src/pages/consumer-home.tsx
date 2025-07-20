@@ -227,33 +227,34 @@ export default function ConsumerHome() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
+      <div className="bg-white shadow-sm border-b border-blue-100/50 animate-fade-in">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
-            <img src={logo} alt="Brillprime" className="w-8 h-8" />
-            <div>
+            <img src={logo} alt="Brillprime" className="w-8 h-8 animate-pulse" />
+            <div className="animate-slide-up">
               <h1 className="text-lg font-semibold text-[#131313]">
                 Good morning, {user?.fullName?.split(' ')[0] || 'User'}
               </h1>
               <p className="text-sm text-gray-600">Welcome back to Brillprime</p>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-3 animate-slide-in-right">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setLocation("/notifications")}
-              className="relative"
+              className="relative transition-all duration-300 hover:scale-110"
             >
               <Bell className="w-5 h-5 text-[#131313]" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
             </Button>
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setLocation("/profile")}
+              className="transition-all duration-300 hover:scale-110"
             >
-              <div className="w-8 h-8 bg-[#4682b4] rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#4682b4] rounded-full flex items-center justify-center border-2 border-blue-200/50">
                 <span className="text-white text-sm font-medium">
                   {user?.fullName?.charAt(0) || 'U'}
                 </span>
@@ -264,20 +265,20 @@ export default function ConsumerHome() {
       </div>
       <div className="p-4 space-y-6">
         {/* Live Location Map Card */}
-        <Card className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] text-white">
+        <Card className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] text-white rounded-3xl border-2 border-blue-200/30 animate-fade-in-up">
           <CardContent className="p-6">
             <div className="flex items-center justify-end mb-4">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setLocation("/location-setup")}
-                className="text-white hover:bg-white/20"
+                className="text-white hover:bg-white/20 transition-all duration-300 hover:scale-110"
               >
                 <MapPin className="w-5 h-5" />
               </Button>
             </div>
             <div className="mb-4">
-              <div className="h-40 bg-white/10 rounded-xl overflow-hidden relative mx-2">
+              <div className="h-40 bg-white/10 rounded-3xl overflow-hidden relative mx-2 border border-blue-200/20">
                 {locationData.loading ? (
                   <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
                     <div className="text-center">
@@ -306,7 +307,7 @@ export default function ConsumerHome() {
                 )}
                 
                 {/* Floating location info */}
-                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm">
+                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-2xl px-3 py-2 shadow-sm border border-blue-200/50 animate-slide-in-left">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
                     <p className="text-xs text-[#4682b4] font-semibold">
@@ -316,7 +317,7 @@ export default function ConsumerHome() {
                 </div>
                 
                 {/* Zoom controls */}
-                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm">
+                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-2xl p-1 shadow-sm border border-blue-200/50 animate-slide-in-right">
                   <div className="flex flex-col space-y-1">
                     <button className="w-6 h-6 flex items-center justify-center text-[#4682b4] hover:bg-blue-50 rounded text-sm font-bold">+</button>
                     <button className="w-6 h-6 flex items-center justify-center text-[#4682b4] hover:bg-blue-50 rounded text-sm font-bold">−</button>
@@ -326,7 +327,7 @@ export default function ConsumerHome() {
             </div>
             <div className="flex space-x-3">
               <Button
-                className="flex-1 bg-white text-[#4682b4] hover:bg-gray-100"
+                className="flex-1 bg-white text-[#4682b4] hover:bg-gray-100 rounded-2xl border border-blue-200/50 transition-all duration-300 hover:scale-105"
                 onClick={() => setLocation("/location-setup")}
               >
                 <MapPin className="w-4 h-4 mr-2" />
@@ -337,17 +338,18 @@ export default function ConsumerHome() {
         </Card>
 
         {/* Quick Actions */}
-        <div>
+        <div className="animate-fade-in-up">
           <h3 className="text-lg font-semibold text-[#131313] mb-4">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
-            {quickActions.map((action) => (
+            {quickActions.map((action, index) => (
               <Card
                 key={action.id}
-                className="cursor-pointer transition-transform hover:scale-105 rounded-3xl"
+                className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg rounded-3xl border-2 border-blue-100/50 animate-slide-up"
                 onClick={() => setLocation(action.route)}
+                style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-3 flex flex-col items-center text-center">
-                  <div className={`w-10 h-10 ${action.bgColor} rounded-full flex items-center justify-center mb-2`}>
+                  <div className={`w-10 h-10 ${action.bgColor} rounded-full flex items-center justify-center mb-2 transition-all duration-300 hover:scale-110`}>
                     <img src={action.icon} alt={action.title} className="w-5 h-5" />
                   </div>
                   <h4 className="font-medium text-[#131313] text-sm">{action.title}</h4>
@@ -358,37 +360,41 @@ export default function ConsumerHome() {
         </div>
 
         {/* Services Grid */}
-        <div>
+        <div className="animate-fade-in-up">
           <h3 className="text-lg font-semibold text-[#131313] mb-4">Services</h3>
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
+              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
               onClick={() => setLocation("/commodities")}
+              style={{ animationDelay: '0.2s' }}
             >
               <ShoppingCart className="w-6 h-6" />
               <span className="text-sm">Marketplace</span>
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
+              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
               onClick={() => setLocation("/merchants")}
+              style={{ animationDelay: '0.3s' }}
             >
               <MapPin className="w-6 h-6" />
               <span className="text-sm">Find Merchants</span>
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
+              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
               onClick={() => setLocation("/fuel-stations")}
+              style={{ animationDelay: '0.4s' }}
             >
               <Fuel className="w-6 h-6" />
               <span className="text-sm">Fuel Stations</span>
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
+              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
               onClick={() => setLocation("/payment-methods")}
+              style={{ animationDelay: '0.5s' }}
             >
               <CreditCard className="w-6 h-6" />
               <span className="text-sm">Payment Cards</span>
@@ -397,20 +403,24 @@ export default function ConsumerHome() {
         </div>
 
         {/* Recent Transactions */}
-        <div>
+        <div className="animate-fade-in-up">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-semibold text-[#131313]">Recent Transactions</h3>
             <Button
               variant="ghost"
-              className="text-[#4682b4] hover:text-[#0b1a51]"
+              className="text-[#4682b4] hover:text-[#0b1a51] transition-all duration-300 hover:scale-105"
               onClick={() => setLocation("/transactions")}
             >
               View All
             </Button>
           </div>
           <div className="space-y-3">
-            {recentTransactions.slice(0, 4).map((transaction) => (
-              <Card key={transaction.id}>
+            {recentTransactions.slice(0, 4).map((transaction, index) => (
+              <Card 
+                key={transaction.id} 
+                className="rounded-3xl border-2 border-blue-100/50 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slide-up"
+                style={{ animationDelay: `${index * 0.1}s` }}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
@@ -451,25 +461,25 @@ export default function ConsumerHome() {
         </div>
 
         {/* Payment Methods Preview */}
-        <Card>
+        <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up transition-all duration-300 hover:shadow-lg">
           <CardContent className="p-4">
             <div className="flex items-center justify-between mb-3">
               <h4 className="font-medium text-[#131313]">Payment Methods</h4>
               <Button
                 variant="ghost"
                 size="sm"
-                className="text-[#4682b4]"
+                className="text-[#4682b4] transition-all duration-300 hover:scale-105"
                 onClick={() => setLocation("/payment-methods")}
               >
                 Manage
               </Button>
             </div>
             <div className="flex space-x-3">
-              <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3 flex-1">
+              <div className="flex items-center space-x-2 bg-gray-50 rounded-2xl p-3 flex-1 border border-blue-100/50 transition-all duration-300 hover:scale-105">
                 <img src={masterCardLogo} alt="Mastercard" className="w-8 h-5" />
                 <span className="text-sm font-medium">•••• 4532</span>
               </div>
-              <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3 flex-1">
+              <div className="flex items-center space-x-2 bg-gray-50 rounded-2xl p-3 flex-1 border border-blue-100/50 transition-all duration-300 hover:scale-105">
                 <div className="w-8 h-5 bg-[#1A1F71] rounded flex items-center justify-center">
                   <span className="text-white font-bold text-xs">VISA</span>
                 </div>
