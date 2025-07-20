@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, signInSchema, otpVerificationSchema } from "@shared/schema";
+import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -128,6 +128,174 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Resend OTP error:", error);
       res.status(500).json({ message: "Failed to send OTP" });
+    }
+  });
+
+  // User location endpoints
+  app.post("/api/user/location", async (req, res) => {
+    try {
+      const locationData = insertUserLocationSchema.parse(req.body);
+      
+      // Update or create user location
+      const location = await storage.upsertUserLocation(locationData);
+      
+      res.json({ 
+        success: true,
+        message: "Location updated successfully",
+        location 
+      });
+    } catch (error) {
+      console.error("Location update error:", error);
+      res.status(400).json({ success: false, message: "Invalid location data" });
+    }
+  });
+
+  app.get("/api/user/nearby", async (req, res) => {
+    try {
+      const { lat, lng, role, radius = 5000 } = req.query;
+      
+      if (!lat || !lng) {
+        return res.status(400).json({ success: false, message: "Latitude and longitude required" });
+      }
+
+      const nearbyUsers = await storage.getNearbyUsers(
+        parseFloat(lat as string),
+        parseFloat(lng as string),
+        parseFloat(radius as string),
+        role as string
+      );
+      
+      res.json({ 
+        success: true,
+        users: nearbyUsers 
+      });
+    } catch (error) {
+      console.error("Nearby users error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch nearby users" });
+    }
+  });
+
+  // Categories endpoints
+  app.get("/api/categories", async (req, res) => {
+    try {
+      const categories = await storage.getCategories();
+      res.json({ success: true, categories });
+    } catch (error) {
+      console.error("Categories fetch error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch categories" });
+    }
+  });
+
+  app.post("/api/categories", async (req, res) => {
+    try {
+      const categoryData = insertCategorySchema.parse(req.body);
+      const category = await storage.createCategory(categoryData);
+      
+      res.json({ 
+        success: true,
+        message: "Category created successfully",
+        category 
+      });
+    } catch (error) {
+      console.error("Category creation error:", error);
+      res.status(400).json({ success: false, message: "Invalid category data" });
+    }
+  });
+
+  // Products endpoints
+  app.get("/api/products", async (req, res) => {
+    try {
+      const { categoryId, search, limit = 50, offset = 0 } = req.query;
+      
+      const products = await storage.getProducts({
+        categoryId: categoryId ? parseInt(categoryId as string) : undefined,
+        search: search as string,
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string)
+      });
+      
+      res.json({ success: true, products });
+    } catch (error) {
+      console.error("Products fetch error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch products" });
+    }
+  });
+
+  app.post("/api/products", async (req, res) => {
+    try {
+      const productData = insertProductSchema.parse(req.body);
+      const product = await storage.createProduct(productData);
+      
+      res.json({ 
+        success: true,
+        message: "Product created successfully",
+        product 
+      });
+    } catch (error) {
+      console.error("Product creation error:", error);
+      res.status(400).json({ success: false, message: "Invalid product data" });
+    }
+  });
+
+  // Cart endpoints
+  app.get("/api/cart/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const cartItems = await storage.getCartItems(userId);
+      
+      res.json({ success: true, cartItems });
+    } catch (error) {
+      console.error("Cart fetch error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch cart" });
+    }
+  });
+
+  app.post("/api/cart", async (req, res) => {
+    try {
+      const cartData = insertCartItemSchema.parse(req.body);
+      const cartItem = await storage.addToCart(cartData);
+      
+      res.json({ 
+        success: true,
+        message: "Item added to cart",
+        cartItem 
+      });
+    } catch (error) {
+      console.error("Add to cart error:", error);
+      res.status(400).json({ success: false, message: "Failed to add item to cart" });
+    }
+  });
+
+  app.put("/api/cart/:id", async (req, res) => {
+    try {
+      const cartItemId = parseInt(req.params.id);
+      const { quantity } = req.body;
+      
+      const cartItem = await storage.updateCartItem(cartItemId, quantity);
+      
+      res.json({ 
+        success: true,
+        message: "Cart updated",
+        cartItem 
+      });
+    } catch (error) {
+      console.error("Cart update error:", error);
+      res.status(400).json({ success: false, message: "Failed to update cart" });
+    }
+  });
+
+  app.delete("/api/cart/:id", async (req, res) => {
+    try {
+      const cartItemId = parseInt(req.params.id);
+      await storage.removeFromCart(cartItemId);
+      
+      res.json({ 
+        success: true,
+        message: "Item removed from cart"
+      });
+    } catch (error) {
+      console.error("Cart removal error:", error);
+      res.status(500).json({ success: false, message: "Failed to remove item from cart" });
     }
   });
 
