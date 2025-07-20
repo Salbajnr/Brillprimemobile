@@ -18,8 +18,8 @@ export default function RoleSelectionPage() {
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
-      <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col">
+      <div className="flex-1 flex flex-col justify-center px-4 sm:px-6 py-6 sm:py-8">
         <div className="text-center mb-8 sm:mb-12">
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
             <img src={signUpLogo} alt="Sign Up" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
@@ -49,7 +49,7 @@ export default function RoleSelectionPage() {
         <Button
           onClick={handleContinue}
           disabled={!selectedRole}
-          className="w-full h-10 sm:h-12 rounded-brill font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base bg-[var(--brill-secondary)] text-[var(--brill-white)] hover:bg-[var(--brill-active)]"
+          className="w-full h-10 sm:h-12 rounded-brill font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base bg-[var(--brill-active)] text-[var(--brill-white)] hover:bg-[var(--brill-secondary)]"
         >
           Continue
         </Button>
