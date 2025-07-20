@@ -1,0 +1,58 @@
+<div data-layer="merchant/search" className="MerchantSearch" style={{width: 399, height: 896, background: 'white', overflow: 'hidden'}}>
+  <img data-layer="🌎 Map Maker: Plateau, Mobile, Alabama, United States (Standard)" className="MapMakerPlateauMobileAlabamaUnitedStatesStandard" style={{width: 342, height: 244, left: 32, top: 518, position: 'absolute', borderRadius: 15, border: '1px #010E42 solid'}} src="https://placehold.co/342x244" />
+  <div data-layer="arrow_back" className="ArrowBack" style={{width: 24, height: 24, left: 25, top: 50, position: 'absolute'}}>
+    <div data-layer="Bounding box" className="BoundingBox" style={{width: 24, height: 24, left: 25, top: 50, position: 'absolute', background: '#D9D9D9'}} />
+    <div data-layer="arrow_back" className="ArrowBack" style={{width: 16, height: 16, left: 29, top: 54, position: 'absolute', background: '#1C1B1F'}} />
+  </div>
+  <div data-layer="Order Detail" className="OrderDetail" style={{left: 135, top: 113, position: 'absolute', textAlign: 'center', color: 'black', fontSize: 20, fontFamily: 'Montserrat', fontWeight: '800', wordWrap: 'break-word'}}>Order Detail</div>
+  <div data-layer="Rectangle 92" className="Rectangle92" style={{width: 399, height: 896, left: 22, top: -351, position: 'absolute'}} />
+  <div data-layer="Line 12" className="Line12" style={{width: 330, height: 0, left: 36, top: 242, position: 'absolute', outline: '1px #D4D4D4 solid', outlineOffset: '-0.50px'}}></div>
+  <div data-layer="Group 269" className="Group269" style={{width: 300, height: 136, left: 50, top: 349, position: 'absolute'}}>
+    <div data-layer="Rayfield, Jos" className="RayfieldJos" style={{left: 90, top: 463, position: 'absolute', textAlign: 'center', color: 'black', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Rayfield, Jos</div>
+    <div data-layer="10km" className="Km" style={{left: 90, top: 409, position: 'absolute', color: 'black', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>10km</div>
+    <div data-layer="Group 257" className="Group257" style={{width: 260, height: 38, left: 90, top: 349, position: 'absolute'}}>
+      <div data-layer="15 minutes" className="Minutes" style={{left: 90, top: 349, position: 'absolute', textAlign: 'center', color: 'black', fontSize: 20, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>15 minutes</div>
+      <div data-layer="Group 252" className="Group252" style={{width: 260, height: 4, left: 90, top: 383, position: 'absolute'}}>
+        <div data-layer="Rectangle 112" className="Rectangle112" style={{width: 260, height: 4, left: 90, top: 383, position: 'absolute', background: '#D9D9D9', borderRadius: 5}} />
+        <div data-layer="Rectangle 112" className="Rectangle112" style={{width: 167, height: 4, left: 90, top: 383, position: 'absolute', background: '#4682B4', borderRadius: 5}} />
+      </div>
+    </div>
+    <img data-layer="Clock" className="Clock" style={{width: 20, height: 20, left: 50, top: 349, position: 'absolute'}} src="https://placehold.co/20x20" />
+    <img data-layer="Location" className="Location" style={{width: 20, height: 20, left: 50, top: 465, position: 'absolute'}} src="https://placehold.co/20x20" />
+    <img data-layer="Ruler" className="Ruler" style={{width: 20, height: 20, left: 50, top: 409, position: 'absolute'}} src="https://placehold.co/20x20" />
+    <div data-layer="Line 22" className="Line22" style={{width: 39, height: 0, left: 60, top: 371, position: 'absolute', transform: 'rotate(90deg)', transformOrigin: 'top left', outline: '1px #4682B4 dotted', outlineOffset: '-0.50px'}}></div>
+    <div data-layer="Line 23" className="Line23" style={{width: 39, height: 0, left: 60, top: 426, position: 'absolute', transform: 'rotate(90deg)', transformOrigin: 'top left', outline: '1px #4682B4 dotted', outlineOffset: '-0.50px'}}></div>
+  </div>
+  <div data-layer="Frame 253" className="Frame253" style={{width: 349, height: 54, paddingLeft: 71, paddingRight: 71, paddingTop: 17, paddingBottom: 17, left: 25, top: 782, position: 'absolute', background: '#4682B4', borderRadius: 30, justifyContent: 'center', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+    <div data-layer="Report Issue" className="ReportIssue" style={{textAlign: 'center', color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '400', wordWrap: 'break-word'}}>Report Issue</div>
+  </div>
+  <div data-layer="Group 276" className="Group276" style={{width: 342, height: 50, left: 32, top: 712, position: 'absolute'}}>
+    <div data-layer="Rectangle 117" className="Rectangle117" style={{width: 342, height: 50, left: 32, top: 712, position: 'absolute', background: 'rgba(255, 255, 255, 0.75)', borderBottomRightRadius: 15, borderBottomLeftRadius: 15}} />
+    <div data-layer="Start Navigation" className="StartNavigation" style={{left: 137, top: 727, position: 'absolute', color: '#010E42', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Start Navigation</div>
+  </div>
+  <div data-layer="Group 284" className="Group284" style={{width: 319, height: 60, left: 40, top: 167, position: 'absolute'}}>
+    <div data-layer="Mike" className="Mike" style={{left: 114, top: 185, position: 'absolute', color: 'black', fontSize: 20, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Mike</div>
+    <img data-layer="Ellipse 25" className="Ellipse25" style={{width: 60, height: 60, left: 40, top: 167, position: 'absolute', borderRadius: 9999}} src="https://placehold.co/60x60" />
+    <div data-layer="Group 282" className="Group282" style={{width: 40, height: 40, left: 269, top: 177, position: 'absolute'}}>
+      <div data-layer="Ellipse 32" className="Ellipse32" style={{width: 40, height: 40, left: 269, top: 177, position: 'absolute', background: '#4682B4', borderRadius: 9999}} />
+      <img data-layer="Typing" className="Typing" style={{width: 24, height: 24, left: 277, top: 185, position: 'absolute'}} src="https://placehold.co/24x24" />
+    </div>
+    <div data-layer="Group 283" className="Group283" style={{width: 40, height: 40, left: 319, top: 177, position: 'absolute'}}>
+      <div data-layer="Ellipse 33" className="Ellipse33" style={{width: 40, height: 40, left: 319, top: 177, position: 'absolute', background: '#4682B4', borderRadius: 9999}} />
+      <img data-layer="Phone" className="Phone" style={{width: 24, height: 24, left: 327, top: 185, position: 'absolute'}} src="https://placehold.co/24x24" />
+    </div>
+  </div>
+  <div data-layer="Group 177" className="Group177" style={{width: 50, height: 18, left: 181, top: 282, position: 'absolute'}}>
+    <div data-layer="Rectangle 90" className="Rectangle90" style={{width: 50, height: 18, left: 181, top: 282, position: 'absolute', borderRadius: 5, border: '1px #4682B4 solid'}} />
+    <div data-layer="1 litre" className="Litre" style={{width: 29, left: 192, top: 286, position: 'absolute', textAlign: 'center', color: '#4682B4', fontSize: 8, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>1 litre</div>
+  </div>
+  <div data-layer="Group 156" className="Group156" style={{width: 71, height: 15, left: 241, top: 283, position: 'absolute'}}>
+    <div data-layer="15,000.00" className="00000" style={{left: 254, top: 283, position: 'absolute', color: '#0B1A51', fontSize: 12, fontFamily: 'Montserrat', fontWeight: '600', wordWrap: 'break-word'}}>15,000.00</div>
+    <img data-layer="Naira" className="Naira" style={{width: 12, height: 15, left: 241, top: 283, position: 'absolute'}} src="https://placehold.co/12x15" />
+  </div>
+  <div data-layer="Petrol" className="Petrol" style={{width: 66, left: 105, top: 279, position: 'absolute', color: '#010E42', fontSize: 20, fontFamily: 'Montserrat', fontWeight: '600', wordWrap: 'break-word'}}>Petrol</div>
+  <div data-layer="Group 242" className="Group242" style={{width: 60, height: 60, left: 30, top: 261, position: 'absolute'}}>
+    <div data-layer="Rectangle 108" className="Rectangle108" style={{width: 60, height: 60, left: 30, top: 261, position: 'absolute', background: '#4682B4', borderRadius: 15}} />
+    <img data-layer="Gas Station" className="GasStation" style={{width: 40, height: 40, left: 40, top: 271, position: 'absolute'}} src="https://placehold.co/40x40" />
+  </div>
+</div>
