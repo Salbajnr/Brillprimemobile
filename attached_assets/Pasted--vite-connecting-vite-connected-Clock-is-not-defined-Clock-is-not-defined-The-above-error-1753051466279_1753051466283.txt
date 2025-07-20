@@ -1,0 +1,38 @@
+[vite] connecting...
+[vite] connected.
+Clock is not defined
+Clock is not defined
+The above error occurred in the <ConsumerHome> component:
+
+    at ConsumerHome (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/pages/consumer-home.tsx?t=1753051311213:42:27)
+    at ProtectedRoute (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/App.tsx?t=1753051311213&v=510KYPKG9mQhvBUq-UNTj:66:38)
+    at component
+    at Route (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d14a96ed:323:16)
+    at Switch (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d14a96ed:379:17)
+    at Router
+    at Provider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5AJU3CG7.js?v=d14a96ed:38:15)
+    at TooltipProvider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=d14a96ed:61:5)
+    at QueryClientProvider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=d14a96ed:2805:3)
+    at App (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/App.tsx?t=1753051311213&v=510KYPKG9mQhvBUq-UNTj:430:20)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+
+at ConsumerHome (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/pages/consumer-home.tsx?t=1753051311213:42:27)
+at ProtectedRoute (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/App.tsx?t=1753051311213&amp;v=510KYPKG9mQhvBUq-UNTj:66:38)
+at component
+at Route (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d14a96ed:323:16)
+at Switch (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/wouter.js?v=d14a96ed:379:17)
+at Router
+at Provider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/chunk-5AJU3CG7.js?v=d14a96ed:38:15)
+at TooltipProvider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@radix-ui_react-tooltip.js?v=d14a96ed:61:5)
+at QueryClientProvider (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/@fs/home/runner/workspace/node_modules/.vite/deps/@tanstack_react-query.js?v=d14a96ed:2805:3)
+at App (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/src/App.tsx?t=1753051311213&amp;v=510KYPKG9mQhvBUq-UNTj:430:20)
+
+Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://reactjs.org/link/error-boundaries to learn more about error boundaries.
+at t.value (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:17465)
+at new t (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:12630)
+at t.value (https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:32766)
+at https://2946ea8f-d7cf-4b2d-af18-29a9b4b7d153-00-1wuep1ya6tesd.picard.replit.dev/__replco/static/devtools/eruda/3.2.3/eruda.js:2:34400
+Clock is not defined
