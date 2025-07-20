@@ -185,11 +185,49 @@ export class DatabaseStorage implements IStorage {
 
   // Category operations
   async getCategories(): Promise<Category[]> {
-    return await db
+    // First check if categories exist in database
+    const existingCategories = await db
       .select()
       .from(categories)
       .where(eq(categories.isActive, true))
       .orderBy(categories.name);
+
+    // If no categories exist, seed with default business categories
+    if (existingCategories.length === 0) {
+      const defaultCategories = [
+        { name: "Apparel & Clothing", icon: "Shirt", slug: "apparel-clothing", description: "Fashion, clothing, and accessories" },
+        { name: "Art & Entertainment", icon: "Palette", slug: "art-entertainment", description: "Creative arts and entertainment services" },
+        { name: "Beauty & Cosmetics", icon: "Sparkles", slug: "beauty-cosmetics", description: "Beauty products and cosmetic services" },
+        { name: "Education", icon: "GraduationCap", slug: "education", description: "Educational services and institutions" },
+        { name: "Event Planning", icon: "Calendar", slug: "event-planning", description: "Event organization and planning services" },
+        { name: "Finance", icon: "DollarSign", slug: "finance", description: "Financial services and consulting" },
+        { name: "Supermarket", icon: "ShoppingBasket", slug: "supermarket", description: "Grocery stores and supermarkets" },
+        { name: "Hotel", icon: "Building2", slug: "hotel", description: "Hotels and accommodation services" },
+        { name: "Medical & Health", icon: "Heart", slug: "medical-health", description: "Healthcare and medical services" },
+        { name: "Non-profit", icon: "Users", slug: "non-profit", description: "Non-profit organizations and charities" },
+        { name: "Oil & Gas", icon: "Fuel", slug: "oil-gas", description: "Energy and petroleum services" },
+        { name: "Restaurant", icon: "UtensilsCrossed", slug: "restaurant", description: "Restaurants and food services" },
+        { name: "Shopping & Retail", icon: "Store", slug: "shopping-retail", description: "Retail stores and shopping centers" },
+        { name: "Ticket", icon: "Ticket", slug: "ticket", description: "Ticket sales and booking services" },
+        { name: "Toll Gate", icon: "MapPin", slug: "toll-gate", description: "Toll gate and road services" },
+        { name: "Vehicle Service", icon: "Car", slug: "vehicle-service", description: "Automotive services and repairs" },
+        { name: "Other Business", icon: "Briefcase", slug: "other-business", description: "Miscellaneous business services" }
+      ];
+
+      // Insert default categories
+      for (const category of defaultCategories) {
+        await db.insert(categories).values(category);
+      }
+
+      // Return the newly seeded categories
+      return await db
+        .select()
+        .from(categories)
+        .where(eq(categories.isActive, true))
+        .orderBy(categories.name);
+    }
+
+    return existingCategories;
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
