@@ -27,6 +27,7 @@ import {
   Phone
 } from "lucide-react";
 import logoImage from "../assets/images/logo.png";
+import accountCircleIcon from "../assets/images/account_circle.svg";
 
 interface DeliveryJob {
   id: string;
@@ -461,12 +462,12 @@ function DriverDashboardContent() {
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center space-x-4">
                             <div className="w-16 h-16 rounded-full overflow-hidden border-2" style={{ borderColor: COLORS.PRIMARY }}>
-                              <div className="w-full h-full flex items-center justify-center text-lg font-bold" style={{ 
-                                background: `linear-gradient(135deg, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`,
-                                color: COLORS.WHITE 
-                              }}>
-                                {job.customerName.charAt(0)}
-                              </div>
+                              <img 
+                                src={accountCircleIcon} 
+                                alt="Customer" 
+                                className="w-full h-full object-cover"
+                                style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                              />
                             </div>
                             <div>
                               <h3 className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.customerName}</h3>
@@ -573,6 +574,22 @@ function DriverDashboardContent() {
                           >
                             {acceptJobMutation.isPending ? "Accepting..." : "Accept"}
                           </Button>
+                        </div>
+
+                        {/* View Details Link */}
+                        <div className="mt-3">
+                          <Link href="/delivery-detail">
+                            <Button 
+                              variant="outline"
+                              className="w-full rounded-2xl py-2 px-6 font-normal border"
+                              style={{ 
+                                borderColor: COLORS.PRIMARY,
+                                color: COLORS.PRIMARY
+                              }}
+                            >
+                              View Details
+                            </Button>
+                          </Link>
                         </div>
 
                         {job.notes && (

@@ -41,6 +41,7 @@ import MerchantDashboard from "@/pages/merchant-dashboard";
 import DriverDashboard from "@/pages/driver-dashboard";
 import DriverTierSelection from "@/pages/driver-tier-selection";
 import DriverRegistration from "@/pages/driver-registration";
+import DeliveryDetail from "@/pages/delivery-detail";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -67,6 +68,7 @@ function Router() {
       <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
       <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={MerchantDashboard} />} />
       <Route path="/driver-dashboard" component={() => <ProtectedRoute component={DriverDashboard} />} />
+      <Route path="/delivery-detail" component={() => <ProtectedRoute component={DeliveryDetail} />} />
       <Route path="/driver-tier-selection" component={() => <ProtectedRoute component={DriverTierSelection} />} />
       <Route path="/driver-registration" component={() => <ProtectedRoute component={DriverRegistration} />} />
       <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
