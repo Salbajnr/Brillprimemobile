@@ -47,11 +47,16 @@ interface Conversation {
   id: string;
   customerId: number;
   vendorId: number;
+  driverId?: number;
   productId?: string;
-  conversationType: "QUOTE" | "ORDER" | "GENERAL";
+  conversationType: "QUOTE" | "ORDER" | "PICKUP" | "DELIVERY" | "GENERAL";
   status: "ACTIVE" | "CLOSED";
   customerName: string;
   vendorName: string;
+  driverName?: string;
+  customerPhoto?: string;
+  vendorPhoto?: string;
+  driverPhoto?: string;
   productName?: string;
   lastMessage?: string;
   lastMessageAt: Date;
@@ -70,11 +75,11 @@ export default function ChatPage() {
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Get conversations for current user
+  // Get conversations for current user based on role
   const { data: conversations = [], isLoading: loadingConversations } = useQuery({
-    queryKey: ['/api/conversations', user?.id],
+    queryKey: ['/api/conversations', user?.id, user?.role],
     queryFn: async () => {
-      const response = await fetch(`/api/conversations?userId=${user?.id}`);
+      const response = await fetch(`/api/conversations?userId=${user?.id}&role=${user?.role}`);
       if (!response.ok) throw new Error('Failed to fetch conversations');
       return response.json();
     },
@@ -219,7 +224,11 @@ export default function ChatPage() {
             <div className="p-8 text-center" style={{ color: COLORS.TEXT + '80' }}>
               <MessageCircle className="h-16 w-16 mx-auto mb-4" style={{ color: COLORS.PRIMARY + '40' }} />
               <h3 className="text-lg font-medium mb-2" style={{ color: COLORS.TEXT }}>No conversations yet</h3>
-              <p>Start shopping to connect with merchants</p>
+              <p>
+                {user?.role === "CONSUMER" && "Start shopping to connect with merchants"}
+                {user?.role === "MERCHANT" && "Customers will contact you about quotes and orders"}
+                {user?.role === "DRIVER" && "You'll receive pickup and delivery requests here"}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -237,15 +246,39 @@ export default function ChatPage() {
                     {/* Profile Avatar */}
                     <div className="relative">
                       <div 
-                        className="w-16 h-16 rounded-full flex items-center justify-center"
-                        style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                        className="w-16 h-16 rounded-full overflow-hidden border-2"
+                        style={{ borderColor: COLORS.PRIMARY + '40' }}
                       >
-                        <img 
-                          src={accountCircleIcon} 
-                          alt="Profile" 
-                          className="w-12 h-12"
-                          style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
-                        />
+                        {(() => {
+                          let profilePhoto = null;
+                          if (user?.role === "CONSUMER") {
+                            profilePhoto = conv.vendorPhoto;
+                          } else if (user?.role === "MERCHANT") {
+                            profilePhoto = conv.customerPhoto;
+                          } else if (user?.role === "DRIVER") {
+                            profilePhoto = conv.conversationType === "PICKUP" ? conv.vendorPhoto : conv.customerPhoto;
+                          }
+                          
+                          return profilePhoto ? (
+                            <img 
+                              src={profilePhoto} 
+                              alt="Profile" 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div 
+                              className="w-full h-full flex items-center justify-center"
+                              style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                            >
+                              <img 
+                                src={accountCircleIcon} 
+                                alt="Profile" 
+                                className="w-12 h-12"
+                                style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                              />
+                            </div>
+                          );
+                        })()}
                       </div>
                       {/* Online indicator */}
                       <div 
@@ -261,7 +294,14 @@ export default function ChatPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between mb-1">
                         <h3 className="font-semibold text-lg truncate" style={{ color: COLORS.TEXT }}>
-                          {user?.role === "CONSUMER" ? conv.vendorName : conv.customerName}
+                          {(() => {
+                            if (user?.role === "CONSUMER") return conv.vendorName;
+                            if (user?.role === "MERCHANT") return conv.customerName;
+                            if (user?.role === "DRIVER") {
+                              return conv.conversationType === "PICKUP" ? conv.vendorName : conv.customerName;
+                            }
+                            return "Unknown";
+                          })()}
                         </h3>
                         <span className="text-xs" style={{ color: COLORS.TEXT + '60' }}>
                           {new Date(conv.lastMessageAt).toLocaleDateString()}
@@ -282,11 +322,27 @@ export default function ChatPage() {
                       
                       <div className="flex items-center justify-between mt-2">
                         <Badge 
-                          variant={conv.conversationType === "QUOTE" ? "secondary" : "default"}
+                          variant="default"
                           className="rounded-full px-3 py-1"
                           style={{ 
-                            backgroundColor: conv.conversationType === "QUOTE" ? '#FEF3C7' : COLORS.PRIMARY + '20',
-                            color: conv.conversationType === "QUOTE" ? '#92400E' : COLORS.PRIMARY
+                            backgroundColor: (() => {
+                              switch(conv.conversationType) {
+                                case "QUOTE": return '#FEF3C7';
+                                case "ORDER": return '#DBEAFE';
+                                case "PICKUP": return '#FECACA';
+                                case "DELIVERY": return '#D1FAE5';
+                                default: return COLORS.PRIMARY + '20';
+                              }
+                            })(),
+                            color: (() => {
+                              switch(conv.conversationType) {
+                                case "QUOTE": return '#92400E';
+                                case "ORDER": return '#1E40AF';
+                                case "PICKUP": return '#DC2626';
+                                case "DELIVERY": return '#059669';
+                                default: return COLORS.PRIMARY;
+                              }
+                            })()
                           }}
                         >
                           {conv.conversationType}
@@ -329,20 +385,51 @@ export default function ChatPage() {
             {selectedConv && (
               <>
                 <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80"
-                  style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                  className="w-12 h-12 rounded-full overflow-hidden border-2 cursor-pointer hover:opacity-80"
+                  style={{ borderColor: COLORS.PRIMARY + '40' }}
                   onClick={() => setShowProfileDetails(!showProfileDetails)}
                 >
-                  <img 
-                    src={accountCircleIcon} 
-                    alt="Profile" 
-                    className="w-8 h-8"
-                    style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
-                  />
+                  {(() => {
+                    let profilePhoto = null;
+                    if (user?.role === "CONSUMER") {
+                      profilePhoto = selectedConv.vendorPhoto;
+                    } else if (user?.role === "MERCHANT") {
+                      profilePhoto = selectedConv.customerPhoto;
+                    } else if (user?.role === "DRIVER") {
+                      profilePhoto = selectedConv.conversationType === "PICKUP" ? selectedConv.vendorPhoto : selectedConv.customerPhoto;
+                    }
+                    
+                    return profilePhoto ? (
+                      <img 
+                        src={profilePhoto} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                      >
+                        <img 
+                          src={accountCircleIcon} 
+                          alt="Profile" 
+                          className="w-8 h-8"
+                          style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div className="cursor-pointer" onClick={() => setShowProfileDetails(!showProfileDetails)}>
                   <h2 className="font-semibold text-lg" style={{ color: COLORS.TEXT }}>
-                    {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
+                    {(() => {
+                      if (user?.role === "CONSUMER") return selectedConv.vendorName;
+                      if (user?.role === "MERCHANT") return selectedConv.customerName;
+                      if (user?.role === "DRIVER") {
+                        return selectedConv.conversationType === "PICKUP" ? selectedConv.vendorName : selectedConv.customerName;
+                      }
+                      return "Unknown";
+                    })()}
                   </h2>
                   {selectedConv.productName && (
                     <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>About: {selectedConv.productName}</p>
@@ -356,11 +443,27 @@ export default function ChatPage() {
           <div className="flex items-center space-x-2">
             {selectedConv && (
               <Badge 
-                variant={selectedConv.conversationType === "QUOTE" ? "secondary" : "default"}
+                variant="default"
                 className="rounded-full"
                 style={{ 
-                  backgroundColor: selectedConv.conversationType === "QUOTE" ? '#FEF3C7' : COLORS.PRIMARY + '20',
-                  color: selectedConv.conversationType === "QUOTE" ? '#92400E' : COLORS.PRIMARY
+                  backgroundColor: (() => {
+                    switch(selectedConv.conversationType) {
+                      case "QUOTE": return '#FEF3C7';
+                      case "ORDER": return '#DBEAFE';
+                      case "PICKUP": return '#FECACA';
+                      case "DELIVERY": return '#D1FAE5';
+                      default: return COLORS.PRIMARY + '20';
+                    }
+                  })(),
+                  color: (() => {
+                    switch(selectedConv.conversationType) {
+                      case "QUOTE": return '#92400E';
+                      case "ORDER": return '#1E40AF';
+                      case "PICKUP": return '#DC2626';
+                      case "DELIVERY": return '#059669';
+                      default: return COLORS.PRIMARY;
+                    }
+                  })()
                 }}
               >
                 {selectedConv.conversationType}
@@ -401,22 +504,60 @@ export default function ChatPage() {
               
               <div className="flex items-center space-x-4 mb-4">
                 <div 
-                  className="w-16 h-16 rounded-full flex items-center justify-center"
-                  style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                  className="w-16 h-16 rounded-full overflow-hidden border-2"
+                  style={{ borderColor: COLORS.PRIMARY + '40' }}
                 >
-                  <img 
-                    src={accountCircleIcon} 
-                    alt="Profile" 
-                    className="w-12 h-12"
-                    style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
-                  />
+                  {(() => {
+                    let profilePhoto = null;
+                    if (user?.role === "CONSUMER") {
+                      profilePhoto = selectedConv.vendorPhoto;
+                    } else if (user?.role === "MERCHANT") {
+                      profilePhoto = selectedConv.customerPhoto;
+                    } else if (user?.role === "DRIVER") {
+                      profilePhoto = selectedConv.conversationType === "PICKUP" ? selectedConv.vendorPhoto : selectedConv.customerPhoto;
+                    }
+                    
+                    return profilePhoto ? (
+                      <img 
+                        src={profilePhoto} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div 
+                        className="w-full h-full flex items-center justify-center"
+                        style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                      >
+                        <img 
+                          src={accountCircleIcon} 
+                          alt="Profile" 
+                          className="w-12 h-12"
+                          style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                        />
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div>
                   <h4 className="font-semibold text-xl" style={{ color: COLORS.TEXT }}>
-                    {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
+                    {(() => {
+                      if (user?.role === "CONSUMER") return selectedConv.vendorName;
+                      if (user?.role === "MERCHANT") return selectedConv.customerName;
+                      if (user?.role === "DRIVER") {
+                        return selectedConv.conversationType === "PICKUP" ? selectedConv.vendorName : selectedConv.customerName;
+                      }
+                      return "Unknown";
+                    })()}
                   </h4>
                   <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
-                    {user?.role === "CONSUMER" ? "Merchant" : "Customer"}
+                    {(() => {
+                      if (user?.role === "CONSUMER") return "Merchant";
+                      if (user?.role === "MERCHANT") return "Customer";
+                      if (user?.role === "DRIVER") {
+                        return selectedConv.conversationType === "PICKUP" ? "Merchant (Pickup)" : "Customer (Delivery)";
+                      }
+                      return "User";
+                    })()}
                   </p>
                   <div className="flex items-center mt-1">
                     <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
@@ -427,9 +568,17 @@ export default function ChatPage() {
 
               <div className="space-y-3">
                 <div>
-                  <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Business Type</p>
+                  <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Interaction Type</p>
                   <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
-                    {selectedConv.conversationType === "QUOTE" ? "Product Supplier" : "Service Provider"}
+                    {(() => {
+                      switch(selectedConv.conversationType) {
+                        case "QUOTE": return "Quote Discussion";
+                        case "ORDER": return "Order Management";
+                        case "PICKUP": return "Pickup Request";
+                        case "DELIVERY": return "Delivery Service";
+                        default: return "General Communication";
+                      }
+                    })()}
                   </p>
                 </div>
                 
