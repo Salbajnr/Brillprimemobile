@@ -389,6 +389,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Chat Routes
+  
+  // Get conversations for user
+  app.get("/api/conversations", async (req, res) => {
+    try {
+      const { userId } = req.query;
+      if (!userId) {
+        return res.status(400).json({ message: "User ID required" });
+      }
+
+      const conversations = await storage.getConversations(parseInt(userId as string));
+      res.json(conversations);
+    } catch (error) {
+      console.error("Get conversations error:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // Create new conversation
+  app.post("/api/conversations", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const conversationData = req.body;
+      const conversation = await storage.createConversation(conversationData);
+      
+      res.json(conversation);
+    } catch (error) {
+      console.error("Create conversation error:", error);
+      res.status(400).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // Get messages for conversation
+  app.get("/api/conversations/:conversationId/messages", async (req, res) => {
+    try {
+      const { conversationId } = req.params;
+      const messages = await storage.getMessages(conversationId);
+      
+      res.json(messages);
+    } catch (error) {
+      console.error("Get messages error:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // Send message
+  app.post("/api/messages", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const messageData = req.body;
+      const message = await storage.sendMessage(messageData);
+      
+      res.json(message);
+    } catch (error) {
+      console.error("Send message error:", error);
+      res.status(400).json({ message: "Failed to send message" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
