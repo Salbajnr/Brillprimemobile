@@ -391,20 +391,20 @@ export default function ConsumerHome() {
             <Button
               variant="outline"
               className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
-              onClick={() => setLocation("/merchants")}
+              onClick={() => setLocation("/order-history")}
               style={{ animationDelay: '0.3s' }}
             >
-              <MapPin className="w-6 h-6" />
-              <span className="text-sm">Find Merchants</span>
+              <Clock className="w-6 h-6" />
+              <span className="text-sm">Order History</span>
             </Button>
             <Button
               variant="outline"
               className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
-              onClick={() => setLocation("/fuel-stations")}
+              onClick={() => setLocation("/merchants")}
               style={{ animationDelay: '0.4s' }}
             >
-              <Fuel className="w-6 h-6" />
-              <span className="text-sm">Fuel Stations</span>
+              <MapPin className="w-6 h-6" />
+              <span className="text-sm">Find Merchants</span>
             </Button>
             <Button
               variant="outline"

@@ -43,6 +43,7 @@ import DriverTierSelection from "@/pages/driver-tier-selection";
 import DriverRegistration from "@/pages/driver-registration";
 import DeliveryDetail from "@/pages/delivery-detail";
 import DriverWithdrawal from "@/pages/driver-withdrawal";
+import OrderHistory from "@/pages/order-history";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -91,6 +92,7 @@ function Router() {
       <Route path="/payment-methods" component={() => <ProtectedRoute component={PaymentMethodsPage} />} />
       <Route path="/add-payment-method" component={() => <ProtectedRoute component={AddPaymentMethodPage} />} />
       <Route path="/cart" component={() => <ProtectedRoute component={CartPage} />} />
+      <Route path="/order-history" component={() => <ProtectedRoute component={OrderHistory} />} />
       <Route path="/notifications" component={() => <ProtectedRoute component={NotificationsPage} />} />
       <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
       <Route component={NotFound} />

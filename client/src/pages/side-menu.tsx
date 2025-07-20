@@ -39,7 +39,7 @@ export default function SideMenu() {
       id: "orders",
       title: "Order History",
       icon: <Package className="w-5 h-5" />,
-      route: "/orders",
+      route: "/order-history",
       badge: "New"
     },
     {
