@@ -247,7 +247,7 @@ export default function ConsumerHome() {
               onClick={() => setLocation("/commodities")}
             >
               <ShoppingCart className="w-6 h-6" />
-              <span className="text-sm">Shopping</span>
+              <span className="text-sm">Marketplace</span>
             </Button>
             <Button
               variant="outline"
