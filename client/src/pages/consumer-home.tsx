@@ -339,18 +339,18 @@ export default function ConsumerHome() {
         {/* Quick Actions */}
         <div>
           <h3 className="text-lg font-semibold text-[#131313] mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3">
             {quickActions.map((action) => (
               <Card
                 key={action.id}
-                className="cursor-pointer transition-transform hover:scale-105"
+                className="cursor-pointer transition-transform hover:scale-105 rounded-3xl"
                 onClick={() => setLocation(action.route)}
               >
-                <CardContent className="p-4">
-                  <div className={`w-12 h-12 ${action.bgColor} rounded-2xl flex items-center justify-center mb-3`}>
-                    <img src={action.icon} alt={action.title} className="w-6 h-6" />
+                <CardContent className="p-3 flex flex-col items-center text-center">
+                  <div className={`w-10 h-10 ${action.bgColor} rounded-full flex items-center justify-center mb-2`}>
+                    <img src={action.icon} alt={action.title} className="w-5 h-5" />
                   </div>
-                  <h4 className="font-medium text-[#131313]">{action.title}</h4>
+                  <h4 className="font-medium text-[#131313] text-sm">{action.title}</h4>
                 </CardContent>
               </Card>
             ))}
