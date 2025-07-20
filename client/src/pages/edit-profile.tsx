@@ -11,6 +11,8 @@ import { useMutation } from "@tanstack/react-query";
 import { NotificationModal } from "@/components/ui/notification-modal";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { ImagePicker } from "@/components/ui/image-picker";
+import accountCircleIcon from "../assets/images/account_circle.svg";
+import cameraIcon from "../assets/images/camera_icon.png";
 
 interface ProfileFormData {
   fullName: string;
@@ -130,7 +132,7 @@ export default function EditProfilePage() {
         <div className="text-center mb-8">
           <div className="relative inline-block">
             <div 
-              className="w-24 h-24 rounded-full mx-auto mb-2 cursor-pointer transition-transform duration-200 hover:scale-105 overflow-hidden bg-gradient-to-br from-[var(--brill-primary)] to-[var(--brill-secondary)] flex items-center justify-center text-white text-3xl font-bold"
+              className="w-24 h-24 rounded-full mx-auto mb-2 cursor-pointer transition-transform duration-200 hover:scale-105 overflow-hidden bg-gray-100 flex items-center justify-center"
               onClick={() => document.getElementById('profile-image-input')?.click()}
             >
               {user?.profilePicture ? (
@@ -140,11 +142,15 @@ export default function EditProfilePage() {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span>{user?.fullName?.charAt(0) || "U"}</span>
+                <img 
+                  src={accountCircleIcon} 
+                  alt="Default Profile" 
+                  className="w-full h-full object-cover"
+                />
               )}
-              {/* Plus Icon */}
-              <div className="absolute bottom-0 right-0 w-7 h-7 bg-[var(--brill-primary)] rounded-full flex items-center justify-center border-3 border-white">
-                <span className="text-white text-lg font-bold">+</span>
+              {/* Camera Icon */}
+              <div className="absolute bottom-0 right-0 w-7 h-7 bg-[var(--brill-secondary)] rounded-full flex items-center justify-center border-2 border-white shadow-md">
+                <img src={cameraIcon} alt="Camera" className="h-3 w-3" />
               </div>
             </div>
             <input

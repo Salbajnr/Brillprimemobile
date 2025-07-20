@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { Camera, Upload, X } from "lucide-react";
 import { Button } from "./button";
+import cameraIcon from "../../assets/images/camera_icon.png";
 
 interface ImagePickerProps {
   currentImage?: string | null;
@@ -83,7 +84,7 @@ export function ImagePicker({
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">
-            <Camera className="w-8 h-8 text-white" />
+            <img src={cameraIcon} alt="Camera" className="w-8 h-8" />
           </div>
         )}
       </div>
@@ -94,7 +95,7 @@ export function ImagePicker({
         onClick={() => setShowOptions(true)}
         className="absolute -bottom-1 -right-1 w-8 h-8 bg-[var(--brill-secondary)] rounded-full text-white flex items-center justify-center shadow-lg p-0 hover:bg-[var(--brill-secondary)]/90"
       >
-        <Camera className="h-4 w-4" />
+        <img src={cameraIcon} alt="Camera" className="h-4 w-4" />
       </Button>
 
       {/* Options Modal */}
@@ -119,7 +120,7 @@ export function ImagePicker({
                 className="w-full flex items-center justify-start space-x-3 p-4 bg-gray-50 hover:bg-gray-100 text-[var(--brill-text)] rounded-xl"
                 variant="outline"
               >
-                <Camera className="h-5 w-5" />
+                <img src={cameraIcon} alt="Camera" className="h-5 w-5" />
                 <span>Take Photo</span>
               </Button>
 

@@ -18,6 +18,7 @@ import {
   Phone,
   Mail
 } from "lucide-react";
+import accountCircleIcon from "../assets/images/account_circle.svg";
 
 interface ChatMessage {
   id: string;
@@ -157,6 +158,7 @@ export default function ChatPage() {
                   <div className="flex items-start justify-between">
                     <div className="flex items-start space-x-3">
                       <Avatar className="h-10 w-10">
+                        <AvatarImage src={accountCircleIcon} alt="Profile" />
                         <AvatarFallback>
                           {user?.role === "CONSUMER" 
                             ? conversation.vendorName.charAt(0).toUpperCase()
@@ -201,6 +203,7 @@ export default function ChatPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-3">
                     <Avatar className="h-10 w-10">
+                      <AvatarImage src={accountCircleIcon} alt="Profile" />
                       <AvatarFallback>
                         {user?.role === "CONSUMER" 
                           ? selectedConv.vendorName.charAt(0).toUpperCase()
@@ -283,6 +286,7 @@ export default function ChatPage() {
                         </div>
                         
                         <Avatar className={`h-8 w-8 ${isOwnMessage ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
+                          <AvatarImage src={accountCircleIcon} alt="Profile" />
                           <AvatarFallback className="text-xs">
                             {message.senderName.charAt(0).toUpperCase()}
                           </AvatarFallback>
