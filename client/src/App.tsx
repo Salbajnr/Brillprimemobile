@@ -38,6 +38,9 @@ import NotificationsPage from "@/pages/notifications";
 import MerchantsPage from "@/pages/merchants";
 import NotFound from "@/pages/not-found";
 import MerchantDashboard from "@/pages/merchant-dashboard";
+import DriverDashboard from "@/pages/driver-dashboard";
+import DriverTierSelection from "@/pages/driver-tier-selection";
+import DriverRegistration from "@/pages/driver-registration";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -63,6 +66,9 @@ function Router() {
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
       <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={MerchantDashboard} />} />
+      <Route path="/driver-dashboard" component={() => <ProtectedRoute component={DriverDashboard} />} />
+      <Route path="/driver-tier-selection" component={() => <ProtectedRoute component={DriverTierSelection} />} />
+      <Route path="/driver-registration" component={() => <ProtectedRoute component={DriverRegistration} />} />
       <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
       <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />

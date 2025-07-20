@@ -79,13 +79,19 @@ export default function SignupPage() {
       return;
     }
 
-    signupMutation.mutate({
+    // Get driver tier information if available
+    const driverTier = selectedRole === "DRIVER" ? sessionStorage.getItem('selectedDriverTier') : null;
+    
+    const signupData = {
       fullName: data.fullName,
       email: data.email,
       phone: data.phone,
       password: data.password,
       role: selectedRole,
-    });
+      ...(driverTier && { driverTier, accessLevel: driverTier })
+    };
+
+    signupMutation.mutate(signupData);
   };
 
   // Social login handlers

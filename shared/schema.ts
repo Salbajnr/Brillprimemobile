@@ -208,6 +208,8 @@ export const merchantAnalytics = pgTable("merchant_analytics", {
 export const driverProfiles = pgTable("driver_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
+  driverTier: text("driver_tier", { enum: ["PREMIUM", "STANDARD"] }).notNull().default("STANDARD"),
+  accessLevel: text("access_level", { enum: ["RESTRICTED", "OPEN"] }).notNull().default("OPEN"),
   vehicleType: text("vehicle_type", { enum: ["MOTORCYCLE", "CAR", "VAN", "TRUCK"] }).notNull(),
   vehiclePlate: text("vehicle_plate").notNull(),
   vehicleModel: text("vehicle_model"),
@@ -223,6 +225,14 @@ export const driverProfiles = pgTable("driver_profiles", {
   reviewCount: integer("review_count").default(0),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
+  // Premium/Restricted driver specific fields
+  backgroundCheckStatus: text("background_check_status", { enum: ["PENDING", "APPROVED", "REJECTED"] }).default("PENDING"),
+  securityClearance: text("security_clearance", { enum: ["NONE", "BASIC", "HIGH", "MAXIMUM"] }).default("NONE"),
+  bondInsurance: boolean("bond_insurance").default(false),
+  maxCargoValue: decimal("max_cargo_value", { precision: 12, scale: 2 }).default("50000"),
+  specializations: text("specializations").array(), // ["JEWELRY", "ELECTRONICS", "DOCUMENTS", "PHARMACEUTICALS"]
+  restrictedDeliveryTypes: text("restricted_delivery_types").array(), // Types only premium drivers can handle
+  tierSpecificBenefits: json("tier_specific_benefits"), // Benefits based on driver tier
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -234,7 +244,9 @@ export const deliveryRequests = pgTable("delivery_requests", {
   merchantId: integer("merchant_id").references(() => users.id),
   driverId: integer("driver_id").references(() => users.id),
   orderId: uuid("order_id").references(() => orders.id),
-  deliveryType: text("delivery_type", { enum: ["FUEL", "PACKAGE", "FOOD", "GROCERY", "OTHER"] }).notNull(),
+  deliveryType: text("delivery_type", { enum: ["FUEL", "PACKAGE", "FOOD", "GROCERY", "JEWELRY", "ELECTRONICS", "DOCUMENTS", "PHARMACEUTICALS", "HIGH_VALUE", "OTHER"] }).notNull(),
+  cargoValue: decimal("cargo_value", { precision: 12, scale: 2 }).default("0"), // Estimated value of cargo
+  requiresPremiumDriver: boolean("requires_premium_driver").default(false),
   pickupAddress: text("pickup_address").notNull(),
   deliveryAddress: text("delivery_address").notNull(),
   pickupLocation: json("pickup_location"), // lat/lng

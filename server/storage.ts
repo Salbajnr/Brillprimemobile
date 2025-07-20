@@ -1,11 +1,15 @@
 import { 
   users, otpCodes, categories, products, cartItems, userLocations, orders,
-  vendorPosts, vendorPostLikes, vendorPostComments,
+  vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
+  driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
   type Order, type InsertOrder, type VendorPost, type InsertVendorPost,
-  type VendorPostLike, type InsertVendorPostLike, type VendorPostComment, type InsertVendorPostComment
+  type VendorPostLike, type InsertVendorPostLike, type VendorPostComment, type InsertVendorPostComment,
+  type Conversation, type InsertConversation, type ChatMessage, type InsertChatMessage,
+  type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
+  type DeliveryRequest, type InsertDeliveryRequest, type MerchantAnalytics, type InsertMerchantAnalytics
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
@@ -62,6 +66,24 @@ export interface IStorage {
   getVendorPostLikes(postId: string): Promise<VendorPostLike[]>;
   commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment>;
   getVendorPostComments(postId: string): Promise<VendorPostComment[]>;
+
+  // Driver operations
+  getDriverProfile(userId: number): Promise<DriverProfile | undefined>;
+  createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile>;
+  updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void>;
+  getAvailableDeliveryJobs(): Promise<DeliveryRequest[]>;
+  acceptDeliveryJob(jobId: string, driverId: number): Promise<void>;
+  getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }>;
+  getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]>;
+
+  // Merchant operations
+  getMerchantProfile(userId: number): Promise<MerchantProfile | undefined>;
+  createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile>;
+  getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }>;
+  getMerchantOrders(userId: number): Promise<Order[]>;
+  updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void>;
+  getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]>;
+  createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -667,6 +689,257 @@ export class DatabaseStorage implements IStorage {
     
     console.log("Sent message:", newMessage);
     return newMessage;
+  }
+
+  // Driver operations implementation
+  async getDriverProfile(userId: number): Promise<DriverProfile | undefined> {
+    const [profile] = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile> {
+    const [newProfile] = await db.insert(driverProfiles).values(profile).returning();
+    return newProfile;
+  }
+
+  async updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void> {
+    await db.update(driverProfiles)
+      .set({ 
+        currentLocation: { 
+          lat: parseFloat(location.latitude), 
+          lng: parseFloat(location.longitude),
+          accuracy: location.accuracy || 10,
+          timestamp: new Date().toISOString()
+        },
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, userId));
+  }
+
+  async getAvailableDeliveryJobs(): Promise<DeliveryRequest[]> {
+    const jobs = await db.select({
+      id: deliveryRequests.id,
+      customerId: deliveryRequests.customerId,
+      merchantId: deliveryRequests.merchantId,
+      deliveryType: deliveryRequests.deliveryType,
+      pickupAddress: deliveryRequests.pickupAddress,
+      deliveryAddress: deliveryRequests.deliveryAddress,
+      estimatedDistance: deliveryRequests.estimatedDistance,
+      deliveryFee: deliveryRequests.deliveryFee,
+      status: deliveryRequests.status,
+      scheduledTime: deliveryRequests.scheduledTime,
+      notes: deliveryRequests.notes,
+      createdAt: deliveryRequests.createdAt,
+      customer: {
+        fullName: users.fullName,
+        phone: users.phone
+      }
+    })
+    .from(deliveryRequests)
+    .leftJoin(users, eq(deliveryRequests.customerId, users.id))
+    .where(eq(deliveryRequests.status, 'PENDING'))
+    .orderBy(desc(deliveryRequests.createdAt))
+    .limit(20);
+
+    return jobs;
+  }
+
+  async acceptDeliveryJob(jobId: string, driverId: number): Promise<void> {
+    await db.update(deliveryRequests)
+      .set({ 
+        driverId,
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(eq(deliveryRequests.id, jobId));
+  }
+
+  async getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }> {
+    const profile = await this.getDriverProfile(userId);
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const startOfWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Get today's earnings
+    const todayDeliveries = await db.select()
+      .from(deliveryRequests)
+      .where(
+        and(
+          eq(deliveryRequests.driverId, userId),
+          eq(deliveryRequests.status, 'DELIVERED'),
+          gte(deliveryRequests.deliveredAt, startOfDay)
+        )
+      );
+
+    // Get weekly earnings
+    const weeklyDeliveries = await db.select()
+      .from(deliveryRequests)
+      .where(
+        and(
+          eq(deliveryRequests.driverId, userId),
+          eq(deliveryRequests.status, 'DELIVERED'),
+          gte(deliveryRequests.deliveredAt, startOfWeek)
+        )
+      );
+
+    const todayEarnings = todayDeliveries.reduce((sum, delivery) => 
+      sum + parseFloat(delivery.deliveryFee || '0'), 0);
+    const weeklyEarnings = weeklyDeliveries.reduce((sum, delivery) => 
+      sum + parseFloat(delivery.deliveryFee || '0'), 0);
+
+    return {
+      todayEarnings,
+      weeklyEarnings,
+      totalEarnings: parseFloat(profile?.totalEarnings || '0'),
+      completedDeliveries: profile?.totalDeliveries || 0
+    };
+  }
+
+  async getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]> {
+    const history = await db.select({
+      id: deliveryRequests.id,
+      customerId: deliveryRequests.customerId,
+      deliveryType: deliveryRequests.deliveryType,
+      pickupAddress: deliveryRequests.pickupAddress,
+      deliveryAddress: deliveryRequests.deliveryAddress,
+      deliveryFee: deliveryRequests.deliveryFee,
+      status: deliveryRequests.status,
+      deliveredAt: deliveryRequests.deliveredAt,
+      createdAt: deliveryRequests.createdAt,
+      customer: {
+        fullName: users.fullName,
+        phone: users.phone
+      }
+    })
+    .from(deliveryRequests)
+    .leftJoin(users, eq(deliveryRequests.customerId, users.id))
+    .where(eq(deliveryRequests.driverId, userId))
+    .orderBy(desc(deliveryRequests.deliveredAt))
+    .limit(50);
+
+    return history;
+  }
+
+  // Merchant operations implementation
+  async getMerchantProfile(userId: number): Promise<MerchantProfile | undefined> {
+    const [profile] = await db.select().from(merchantProfiles).where(eq(merchantProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile> {
+    const [newProfile] = await db.insert(merchantProfiles).values(profile).returning();
+    return newProfile;
+  }
+
+  async getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }> {
+    const today = new Date();
+    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+    // Get today's orders and revenue
+    const todayOrders = await db.select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.sellerId, userId),
+          gte(orders.createdAt, startOfDay)
+        )
+      );
+
+    const todayRevenue = todayOrders.reduce((sum, order) => 
+      sum + parseFloat(order.totalPrice || '0'), 0);
+
+    // Get pending orders count
+    const pendingOrders = await db.select()
+      .from(orders)
+      .where(
+        and(
+          eq(orders.sellerId, userId),
+          eq(orders.status, 'pending')
+        )
+      );
+
+    // Mock data for product views and messages (would need additional tracking tables)
+    return {
+      todayRevenue,
+      ordersCount: pendingOrders.length,
+      productViews: Math.floor(Math.random() * 1000) + 500, // Mock data
+      unreadMessages: Math.floor(Math.random() * 10) + 1 // Mock data
+    };
+  }
+
+  async getMerchantOrders(userId: number): Promise<Order[]> {
+    const merchantOrders = await db.select({
+      id: orders.id,
+      buyerId: orders.buyerId,
+      sellerId: orders.sellerId,
+      productId: orders.productId,
+      quantity: orders.quantity,
+      totalPrice: orders.totalPrice,
+      status: orders.status,
+      deliveryAddress: orders.deliveryAddress,
+      driverId: orders.driverId,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      buyer: {
+        fullName: users.fullName,
+        phone: users.phone,
+        email: users.email
+      },
+      product: {
+        name: products.name,
+        price: products.price,
+        unit: products.unit,
+        image: products.image
+      }
+    })
+    .from(orders)
+    .leftJoin(users, eq(orders.buyerId, users.id))
+    .leftJoin(products, eq(orders.productId, products.id))
+    .where(eq(orders.sellerId, userId))
+    .orderBy(desc(orders.createdAt));
+
+    return merchantOrders;
+  }
+
+  async updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void> {
+    await db.update(orders)
+      .set({ 
+        status: status as any,
+        updatedAt: new Date()
+      })
+      .where(
+        and(
+          eq(orders.id, orderId),
+          eq(orders.sellerId, merchantId)
+        )
+      );
+  }
+
+  async getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]> {
+    let daysBack = 7;
+    if (period === '30d') daysBack = 30;
+    if (period === '90d') daysBack = 90;
+
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - daysBack);
+
+    const analytics = await db.select()
+      .from(merchantAnalytics)
+      .where(
+        and(
+          eq(merchantAnalytics.merchantId, userId),
+          gte(merchantAnalytics.date, startDate)
+        )
+      )
+      .orderBy(desc(merchantAnalytics.date));
+
+    return analytics;
+  }
+
+  async createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest> {
+    const [newRequest] = await db.insert(deliveryRequests).values(request).returning();
+    return newRequest;
   }
 }
 

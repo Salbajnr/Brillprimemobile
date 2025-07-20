@@ -500,6 +500,214 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Driver Dashboard API Endpoints
+  app.get("/api/driver/profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const driverProfile = await storage.getDriverProfile(req.user.id);
+      res.json(driverProfile);
+    } catch (error) {
+      console.error("Get driver profile error:", error);
+      res.status(500).json({ message: "Error fetching driver profile" });
+    }
+  });
+
+  app.get("/api/driver/available-jobs", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const jobs = await storage.getAvailableDeliveryJobs();
+      res.json(jobs);
+    } catch (error) {
+      console.error("Get available jobs error:", error);
+      res.status(500).json({ message: "Error fetching available jobs" });
+    }
+  });
+
+  app.post("/api/driver/accept-job/:jobId", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { jobId } = req.params;
+      await storage.acceptDeliveryJob(jobId, req.user.id);
+      res.json({ message: "Job accepted successfully" });
+    } catch (error) {
+      console.error("Accept job error:", error);
+      res.status(500).json({ message: "Error accepting job" });
+    }
+  });
+
+  app.get("/api/driver/earnings", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const earnings = await storage.getDriverEarnings(req.user.id);
+      res.json(earnings);
+    } catch (error) {
+      console.error("Get driver earnings error:", error);
+      res.status(500).json({ message: "Error fetching earnings" });
+    }
+  });
+
+  app.get("/api/driver/delivery-history", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const history = await storage.getDriverDeliveryHistory(req.user.id);
+      res.json(history);
+    } catch (error) {
+      console.error("Get delivery history error:", error);
+      res.status(500).json({ message: "Error fetching delivery history" });
+    }
+  });
+
+  app.put("/api/driver/update-location", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { latitude, longitude, accuracy } = req.body;
+      await storage.updateDriverLocation(req.user.id, { latitude, longitude, accuracy });
+      res.json({ message: "Location updated successfully" });
+    } catch (error) {
+      console.error("Update location error:", error);
+      res.status(500).json({ message: "Error updating location" });
+    }
+  });
+
+  // Merchant Dashboard API Endpoints
+  app.get("/api/merchant/profile", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const merchantProfile = await storage.getMerchantProfile(req.user.id);
+      res.json(merchantProfile);
+    } catch (error) {
+      console.error("Get merchant profile error:", error);
+      res.status(500).json({ message: "Error fetching merchant profile" });
+    }
+  });
+
+  app.get("/api/merchant/dashboard-stats", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const stats = await storage.getMerchantDashboardStats(req.user.id);
+      res.json(stats);
+    } catch (error) {
+      console.error("Get dashboard stats error:", error);
+      res.status(500).json({ message: "Error fetching dashboard stats" });
+    }
+  });
+
+  app.get("/api/merchant/orders", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const orders = await storage.getMerchantOrders(req.user.id);
+      res.json(orders);
+    } catch (error) {
+      console.error("Get merchant orders error:", error);
+      res.status(500).json({ message: "Error fetching orders" });
+    }
+  });
+
+  app.put("/api/merchant/order/:orderId/status", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { orderId } = req.params;
+      const { status } = req.body;
+      await storage.updateOrderStatus(orderId, status, req.user.id);
+      res.json({ message: "Order status updated successfully" });
+    } catch (error) {
+      console.error("Update order status error:", error);
+      res.status(500).json({ message: "Error updating order status" });
+    }
+  });
+
+  app.get("/api/merchant/analytics", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { period = '7d' } = req.query;
+      const analytics = await storage.getMerchantAnalytics(req.user.id, period as string);
+      res.json(analytics);
+    } catch (error) {
+      console.error("Get merchant analytics error:", error);
+      res.status(500).json({ message: "Error fetching analytics" });
+    }
+  });
+
+  app.post("/api/merchant/request-delivery", async (req, res) => {
+    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const deliveryData = req.body;
+      const deliveryRequest = await storage.createDeliveryRequest({
+        ...deliveryData,
+        merchantId: req.user.id
+      });
+      res.json(deliveryRequest);
+    } catch (error) {
+      console.error("Create delivery request error:", error);
+      res.status(500).json({ message: "Error creating delivery request" });
+    }
+  });
+
+  // Driver Registration API Endpoint
+  app.post("/api/driver/register", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const driverData = req.body;
+      const driverProfile = await storage.createDriverProfile({
+        ...driverData,
+        userId: req.user.id,
+        totalDeliveries: 0,
+        totalEarnings: "0",
+        rating: 0,
+        reviewCount: 0,
+        isVerified: false,
+        isActive: true
+      });
+      
+      res.json({ 
+        message: "Driver registration successful", 
+        profile: driverProfile 
+      });
+    } catch (error) {
+      console.error("Driver registration error:", error);
+      res.status(500).json({ message: "Error registering driver" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
