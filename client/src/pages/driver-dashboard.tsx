@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationProvider, useNotifications } from "@/components/ui/notification-system";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
 import { 
   Menu, 
   X,
@@ -29,6 +29,7 @@ import {
 import logoImage from "../assets/images/logo.png";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 import mapBackground from "../assets/images/map_background.png";
+import scanQRIcon from "../assets/images/scan_qr_code_white.png";
 
 interface DeliveryJob {
   id: string;
@@ -81,6 +82,7 @@ const COLORS = {
 } as const;
 
 function DriverDashboardContent() {
+  const [, setLocation] = useLocation();
   const [selectedTab, setSelectedTab] = useState("jobs");
   const [isOnline, setIsOnline] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -270,8 +272,19 @@ function DriverDashboardContent() {
                 backgroundColor: COLORS.WHITE,
                 borderColor: COLORS.PRIMARY + '40'
               }}>
-                <p className="text-2xl font-bold text-green-600">₦{(sampleEarnings.todayEarnings / 1000).toFixed(1)}k</p>
-                <p className="text-xs" style={{ color: COLORS.TEXT + '80' }}>Today</p>
+                <Button
+                  onClick={() => setLocation("/qr-scanner")}
+                  className="w-full h-full p-2 rounded-xl border-none hover:opacity-90 transition-opacity"
+                  style={{
+                    backgroundColor: COLORS.PRIMARY,
+                    color: COLORS.WHITE
+                  }}
+                >
+                  <div className="flex flex-col items-center space-y-1">
+                    <img src={scanQRIcon} alt="Scan QR" className="w-6 h-6" />
+                    <span className="text-xs font-medium">Scan QR</span>
+                  </div>
+                </Button>
               </div>
             </div>
 
