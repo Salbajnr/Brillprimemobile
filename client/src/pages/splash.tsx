@@ -24,7 +24,7 @@ export default function SplashPage() {
           setLocation("/onboarding");
         }
       }
-    }, 3000); // Show splash for 3 seconds as per documentation
+    }, 5000); // Show splash for 5 seconds as requested
 
     return () => clearTimeout(timer);
   }, [setLocation, user, isAuthenticated]);
