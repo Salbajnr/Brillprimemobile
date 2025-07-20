@@ -90,6 +90,48 @@ export const cartItems = pgTable("cart_items", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Vendor Feed Posts
+export const vendorPosts = pgTable("vendor_posts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  vendorId: integer("vendor_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  postType: text("post_type", { enum: ["PRODUCT_UPDATE", "NEW_PRODUCT", "PROMOTION", "ANNOUNCEMENT", "RESTOCK"] }).notNull(),
+  productId: uuid("product_id").references(() => products.id), // Optional - for product-related posts
+  images: text("images").array(), // Array of image URLs
+  tags: text("tags").array(), // Array of tags for discoverability
+  originalPrice: decimal("original_price", { precision: 12, scale: 2 }), // For promotions
+  discountPrice: decimal("discount_price", { precision: 12, scale: 2 }), // For promotions
+  discountPercentage: integer("discount_percentage"), // For promotions
+  validUntil: timestamp("valid_until"), // For time-limited offers
+  isActive: boolean("is_active").default(true),
+  viewCount: integer("view_count").default(0),
+  likeCount: integer("like_count").default(0),
+  commentCount: integer("comment_count").default(0),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Vendor Post Likes
+export const vendorPostLikes = pgTable("vendor_post_likes", {
+  id: serial("id").primaryKey(),
+  postId: uuid("post_id").notNull().references(() => vendorPosts.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Vendor Post Comments
+export const vendorPostComments = pgTable("vendor_post_comments", {
+  id: serial("id").primaryKey(),
+  postId: uuid("post_id").notNull().references(() => vendorPosts.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  parentCommentId: integer("parent_comment_id").references(() => vendorPostComments.id), // For reply threads
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locations: many(userLocations),
@@ -125,6 +167,25 @@ export const cartItemsRelations = relations(cartItems, ({ one }) => ({
   product: one(products, { fields: [cartItems.productId], references: [products.id] }),
 }));
 
+export const vendorPostsRelations = relations(vendorPosts, ({ one, many }) => ({
+  vendor: one(users, { fields: [vendorPosts.vendorId], references: [users.id] }),
+  product: one(products, { fields: [vendorPosts.productId], references: [products.id] }),
+  likes: many(vendorPostLikes),
+  comments: many(vendorPostComments),
+}));
+
+export const vendorPostLikesRelations = relations(vendorPostLikes, ({ one }) => ({
+  post: one(vendorPosts, { fields: [vendorPostLikes.postId], references: [vendorPosts.id] }),
+  user: one(users, { fields: [vendorPostLikes.userId], references: [users.id] }),
+}));
+
+export const vendorPostCommentsRelations = relations(vendorPostComments, ({ one, many }) => ({
+  post: one(vendorPosts, { fields: [vendorPostComments.postId], references: [vendorPosts.id] }),
+  user: one(users, { fields: [vendorPostComments.userId], references: [users.id] }),
+  parentComment: one(vendorPostComments, { fields: [vendorPostComments.parentCommentId], references: [vendorPostComments.id] }),
+  replies: many(vendorPostComments),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   fullName: true,
   email: true,
@@ -148,6 +209,9 @@ export const insertProductSchema = createInsertSchema(products);
 export const insertOrderSchema = createInsertSchema(orders);
 export const insertCartItemSchema = createInsertSchema(cartItems);
 export const insertUserLocationSchema = createInsertSchema(userLocations);
+export const insertVendorPostSchema = createInsertSchema(vendorPosts);
+export const insertVendorPostLikeSchema = createInsertSchema(vendorPostLikes);
+export const insertVendorPostCommentSchema = createInsertSchema(vendorPostComments);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -163,3 +227,9 @@ export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type UserLocation = typeof userLocations.$inferSelect;
 export type InsertUserLocation = z.infer<typeof insertUserLocationSchema>;
+export type VendorPost = typeof vendorPosts.$inferSelect;
+export type InsertVendorPost = z.infer<typeof insertVendorPostSchema>;
+export type VendorPostLike = typeof vendorPostLikes.$inferSelect;
+export type InsertVendorPostLike = z.infer<typeof insertVendorPostLikeSchema>;
+export type VendorPostComment = typeof vendorPostComments.$inferSelect;
+export type InsertVendorPostComment = z.infer<typeof insertVendorPostCommentSchema>;

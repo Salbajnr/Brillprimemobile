@@ -21,6 +21,7 @@ import FuelOrderingPage from "@/pages/fuel-ordering";
 import QRScannerPage from "@/pages/qr-scanner";
 import TollPaymentsPage from "@/pages/toll-payments";
 import CommoditiesPage from "@/pages/commodities";
+import VendorFeedPage from "@/pages/vendor-feed";
 import MapHomePage from "@/pages/map-home";
 import LocationSetupPage from "@/pages/location-setup";
 import SideMenuPage from "@/pages/side-menu";
@@ -59,6 +60,7 @@ function Router() {
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
       <Route path="/commodities" component={() => <ProtectedRoute component={CommoditiesPage} />} />
+      <Route path="/vendor-feed" component={() => <ProtectedRoute component={VendorFeedPage} />} />
       <Route path="/map-home" component={() => <ProtectedRoute component={MapHomePage} />} />
       <Route path="/location-setup" component={() => <ProtectedRoute component={LocationSetupPage} />} />
       <Route path="/side-menu" component={() => <ProtectedRoute component={SideMenuPage} />} />

@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema } from "@shared/schema";
+import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -296,6 +296,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Cart removal error:", error);
       res.status(500).json({ success: false, message: "Failed to remove item from cart" });
+    }
+  });
+
+  // Vendor Feed Routes
+  
+  // Get vendor posts
+  app.get("/api/vendor-posts", async (req, res) => {
+    try {
+      const { limit = 20, offset = 0, vendorId, postType } = req.query;
+      
+      const posts = await storage.getVendorPosts({
+        limit: parseInt(limit as string),
+        offset: parseInt(offset as string),
+        vendorId: vendorId ? parseInt(vendorId as string) : undefined,
+        postType: postType as string
+      });
+      
+      res.json(posts);
+    } catch (error) {
+      console.error("Get vendor posts error:", error);
+      res.status(500).json({ message: "Failed to fetch vendor posts" });
+    }
+  });
+
+  // Create vendor post
+  app.post("/api/vendor-posts", async (req, res) => {
+    try {
+      // Check if user is authenticated (in a real app, this would be middleware)
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || user.role !== "MERCHANT") {
+        return res.status(403).json({ message: "Only merchants can create posts" });
+      }
+
+      const postData = insertVendorPostSchema.parse(req.body);
+      const post = await storage.createVendorPost(postData);
+      
+      res.json(post);
+    } catch (error) {
+      console.error("Create vendor post error:", error);
+      res.status(400).json({ message: "Invalid post data" });
+    }
+  });
+
+  // Like vendor post
+  app.post("/api/vendor-posts/:postId/like", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { postId } = req.params;
+      const like = await storage.likeVendorPost(postId, req.session.userId);
+      
+      res.json(like);
+    } catch (error) {
+      console.error("Like post error:", error);
+      res.status(500).json({ message: "Failed to like post" });
     }
   });
 

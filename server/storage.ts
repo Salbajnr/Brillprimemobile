@@ -1,9 +1,11 @@
 import { 
   users, otpCodes, categories, products, cartItems, userLocations, orders,
+  vendorPosts, vendorPostLikes, vendorPostComments,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
-  type Order, type InsertOrder
+  type Order, type InsertOrder, type VendorPost, type InsertVendorPost,
+  type VendorPostLike, type InsertVendorPostLike, type VendorPostComment, type InsertVendorPostComment
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
@@ -37,6 +39,15 @@ export interface IStorage {
   addToCart(cartItem: InsertCartItem): Promise<CartItem>;
   updateCartItem(cartItemId: number, quantity: number): Promise<CartItem>;
   removeFromCart(cartItemId: number): Promise<void>;
+  
+  // Vendor Feed operations
+  getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
+  createVendorPost(post: InsertVendorPost): Promise<VendorPost>;
+  likeVendorPost(postId: string, userId: number): Promise<VendorPostLike>;
+  unlikeVendorPost(postId: string, userId: number): Promise<void>;
+  getVendorPostLikes(postId: string): Promise<VendorPostLike[]>;
+  commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment>;
+  getVendorPostComments(postId: string): Promise<VendorPostComment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -303,6 +314,39 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(cartItems)
       .where(eq(cartItems.id, cartItemId));
+  }
+
+  // Vendor Feed operations
+  async getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<any[]> {
+    // Return empty array for now - will implement when schema issues are resolved
+    return [];
+  }
+
+  async createVendorPost(insertPost: InsertVendorPost): Promise<VendorPost> {
+    // Placeholder implementation
+    return {} as VendorPost;
+  }
+
+  async likeVendorPost(postId: string, userId: number): Promise<VendorPostLike> {
+    // Placeholder implementation
+    return {} as VendorPostLike;
+  }
+
+  async unlikeVendorPost(postId: string, userId: number): Promise<void> {
+    // Placeholder implementation
+  }
+
+  async getVendorPostLikes(postId: string): Promise<VendorPostLike[]> {
+    return [];
+  }
+
+  async commentOnVendorPost(insertComment: InsertVendorPostComment): Promise<VendorPostComment> {
+    // Placeholder implementation
+    return {} as VendorPostComment;
+  }
+
+  async getVendorPostComments(postId: string): Promise<VendorPostComment[]> {
+    return [];
   }
 }
 
