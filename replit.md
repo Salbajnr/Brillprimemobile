@@ -689,3 +689,23 @@ Based on the comprehensive user flow documentation, the following features are p
 - ✓ Applied consistent color constants and design patterns across all chat interfaces
 - ✓ Enhanced driver dashboard with "View Details" button linking to delivery detail page
 - ✓ Fixed all profile photos to consistently use client/src/assets/images/account_circle.svg
+
+### Universal Order History System & Detailed View Implementation (July 20, 2025)
+- ✓ Created comprehensive order history page adapting to all user types (Consumer, Merchant, Driver)
+- ✓ Implemented role-based content display with appropriate data for each user type:
+  - Consumer: View fuel orders, commodity purchases, food deliveries with merchant/driver information
+  - Merchant: Track customer orders, delivery status, and comprehensive sales history
+  - Driver: Display pickup & delivery history with customer details and earnings breakdown
+- ✓ Applied exact template design specifications with rounded cards and #4682b4 borders
+- ✓ Built detailed order history view using provided template design with:
+  - Centered customer profile photo with 80px circular display
+  - Product information section with icon, name, quantity badge, and pricing
+  - Route visualization with dotted line connectors between pickup and delivery locations
+  - Delivery statistics display (distance, time taken, date, delivery time)
+  - Purchase summary card with blue background (#4682b4) showing subtotal, delivery fee, and total
+  - Large status badge (Completed, Cancelled, In Progress, Pending) with appropriate colors
+  - Driver-specific action buttons (Call Customer, Chat) for active deliveries
+- ✓ Added clickable navigation from order history cards to detailed view
+- ✓ Integrated navigation from Consumer Home services grid, Driver Dashboard, and side menu
+- ✓ Maintained consistent Brillprime color scheme and rounded-3xl design language throughout
+- ✓ Created smart back navigation returning users to appropriate role-based dashboards
