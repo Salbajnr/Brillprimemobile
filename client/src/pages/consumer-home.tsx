@@ -185,39 +185,90 @@ export default function ConsumerHome() {
                 <MapPin className="w-5 h-5" />
               </Button>
             </div>
-            <div className="mb-6">
-              <div className="h-32 bg-white/20 rounded-lg overflow-hidden relative">
+            <div className="mb-4">
+              <div className="h-40 bg-white/10 rounded-xl overflow-hidden relative mx-2">
                 <svg 
-                  viewBox="0 0 300 128" 
+                  viewBox="0 0 400 160" 
                   className="w-full h-full"
-                  style={{ background: 'linear-gradient(135deg, #e8f4f8 0%, #d1e9f0 100%)' }}
+                  style={{ background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 50%, #bae6fd 100%)' }}
                 >
-                  {/* Streets */}
-                  <path d="M0 40 L300 40" stroke="#c0c0c0" strokeWidth="3" />
-                  <path d="M0 80 L300 80" stroke="#c0c0c0" strokeWidth="2" />
-                  <path d="M50 0 L50 128" stroke="#c0c0c0" strokeWidth="2" />
-                  <path d="M150 0 L150 128" stroke="#c0c0c0" strokeWidth="3" />
-                  <path d="M250 0 L250 128" stroke="#c0c0c0" strokeWidth="2" />
+                  {/* Water/Lagos Lagoon */}
+                  <path d="M0 120 Q100 110 200 115 T400 120 L400 160 L0 160 Z" fill="#0ea5e9" opacity="0.3" />
                   
-                  {/* Buildings */}
-                  <rect x="10" y="10" width="30" height="25" fill="#4682b4" opacity="0.7" />
-                  <rect x="60" y="50" width="25" height="25" fill="#0b1a51" opacity="0.7" />
-                  <rect x="180" y="15" width="35" height="20" fill="#4682b4" opacity="0.7" />
-                  <rect x="200" y="90" width="40" height="30" fill="#0b1a51" opacity="0.7" />
+                  {/* Major Roads */}
+                  <path d="M0 60 L400 60" stroke="#ffffff" strokeWidth="4" strokeDasharray="8,4" />
+                  <path d="M0 100 L400 100" stroke="#ffffff" strokeWidth="3" strokeDasharray="6,3" />
+                  <path d="M80 0 L80 160" stroke="#ffffff" strokeWidth="3" strokeDasharray="6,3" />
+                  <path d="M200 0 L200 160" stroke="#ffffff" strokeWidth="4" strokeDasharray="8,4" />
+                  <path d="M320 0 L320 160" stroke="#ffffff" strokeWidth="3" strokeDasharray="6,3" />
                   
-                  {/* Your location pin */}
-                  <circle cx="150" cy="64" r="8" fill="#ff4444" />
-                  <circle cx="150" cy="64" r="3" fill="white" />
+                  {/* Secondary Streets */}
+                  <path d="M0 30 L400 30" stroke="#e2e8f0" strokeWidth="2" />
+                  <path d="M0 130 L400 130" stroke="#e2e8f0" strokeWidth="2" />
+                  <path d="M40 0 L40 160" stroke="#e2e8f0" strokeWidth="2" />
+                  <path d="M140 0 L140 160" stroke="#e2e8f0" strokeWidth="2" />
+                  <path d="M260 0 L260 160" stroke="#e2e8f0" strokeWidth="2" />
+                  <path d="M360 0 L360 160" stroke="#e2e8f0" strokeWidth="2" />
                   
-                  {/* Location text */}
-                  <text x="150" y="100" textAnchor="middle" fontSize="8" fill="#4682b4" fontWeight="600">
-                    You are here
-                  </text>
+                  {/* Buildings - Residential */}
+                  <rect x="10" y="10" width="25" height="15" fill="#4682b4" opacity="0.8" rx="2" />
+                  <rect x="45" y="8" width="20" height="18" fill="#0b1a51" opacity="0.8" rx="2" />
+                  <rect x="15" y="65" width="30" height="20" fill="#4682b4" opacity="0.7" rx="2" />
+                  <rect x="50" y="70" width="25" height="25" fill="#0b1a51" opacity="0.7" rx="2" />
+                  
+                  {/* Buildings - Commercial */}
+                  <rect x="90" y="5" width="40" height="30" fill="#4682b4" opacity="0.9" rx="3" />
+                  <rect x="150" y="8" width="35" height="25" fill="#0b1a51" opacity="0.9" rx="3" />
+                  <rect x="85" y="65" width="50" height="30" fill="#4682b4" opacity="0.8" rx="3" />
+                  <rect x="145" y="70" width="45" height="25" fill="#0b1a51" opacity="0.8" rx="3" />
+                  
+                  {/* Buildings - High-rise */}
+                  <rect x="210" y="2" width="30" height="55" fill="#4682b4" opacity="0.9" rx="4" />
+                  <rect x="250" y="5" width="25" height="50" fill="#0b1a51" opacity="0.9" rx="4" />
+                  <rect x="285" y="3" width="28" height="52" fill="#4682b4" opacity="0.9" rx="4" />
+                  <rect x="330" y="10" width="35" height="45" fill="#0b1a51" opacity="0.8" rx="4" />
+                  <rect x="370" y="8" width="25" height="47" fill="#4682b4" opacity="0.8" rx="4" />
+                  
+                  {/* Parks/Green Areas */}
+                  <ellipse cx="160" cy="135" rx="25" ry="15" fill="#22c55e" opacity="0.4" />
+                  <ellipse cx="300" cy="130" rx="30" ry="20" fill="#22c55e" opacity="0.4" />
+                  
+                  {/* Your location pin with shadow */}
+                  <ellipse cx="200" cy="85" rx="12" ry="4" fill="#000000" opacity="0.2" />
+                  <path d="M200 60 C190 60 182 68 182 78 C182 88 200 90 200 90 C200 90 218 88 218 78 C218 68 210 60 200 60 Z" fill="#ef4444" />
+                  <circle cx="200" cy="78" r="8" fill="#ffffff" />
+                  <circle cx="200" cy="78" r="4" fill="#ef4444" />
+                  
+                  {/* Location pulse animation circles */}
+                  <circle cx="200" cy="78" r="20" fill="none" stroke="#ef4444" strokeWidth="2" opacity="0.3">
+                    <animate attributeName="r" values="20;35;20" dur="2s" repeatCount="indefinite" />
+                    <animate attributeName="opacity" values="0.3;0;0.3" dur="2s" repeatCount="indefinite" />
+                  </circle>
+                  
+                  {/* Landmarks */}
+                  <polygon points="120,40 125,30 130,40" fill="#fbbf24" opacity="0.8" />
+                  <rect x="123" y="40" width="4" height="8" fill="#92400e" />
+                  
+                  {/* Traffic indicators */}
+                  <circle cx="80" cy="60" r="3" fill="#22c55e" opacity="0.8" />
+                  <circle cx="200" cy="60" r="3" fill="#eab308" opacity="0.8" />
+                  <circle cx="320" cy="60" r="3" fill="#ef4444" opacity="0.8" />
                 </svg>
                 
                 {/* Floating location info */}
-                <div className="absolute bottom-2 left-2 bg-white/90 rounded px-2 py-1">
-                  <p className="text-xs text-[#4682b4] font-medium">Lagos, Nigeria</p>
+                <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <p className="text-xs text-[#4682b4] font-semibold">Live • Victoria Island, Lagos</p>
+                  </div>
+                </div>
+                
+                {/* Zoom controls */}
+                <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-lg p-1 shadow-sm">
+                  <div className="flex flex-col space-y-1">
+                    <button className="w-6 h-6 flex items-center justify-center text-[#4682b4] hover:bg-blue-50 rounded text-sm font-bold">+</button>
+                    <button className="w-6 h-6 flex items-center justify-center text-[#4682b4] hover:bg-blue-50 rounded text-sm font-bold">−</button>
+                  </div>
                 </div>
               </div>
             </div>
