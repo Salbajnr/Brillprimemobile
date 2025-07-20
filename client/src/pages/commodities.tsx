@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Search, Filter, ShoppingCart, Plus, Minus, Star, MapPin } from "lucide-react";
+import { ArrowLeft, Search, Filter, ShoppingCart, Plus, Minus, Star, MapPin, Shirt, Palette, Sparkles, GraduationCap, Calendar, DollarSign, ShoppingBasket, Building2, Heart, Users, Fuel, UtensilsCrossed, Store, Ticket, Car, Briefcase } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -169,6 +169,30 @@ export default function Commodities() {
     }
   };
 
+  // Icon mapping for category icons
+  const getIconComponent = (iconName: string) => {
+    const iconMap: { [key: string]: React.ComponentType<{ className?: string }> } = {
+      Shirt,
+      Palette,
+      Sparkles,
+      GraduationCap,
+      Calendar,
+      DollarSign,
+      ShoppingBasket,
+      Building2,
+      Heart,
+      Users,
+      Fuel,
+      UtensilsCrossed,
+      Store,
+      Ticket,
+      Car,
+      Briefcase
+    };
+    
+    return iconMap[iconName] || Store;
+  };
+
   if (categoriesLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -277,11 +301,16 @@ export default function Commodities() {
               .map((category: Category) => (
                 <Card 
                   key={category.id} 
-                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  className="cursor-pointer hover:shadow-md transition-shadow border-2 border-blue-100 hover:border-blue-200"
                   onClick={() => handleCategorySelect(category.id)}
                 >
                   <CardContent className="p-4 text-center">
-                    <div className="text-3xl mb-2">{category.icon}</div>
+                    <div className="w-12 h-12 mx-auto mb-3 bg-blue-50 rounded-xl flex items-center justify-center">
+                      {(() => {
+                        const IconComponent = getIconComponent(category.icon);
+                        return <IconComponent className="w-6 h-6 text-[#4682b4]" />;
+                      })()}
+                    </div>
                     <h3 className="font-medium text-sm text-[#131313] mb-1">
                       {category.name}
                     </h3>
@@ -332,7 +361,7 @@ export default function Commodities() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {products.map((product: ExtendedProduct) => (
-                <Card key={product.id} className="hover:shadow-md transition-shadow">
+                <Card key={product.id} className="hover:shadow-md transition-shadow border-2 border-blue-100 hover:border-blue-200">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h3 className="font-semibold text-[#131313] text-sm">
