@@ -45,6 +45,7 @@ import DeliveryDetail from "@/pages/delivery-detail";
 import DriverWithdrawal from "@/pages/driver-withdrawal";
 import OrderHistory from "@/pages/order-history";
 import OrderHistoryDetail from "@/pages/order-history-detail";
+import Support from "@/pages/support";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -97,6 +98,7 @@ function Router() {
       <Route path="/order-history-detail" component={() => <ProtectedRoute component={OrderHistoryDetail} />} />
       <Route path="/notifications" component={() => <ProtectedRoute component={NotificationsPage} />} />
       <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
+      <Route path="/support" component={() => <ProtectedRoute component={Support} />} />
       <Route component={NotFound} />
     </Switch>
   );
