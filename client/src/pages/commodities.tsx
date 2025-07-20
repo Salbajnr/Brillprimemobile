@@ -50,157 +50,349 @@ export default function Commodities() {
 
   const categories: Category[] = [
     {
-      id: "grains",
-      name: "Grains & Cereals",
-      icon: "🌾",
-      productCount: 45
+      id: "apparel",
+      name: "Apparel & Clothing",
+      icon: "👕",
+      productCount: 156
     },
     {
-      id: "vegetables",
-      name: "Fresh Vegetables",
-      icon: "🥬",
-      productCount: 38
+      id: "art-entertainment",
+      name: "Art & Entertainment",
+      icon: "🎨",
+      productCount: 89
     },
     {
-      id: "fruits",
-      name: "Fresh Fruits",
-      icon: "🍎",
-      productCount: 32
+      id: "beauty-cosmetics",
+      name: "Beauty, Cosmetics & Personal Care",
+      icon: "💄",
+      productCount: 234
     },
     {
-      id: "livestock",
-      name: "Livestock & Poultry",
-      icon: "🐄",
-      productCount: 28
+      id: "education",
+      name: "Education",
+      icon: "📚",
+      productCount: 67
     },
     {
-      id: "dairy",
-      name: "Dairy Products",
-      icon: "🥛",
-      productCount: 22
+      id: "event-planner",
+      name: "Event Planner",
+      icon: "🎉",
+      productCount: 43
     },
     {
-      id: "spices",
-      name: "Spices & Herbs",
-      icon: "🌶️",
-      productCount: 56
+      id: "finance",
+      name: "Finance",
+      icon: "💰",
+      productCount: 78
+    },
+    {
+      id: "supermarket",
+      name: "Supermarket/Convenience Store",
+      icon: "🏪",
+      productCount: 345
+    },
+    {
+      id: "hotel",
+      name: "Hotel",
+      icon: "🏨",
+      productCount: 125
+    },
+    {
+      id: "medical-health",
+      name: "Medical & Health",
+      icon: "⚕️",
+      productCount: 198
+    },
+    {
+      id: "non-profit",
+      name: "Non-profit Organisation",
+      icon: "🤝",
+      productCount: 34
+    },
+    {
+      id: "oil-gas",
+      name: "Oil & Gas",
+      icon: "⛽",
+      productCount: 87
+    },
+    {
+      id: "restaurant",
+      name: "Restaurant",
+      icon: "🍽️",
+      productCount: 267
+    },
+    {
+      id: "shopping-retail",
+      name: "Shopping & Retail",
+      icon: "🛍️",
+      productCount: 423
+    },
+    {
+      id: "ticket",
+      name: "Ticket",
+      icon: "🎫",
+      productCount: 76
+    },
+    {
+      id: "toll-gate",
+      name: "Toll Gate",
+      icon: "🚧",
+      productCount: 12
+    },
+    {
+      id: "vehicle-service",
+      name: "Vehicle Service",
+      icon: "🔧",
+      productCount: 145
+    },
+    {
+      id: "other-business",
+      name: "Other Business",
+      icon: "🏢",
+      productCount: 298
     }
   ];
 
   const [products] = useState<Product[]>([
+    // Apparel & Clothing
     {
-      id: "rice-001",
-      name: "Premium Basmati Rice",
-      category: "grains",
-      price: 45000,
-      unit: "50kg bag",
-      description: "High-quality long grain basmati rice, perfect for Nigerian households",
+      id: "clothing-001",
+      name: "Premium Ankara Fabric",
+      category: "apparel",
+      price: 8500,
+      unit: "6 yards",
+      description: "High-quality Ankara fabric with vibrant African prints",
       rating: 4.8,
-      reviewCount: 124,
+      reviewCount: 234,
       seller: {
         id: "seller-001",
-        name: "Abuja Grains Depot",
-        location: "Wuse Market, Abuja",
+        name: "Lagos Fashion House",
+        location: "Balogun Market, Lagos",
+        rating: 4.7,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Beauty & Cosmetics
+    {
+      id: "beauty-001",
+      name: "Natural Shea Butter",
+      category: "beauty-cosmetics",
+      price: 2500,
+      unit: "500ml jar",
+      description: "Pure unrefined shea butter from northern Ghana",
+      rating: 4.9,
+      reviewCount: 567,
+      seller: {
+        id: "seller-002",
+        name: "Natural Beauty Co.",
+        location: "Wuse II, Abuja",
+        rating: 4.8,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Supermarket Items
+    {
+      id: "supermarket-001",
+      name: "Rice - 50kg Bag",
+      category: "supermarket",
+      price: 45000,
+      unit: "50kg bag",
+      description: "Premium long grain parboiled rice",
+      rating: 4.6,
+      reviewCount: 342,
+      seller: {
+        id: "seller-003",
+        name: "Abuja Supermarket",
+        location: "Garki Area 11, Abuja",
+        rating: 4.5,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Restaurant
+    {
+      id: "restaurant-001",
+      name: "Jollof Rice Special",
+      category: "restaurant",
+      price: 3500,
+      unit: "serving",
+      description: "Traditional Nigerian jollof rice with chicken and plantain",
+      rating: 4.7,
+      reviewCount: 128,
+      seller: {
+        id: "seller-004",
+        name: "Mama's Kitchen",
+        location: "Victoria Island, Lagos",
         rating: 4.6,
         verified: true
       },
       inStock: true,
       minimumOrder: 1
     },
+    // Education
     {
-      id: "tomatoes-001",
-      name: "Fresh Roma Tomatoes",
-      category: "vegetables",
-      price: 8500,
-      unit: "basket (25kg)",
-      description: "Fresh, ripe Roma tomatoes directly from Jos farms",
-      rating: 4.5,
+      id: "education-001",
+      name: "Computer Programming Course",
+      category: "education",
+      price: 150000,
+      unit: "3-month course",
+      description: "Complete web development course with React and Node.js",
+      rating: 4.8,
       reviewCount: 89,
       seller: {
-        id: "seller-002",
-        name: "Jos Fresh Farms",
-        location: "Jos Plateau State",
-        rating: 4.7,
+        id: "seller-005",
+        name: "Tech Academy Nigeria",
+        location: "Ikeja, Lagos",
+        rating: 4.9,
         verified: true
       },
       inStock: true,
-      minimumOrder: 2
+      minimumOrder: 1
     },
+    // Medical & Health
     {
-      id: "yam-001",
-      name: "Quality Yam Tubers",
-      category: "vegetables",
-      price: 12000,
-      unit: "tuber (5-7kg)",
-      description: "Fresh yam tubers from Benue State farms",
-      rating: 4.3,
-      reviewCount: 67,
+      id: "medical-001",
+      name: "General Health Checkup",
+      category: "medical-health",
+      price: 25000,
+      unit: "consultation",
+      description: "Comprehensive health screening including blood work",
+      rating: 4.7,
+      reviewCount: 156,
       seller: {
-        id: "seller-003",
-        name: "Benue Farms Collective",
-        location: "Makurdi, Benue State",
+        id: "seller-006",
+        name: "City Medical Centre",
+        location: "Maitama, Abuja",
+        rating: 4.8,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Vehicle Service
+    {
+      id: "vehicle-001",
+      name: "Car Oil Change Service",
+      category: "vehicle-service",
+      price: 12000,
+      unit: "service",
+      description: "Complete engine oil change with filter replacement",
+      rating: 4.5,
+      reviewCount: 203,
+      seller: {
+        id: "seller-007",
+        name: "AutoCare Services",
+        location: "Berger, Lagos",
         rating: 4.4,
         verified: true
       },
       inStock: true,
-      minimumOrder: 5
+      minimumOrder: 1
     },
+    // Hotel
     {
-      id: "plantain-001",
-      name: "Unripe Plantain",
-      category: "fruits",
-      price: 3500,
-      unit: "bunch (8-12 fingers)",
-      description: "Fresh unripe plantain from Ogun State",
+      id: "hotel-001",
+      name: "Deluxe Room - One Night",
+      category: "hotel",
+      price: 35000,
+      unit: "night",
+      description: "Luxury hotel room with breakfast and free WiFi",
       rating: 4.6,
-      reviewCount: 112,
+      reviewCount: 324,
       seller: {
-        id: "seller-004",
-        name: "Ogun Fresh Produce",
-        location: "Abeokuta, Ogun State",
+        id: "seller-008",
+        name: "Grand Palace Hotel",
+        location: "Victoria Island, Lagos",
+        rating: 4.7,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Ticket
+    {
+      id: "ticket-001",
+      name: "Lagos-Abuja Flight",
+      category: "ticket",
+      price: 85000,
+      unit: "one-way ticket",
+      description: "Economy class flight from Lagos to Abuja",
+      rating: 4.3,
+      reviewCount: 445,
+      seller: {
+        id: "seller-009",
+        name: "Nigerian Airways",
+        location: "Murtala Mohammed Airport",
+        rating: 4.2,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Event Planner
+    {
+      id: "event-001",
+      name: "Wedding Planning Package",
+      category: "event-planner",
+      price: 500000,
+      unit: "full service",
+      description: "Complete wedding planning including decoration and catering coordination",
+      rating: 4.9,
+      reviewCount: 67,
+      seller: {
+        id: "seller-010",
+        name: "Elite Events Nigeria",
+        location: "Lekki, Lagos",
+        rating: 4.8,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Oil & Gas
+    {
+      id: "oil-001",
+      name: "Premium Petrol - 50L",
+      category: "oil-gas",
+      price: 40000,
+      unit: "50 liters",
+      description: "High-quality premium motor spirit delivered to your location",
+      rating: 4.4,
+      reviewCount: 234,
+      seller: {
+        id: "seller-011",
+        name: "Total Energies",
+        location: "Fuel delivery service",
+        rating: 4.6,
+        verified: true
+      },
+      inStock: true,
+      minimumOrder: 1
+    },
+    // Shopping & Retail
+    {
+      id: "retail-001",
+      name: "Samsung Galaxy Phone",
+      category: "shopping-retail",
+      price: 450000,
+      unit: "device",
+      description: "Latest Samsung Galaxy smartphone with 128GB storage",
+      rating: 4.7,
+      reviewCount: 178,
+      seller: {
+        id: "seller-012",
+        name: "Electronics World",
+        location: "Computer Village, Lagos",
         rating: 4.5,
         verified: true
       },
       inStock: true,
-      minimumOrder: 3
-    },
-    {
-      id: "pepper-001",
-      name: "Scotch Bonnet Pepper",
-      category: "spices",
-      price: 15000,
-      unit: "10kg bag",
-      description: "Hot scotch bonnet peppers, freshly harvested",
-      rating: 4.7,
-      reviewCount: 78,
-      seller: {
-        id: "seller-005",
-        name: "Kaduna Spice Market",
-        location: "Kaduna Central Market",
-        rating: 4.8,
-        verified: true
-      },
-      inStock: false,
       minimumOrder: 1
-    },
-    {
-      id: "beans-001",
-      name: "Brown Beans",
-      category: "grains",
-      price: 18000,
-      unit: "25kg bag",
-      description: "Premium brown beans from Kano State",
-      rating: 4.4,
-      reviewCount: 95,
-      seller: {
-        id: "seller-006",
-        name: "Kano Grain Merchants",
-        location: "Kano City, Kano State",
-        rating: 4.3,
-        verified: true
-      },
-      inStock: true,
-      minimumOrder: 2
     }
   ]);
 
@@ -300,7 +492,7 @@ export default function Commodities() {
             </Button>
             <div>
               <h1 className="text-lg font-semibold text-[#131313]">
-                {viewMode === "categories" ? "Commodities" : "Products"}
+                {viewMode === "categories" ? "Business Marketplace" : "Products & Services"}
               </h1>
               {viewMode === "products" && selectedCategory && (
                 <p className="text-sm text-gray-600">
