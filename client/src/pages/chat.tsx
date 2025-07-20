@@ -13,7 +13,11 @@ import {
   Clock,
   CheckCircle,
   Phone,
-  Mail
+  Mail,
+  Camera,
+  FileText,
+  Image,
+  X
 } from "lucide-react";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 import cameraIcon from "../assets/images/camera_icon.png";
@@ -61,6 +65,9 @@ export default function ChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const [showChatScreen, setShowChatScreen] = useState(false);
+  const [showImageMenu, setShowImageMenu] = useState(false);
+  const [showCallMenu, setShowCallMenu] = useState(false);
+  const [showProfileDetails, setShowProfileDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get conversations for current user
@@ -131,6 +138,39 @@ export default function ChatPage() {
   const handleBackToList = () => {
     setShowChatScreen(false);
     setSelectedConversation(null);
+    setShowImageMenu(false);
+    setShowCallMenu(false);
+    setShowProfileDetails(false);
+  };
+
+  const handleImageMenuOption = (option: 'camera' | 'photo' | 'document') => {
+    setShowImageMenu(false);
+    switch(option) {
+      case 'camera':
+        // Trigger camera capture
+        console.log('Opening camera...');
+        break;
+      case 'photo':
+        // Trigger photo picker
+        console.log('Opening photo gallery...');
+        break;
+      case 'document':
+        // Trigger document picker
+        console.log('Opening document picker...');
+        break;
+    }
+  };
+
+  const handleCallOption = (option: 'in-app' | 'cellular') => {
+    setShowCallMenu(false);
+    switch(option) {
+      case 'in-app':
+        console.log('Starting in-app call...');
+        break;
+      case 'cellular':
+        console.log('Starting cellular call...');
+        break;
+    }
   };
 
   if (!user) {
@@ -289,8 +329,9 @@ export default function ChatPage() {
             {selectedConv && (
               <>
                 <div 
-                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  className="w-12 h-12 rounded-full flex items-center justify-center cursor-pointer hover:opacity-80"
                   style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                  onClick={() => setShowProfileDetails(!showProfileDetails)}
                 >
                   <img 
                     src={accountCircleIcon} 
@@ -299,13 +340,14 @@ export default function ChatPage() {
                     style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
                   />
                 </div>
-                <div>
+                <div className="cursor-pointer" onClick={() => setShowProfileDetails(!showProfileDetails)}>
                   <h2 className="font-semibold text-lg" style={{ color: COLORS.TEXT }}>
                     {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
                   </h2>
                   {selectedConv.productName && (
                     <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>About: {selectedConv.productName}</p>
                   )}
+                  <p className="text-xs" style={{ color: COLORS.PRIMARY }}>Tap to view profile</p>
                 </div>
               </>
             )}
@@ -324,7 +366,12 @@ export default function ChatPage() {
                 {selectedConv.conversationType}
               </Badge>
             )}
-            <Button variant="ghost" size="sm" className="rounded-full p-2">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="rounded-full p-2 relative"
+              onClick={() => setShowCallMenu(!showCallMenu)}
+            >
               <Phone className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
             </Button>
             <Button variant="ghost" size="sm" className="rounded-full p-2">
@@ -332,6 +379,110 @@ export default function ChatPage() {
             </Button>
           </div>
         </div>
+
+        {/* Profile Details Modal */}
+        {showProfileDetails && selectedConv && (
+          <div className="absolute top-16 left-4 right-4 z-50">
+            <div 
+              className="rounded-3xl p-6 shadow-xl border"
+              style={{ backgroundColor: COLORS.WHITE, borderColor: COLORS.PRIMARY + '30' }}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold" style={{ color: COLORS.TEXT }}>Public Profile</h3>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowProfileDetails(false)}
+                  className="rounded-full"
+                >
+                  <X className="h-4 w-4" style={{ color: COLORS.TEXT }} />
+                </Button>
+              </div>
+              
+              <div className="flex items-center space-x-4 mb-4">
+                <div 
+                  className="w-16 h-16 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                >
+                  <img 
+                    src={accountCircleIcon} 
+                    alt="Profile" 
+                    className="w-12 h-12"
+                    style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                  />
+                </div>
+                <div>
+                  <h4 className="font-semibold text-xl" style={{ color: COLORS.TEXT }}>
+                    {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
+                  </h4>
+                  <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
+                    {user?.role === "CONSUMER" ? "Merchant" : "Customer"}
+                  </p>
+                  <div className="flex items-center mt-1">
+                    <div className="w-2 h-2 rounded-full bg-green-500 mr-2"></div>
+                    <span className="text-xs" style={{ color: COLORS.TEXT + '70' }}>Online</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Business Type</p>
+                  <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
+                    {selectedConv.conversationType === "QUOTE" ? "Product Supplier" : "Service Provider"}
+                  </p>
+                </div>
+                
+                {selectedConv.productName && (
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Current Discussion</p>
+                    <p className="text-sm" style={{ color: COLORS.PRIMARY }}>{selectedConv.productName}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Member Since</p>
+                  <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
+                    {new Date(selectedConv.createdAt).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long' 
+                    })}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Call Options Menu */}
+        {showCallMenu && (
+          <div className="absolute top-16 right-4 z-50">
+            <div 
+              className="rounded-3xl p-4 shadow-xl border min-w-48"
+              style={{ backgroundColor: COLORS.WHITE, borderColor: COLORS.PRIMARY + '30' }}
+            >
+              <h4 className="text-sm font-semibold mb-3" style={{ color: COLORS.TEXT }}>Call Options</h4>
+              <div className="space-y-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCallOption('in-app')}
+                  className="w-full justify-start rounded-2xl p-3 hover:bg-gray-50"
+                >
+                  <Phone className="h-4 w-4 mr-3" style={{ color: COLORS.PRIMARY }} />
+                  <span style={{ color: COLORS.TEXT }}>In-App Call</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleCallOption('cellular')}
+                  className="w-full justify-start rounded-2xl p-3 hover:bg-gray-50"
+                >
+                  <Phone className="h-4 w-4 mr-3" style={{ color: COLORS.SECONDARY }} />
+                  <span style={{ color: COLORS.TEXT }}>Cellular Call</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -393,14 +544,55 @@ export default function ChatPage() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input - Standardized Chat UI */}
-      <div className="p-5" style={{ backgroundColor: COLORS.WHITE }}>
+      {/* Message Input - Enhanced Chat UI */}
+      <div className="p-5 relative" style={{ backgroundColor: COLORS.WHITE }}>
+        {/* Image Options Menu */}
+        {showImageMenu && (
+          <div className="absolute bottom-20 right-5 z-50">
+            <div 
+              className="rounded-3xl p-4 shadow-xl border min-w-48"
+              style={{ backgroundColor: COLORS.WHITE, borderColor: '#A7C7E7' }}
+            >
+              <h4 className="text-sm font-semibold mb-3" style={{ color: COLORS.TEXT }}>Add Attachment</h4>
+              <div className="space-y-2">
+                <Button
+                  variant="ghost"
+                  onClick={() => handleImageMenuOption('camera')}
+                  className="w-full justify-start rounded-2xl p-3 hover:bg-gray-50"
+                >
+                  <Camera className="h-4 w-4 mr-3" style={{ color: COLORS.PRIMARY }} />
+                  <span style={{ color: COLORS.TEXT }}>Take Photo</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleImageMenuOption('photo')}
+                  className="w-full justify-start rounded-2xl p-3 hover:bg-gray-50"
+                >
+                  <Image className="h-4 w-4 mr-3" style={{ color: COLORS.PRIMARY }} />
+                  <span style={{ color: COLORS.TEXT }}>Upload Photo</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleImageMenuOption('document')}
+                  className="w-full justify-start rounded-2xl p-3 hover:bg-gray-50"
+                >
+                  <FileText className="h-4 w-4 mr-3" style={{ color: COLORS.SECONDARY }} />
+                  <span style={{ color: COLORS.TEXT }}>Upload Document</span>
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center space-x-3">
-          {/* Message Input Container */}
+          {/* Message Input Container with Light Blue Border */}
           <div className="flex-1 relative">
             <div 
-              className="rounded-3xl border-3 px-4 py-4"
-              style={{ borderColor: COLORS.PRIMARY }}
+              className="rounded-3xl px-4 py-4"
+              style={{ 
+                border: '2px solid #A7C7E7',
+                backgroundColor: COLORS.WHITE
+              }}
             >
               <input
                 value={newMessage}
@@ -417,21 +609,18 @@ export default function ChatPage() {
             </div>
           </div>
           
-          {/* Camera Button */}
+          {/* Image/Camera Button with Round Border */}
           <Button
-            onClick={() => {
-              // In real app, would open camera/image picker
-              console.log('Camera button clicked');
-            }}
-            className="w-15 h-15 p-0 rounded-full border-3 hover:opacity-80 transition-opacity"
+            onClick={() => setShowImageMenu(!showImageMenu)}
+            className="w-15 h-15 p-0 rounded-full hover:opacity-80 transition-opacity"
             style={{ 
-              borderColor: COLORS.PRIMARY,
+              border: '2px solid #A7C7E7',
               backgroundColor: COLORS.WHITE
             }}
           >
             <img 
               src={cameraIcon} 
-              alt="Camera" 
+              alt="Attachment" 
               className="w-10 h-10"
               style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
             />
