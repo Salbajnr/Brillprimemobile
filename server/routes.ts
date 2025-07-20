@@ -360,6 +360,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Wishlist Routes (placeholder implementations)
+  app.post("/api/wishlist", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { productId } = req.body;
+      await storage.addToWishlist(req.session.userId, productId);
+      
+      res.json({ message: "Added to wishlist successfully" });
+    } catch (error) {
+      console.error("Add to wishlist error:", error);
+      res.status(500).json({ message: "Failed to add to wishlist" });
+    }
+  });
+
+  app.get("/api/wishlist/:userId", async (req, res) => {
+    try {
+      const userId = parseInt(req.params.userId);
+      const wishlistItems = await storage.getWishlistItems(userId);
+      
+      res.json({ success: true, wishlistItems });
+    } catch (error) {
+      console.error("Wishlist fetch error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch wishlist" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

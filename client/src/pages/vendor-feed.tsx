@@ -12,16 +12,16 @@ import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
 import { 
   ArrowLeft, 
-  Heart, 
-  MessageCircle, 
-  Share2, 
   Plus,
   Calendar,
   Clock,
   Tag,
   ShoppingCart,
   Percent,
-  MapPin
+  MapPin,
+  MessageSquare,
+  Heart,
+  Quote
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import type { VendorPost, InsertVendorPost } from "@shared/schema";
@@ -89,11 +89,31 @@ export default function VendorFeed() {
     }
   });
 
-  // Like post mutation
-  const likePostMutation = useMutation({
-    mutationFn: (postId: string) => apiRequest(`/api/vendor-posts/${postId}/like`, { method: 'POST' }),
+  // Add to cart mutation
+  const addToCartMutation = useMutation({
+    mutationFn: (data: { productId: number; quantity: number }) => 
+      apiRequest('/api/cart', { 
+        method: 'POST', 
+        body: JSON.stringify({ 
+          userId: user?.id, 
+          productId: data.productId, 
+          quantity: data.quantity 
+        }) 
+      }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/vendor-posts'] });
+      // Show success message
+    }
+  });
+
+  // Add to wishlist mutation (placeholder for now)
+  const addToWishlistMutation = useMutation({
+    mutationFn: (productId: number) => 
+      apiRequest('/api/wishlist', { 
+        method: 'POST', 
+        body: JSON.stringify({ userId: user?.id, productId }) 
+      }),
+    onSuccess: () => {
+      // Show success message
     }
   });
 
@@ -380,47 +400,83 @@ export default function VendorFeed() {
                 {post.productName && (
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-3">
                     <div className="flex items-center justify-between">
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium text-[#131313]">{post.productName}</p>
                         {post.productPrice && (
                           <p className="text-[#4682b4] font-bold">₦{parseFloat(post.productPrice).toLocaleString()}</p>
                         )}
                       </div>
-                      <Button size="sm" className="bg-[#4682b4] hover:bg-[#0b1a51] text-white">
-                        <ShoppingCart className="h-3 w-3 mr-1" />
-                        Add to Cart
-                      </Button>
+                      <div className="flex space-x-2">
+                        <Button 
+                          size="sm" 
+                          onClick={() => addToCartMutation.mutate({ productId: post.productId!, quantity: 1 })}
+                          className="bg-[#4682b4] hover:bg-[#0b1a51] text-white"
+                          disabled={addToCartMutation.isPending}
+                        >
+                          <ShoppingCart className="h-3 w-3 mr-1" />
+                          Cart
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => addToWishlistMutation.mutate(post.productId!)}
+                          className="border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4] hover:text-white"
+                          disabled={addToWishlistMutation.isPending}
+                        >
+                          <Heart className="h-3 w-3" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* Actions */}
+                {/* Business Actions */}
                 <div className="flex items-center justify-between pt-3 border-t">
-                  <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    {/* Add to Cart - Show for all posts */}
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      onClick={() => likePostMutation.mutate(post.id)}
-                      className="flex items-center space-x-1 text-gray-600 hover:text-[#4682b4]"
+                      onClick={() => {
+                        if (post.productId) {
+                          addToCartMutation.mutate({ productId: post.productId, quantity: 1 });
+                        }
+                      }}
+                      className="flex items-center space-x-1 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4] hover:text-white"
+                      disabled={!post.productId || addToCartMutation.isPending}
                     >
-                      <Heart className="h-4 w-4" />
-                      <span>{post.likeCount}</span>
+                      <ShoppingCart className="h-3 w-3" />
+                      <span>Add to Cart</span>
                     </Button>
+                    
+                    {/* Get Quote */}
                     <Button
-                      variant="ghost"
+                      variant="outline"
                       size="sm"
-                      className="flex items-center space-x-1 text-gray-600 hover:text-[#4682b4]"
+                      onClick={() => {
+                        // Open quote dialog or redirect to quote page
+                        alert(`Request quote for "${post.title}" from ${post.vendorName}`);
+                      }}
+                      className="flex items-center space-x-1 border-gray-300 text-gray-600 hover:bg-gray-50"
                     >
-                      <MessageCircle className="h-4 w-4" />
-                      <span>{post.commentCount}</span>
+                      <MessageSquare className="h-3 w-3" />
+                      <span>Quote</span>
                     </Button>
                   </div>
+                  
+                  {/* Add to Wishlist */}
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="text-gray-600 hover:text-[#4682b4]"
+                    onClick={() => {
+                      if (post.productId) {
+                        addToWishlistMutation.mutate(post.productId);
+                      }
+                    }}
+                    className="text-gray-600 hover:text-red-500"
+                    disabled={!post.productId || addToWishlistMutation.isPending}
                   >
-                    <Share2 className="h-4 w-4" />
+                    <Heart className="h-4 w-4" />
                   </Button>
                 </div>
               </CardContent>
