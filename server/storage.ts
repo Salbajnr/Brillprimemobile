@@ -44,6 +44,12 @@ export interface IStorage {
   addToWishlist(userId: number, productId: number): Promise<void>;
   removeFromWishlist(userId: number, productId: number): Promise<void>;
   getWishlistItems(userId: number): Promise<any[]>;
+
+  // Chat operations
+  getConversations(userId: number): Promise<any[]>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  getMessages(conversationId: string): Promise<any[]>;
+  sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
   
   // Vendor Feed operations
   getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
@@ -474,6 +480,115 @@ export class DatabaseStorage implements IStorage {
   async getWishlistItems(userId: number): Promise<any[]> {
     // Placeholder - will implement with proper wishlist table later
     return [];
+  }
+
+  // Chat operations (using structured sample data for testing)
+  async getConversations(userId: number): Promise<any[]> {
+    // Return sample conversations that demonstrate real chat functionality
+    return [
+      {
+        id: "conv-1",
+        customerId: 1,
+        vendorId: 2,
+        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b", // Using real product ID from database
+        conversationType: "QUOTE",
+        status: "ACTIVE",
+        customerName: "Isaiah Salba",
+        vendorName: "Golden Grains Store",
+        productName: "Designer Jeans",
+        lastMessage: "What's your best price for bulk orders?",
+        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      },
+      {
+        id: "conv-2",
+        customerId: 1,
+        vendorId: 3,
+        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6", // Using real product ID from database
+        conversationType: "ORDER",
+        status: "ACTIVE",
+        customerName: "Isaiah Salba",
+        vendorName: "TechHub Electronics",
+        productName: "Organic Face Cream",
+        lastMessage: "Order confirmed. When can I expect delivery?",
+        lastMessageAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
+        createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
+      }
+    ];
+  }
+
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const newConversation = {
+      id: Math.random().toString(36).substr(2, 9),
+      customerId: conversation.customerId,
+      vendorId: conversation.vendorId,
+      productId: conversation.productId || null,
+      conversationType: conversation.conversationType,
+      status: "ACTIVE" as const,
+      lastMessage: null,
+      lastMessageAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    console.log("Created conversation:", newConversation);
+    return newConversation;
+  }
+
+  async getMessages(conversationId: string): Promise<any[]> {
+    // Return sample messages for testing
+    return [
+      {
+        id: "msg-1",
+        conversationId,
+        senderId: 2,
+        senderName: "John Doe",
+        senderRole: "CONSUMER",
+        content: "Hi, I'm interested in your premium rice. What's your best price for bulk orders of 100+ bags?",
+        messageType: "QUOTE_REQUEST",
+        attachedData: null,
+        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
+      },
+      {
+        id: "msg-2", 
+        conversationId,
+        senderId: 1,
+        senderName: "Golden Grains Store",
+        senderRole: "MERCHANT",
+        content: "Hello! For orders of 100+ bags, I can offer 15% discount. That brings the price to ₦34,000 per bag. Quality guaranteed!",
+        messageType: "QUOTE_RESPONSE",
+        attachedData: { originalPrice: 40000, discountPrice: 34000, quantity: 100 },
+        createdAt: new Date(Date.now() - 23 * 60 * 60 * 1000)
+      },
+      {
+        id: "msg-3",
+        conversationId,
+        senderId: 2,
+        senderName: "John Doe", 
+        senderRole: "CONSUMER",
+        content: "That sounds good! Can you guarantee delivery within 48 hours to Lagos?",
+        messageType: "TEXT",
+        attachedData: null,
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+      }
+    ];
+  }
+
+  async sendMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const newMessage = {
+      id: Math.random().toString(36).substr(2, 9),
+      conversationId: message.conversationId,
+      senderId: message.senderId,
+      content: message.content,
+      messageType: message.messageType || "TEXT",
+      attachedData: message.attachedData || null,
+      isRead: false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    
+    console.log("Sent message:", newMessage);
+    return newMessage;
   }
 }
 

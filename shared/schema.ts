@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, uuid } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, decimal, uuid, json } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -132,6 +132,33 @@ export const vendorPostComments = pgTable("vendor_post_comments", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Chat Conversations
+export const conversations = pgTable("conversations", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: integer("customer_id").notNull().references(() => users.id),
+  vendorId: integer("vendor_id").notNull().references(() => users.id),
+  productId: uuid("product_id").references(() => products.id),
+  conversationType: text("conversation_type", { enum: ["QUOTE", "ORDER", "GENERAL"] }).notNull(),
+  status: text("status", { enum: ["ACTIVE", "CLOSED"] }).default("ACTIVE"),
+  lastMessage: text("last_message"),
+  lastMessageAt: timestamp("last_message_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Chat Messages
+export const chatMessages = pgTable("chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  conversationId: uuid("conversation_id").notNull().references(() => conversations.id),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  content: text("content").notNull(),
+  messageType: text("message_type", { enum: ["TEXT", "QUOTE_REQUEST", "QUOTE_RESPONSE", "ORDER_UPDATE"] }).default("TEXT"),
+  attachedData: json("attached_data"), // For storing quotes, order details, etc.
+  isRead: boolean("is_read").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locations: many(userLocations),
@@ -212,6 +239,8 @@ export const insertUserLocationSchema = createInsertSchema(userLocations);
 export const insertVendorPostSchema = createInsertSchema(vendorPosts);
 export const insertVendorPostLikeSchema = createInsertSchema(vendorPostLikes);
 export const insertVendorPostCommentSchema = createInsertSchema(vendorPostComments);
+export const insertConversationSchema = createInsertSchema(conversations);
+export const insertChatMessageSchema = createInsertSchema(chatMessages);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -233,3 +262,7 @@ export type VendorPostLike = typeof vendorPostLikes.$inferSelect;
 export type InsertVendorPostLike = z.infer<typeof insertVendorPostLikeSchema>;
 export type VendorPostComment = typeof vendorPostComments.$inferSelect;
 export type InsertVendorPostComment = z.infer<typeof insertVendorPostCommentSchema>;
+export type Conversation = typeof conversations.$inferSelect;
+export type InsertConversation = z.infer<typeof insertConversationSchema>;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;

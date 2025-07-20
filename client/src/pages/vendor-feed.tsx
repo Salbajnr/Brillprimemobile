@@ -454,8 +454,8 @@ export default function VendorFeed() {
                       variant="outline"
                       size="sm"
                       onClick={() => {
-                        // Open quote dialog or redirect to quote page
-                        alert(`Request quote for "${post.title}" from ${post.vendorName}`);
+                        // Navigate to chat with quote request
+                        setLocation(`/chat?vendorId=${post.vendorId}&productId=${post.productId}&type=QUOTE`);
                       }}
                       className="flex items-center space-x-1 border-gray-300 text-gray-600 hover:bg-gray-50"
                     >
