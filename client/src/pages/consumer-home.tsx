@@ -333,6 +333,13 @@ export default function ConsumerHome() {
                 <MapPin className="w-4 h-4 mr-2" />
                 Where are you?
               </Button>
+              <Button
+                variant="outline"
+                className="px-4 border-2 border-white/50 text-white hover:bg-white/20 rounded-2xl transition-all duration-300 hover:scale-105"
+                onClick={() => setLocation("/qr-scanner")}
+              >
+                QR Scan
+              </Button>
             </div>
           </CardContent>
         </Card>

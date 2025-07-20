@@ -1,44 +1,89 @@
 import { useState, useRef, useEffect } from "react";
-import { useLocation } from "wouter";
-import { ArrowLeft, Camera, Flashlight, RotateCcw, Scan } from "lucide-react";
+import { Camera, ArrowLeft, Check, X, Flashlight, FlashlightOff, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { useLocation } from "wouter";
+import { NotificationModal } from "@/components/ui/notification-modal";
 
-interface ScannedData {
-  type: "payment" | "merchant" | "user" | "unknown";
-  data: any;
-  timestamp: Date;
-}
+// Import QR scanner assets
+import qrScannerFrame from "../assets/images/qr_scanner_frame.svg";
+import successIcon from "../assets/images/congratulations_icon.png";
+import errorIcon from "../assets/images/confirmation_fail_img.png";
 
 export default function QRScanner() {
   const [, setLocation] = useLocation();
   const [isScanning, setIsScanning] = useState(false);
-  const [scannedResult, setScannedResult] = useState<ScannedData | null>(null);
-  const [flashEnabled, setFlashEnabled] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [flashlightOn, setFlashlightOn] = useState(false);
+  const [facingMode, setFacingMode] = useState<"user" | "environment">("environment");
+  const [scanResult, setScanResult] = useState<{
+    type: "delivery" | "payment" | "merchant";
+    data: any;
+  } | null>(null);
+  const [modalData, setModalData] = useState<{
+    isOpen: boolean;
+    type: "success" | "error";
+    title: string;
+    message: string;
+  }>({
+    isOpen: false,
+    type: "success",
+    title: "",
+    message: ""
+  });
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
+  useEffect(() => {
+    return () => {
+      // Cleanup camera stream when component unmounts
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const startCamera = async () => {
     try {
-      setError(null);
-      const stream = await navigator.mediaDevices.getUserMedia({
+      const constraints = {
         video: {
-          facingMode: "environment", // Use back camera
+          facingMode: facingMode,
           width: { ideal: 1280 },
           height: { ideal: 720 }
         }
-      });
+      };
+
+      const stream = await navigator.mediaDevices.getUserMedia(constraints);
+      streamRef.current = stream;
       
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-        setIsScanning(true);
+        videoRef.current.play();
       }
-    } catch (err) {
-      setError("Camera access denied. Please enable camera permissions.");
-      console.error("Camera error:", err);
+      
+      setIsScanning(true);
+      setHasPermission(true);
+      
+      // Enable flashlight if available and requested
+      if (flashlightOn) {
+        const track = stream.getVideoTracks()[0];
+        if (track.getCapabilities && track.getCapabilities().torch) {
+          await track.applyConstraints({
+            advanced: [{ torch: true } as any]
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Camera access error:", error);
+      setHasPermission(false);
+      setModalData({
+        isOpen: true,
+        type: "error",
+        title: "Camera Access Denied",
+        message: "Please allow camera access to scan QR codes. Check your browser settings and try again."
+      });
     }
   };
 
@@ -50,334 +95,428 @@ export default function QRScanner() {
     setIsScanning(false);
   };
 
-  const toggleFlash = async () => {
+  const toggleFlashlight = async () => {
     if (streamRef.current) {
       const track = streamRef.current.getVideoTracks()[0];
-      const capabilities = track.getCapabilities();
-      
-      if (capabilities.torch) {
+      if (track.getCapabilities && track.getCapabilities().torch) {
         try {
           await track.applyConstraints({
-            advanced: [{ torch: !flashEnabled }]
+            advanced: [{ torch: !flashlightOn } as any]
           });
-          setFlashEnabled(!flashEnabled);
-        } catch (err) {
-          console.error("Flash toggle failed:", err);
+          setFlashlightOn(!flashlightOn);
+        } catch (error) {
+          console.error("Flashlight toggle error:", error);
         }
       }
     }
   };
 
-  // Mock QR code processing - would integrate with real QR scanner library
-  const processQRCode = (qrData: string) => {
-    let result: ScannedData;
-    
-    try {
-      // Try to parse as JSON for structured data
-      const parsed = JSON.parse(qrData);
-      
-      if (parsed.type === "brillprime_payment") {
-        result = {
-          type: "payment",
-          data: {
-            merchantId: parsed.merchantId,
-            merchantName: parsed.merchantName,
-            amount: parsed.amount,
-            currency: "NGN"
-          },
-          timestamp: new Date()
-        };
-      } else if (parsed.type === "brillprime_merchant") {
-        result = {
-          type: "merchant",
-          data: {
-            merchantId: parsed.merchantId,
-            name: parsed.name,
-            category: parsed.category,
-            location: parsed.location
-          },
-          timestamp: new Date()
-        };
-      } else if (parsed.type === "brillprime_user") {
-        result = {
-          type: "user",
-          data: {
-            userId: parsed.userId,
-            name: parsed.name,
-            phone: parsed.phone
-          },
-          timestamp: new Date()
-        };
-      } else {
-        result = {
-          type: "unknown",
-          data: { rawData: qrData },
-          timestamp: new Date()
-        };
+  const switchCamera = () => {
+    stopCamera();
+    setFacingMode(facingMode === "user" ? "environment" : "user");
+    setTimeout(() => startCamera(), 100);
+  };
+
+  const simulateQRScan = (type: "delivery" | "payment" | "merchant") => {
+    // Simulate different QR code types for demo purposes
+    const mockResults = {
+      delivery: {
+        orderId: "BP12345",
+        driverName: "James Adebayo",
+        deliveryTime: new Date().toLocaleString(),
+        items: ["20L Fuel", "Engine Oil"],
+        totalAmount: "₦15,000"
+      },
+      payment: {
+        merchantName: "Lagos Fuel Station",
+        merchantId: "MER789",
+        amount: "₦8,500",
+        reference: "PAY" + Date.now()
+      },
+      merchant: {
+        businessName: "Premium Gas Station",
+        address: "123 Victoria Island, Lagos",
+        phone: "+234 901 234 5678",
+        services: ["Fuel", "Car Wash", "Convenience Store"]
       }
-    } catch {
-      // Not JSON, treat as plain text
-      result = {
-        type: "unknown",
-        data: { rawData: qrData },
-        timestamp: new Date()
-      };
-    }
-    
-    setScannedResult(result);
+    };
+
+    setScanResult({
+      type,
+      data: mockResults[type]
+    });
+
+    setModalData({
+      isOpen: true,
+      type: "success",
+      title: "QR Code Scanned Successfully",
+      message: `${type.charAt(0).toUpperCase() + type.slice(1)} information detected. Please review the details below.`
+    });
+
     stopCamera();
   };
 
-  // Simulate QR code detection - would use real library like jsQR
-  const simulateQRDetection = () => {
-    // Mock QR code data for testing
-    const mockQRData = JSON.stringify({
-      type: "brillprime_payment",
-      merchantId: "merchant_123",
-      merchantName: "Total Energies Wuse II",
-      amount: 25000,
-      currency: "NGN"
+  const confirmDelivery = () => {
+    setModalData({
+      isOpen: true,
+      type: "success",
+      title: "Delivery Confirmed",
+      message: "Your delivery has been confirmed successfully. Thank you for using Brillprime!"
     });
-    
-    processQRCode(mockQRData);
+    setScanResult(null);
   };
 
-  const handleAction = () => {
-    if (!scannedResult) return;
-    
-    switch (scannedResult.type) {
-      case "payment":
-        setLocation(`/payment/confirm?merchant=${scannedResult.data.merchantId}&amount=${scannedResult.data.amount}`);
-        break;
-      case "merchant":
-        setLocation(`/merchants/${scannedResult.data.merchantId}`);
-        break;
-      case "user":
-        setLocation(`/transfer?user=${scannedResult.data.userId}`);
-        break;
-      default:
-        // Handle unknown QR codes
-        console.log("Unknown QR code:", scannedResult.data.rawData);
-    }
+  const processPayment = () => {
+    setModalData({
+      isOpen: true,
+      type: "success",
+      title: "Payment Processing",
+      message: "Redirecting to payment confirmation. Please wait..."
+    });
+    setTimeout(() => {
+      setLocation("/payment-methods");
+    }, 2000);
   };
 
-  const resetScanner = () => {
-    setScannedResult(null);
-    setError(null);
-    startCamera();
+  const saveContact = () => {
+    setModalData({
+      isOpen: true,
+      type: "success",
+      title: "Contact Saved",
+      message: "Merchant contact information has been saved to your favorites."
+    });
+    setScanResult(null);
   };
 
-  useEffect(() => {
-    return () => {
-      stopCamera();
-    };
-  }, []);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-NG', {
-      style: 'currency',
-      currency: 'NGN',
-      minimumFractionDigits: 0
-    }).format(amount);
-  };
-
-  return (
-    <div className="min-h-screen bg-black relative">
-      {/* Header */}
-      <div className="absolute top-0 left-0 right-0 z-10 bg-black/50 backdrop-blur-sm">
-        <div className="flex items-center justify-between p-4 text-white">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/consumer-home")}
-            className="text-white hover:bg-white/20"
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-lg font-semibold">Scan QR Code</h1>
-          <div className="w-10" /> {/* Spacer */}
-        </div>
-      </div>
-
-      {/* Camera View */}
-      <div className="relative w-full h-screen">
-        {isScanning ? (
-          <>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="w-full h-full object-cover"
-            />
-            
-            {/* Scanning Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative">
-                {/* Scanning Frame */}
-                <div className="w-64 h-64 border-2 border-white/50 relative">
-                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-[#4682b4]"></div>
-                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-[#4682b4]"></div>
-                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-[#4682b4]"></div>
-                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-[#4682b4]"></div>
-                  
-                  {/* Scanning Line Animation */}
-                  <div className="absolute inset-0 overflow-hidden">
-                    <div className="w-full h-0.5 bg-[#4682b4] animate-pulse absolute top-1/2 transform -translate-y-1/2"></div>
-                  </div>
-                </div>
-                
-                <p className="text-white text-center mt-4">
-                  Position QR code within the frame
-                </p>
+  if (scanResult) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Header */}
+        <div className="bg-white shadow-sm border-b border-blue-100/50 animate-fade-in">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center space-x-3">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setScanResult(null)}
+                className="transition-all duration-300 hover:scale-110"
+              >
+                <ArrowLeft className="w-5 h-5 text-[#131313]" />
+              </Button>
+              <div className="animate-slide-up">
+                <h1 className="text-lg font-semibold text-[#131313]">Scan Result</h1>
+                <p className="text-sm text-gray-600">Review and confirm details</p>
               </div>
             </div>
-          </>
-        ) : (
-          /* Camera Not Active */
-          <div className="flex items-center justify-center h-full bg-gray-900">
-            <div className="text-center text-white">
-              <Camera className="w-16 h-16 mx-auto mb-4 text-gray-400" />
-              <h2 className="text-xl font-semibold mb-2">Camera Not Active</h2>
-              <p className="text-gray-300 mb-6">
-                {error || "Tap the button below to start scanning"}
-              </p>
-              <Button
-                onClick={startCamera}
-                className="bg-[#4682b4] hover:bg-[#0b1a51]"
-              >
-                <Camera className="w-5 h-5 mr-2" />
-                Start Camera
-              </Button>
-            </div>
           </div>
-        )}
+        </div>
 
-        {/* Controls */}
-        {isScanning && (
-          <div className="absolute bottom-20 left-0 right-0 flex justify-center space-x-6">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleFlash}
-              className={`w-14 h-14 rounded-full ${
-                flashEnabled ? "bg-yellow-500 text-black" : "bg-white/20 text-white"
-              }`}
-            >
-              <Flashlight className="w-6 h-6" />
-            </Button>
-            
-            {/* Test Scan Button - Remove in production */}
-            <Button
-              onClick={simulateQRDetection}
-              className="bg-[#4682b4] hover:bg-[#0b1a51] px-6"
-            >
-              <Scan className="w-5 h-5 mr-2" />
-              Test Scan
-            </Button>
-          </div>
-        )}
-
-        {/* Scanned Result Modal */}
-        {scannedResult && (
-          <div className="absolute inset-0 bg-black/80 flex items-center justify-center p-4">
-            <Card className="w-full max-w-md">
+        <div className="p-4 space-y-4">
+          {/* Delivery Confirmation */}
+          {scanResult.type === "delivery" && (
+            <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <Scan className="w-8 h-8 text-green-600" />
+                    <Check className="w-8 h-8 text-green-600" />
                   </div>
-                  <h3 className="text-lg font-semibold text-[#131313] mb-2">
-                    QR Code Detected
-                  </h3>
-                  <Badge className={`${
-                    scannedResult.type === "payment" ? "bg-blue-100 text-blue-800" :
-                    scannedResult.type === "merchant" ? "bg-purple-100 text-purple-800" :
-                    scannedResult.type === "user" ? "bg-green-100 text-green-800" :
-                    "bg-gray-100 text-gray-800"
-                  }`}>
-                    {scannedResult.type.charAt(0).toUpperCase() + scannedResult.type.slice(1)}
-                  </Badge>
+                  <h2 className="text-xl font-semibold text-[#131313] mb-2">Delivery Verification</h2>
+                  <Badge className="bg-green-100 text-green-800">Order #{scanResult.data.orderId}</Badge>
                 </div>
 
-                {/* Display scanned data */}
-                <div className="space-y-3 mb-6">
-                  {scannedResult.type === "payment" && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Merchant:</span>
-                        <span className="font-medium">{scannedResult.data.merchantName}</span>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Driver</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.driverName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Delivery Time</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.deliveryTime}</span>
+                  </div>
+                  <div className="py-2 border-b border-gray-100">
+                    <span className="text-gray-600 block mb-2">Items Delivered</span>
+                    {scanResult.data.items.map((item: string, index: number) => (
+                      <div key={index} className="flex items-center space-x-2 mb-1">
+                        <Check className="w-4 h-4 text-green-600" />
+                        <span className="font-medium text-[#131313]">{item}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Amount:</span>
-                        <span className="font-bold text-[#4682b4]">
-                          {formatCurrency(scannedResult.data.amount)}
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  
-                  {scannedResult.type === "merchant" && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Name:</span>
-                        <span className="font-medium">{scannedResult.data.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Category:</span>
-                        <span className="font-medium">{scannedResult.data.category}</span>
-                      </div>
-                    </>
-                  )}
-                  
-                  {scannedResult.type === "user" && (
-                    <>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Name:</span>
-                        <span className="font-medium">{scannedResult.data.name}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-600">Phone:</span>
-                        <span className="font-medium">{scannedResult.data.phone}</span>
-                      </div>
-                    </>
-                  )}
-                  
-                  {scannedResult.type === "unknown" && (
-                    <div className="bg-gray-50 rounded-lg p-3">
-                      <p className="text-sm text-gray-600 break-all">
-                        {scannedResult.data.rawData}
-                      </p>
-                    </div>
-                  )}
+                    ))}
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Total Amount</span>
+                    <span className="font-bold text-[#4682b4] text-lg">{scanResult.data.totalAmount}</span>
+                  </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex space-x-3">
-                  <Button
-                    variant="outline"
-                    onClick={resetScanner}
-                    className="flex-1"
-                  >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Scan Again
-                  </Button>
-                  
-                  {scannedResult.type !== "unknown" && (
-                    <Button
-                      onClick={handleAction}
-                      className="flex-1 bg-[#4682b4] hover:bg-[#0b1a51]"
-                    >
-                      {scannedResult.type === "payment" ? "Pay Now" :
-                       scannedResult.type === "merchant" ? "View Shop" :
-                       scannedResult.type === "user" ? "Send Money" : "Continue"}
-                    </Button>
-                  )}
-                </div>
+                <Button
+                  onClick={confirmDelivery}
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-all duration-300 hover:scale-105"
+                >
+                  Confirm Delivery
+                </Button>
               </CardContent>
             </Card>
-          </div>
-        )}
+          )}
+
+          {/* Payment Processing */}
+          {scanResult.type === "payment" && (
+            <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+              <CardContent className="p-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-8 h-8 text-blue-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-[#131313] mb-2">Payment Request</h2>
+                  <Badge className="bg-blue-100 text-blue-800">Merchant Payment</Badge>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Merchant</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.merchantName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Merchant ID</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.merchantId}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Reference</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.reference}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-gray-600">Amount</span>
+                    <span className="font-bold text-[#4682b4] text-xl">{scanResult.data.amount}</span>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={processPayment}
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-all duration-300 hover:scale-105"
+                >
+                  Proceed to Payment
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Merchant Information */}
+          {scanResult.type === "merchant" && (
+            <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+              <CardContent className="p-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Camera className="w-8 h-8 text-purple-600" />
+                  </div>
+                  <h2 className="text-xl font-semibold text-[#131313] mb-2">Merchant Information</h2>
+                  <Badge className="bg-purple-100 text-purple-800">Business Contact</Badge>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Business Name</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.businessName}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Address</span>
+                    <span className="font-medium text-[#131313] text-right">{scanResult.data.address}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                    <span className="text-gray-600">Phone</span>
+                    <span className="font-medium text-[#131313]">{scanResult.data.phone}</span>
+                  </div>
+                  <div className="py-2">
+                    <span className="text-gray-600 block mb-2">Services</span>
+                    <div className="flex flex-wrap gap-2">
+                      {scanResult.data.services.map((service: string, index: number) => (
+                        <Badge key={index} variant="secondary" className="rounded-2xl">
+                          {service}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <Button
+                  onClick={saveContact}
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-all duration-300 hover:scale-105"
+                >
+                  Save Contact
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        <NotificationModal
+          isOpen={modalData.isOpen}
+          onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
+          type={modalData.type}
+          title={modalData.title}
+          message={modalData.message}
+          imageSrc={modalData.type === "success" ? successIcon : errorIcon}
+        />
       </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white shadow-sm border-b border-blue-100/50 animate-fade-in">
+        <div className="flex items-center justify-between p-4">
+          <div className="flex items-center space-x-3">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setLocation("/consumer-home")}
+              className="transition-all duration-300 hover:scale-110"
+            >
+              <ArrowLeft className="w-5 h-5 text-[#131313]" />
+            </Button>
+            <div className="animate-slide-up">
+              <h1 className="text-lg font-semibold text-[#131313]">QR Scanner</h1>
+              <p className="text-sm text-gray-600">
+                {isScanning ? "Point camera at QR code" : "Scan QR codes for payments & deliveries"}
+              </p>
+            </div>
+          </div>
+          {isScanning && (
+            <div className="flex items-center space-x-2 animate-slide-in-right">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleFlashlight}
+                className="transition-all duration-300 hover:scale-110"
+              >
+                {flashlightOn ? <FlashlightOff className="w-5 h-5" /> : <Flashlight className="w-5 h-5" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={switchCamera}
+                className="transition-all duration-300 hover:scale-110"
+              >
+                <RotateCcw className="w-5 h-5" />
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Camera View */}
+        <Card className="rounded-3xl border-2 border-blue-100/50 overflow-hidden animate-fade-in-up">
+          <CardContent className="p-0">
+            <div className="relative bg-black aspect-[4/3]">
+              {isScanning ? (
+                <>
+                  <video
+                    ref={videoRef}
+                    className="w-full h-full object-cover"
+                    playsInline
+                    muted
+                  />
+                  {/* QR Scanner Overlay */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="relative">
+                      <div className="w-64 h-64 border-4 border-white/30 rounded-3xl"></div>
+                      <div className="absolute inset-0 w-64 h-64">
+                        {/* Corner indicators */}
+                        <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-[#4682b4] rounded-tl-lg"></div>
+                        <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-[#4682b4] rounded-tr-lg"></div>
+                        <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-[#4682b4] rounded-bl-lg"></div>
+                        <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-[#4682b4] rounded-br-lg"></div>
+                      </div>
+                      {/* Scanning line animation */}
+                      <div className="absolute inset-0 w-64 h-64 overflow-hidden rounded-3xl">
+                        <div className="w-full h-0.5 bg-[#4682b4] animate-pulse absolute top-1/2 transform -translate-y-1/2"></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2">
+                    <p className="text-white text-sm bg-black/50 px-3 py-1 rounded-2xl">
+                      Align QR code within the frame
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <div className="w-full h-full flex items-center justify-center">
+                  <div className="text-center text-white">
+                    <Camera className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                    <h3 className="text-lg font-medium mb-2">Camera Ready</h3>
+                    <p className="text-sm opacity-75">Tap start to begin scanning</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Control Buttons */}
+        <div className="grid grid-cols-1 gap-3">
+          {!isScanning ? (
+            <Button
+              onClick={startCamera}
+              disabled={hasPermission === false}
+              className="h-14 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-3xl transition-all duration-300 hover:scale-105 animate-fade-in-up"
+            >
+              <Camera className="w-6 h-6 mr-3" />
+              Start Camera
+            </Button>
+          ) : (
+            <Button
+              onClick={stopCamera}
+              variant="outline"
+              className="h-14 border-2 border-red-200 text-red-600 hover:bg-red-50 rounded-3xl transition-all duration-300 hover:scale-105 animate-fade-in-up"
+            >
+              <X className="w-6 h-6 mr-3" />
+              Stop Scanning
+            </Button>
+          )}
+        </div>
+
+        {/* Quick Test Buttons for Demo */}
+        <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+          <CardContent className="p-4">
+            <h3 className="font-medium text-[#131313] mb-3">Test QR Code Types</h3>
+            <div className="grid grid-cols-1 gap-2">
+              <Button
+                variant="outline"
+                onClick={() => simulateQRScan("delivery")}
+                className="justify-start border-2 border-green-200 text-green-700 hover:bg-green-50 rounded-2xl transition-all duration-300 hover:scale-105"
+              >
+                <Check className="w-4 h-4 mr-2" />
+                Delivery Confirmation
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => simulateQRScan("payment")}
+                className="justify-start border-2 border-blue-200 text-blue-700 hover:bg-blue-50 rounded-2xl transition-all duration-300 hover:scale-105"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Payment QR Code
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => simulateQRScan("merchant")}
+                className="justify-start border-2 border-purple-200 text-purple-700 hover:bg-purple-50 rounded-2xl transition-all duration-300 hover:scale-105"
+              >
+                <Camera className="w-4 h-4 mr-2" />
+                Merchant Contact
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <NotificationModal
+        isOpen={modalData.isOpen}
+        onClose={() => setModalData(prev => ({ ...prev, isOpen: false }))}
+        type={modalData.type}
+        title={modalData.title}
+        message={modalData.message}
+        imageSrc={modalData.type === "success" ? successIcon : errorIcon}
+      />
     </div>
   );
 }
