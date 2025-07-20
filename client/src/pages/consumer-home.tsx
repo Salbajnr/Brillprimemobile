@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Bell, Scan, Send, Plus, CreditCard, MapPin, Fuel, Receipt, ShoppingCart, Eye, EyeOff } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -30,11 +30,28 @@ interface Transaction {
   status: "completed" | "pending" | "failed";
 }
 
+interface LocationData {
+  latitude: number;
+  longitude: number;
+  city: string;
+  country: string;
+  loading: boolean;
+  error: string | null;
+}
+
 export default function ConsumerHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const [showBalance, setShowBalance] = useState(true);
   const [walletBalance] = useState(45750.00); // Mock data - will be replaced with API
+  const [locationData, setLocationData] = useState<LocationData>({
+    latitude: 0,
+    longitude: 0,
+    city: "Unknown",
+    country: "Unknown",
+    loading: true,
+    error: null
+  });
 
   // Mock transaction data - will be replaced with API
   const [recentTransactions] = useState<Transaction[]>([
@@ -71,6 +88,80 @@ export default function ConsumerHome() {
       status: "pending"
     }
   ]);
+
+  // Get user's current location
+  useEffect(() => {
+    const getCurrentLocation = () => {
+      if (!navigator.geolocation) {
+        setLocationData(prev => ({
+          ...prev,
+          loading: false,
+          error: "Geolocation not supported"
+        }));
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const { latitude, longitude } = position.coords;
+          
+          try {
+            // Use reverse geocoding to get city/country
+            const response = await fetch(
+              `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+            );
+            const data = await response.json();
+            
+            setLocationData({
+              latitude,
+              longitude,
+              city: data.city || data.locality || "Unknown City",
+              country: data.countryName || "Unknown Country",
+              loading: false,
+              error: null
+            });
+          } catch (error) {
+            setLocationData({
+              latitude,
+              longitude,
+              city: "Unknown City",
+              country: "Unknown Country", 
+              loading: false,
+              error: null
+            });
+          }
+        },
+        (error) => {
+          setLocationData(prev => ({
+            ...prev,
+            loading: false,
+            error: error.message
+          }));
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 10000,
+          maximumAge: 300000 // 5 minutes
+        }
+      );
+    };
+
+    getCurrentLocation();
+  }, []);
+
+  // Generate map URL based on user location
+  const getMapUrl = () => {
+    if (locationData.loading || locationData.error) {
+      return "/attached_assets/image_1752989901533.png"; // Fallback to provided image
+    }
+    
+    // Using OpenStreetMap tile service via Mapbox style
+    const zoom = 15;
+    const width = 400;
+    const height = 160;
+    
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/${width}x${height}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
+  };
 
   const quickActions: QuickAction[] = [
     {
@@ -187,31 +278,40 @@ export default function ConsumerHome() {
             </div>
             <div className="mb-4">
               <div className="h-40 bg-white/10 rounded-xl overflow-hidden relative mx-2">
-                <img 
-                  src="/attached_assets/image_1752989901533.png"
-                  alt="Live Location Map"
-                  className="w-full h-full object-cover"
-                />
-                
-                {/* Your location pin overlay */}
-                <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2">
-                  <div className="relative">
-                    {/* Location pin with shadow */}
-                    <div className="absolute top-6 left-1/2 transform -translate-x-1/2 w-6 h-2 bg-black/20 rounded-full blur-sm"></div>
-                    <div className="w-8 h-8 bg-red-500 rounded-full border-4 border-white shadow-lg flex items-center justify-center relative">
-                      <div className="w-3 h-3 bg-white rounded-full"></div>
-                      {/* Pulse animation */}
-                      <div className="absolute inset-0 bg-red-500 rounded-full animate-ping opacity-75"></div>
-                      <div className="absolute inset-0 bg-red-500 rounded-full animate-pulse"></div>
+                {locationData.loading ? (
+                  <div className="w-full h-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="w-8 h-8 border-3 border-[#4682b4] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+                      <p className="text-sm text-[#4682b4] font-medium">Getting your location...</p>
                     </div>
                   </div>
-                </div>
+                ) : locationData.error ? (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+                    <div className="text-center">
+                      <MapPin className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">Location unavailable</p>
+                      <p className="text-xs text-gray-500">Using default map</p>
+                    </div>
+                  </div>
+                ) : (
+                  <img 
+                    src={getMapUrl()}
+                    alt="Live Location Map"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to static image if map service fails
+                      (e.target as HTMLImageElement).src = "/attached_assets/image_1752989901533.png";
+                    }}
+                  />
+                )}
                 
                 {/* Floating location info */}
                 <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-sm">
                   <div className="flex items-center space-x-2">
                     <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <p className="text-xs text-[#4682b4] font-semibold">Live • Whistler Area</p>
+                    <p className="text-xs text-[#4682b4] font-semibold">
+                      Live • {locationData.loading ? "Loading..." : `${locationData.city}, ${locationData.country}`}
+                    </p>
                   </div>
                 </div>
                 
