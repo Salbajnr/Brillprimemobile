@@ -186,21 +186,48 @@ export default function ConsumerHome() {
               </Button>
             </div>
             <div className="mb-6">
-              <div className="h-32 bg-white/20 rounded-lg flex items-center justify-center mt-[8px] mb-[8px] ml-[8px] mr-[8px]">
-                <div className="text-center">
-                  <MapPin className="w-8 h-8 mx-auto mb-2" />
-                  <p className="text-sm">Live location tracking active</p>
-                  <p className="text-xs opacity-80">Lagos, Nigeria</p>
+              <div className="h-32 bg-white/20 rounded-lg overflow-hidden relative">
+                <svg 
+                  viewBox="0 0 300 128" 
+                  className="w-full h-full"
+                  style={{ background: 'linear-gradient(135deg, #e8f4f8 0%, #d1e9f0 100%)' }}
+                >
+                  {/* Streets */}
+                  <path d="M0 40 L300 40" stroke="#c0c0c0" strokeWidth="3" />
+                  <path d="M0 80 L300 80" stroke="#c0c0c0" strokeWidth="2" />
+                  <path d="M50 0 L50 128" stroke="#c0c0c0" strokeWidth="2" />
+                  <path d="M150 0 L150 128" stroke="#c0c0c0" strokeWidth="3" />
+                  <path d="M250 0 L250 128" stroke="#c0c0c0" strokeWidth="2" />
+                  
+                  {/* Buildings */}
+                  <rect x="10" y="10" width="30" height="25" fill="#4682b4" opacity="0.7" />
+                  <rect x="60" y="50" width="25" height="25" fill="#0b1a51" opacity="0.7" />
+                  <rect x="180" y="15" width="35" height="20" fill="#4682b4" opacity="0.7" />
+                  <rect x="200" y="90" width="40" height="30" fill="#0b1a51" opacity="0.7" />
+                  
+                  {/* Your location pin */}
+                  <circle cx="150" cy="64" r="8" fill="#ff4444" />
+                  <circle cx="150" cy="64" r="3" fill="white" />
+                  
+                  {/* Location text */}
+                  <text x="150" y="100" textAnchor="middle" fontSize="8" fill="#4682b4" fontWeight="600">
+                    You are here
+                  </text>
+                </svg>
+                
+                {/* Floating location info */}
+                <div className="absolute bottom-2 left-2 bg-white/90 rounded px-2 py-1">
+                  <p className="text-xs text-[#4682b4] font-medium">Lagos, Nigeria</p>
                 </div>
               </div>
             </div>
             <div className="flex space-x-3">
               <Button
                 className="flex-1 bg-white text-[#4682b4] hover:bg-gray-100"
-                onClick={() => setLocation("/wallet/fund")}
+                onClick={() => setLocation("/location-setup")}
               >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Money
+                <MapPin className="w-4 h-4 mr-2" />
+                Where are you?
               </Button>
             </div>
           </CardContent>
