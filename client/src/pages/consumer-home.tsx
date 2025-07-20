@@ -204,14 +204,6 @@ export default function ConsumerHome() {
                 <Plus className="w-4 h-4 mr-2" />
                 Add Money
               </Button>
-              <Button
-                variant="outline"
-                className="flex-1 border-white text-white hover:bg-white/20"
-                onClick={() => setLocation("/wallet/transfer")}
-              >
-                <Send className="w-4 h-4 mr-2" />
-                Send Money
-              </Button>
             </div>
           </CardContent>
         </Card>

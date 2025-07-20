@@ -129,30 +129,20 @@ export default function Cart() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => setLocation("/consumer-home")}
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <h1 className="text-xl font-semibold text-[#131313]">
-              Shopping Cart ({cartItems.length})
-            </h1>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/commodities")}
-          >
-            <ShoppingBag className="h-5 w-5" />
-          </Button>
-        </div>
+      <div className="flex items-center p-4 border-b">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setLocation("/consumer-home")}
+          className="mr-4"
+        >
+          <ArrowLeft className="h-6 w-6 text-[#131313]" />
+        </Button>
+        <h1 className="text-xl font-extrabold text-black font-['Montserrat']">
+          Cart
+        </h1>
       </div>
 
       {cartItems.length === 0 ? (
@@ -166,7 +156,7 @@ export default function Cart() {
             Start shopping to add items to your cart and enjoy our amazing marketplace experience.
           </p>
           <Button
-            className="bg-[#4682b4] hover:bg-[#010e42] text-white px-8 py-3"
+            className="bg-[#4682b4] hover:bg-[#010e42] text-white px-8 py-3 font-['Montserrat']"
             onClick={() => setLocation("/commodities")}
           >
             Browse Marketplace
@@ -175,133 +165,123 @@ export default function Cart() {
       ) : (
         // Cart Items
         <div className="flex flex-col min-h-[calc(100vh-80px)]">
-          <div className="flex-1 p-4 space-y-4">
-            {cartItems.map((item: CartItem) => (
-              <Card key={item.productId} className="border-2 border-blue-100 hover:border-blue-200 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-4">
+          {/* Cart Items Container */}
+          <div className="m-4">
+            <div className="border-2 border-[#4682b4] rounded-2xl min-h-[360px] p-4">
+              {cartItems.map((item: CartItem, index: number) => (
+                <div key={item.productId}>
+                  <div className="flex items-center py-4">
                     {/* Product Image */}
-                    <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div className="w-14 h-14 bg-[#D9D9D9] rounded-md flex items-center justify-center flex-shrink-0">
                       {item.productImage ? (
                         <img 
                           src={item.productImage} 
                           alt={item.productName}
-                          className="w-full h-full object-cover rounded-lg"
+                          className="w-full h-full object-cover rounded-md"
                         />
                       ) : (
-                        <ShoppingBag className="w-6 h-6 text-gray-400" />
+                        <ShoppingBag className="w-6 h-6 text-gray-500" />
                       )}
                     </div>
 
                     {/* Product Details */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-[#131313] text-sm mb-1 truncate">
+                    <div className="flex-1 ml-3">
+                      <h3 className="font-bold text-[#010E42] text-sm font-['Montserrat'] mb-1">
                         {item.productName}
                       </h3>
-                      {item.sellerName && (
-                        <p className="text-xs text-gray-500 mb-1">by {item.sellerName}</p>
-                      )}
-                      <div className="flex items-center space-x-2">
-                        <span className="text-sm font-medium text-[#4682b4]">
-                          {formatCurrency(item.price)}
-                        </span>
-                        <span className="text-xs text-gray-500">per {item.productUnit}</span>
+                      
+                      {/* Quantity Controls */}
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-7 h-7 bg-black text-white hover:bg-gray-800 p-0"
+                          onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
+                          disabled={updateCartMutation.isPending}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </Button>
+                        
+                        <div className="w-8 h-7 bg-[#4682b4] rounded-sm flex items-center justify-center">
+                          <span className="text-white text-xs font-semibold font-['Montserrat']">
+                            {item.quantity}
+                          </span>
+                        </div>
+                        
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-7 h-7 bg-black text-white hover:bg-gray-800 p-0"
+                          onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
+                          disabled={updateCartMutation.isPending}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </Button>
                       </div>
                     </div>
 
-                    {/* Quantity Controls */}
-                    <div className="flex items-center space-x-2 flex-shrink-0">
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4] hover:text-white"
-                        onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
-                        disabled={updateCartMutation.isPending}
-                      >
-                        <Minus className="w-4 h-4" />
-                      </Button>
-                      
-                      <span className="min-w-[2rem] text-center font-medium text-[#131313]">
-                        {item.quantity}
-                      </span>
-                      
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="w-8 h-8 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4] hover:text-white"
-                        onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
-                        disabled={updateCartMutation.isPending}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </Button>
+                    {/* Price */}
+                    <div className="text-right mr-4">
+                      <div className="flex items-center">
+                        <span className="text-[#0B1A51] text-sm font-semibold font-['Montserrat']">
+                          ₦{(item.price * item.quantity).toLocaleString()}
+                        </span>
+                      </div>
                     </div>
 
                     {/* Remove Button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="w-8 h-8 text-red-500 hover:bg-red-50 hover:text-red-600"
+                      className="w-6 h-6 text-gray-500 hover:text-red-500 p-0"
                       onClick={() => handleRemoveItem(item)}
                       disabled={removeCartMutation.isPending}
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-
-                  {/* Item Total */}
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Subtotal:</span>
-                      <span className="font-semibold text-[#131313]">
-                        {formatCurrency(item.price * item.quantity)}
-                      </span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                  
+                  {/* Divider */}
+                  {index < cartItems.length - 1 && (
+                    <div className="border-b border-[#D4D4D4] my-2"></div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Cart Summary & Checkout */}
-          <div className="bg-white border-t border-gray-200 p-4 space-y-4">
-            <Card className="border-2 border-blue-100">
-              <CardContent className="p-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Items ({cartItems.length}):</span>
-                    <span className="font-medium">{formatCurrency(calculateTotal())}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-gray-600">Delivery:</span>
-                    <Badge variant="secondary" className="text-green-600">FREE</Badge>
-                  </div>
-                  <div className="border-t pt-3">
-                    <div className="flex justify-between items-center">
-                      <span className="text-lg font-semibold text-[#131313]">Total:</span>
-                      <span className="text-lg font-semibold text-[#4682b4]">
-                        {formatCurrency(calculateTotal())}
-                      </span>
-                    </div>
-                  </div>
+          {/* Purchase Summary */}
+          <div className="mx-4 mb-4">
+            <div className="bg-[#4682b4] rounded-2xl p-6 text-white">
+              <h3 className="text-lg font-bold font-['Montserrat'] mb-4">Purchase Summary</h3>
+              <div className="flex justify-between items-center">
+                <span className="text-base font-['Montserrat']">Total</span>
+                <div className="flex items-center">
+                  <span className="text-base font-semibold font-['Montserrat']">
+                    ₦{calculateTotal().toLocaleString()}
+                  </span>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
+          </div>
 
+          {/* Payment Method Selection */}
+          <div className="mx-4 mb-4">
+            <div className="border-2 border-[#4682b4] rounded-2xl p-4 bg-white shadow-lg">
+              <span className="text-[#D9D9D9] text-base font-medium font-['Montserrat']">
+                Select a Payment Method....
+              </span>
+            </div>
+          </div>
+
+          {/* Make Payment Button */}
+          <div className="mx-4 mb-8">
             <Button
-              className="w-full bg-[#4682b4] hover:bg-[#010e42] text-white py-4 text-base font-medium"
+              className="w-full bg-[#0B1A51] hover:bg-[#010e42] text-white py-4 rounded-[30px] font-['Montserrat']"
               onClick={handleCheckout}
               disabled={cartItems.length === 0}
             >
-              <CreditCard className="w-5 h-5 mr-2" />
-              Proceed to Checkout
-            </Button>
-
-            <Button
-              variant="outline"
-              className="w-full border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10 py-3"
-              onClick={() => setLocation("/commodities")}
-            >
-              Continue Shopping
+              Make Payment
             </Button>
           </div>
         </div>
