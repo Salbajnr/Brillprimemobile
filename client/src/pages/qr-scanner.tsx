@@ -214,7 +214,7 @@ export default function QRScanner() {
         <div className="p-4 space-y-4">
           {/* Delivery Confirmation */}
           {scanResult.type === "delivery" && (
-            <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+            <Card className="rounded-3xl border-2 border-blue-100/50 bg-white animate-fade-in-up">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -250,7 +250,7 @@ export default function QRScanner() {
 
                 <Button
                   onClick={confirmDelivery}
-                  className="btn-3d w-full mt-6 text-white rounded-2xl"
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-colors duration-300"
                 >
                   Confirm Delivery
                 </Button>
@@ -260,7 +260,7 @@ export default function QRScanner() {
 
           {/* Payment Processing */}
           {scanResult.type === "payment" && (
-            <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+            <Card className="rounded-3xl border-2 border-blue-100/50 bg-white animate-fade-in-up">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -291,7 +291,7 @@ export default function QRScanner() {
 
                 <Button
                   onClick={processPayment}
-                  className="btn-3d w-full mt-6 text-white rounded-2xl"
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-colors duration-300"
                 >
                   Proceed to Payment
                 </Button>
@@ -301,7 +301,7 @@ export default function QRScanner() {
 
           {/* Merchant Information */}
           {scanResult.type === "merchant" && (
-            <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+            <Card className="rounded-3xl border-2 border-blue-100/50 bg-white animate-fade-in-up">
               <CardContent className="p-6">
                 <div className="text-center mb-6">
                   <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -338,7 +338,7 @@ export default function QRScanner() {
 
                 <Button
                   onClick={saveContact}
-                  className="btn-3d w-full mt-6 text-white rounded-2xl"
+                  className="w-full mt-6 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-colors duration-300"
                 >
                   Save Contact
                 </Button>
@@ -405,7 +405,7 @@ export default function QRScanner() {
 
       <div className="p-4 space-y-4">
         {/* Camera View */}
-        <Card className="card-3d rounded-3xl border-2 border-blue-100/50 overflow-hidden animate-fade-in-up">
+        <Card className="rounded-3xl border-2 border-blue-100/50 bg-white overflow-hidden animate-fade-in-up">
           <CardContent className="p-0">
             <div className="relative bg-black aspect-[4/3]">
               {isScanning ? (
@@ -458,7 +458,7 @@ export default function QRScanner() {
             <Button
               onClick={startCamera}
               disabled={hasPermission === false}
-              className="btn-3d h-14 text-white rounded-3xl animate-fade-in-up"
+              className="h-14 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-3xl transition-colors duration-300 animate-fade-in-up"
             >
               <Camera className="w-6 h-6 mr-3" />
               Start Camera
@@ -476,7 +476,7 @@ export default function QRScanner() {
         </div>
 
         {/* Quick Test Buttons for Demo */}
-        <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+        <Card className="rounded-3xl border-2 border-blue-100/50 bg-white animate-fade-in-up">
           <CardContent className="p-4">
             <h3 className="font-medium text-[#131313] mb-3">Test QR Code Types</h3>
             <div className="grid grid-cols-1 gap-2">
