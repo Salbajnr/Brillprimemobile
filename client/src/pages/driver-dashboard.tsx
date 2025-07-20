@@ -363,6 +363,15 @@ function DriverDashboardContent() {
                 <Clock className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
                 Delivery History
               </Button>
+              <Link href="/messages">
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start rounded-xl py-3"
+                >
+                  <MessageSquare className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
+                  Messages
+                </Button>
+              </Link>
             </nav>
           </div>
 
