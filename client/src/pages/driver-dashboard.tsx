@@ -711,11 +711,23 @@ function DriverDashboardContent() {
                     <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-700 mb-2">No delivery history yet</h3>
                     <p className="text-gray-500 mb-6">Complete your first delivery to see history here</p>
-                    <Link href="/order-history">
-                      <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
-                        View Order History
-                      </Button>
-                    </Link>
+                    <div className="flex space-x-3">
+                      <Link href="/order-history">
+                        <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
+                          View Order History
+                        </Button>
+                      </Link>
+                      <Link href="/order-history-detail?status=COMPLETED">
+                        <Button className="rounded-full bg-green-600 hover:bg-green-700">
+                          Test Completed
+                        </Button>
+                      </Link>
+                      <Link href="/order-history-detail?status=CANCELLED">
+                        <Button className="rounded-full bg-red-600 hover:bg-red-700">
+                          Test Cancelled
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -51,9 +51,35 @@ interface OrderDetail {
   productIcon?: string;
 }
 
-// Sample detailed order data
+// Get sample data including failed orders
 const getSampleOrderDetail = (userRole: string): OrderDetail => {
+  // Check URL params to determine if showing a failed/cancelled order
+  const urlParams = new URLSearchParams(window.location.search);
+  const orderStatus = urlParams.get('status') || 'COMPLETED';
+  
   if (userRole === 'DRIVER') {
+    if (orderStatus === 'CANCELLED') {
+      return {
+        id: 'ord-004',
+        type: 'FUEL',
+        productName: 'Petrol',
+        quantity: '1 litre',
+        unitPrice: 30000,
+        subtotal: 30000,
+        deliveryFee: 500,
+        total: 30500,
+        customerName: 'Mike Johnson',
+        customerPhone: '+234 801 234 5678',
+        pickupLocation: 'Bukuru, Jos',
+        deliveryLocation: 'Rayfield, Jos',
+        distance: '10Km',
+        timeTaken: '15 mins',
+        status: 'CANCELLED',
+        date: 'Friday, 13th November 2024',
+        deliveryTime: '05:00pm',
+        productIcon: fuelIcon
+      };
+    }
     return {
       id: 'ord-001',
       type: 'FUEL',
@@ -75,6 +101,29 @@ const getSampleOrderDetail = (userRole: string): OrderDetail => {
       productIcon: fuelIcon
     };
   } else if (userRole === 'CONSUMER') {
+    if (orderStatus === 'CANCELLED') {
+      return {
+        id: 'ord-005',
+        type: 'COMMODITY',
+        productName: 'Rice (50kg)',
+        quantity: '2 bags',
+        unitPrice: 42500,
+        subtotal: 85000,
+        deliveryFee: 1500,
+        total: 86500,
+        customerName: 'Sarah Ibrahim',
+        customerPhone: '+234 803 567 8901',
+        driverName: 'Ahmed Hassan',
+        pickupLocation: 'Market Square, Jos',
+        deliveryLocation: 'Angwan Rogo, Jos',
+        distance: '8Km',
+        timeTaken: '0 mins',
+        status: 'CANCELLED',
+        date: 'Thursday, 12th November 2024',
+        deliveryTime: 'Not delivered',
+        productIcon: fuelIcon
+      };
+    }
     return {
       id: 'ord-002',
       type: 'COMMODITY',
@@ -96,6 +145,29 @@ const getSampleOrderDetail = (userRole: string): OrderDetail => {
       deliveryTime: '02:30pm'
     };
   } else {
+    if (orderStatus === 'CANCELLED') {
+      return {
+        id: 'ord-006',
+        type: 'FOOD',
+        productName: 'Jollof Rice Combo',
+        quantity: '3 portions',
+        unitPrice: 5000,
+        subtotal: 15000,
+        deliveryFee: 800,
+        total: 15800,
+        customerName: 'Grace Danjuma',
+        customerPhone: '+234 805 432 1098',
+        driverName: 'David Yakubu',
+        pickupLocation: 'Mama Adanna Kitchen',
+        deliveryLocation: 'University of Jos',
+        distance: '5Km',
+        timeTaken: '0 mins',
+        status: 'CANCELLED',
+        date: 'Wednesday, 11th November 2024',
+        deliveryTime: 'Not delivered',
+        productIcon: fuelIcon
+      };
+    }
     return {
       id: 'ord-003',
       type: 'FOOD',
@@ -348,34 +420,67 @@ export default function OrderHistoryDetail() {
           </div>
         </div>
 
-        {/* Purchase Summary */}
-        <Card 
-          className="rounded-2xl text-white"
-          style={{ backgroundColor: COLORS.PRIMARY }}
-        >
-          <CardContent className="p-6">
-            <h4 className="text-lg font-bold text-center mb-6 text-white">Purchase Summary</h4>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-base">Subtotal</span>
-                <span className="text-base font-semibold">₦{(orderDetail.subtotal / 100).toFixed(2)}</span>
-              </div>
+        {/* Purchase Summary - Only show for completed orders */}
+        {orderDetail.status === 'COMPLETED' && (
+          <Card 
+            className="rounded-2xl text-white"
+            style={{ backgroundColor: COLORS.PRIMARY }}
+          >
+            <CardContent className="p-6">
+              <h4 className="text-lg font-bold text-center mb-6 text-white">Purchase Summary</h4>
               
-              <div className="flex items-center justify-between">
-                <span className="text-base">Delivery fee</span>
-                <span className="text-base font-semibold">₦{(orderDetail.deliveryFee / 100).toFixed(2)}</span>
-              </div>
-              
-              <div className="border-t border-white/20 pt-3">
+              <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-base font-medium">Total</span>
-                  <span className="text-base font-bold">₦{(orderDetail.total / 100).toFixed(2)}</span>
+                  <span className="text-base">Subtotal</span>
+                  <span className="text-base font-semibold">₦{(orderDetail.subtotal / 100).toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-base">Delivery fee</span>
+                  <span className="text-base font-semibold">₦{(orderDetail.deliveryFee / 100).toFixed(2)}</span>
+                </div>
+                
+                <div className="border-t border-white/20 pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-medium">Total</span>
+                    <span className="text-base font-bold">₦{(orderDetail.total / 100).toFixed(2)}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Cancelled Order Summary */}
+        {orderDetail.status === 'CANCELLED' && (
+          <Card 
+            className="rounded-2xl text-white"
+            style={{ backgroundColor: COLORS.PRIMARY }}
+          >
+            <CardContent className="p-6">
+              <h4 className="text-lg font-bold text-center mb-6 text-white">Purchase Summary</h4>
+              
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-base">Subtotal</span>
+                  <span className="text-base font-semibold">₦{(orderDetail.subtotal / 100).toFixed(2)}</span>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <span className="text-base">Delivery fee</span>
+                  <span className="text-base font-semibold">₦{(orderDetail.deliveryFee / 100).toFixed(2)}</span>
+                </div>
+                
+                <div className="border-t border-white/20 pt-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-base font-medium">Total</span>
+                    <span className="text-base font-bold">₦{(orderDetail.total / 100).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Status Badge */}
         <div className="flex justify-center">
@@ -391,7 +496,7 @@ export default function OrderHistoryDetail() {
           </Badge>
         </div>
 
-        {/* Action Buttons (only for drivers) */}
+        {/* Action Buttons (only for drivers with active orders) */}
         {userRole === 'DRIVER' && orderDetail.status !== 'COMPLETED' && orderDetail.status !== 'CANCELLED' && (
           <div className="flex space-x-3">
             <Button 
@@ -413,6 +518,41 @@ export default function OrderHistoryDetail() {
               <MessageSquare className="h-4 w-4 mr-2" />
               Chat
             </Button>
+          </div>
+        )}
+
+        {/* Cancelled Order Actions */}
+        {orderDetail.status === 'CANCELLED' && (
+          <div className="text-center space-y-4">
+            <div className="bg-red-50 rounded-2xl p-4 border border-red-200">
+              <div className="flex items-center justify-center space-x-2 text-red-600">
+                <div className="w-6 h-6 rounded-full border-2 border-red-600 flex items-center justify-center">
+                  <span className="text-sm font-bold">!</span>
+                </div>
+                <p className="text-sm font-medium">This order was cancelled</p>
+              </div>
+              <p className="text-xs text-red-500 mt-2">
+                {userRole === 'DRIVER' 
+                  ? 'The customer cancelled this delivery request'
+                  : userRole === 'CONSUMER'
+                  ? 'You cancelled this order'
+                  : 'This order was cancelled by the customer'
+                }
+              </p>
+            </div>
+            
+            {userRole === 'CONSUMER' && (
+              <Button 
+                className="rounded-2xl"
+                style={{ 
+                  backgroundColor: COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                }}
+                onClick={() => setLocation('/commodities')}
+              >
+                Order Again
+              </Button>
+            )}
           </div>
         )}
       </div>
