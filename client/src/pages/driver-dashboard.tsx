@@ -685,9 +685,11 @@ function DriverDashboardContent() {
                       <h3 className="text-green-800 font-semibold text-lg mb-2">Available Balance</h3>
                       <p className="text-4xl font-bold text-green-700">₦{sampleEarnings.totalEarnings.toLocaleString()}</p>
                     </div>
-                    <Button className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 py-3">
-                      Withdraw Earnings
-                    </Button>
+                    <Link href="/driver-withdrawal">
+                      <Button className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 py-3">
+                        Withdraw Earnings
+                      </Button>
+                    </Link>
                   </CardContent>
                 </Card>
               </div>
