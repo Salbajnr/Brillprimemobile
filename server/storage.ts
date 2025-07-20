@@ -322,14 +322,120 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Vendor Feed operations
-  async getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<any[]> {
-    // Return empty array for now - will implement when schema issues are resolved
-    return [];
+  async getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]> {
+    // For now, return sample data that matches the actual data structure
+    // This will be replaced with real database queries once schema is deployed
+    const samplePosts: VendorPost[] = [
+      {
+        id: "1",
+        vendorId: 1,
+        title: "New Stock Alert: Premium Rice Collection",
+        content: "Just received fresh shipment of premium long grain rice. Perfect for families and restaurants. Limited quantity available!",
+        postType: "NEW_PRODUCT",
+        productId: "prod-1",
+        images: ["/api/placeholder/400/300"],
+        tags: ["rice", "premium", "fresh"],
+        originalPrice: "45000",
+        discountPrice: "40000",
+        discountPercentage: 11,
+        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
+        isActive: true,
+        viewCount: 125,
+        likeCount: 23,
+        commentCount: 8,
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
+        updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
+        vendorName: "Golden Grains Store",
+        vendorProfilePicture: "/api/placeholder/50/50",
+        productName: "Premium Long Grain Rice (50kg)",
+        productPrice: "40000",
+        productImage: "/api/placeholder/100/100"
+      },
+      {
+        id: "2", 
+        vendorId: 2,
+        title: "Flash Sale: Electronics Clearance",
+        content: "Clearing out last season's electronics. Phones, tablets, and accessories at unbeatable prices. While stocks last!",
+        postType: "PROMOTION",
+        productId: "prod-2",
+        images: ["/api/placeholder/400/300"],
+        tags: ["electronics", "sale", "clearance"],
+        originalPrice: "150000",
+        discountPrice: "95000",
+        discountPercentage: 37,
+        validUntil: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
+        isActive: true,
+        viewCount: 89,
+        likeCount: 15,
+        commentCount: 12,
+        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
+        updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
+        vendorName: "TechHub Electronics",
+        vendorProfilePicture: "/api/placeholder/50/50",
+        productName: "Samsung Galaxy Tablet",
+        productPrice: "95000",
+        productImage: "/api/placeholder/100/100"
+      },
+      {
+        id: "3",
+        vendorId: 3,
+        title: "Store Announcement: Extended Hours",
+        content: "We're now open 24/7 to serve you better! Visit us anytime for fresh groceries and household essentials.",
+        postType: "ANNOUNCEMENT",
+        productId: null,
+        images: [],
+        tags: ["announcement", "hours", "service"],
+        originalPrice: null,
+        discountPrice: null,
+        discountPercentage: null,
+        validUntil: null,
+        isActive: true,
+        viewCount: 156,
+        likeCount: 31,
+        commentCount: 5,
+        createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
+        updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
+        vendorName: "Fresh Market Express",
+        vendorProfilePicture: "/api/placeholder/50/50",
+        productName: null,
+        productPrice: null,
+        productImage: null
+      }
+    ];
+
+    return samplePosts.slice(0, filters.limit || 20);
   }
 
   async createVendorPost(insertPost: InsertVendorPost): Promise<VendorPost> {
-    // Placeholder implementation
-    return {} as VendorPost;
+    // Simulate creating a new post with real data structure
+    const newPost: VendorPost = {
+      id: Math.random().toString(36).substr(2, 9),
+      vendorId: insertPost.vendorId,
+      title: insertPost.title,
+      content: insertPost.content,
+      postType: insertPost.postType,
+      productId: insertPost.productId || null,
+      images: insertPost.images || [],
+      tags: insertPost.tags || [],
+      originalPrice: insertPost.originalPrice || null,
+      discountPrice: insertPost.discountPrice || null,
+      discountPercentage: insertPost.discountPercentage || null,
+      validUntil: insertPost.validUntil || null,
+      isActive: true,
+      viewCount: 0,
+      likeCount: 0,
+      commentCount: 0,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      vendorName: "Current User", // Would get from user lookup
+      vendorProfilePicture: "/api/placeholder/50/50",
+      productName: insertPost.productId ? "Sample Product" : null,
+      productPrice: insertPost.discountPrice || insertPost.originalPrice || null,
+      productImage: insertPost.productId ? "/api/placeholder/100/100" : null
+    };
+    
+    console.log("Created vendor post:", newPost);
+    return newPost;
   }
 
   async likeVendorPost(postId: string, userId: number): Promise<VendorPostLike> {
