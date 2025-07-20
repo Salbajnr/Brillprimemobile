@@ -256,7 +256,7 @@ export default function Merchants() {
           {filteredMerchants.map((merchant, index) => (
             <Card
               key={merchant.id}
-              className="card-3d rounded-3xl border-2 border-blue-100/50 animate-slide-up interactive-element"
+              className="rounded-3xl border-2 border-blue-100/50 bg-white transition-all duration-300 hover:shadow-md animate-slide-up"
               style={{ animationDelay: `${index * 0.1}s` }}
             >
               <CardContent className="p-4">
@@ -369,7 +369,7 @@ export default function Merchants() {
                       <Button
                         size="sm"
                         onClick={() => openMaps(merchant)}
-                        className="btn-3d flex-1 text-white rounded-2xl"
+                        className="flex-1 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-2xl transition-colors duration-300"
                       >
                         <Navigation className="w-4 h-4 mr-1" />
                         Directions
@@ -393,7 +393,7 @@ export default function Merchants() {
 
         {/* No Results */}
         {filteredMerchants.length === 0 && (
-          <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+          <Card className="rounded-3xl border-2 border-blue-100/50 bg-white animate-fade-in-up">
             <CardContent className="p-8 text-center">
               <Search className="w-12 h-12 text-gray-400 mx-auto mb-4" />
               <h3 className="text-lg font-medium text-[#131313] mb-2">No merchants found</h3>
