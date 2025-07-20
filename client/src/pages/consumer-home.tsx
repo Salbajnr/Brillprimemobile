@@ -350,7 +350,9 @@ export default function ConsumerHome() {
                 <span className="text-sm font-medium">•••• 4532</span>
               </div>
               <div className="flex items-center space-x-2 bg-gray-50 rounded-lg p-3 flex-1">
-                <img src={visaCardLogo} alt="Visa" className="w-8 h-5" />
+                <div className="w-8 h-5 bg-[#1A1F71] rounded flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">VISA</span>
+                </div>
                 <span className="text-sm font-medium">•••• 8901</span>
               </div>
             </div>
