@@ -37,6 +37,7 @@ import CartPage from "@/pages/cart";
 import NotificationsPage from "@/pages/notifications";
 import MerchantsPage from "@/pages/merchants";
 import NotFound from "@/pages/not-found";
+import MerchantDashboard from "@/pages/merchant-dashboard";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -61,6 +62,7 @@ function Router() {
       <Route path="/otp-verification" component={OtpVerificationPage} />
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
+      <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={MerchantDashboard} />} />
       <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
       <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
