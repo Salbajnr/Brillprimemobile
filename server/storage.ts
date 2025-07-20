@@ -40,6 +40,11 @@ export interface IStorage {
   updateCartItem(cartItemId: number, quantity: number): Promise<CartItem>;
   removeFromCart(cartItemId: number): Promise<void>;
   
+  // Wishlist operations (placeholder for future implementation)
+  addToWishlist(userId: number, productId: number): Promise<void>;
+  removeFromWishlist(userId: number, productId: number): Promise<void>;
+  getWishlistItems(userId: number): Promise<any[]>;
+  
   // Vendor Feed operations
   getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
   createVendorPost(post: InsertVendorPost): Promise<VendorPost>;
@@ -346,6 +351,22 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getVendorPostComments(postId: string): Promise<VendorPostComment[]> {
+    return [];
+  }
+
+  // Wishlist operations (placeholder implementations)
+  async addToWishlist(userId: number, productId: number): Promise<void> {
+    // Placeholder - will implement with proper wishlist table later
+    console.log(`Added product ${productId} to wishlist for user ${userId}`);
+  }
+
+  async removeFromWishlist(userId: number, productId: number): Promise<void> {
+    // Placeholder - will implement with proper wishlist table later
+    console.log(`Removed product ${productId} from wishlist for user ${userId}`);
+  }
+
+  async getWishlistItems(userId: number): Promise<any[]> {
+    // Placeholder - will implement with proper wishlist table later
     return [];
   }
 }
