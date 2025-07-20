@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NotificationProvider, useNotifications } from "@/components/ui/notification-system";
 import { Link } from "wouter";
 import { 
   Menu, 
@@ -22,8 +23,10 @@ import {
   Settings,
   Bell,
   Home,
-  MessageSquare
+  MessageSquare,
+  Phone
 } from "lucide-react";
+import logoImage from "../assets/images/logo.png";
 
 interface DeliveryJob {
   id: string;
@@ -66,11 +69,21 @@ interface DriverEarnings {
   completedDeliveries: number;
 }
 
-export default function DriverDashboard() {
+// Color constants
+const COLORS = {
+  PRIMARY: '#4682b4',
+  SECONDARY: '#0b1a51', 
+  ACTIVE: '#010e42',
+  TEXT: '#131313',
+  WHITE: '#ffffff'
+} as const;
+
+function DriverDashboardContent() {
   const [selectedTab, setSelectedTab] = useState("jobs");
   const [isOnline, setIsOnline] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const queryClient = useQueryClient();
+  const { addNotification } = useNotifications();
 
   // Sample data for demonstration
   const sampleJobs: DeliveryJob[] = [
@@ -143,6 +156,21 @@ export default function DriverDashboard() {
 
   const handleAcceptJob = (jobId: string) => {
     acceptJobMutation.mutate(jobId);
+    addNotification({
+      type: 'success',
+      title: 'Order Accepted!',
+      message: `You have successfully accepted order #${jobId.split('-')[1].toUpperCase()}. Customer will be notified.`,
+      duration: 5000
+    });
+  };
+
+  const handleDeclineJob = (jobId: string) => {
+    addNotification({
+      type: 'info',
+      title: 'Order Declined',
+      message: `Order #${jobId.split('-')[1].toUpperCase()} has been declined. It will be offered to other drivers.`,
+      duration: 4000
+    });
   };
 
   const formatTime = (date: Date) => {
@@ -156,11 +184,11 @@ export default function DriverDashboard() {
 
   const getJobTypeColor = (type: string) => {
     switch (type) {
-      case 'FUEL': return 'bg-orange-100 text-orange-800 border-orange-200';
-      case 'FOOD': return 'bg-green-100 text-green-800 border-green-200';
-      case 'PACKAGE': return 'bg-blue-100 text-blue-800 border-blue-200';
-      case 'COMMODITY': return 'bg-purple-100 text-purple-800 border-purple-200';
-      default: return 'bg-gray-100 text-gray-800 border-gray-200';
+      case 'FUEL': return `bg-orange-100 text-orange-800 border-orange-200`;
+      case 'FOOD': return `bg-green-100 text-green-800 border-green-200`;
+      case 'PACKAGE': return `bg-blue-100 text-[${COLORS.SECONDARY}] border-blue-200`;
+      case 'COMMODITY': return `bg-purple-100 text-purple-800 border-purple-200`;
+      default: return `bg-gray-100 text-[${COLORS.TEXT}] border-gray-200`;
     }
   };
 
@@ -175,69 +203,91 @@ export default function DriverDashboard() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="h-screen flex overflow-hidden" style={{ background: `linear-gradient(to bottom right, #f9fafb, #dbeafe)` }}>
       {/* Sidebar */}
-      <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-80 bg-white shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 border-r-2 border-blue-100`}>
+      <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-80 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 border-r-2`} style={{ backgroundColor: COLORS.WHITE, borderColor: COLORS.PRIMARY + '40' }}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-6 border-b-2 border-blue-100 bg-gradient-to-r from-[#4682b4] to-[#0b1a51]">
+          <div className="flex items-center justify-between p-6 border-b-2" style={{ 
+            background: `linear-gradient(to right, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`,
+            borderColor: COLORS.PRIMARY + '40'
+          }}>
             <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-lg">
-                <Truck className="h-5 w-5 text-[#4682b4]" />
+              <div className="w-12 h-12 rounded-full flex items-center justify-center shadow-lg" style={{ backgroundColor: COLORS.WHITE }}>
+                <img src={logoImage} alt="BrillPrime" className="w-8 h-8 object-contain" />
               </div>
               <div>
-                <h2 className="text-white font-bold text-xl">BrillPrime</h2>
-                <p className="text-blue-100 text-sm">Driver Portal</p>
+                <h2 className="font-bold text-xl" style={{ color: COLORS.WHITE }}>BrillPrime</h2>
+                <p className="text-sm opacity-80" style={{ color: COLORS.WHITE }}>Driver Portal</p>
               </div>
             </div>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden text-white hover:bg-white/20 rounded-full"
+              className="lg:hidden rounded-full hover:bg-white/20"
+              style={{ color: COLORS.WHITE }}
             >
               <X className="h-5 w-5" />
             </Button>
           </div>
 
           {/* Driver Status Card */}
-          <div className="p-6 bg-gradient-to-br from-blue-50 to-white border-b-2 border-blue-100">
+          <div className="p-6 border-b-2" style={{ 
+            background: `linear-gradient(to bottom right, ${COLORS.PRIMARY}20, ${COLORS.WHITE})`,
+            borderColor: COLORS.PRIMARY + '40'
+          }}>
             <div className="flex items-center space-x-4 mb-4">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-lg">
+              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg" style={{
+                background: `linear-gradient(135deg, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`
+              }}>
+                <span className="font-bold text-lg" style={{ color: COLORS.WHITE }}>
                   {sampleProfile.vehiclePlate.split('-')[1] || 'DR'}
                 </span>
               </div>
               <div className="flex-1">
-                <h3 className="font-bold text-gray-800 text-lg">Driver #{sampleProfile.userId}</h3>
-                <p className="text-gray-600 text-sm">{sampleProfile.vehiclePlate}</p>
+                <h3 className="font-bold text-lg" style={{ color: COLORS.TEXT }}>Driver #{sampleProfile.userId}</h3>
+                <p className="text-sm" style={{ color: COLORS.TEXT + '80' }}>{sampleProfile.vehiclePlate}</p>
                 <div className="flex items-center space-x-2 mt-1">
                   <Star className="h-4 w-4 text-yellow-500 fill-current" />
-                  <span className="text-sm font-medium">{sampleProfile.rating}/5</span>
-                  <span className="text-xs text-gray-500">({sampleProfile.reviewCount} reviews)</span>
+                  <span className="text-sm font-medium" style={{ color: COLORS.TEXT }}>{sampleProfile.rating}/5</span>
+                  <span className="text-xs" style={{ color: COLORS.TEXT + '60' }}>({sampleProfile.reviewCount} reviews)</span>
                 </div>
               </div>
             </div>
             
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="text-center p-3 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
-                <p className="text-2xl font-bold text-[#0b1a51]">{sampleProfile.totalDeliveries}</p>
-                <p className="text-xs text-gray-600">Completed</p>
+              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{ 
+                backgroundColor: COLORS.WHITE,
+                borderColor: COLORS.PRIMARY + '40'
+              }}>
+                <p className="text-2xl font-bold" style={{ color: COLORS.SECONDARY }}>{sampleProfile.totalDeliveries}</p>
+                <p className="text-xs" style={{ color: COLORS.TEXT + '80' }}>Completed</p>
               </div>
-              <div className="text-center p-3 bg-white rounded-xl border-2 border-blue-200 shadow-sm">
+              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{ 
+                backgroundColor: COLORS.WHITE,
+                borderColor: COLORS.PRIMARY + '40'
+              }}>
                 <p className="text-2xl font-bold text-green-600">₦{(sampleEarnings.todayEarnings / 1000).toFixed(1)}k</p>
-                <p className="text-xs text-gray-600">Today</p>
+                <p className="text-xs" style={{ color: COLORS.TEXT + '80' }}>Today</p>
               </div>
             </div>
 
             <Button
-              variant={isOnline ? "default" : "outline"}
-              onClick={() => setIsOnline(!isOnline)}
-              className={`w-full rounded-xl py-3 transition-all duration-300 ${
-                isOnline 
-                  ? "bg-green-600 hover:bg-green-700 shadow-lg" 
-                  : "border-2 border-gray-300 hover:border-green-300"
-              }`}
+              onClick={() => {
+                setIsOnline(!isOnline);
+                addNotification({
+                  type: isOnline ? 'info' : 'success',
+                  title: isOnline ? 'You are now offline' : 'You are now online',
+                  message: isOnline ? 'You will not receive new orders' : 'You will now receive new pickup orders',
+                  duration: 3000
+                });
+              }}
+              className="w-full rounded-xl py-3 transition-all duration-300"
+              style={{
+                backgroundColor: isOnline ? '#22c55e' : COLORS.PRIMARY,
+                color: COLORS.WHITE
+              }}
             >
               <div className={`w-3 h-3 rounded-full mr-3 ${isOnline ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
               {isOnline ? "Available for Orders" : "Currently Offline"}
@@ -251,8 +301,12 @@ export default function DriverDashboard() {
                 variant={selectedTab === "jobs" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3 text-left"
                 onClick={() => setSelectedTab("jobs")}
+                style={selectedTab === "jobs" ? { 
+                  backgroundColor: COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                } : {}}
               >
-                <Package className="h-5 w-5 mr-3" />
+                <Package className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
                 <div className="text-left">
                   <div className="font-medium">Pickup Orders</div>
                   <div className="text-xs opacity-70">{sampleJobs.length} available</div>
@@ -262,24 +316,36 @@ export default function DriverDashboard() {
                 variant={selectedTab === "navigate" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("navigate")}
+                style={selectedTab === "navigate" ? { 
+                  backgroundColor: COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                } : {}}
               >
-                <Navigation className="h-5 w-5 mr-3" />
+                <Navigation className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
                 Navigation & Routes
               </Button>
               <Button
                 variant={selectedTab === "earnings" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("earnings")}
+                style={selectedTab === "earnings" ? { 
+                  backgroundColor: COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                } : {}}
               >
-                <DollarSign className="h-5 w-5 mr-3" />
+                <DollarSign className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
                 Earnings & Payouts
               </Button>
               <Button
                 variant={selectedTab === "history" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("history")}
+                style={selectedTab === "history" ? { 
+                  backgroundColor: COLORS.PRIMARY,
+                  color: COLORS.WHITE
+                } : {}}
               >
-                <Clock className="h-5 w-5 mr-3" />
+                <Clock className="h-5 w-5 mr-3" style={{ color: COLORS.SECONDARY }} />
                 Delivery History
               </Button>
             </nav>
@@ -384,85 +450,135 @@ export default function DriverDashboard() {
                   {sampleJobs.map((job) => (
                     <Card 
                       key={job.id} 
-                      className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:border-blue-300"
+                      className="rounded-3xl border shadow-lg hover:shadow-xl transition-all duration-300"
+                      style={{ 
+                        borderColor: COLORS.PRIMARY,
+                        backgroundColor: COLORS.WHITE 
+                      }}
                     >
                       <CardContent className="p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center space-x-3">
-                            <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg">
-                              <Package className="h-6 w-6 text-white" />
-                            </div>
-                            <div>
-                              <div className="flex items-center space-x-2 mb-1">
-                                <Badge className={`px-3 py-1 rounded-full border-2 ${getJobTypeColor(job.deliveryType)}`}>
-                                  {job.deliveryType}
-                                </Badge>
-                                <Badge className={`px-3 py-1 rounded-full border-2 ${getStatusColor(job.status)}`}>
-                                  {job.status}
-                                </Badge>
+                        {/* Header with customer name and action buttons */}
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center space-x-4">
+                            <div className="w-16 h-16 rounded-full overflow-hidden border-2" style={{ borderColor: COLORS.PRIMARY }}>
+                              <div className="w-full h-full flex items-center justify-center text-lg font-bold" style={{ 
+                                background: `linear-gradient(135deg, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`,
+                                color: COLORS.WHITE 
+                              }}>
+                                {job.customerName.charAt(0)}
                               </div>
-                              <h3 className="font-bold text-lg text-gray-800">Order #{job.id.split('-')[1].toUpperCase()}</h3>
                             </div>
-                          </div>
-                          <div className="text-right">
-                            <p className="text-3xl font-bold text-green-600">₦{job.deliveryFee.toLocaleString()}</p>
-                            <p className="text-sm text-gray-500">{job.distance} • {job.estimatedTime}</p>
-                          </div>
-                        </div>
-
-                        {/* Customer Info */}
-                        <div className="bg-gray-50 p-4 rounded-xl mb-4 border-2 border-gray-200">
-                          <div className="flex items-center justify-between">
                             <div>
-                              <h4 className="font-semibold text-gray-800">{job.customerName}</h4>
-                              <p className="text-gray-600 text-sm">{job.customerPhone}</p>
+                              <h3 className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.customerName}</h3>
                             </div>
-                            <Button variant="outline" size="sm" className="rounded-full">
-                              Call Customer
+                          </div>
+                          
+                          <div className="flex space-x-3">
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              className="w-10 h-10 p-0 rounded-full border-2"
+                              style={{ 
+                                borderColor: COLORS.PRIMARY,
+                                backgroundColor: COLORS.PRIMARY,
+                                color: COLORS.WHITE
+                              }}
+                            >
+                              <MessageCircle className="h-5 w-5" />
+                            </Button>
+                            <Button 
+                              variant="outline"
+                              size="sm"
+                              className="w-10 h-10 p-0 rounded-full border-2"
+                              style={{ 
+                                borderColor: COLORS.PRIMARY,
+                                backgroundColor: COLORS.PRIMARY,
+                                color: COLORS.WHITE
+                              }}
+                            >
+                              <Phone className="h-5 w-5" />
                             </Button>
                           </div>
                         </div>
 
-                        {/* Route Information */}
-                        <div className="space-y-3 mb-6">
-                          <div className="flex items-start space-x-3">
-                            <div className="w-4 h-4 bg-blue-500 rounded-full mt-1 flex-shrink-0"></div>
-                            <div>
-                              <p className="font-medium text-gray-800">Pickup Location</p>
-                              <p className="text-gray-600 text-sm">{job.pickupAddress}</p>
+                        {/* Divider */}
+                        <div className="w-full h-px mb-6" style={{ backgroundColor: '#D4D4D4' }}></div>
+
+                        {/* Route and timing information */}
+                        <div className="space-y-4 mb-6">
+                          {/* Time and progress bar */}
+                          <div className="flex items-center space-x-3">
+                            <Clock className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+                            <div className="flex-1">
+                              <p className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.estimatedTime}</p>
+                              <div className="w-full h-1 rounded-full mt-2" style={{ backgroundColor: '#D9D9D9' }}>
+                                <div 
+                                  className="h-1 rounded-full" 
+                                  style={{ 
+                                    backgroundColor: COLORS.PRIMARY,
+                                    width: '64%' // Sample progress
+                                  }}
+                                ></div>
+                              </div>
                             </div>
                           </div>
-                          <div className="ml-2 border-l-2 border-dashed border-gray-300 h-4"></div>
-                          <div className="flex items-start space-x-3">
-                            <div className="w-4 h-4 bg-green-500 rounded-full mt-1 flex-shrink-0"></div>
-                            <div>
-                              <p className="font-medium text-gray-800">Delivery Location</p>
-                              <p className="text-gray-600 text-sm">{job.deliveryAddress}</p>
+
+                          {/* Dotted line connector */}
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 flex-shrink-0"></div>
+                            <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
+                          </div>
+
+                          {/* Distance */}
+                          <div className="flex items-center space-x-3">
+                            <div className="h-5 w-5 flex items-center justify-center">
+                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.PRIMARY }}></div>
                             </div>
+                            <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.distance}</p>
+                          </div>
+
+                          {/* Dotted line connector */}
+                          <div className="flex items-center">
+                            <div className="w-5 h-5 flex-shrink-0"></div>
+                            <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
+                          </div>
+
+                          {/* Destination */}
+                          <div className="flex items-center space-x-3">
+                            <MapPin className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+                            <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.deliveryAddress}</p>
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        {/* Action buttons */}
                         <div className="flex space-x-3">
                           <Button 
-                            variant="outline" 
-                            className="flex-1 rounded-xl border-2 border-gray-300 hover:border-blue-300 hover:bg-blue-50"
+                            onClick={() => handleDeclineJob(job.id)}
+                            className="flex-1 rounded-2xl py-2 px-6 font-normal"
+                            style={{ 
+                              backgroundColor: COLORS.PRIMARY,
+                              color: COLORS.WHITE
+                            }}
                           >
-                            View Details
+                            Decline
                           </Button>
                           <Button 
                             onClick={() => handleAcceptJob(job.id)}
                             disabled={acceptJobMutation.isPending}
-                            className="flex-1 rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg hover:shadow-xl transition-all duration-300"
+                            className="flex-1 rounded-2xl py-2 px-6 font-normal"
+                            style={{ 
+                              backgroundColor: COLORS.ACTIVE,
+                              color: COLORS.WHITE
+                            }}
                           >
-                            {acceptJobMutation.isPending ? "Accepting..." : "Accept Order"}
+                            {acceptJobMutation.isPending ? "Accepting..." : "Accept"}
                           </Button>
                         </div>
 
                         {job.notes && (
-                          <div className="mt-4 p-3 bg-yellow-50 border-2 border-yellow-200 rounded-xl">
-                            <p className="text-sm text-yellow-800 font-medium">Special Instructions:</p>
-                            <p className="text-sm text-gray-700 mt-1">{job.notes}</p>
+                          <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: '#FFF3CD', border: `1px solid #FFEAA7` }}>
+                            <p className="text-sm font-medium" style={{ color: '#856404' }}>Special Instructions:</p>
+                            <p className="text-sm mt-1" style={{ color: '#6C5A00' }}>{job.notes}</p>
                           </div>
                         )}
                       </CardContent>
@@ -573,5 +689,13 @@ export default function DriverDashboard() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function DriverDashboard() {
+  return (
+    <NotificationProvider>
+      <DriverDashboardContent />
+    </NotificationProvider>
   );
 }
