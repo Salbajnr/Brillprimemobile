@@ -5,6 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
+import { useNotifications } from "@/hooks/use-notifications";
+import { NotificationDropdown } from "@/components/ui/notification-dropdown";
 import logo from "../assets/images/logo.png";
 import scanIcon from "../assets/images/scan_qr_code_white.png";
 import orderFuelIcon from "../assets/images/order_fuel_icon.png";
@@ -42,6 +44,7 @@ interface LocationData {
 export default function ConsumerHome() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [showBalance, setShowBalance] = useState(true);
   const [walletBalance] = useState(45750.00); // Mock data - will be replaced with API
   const [locationData, setLocationData] = useState<LocationData>({
@@ -233,6 +236,13 @@ export default function ConsumerHome() {
     }
   };
 
+  // Notification handlers
+  const handleNotificationClick = (notification: any) => {
+    if (notification.actionUrl) {
+      setLocation(notification.actionUrl);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -248,15 +258,12 @@ export default function ConsumerHome() {
             </div>
           </div>
           <div className="flex items-center space-x-3 animate-slide-in-right">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setLocation("/notifications")}
-              className="relative transition-all duration-300 hover:scale-110"
-            >
-              <Bell className="w-5 h-5 text-[#131313]" />
-              <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-            </Button>
+            <NotificationDropdown
+              notifications={notifications}
+              onMarkAsRead={markAsRead}
+              onMarkAllAsRead={markAllAsRead}
+              onNotificationClick={handleNotificationClick}
+            />
             <Button
               variant="ghost"
               size="icon"
