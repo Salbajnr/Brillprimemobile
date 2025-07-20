@@ -173,25 +173,28 @@ export default function ConsumerHome() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Wallet Balance Card */}
+        {/* Live Location Map Card */}
         <Card className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] text-white">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-medium">Wallet Balance</h2>
+              <h2 className="text-lg font-medium">Your Live Location</h2>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={() => setShowBalance(!showBalance)}
+                onClick={() => setLocation("/location-setup")}
                 className="text-white hover:bg-white/20"
               >
-                {showBalance ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                <MapPin className="w-5 h-5" />
               </Button>
             </div>
             <div className="mb-6">
-              <p className="text-3xl font-bold">
-                {showBalance ? formatCurrency(walletBalance) : "****"}
-              </p>
-              <p className="text-white/80 text-sm mt-1">Available balance</p>
+              <div className="h-32 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+                <div className="text-center">
+                  <MapPin className="w-8 h-8 mx-auto mb-2" />
+                  <p className="text-sm">Live location tracking active</p>
+                  <p className="text-xs opacity-80">Lagos, Nigeria</p>
+                </div>
+              </div>
             </div>
             <div className="flex space-x-3">
               <Button
@@ -224,7 +227,7 @@ export default function ConsumerHome() {
                 onClick={() => setLocation(action.route)}
               >
                 <CardContent className="p-4">
-                  <div className={`w-12 h-12 ${action.bgColor} rounded-xl flex items-center justify-center mb-3`}>
+                  <div className={`w-12 h-12 ${action.bgColor} rounded-2xl flex items-center justify-center mb-3`}>
                     <img src={action.icon} alt={action.title} className="w-6 h-6" />
                   </div>
                   <h4 className="font-medium text-[#131313]">{action.title}</h4>
@@ -241,10 +244,10 @@ export default function ConsumerHome() {
             <Button
               variant="outline"
               className="h-20 flex-col space-y-2 border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
-              onClick={() => setLocation("/bill-payments")}
+              onClick={() => setLocation("/commodities")}
             >
-              <Receipt className="w-6 h-6" />
-              <span className="text-sm">Pay Bills</span>
+              <ShoppingCart className="w-6 h-6" />
+              <span className="text-sm">Shopping</span>
             </Button>
             <Button
               variant="outline"

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { ArrowLeft, Shield, Bell, Lock, Eye, EyeOff, Globe } from "lucide-react";
+import { ArrowLeft, Shield, Bell, Lock, Eye, EyeOff, Globe, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

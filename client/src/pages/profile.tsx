@@ -1,4 +1,4 @@
-import { ArrowLeft, Edit, Shield, Bell, HelpCircle, LogOut } from "lucide-react";
+import { ArrowLeft, Edit, Shield, Bell, HelpCircle, LogOut, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
 import { useLocation } from "wouter";
@@ -17,7 +17,14 @@ export default function ProfilePage() {
 
   const handleSignOut = () => {
     signOut();
-    setLocation("/");
+    setLocation("/signin");
+  };
+
+  const handleSwitchAccountType = () => {
+    // Show modal or navigate to account switch page
+    // This would typically involve an API call to change account type
+    const newRole = user?.role === "CONSUMER" ? "MERCHANT" : "CONSUMER";
+    alert(`Request to switch to ${newRole} account submitted. This feature requires approval.`);
   };
 
   return (
@@ -111,16 +118,19 @@ export default function ProfilePage() {
 
           <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
             <div className="flex items-center space-x-3">
-              <Bell className="h-5 w-5 text-[var(--brill-secondary)]" />
-              <span className="text-[var(--brill-text)] font-medium">Notifications</span>
+              <HelpCircle className="h-5 w-5 text-[var(--brill-secondary)]" />
+              <span className="text-[var(--brill-text)] font-medium">Help & Support</span>
             </div>
             <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
 
-          <Button className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50">
+          <Button 
+            onClick={handleSwitchAccountType}
+            className="w-full p-4 border border-gray-200 rounded-brill flex items-center justify-between text-left bg-white hover:bg-gray-50"
+          >
             <div className="flex items-center space-x-3">
-              <HelpCircle className="h-5 w-5 text-[var(--brill-secondary)]" />
-              <span className="text-[var(--brill-text)] font-medium">Help & Support</span>
+              <RefreshCw className="h-5 w-5 text-[var(--brill-secondary)]" />
+              <span className="text-[var(--brill-text)] font-medium">Switch Account Type</span>
             </div>
             <img src={dropdownArrowIcon} alt="arrow" className="h-4 w-4 opacity-70 -rotate-90" />
           </Button>
