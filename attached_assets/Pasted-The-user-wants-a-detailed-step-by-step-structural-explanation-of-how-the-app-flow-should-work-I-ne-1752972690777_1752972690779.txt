@@ -1,0 +1,326 @@
+The user wants a detailed, step-by-step structural explanation of how the app flow should work. I need to break down the navigation and user journey through all 8 screens, explaining the logic, decision points, and transitions between screens.
+
+Let me think about this from a user experience perspective and map out the entire flow structure:
+
+Entry point and onboarding
+Main app functionality
+Search and discovery
+User account management
+Merchant interaction
+Shopping flow
+I should explain:
+
+User triggers/actions
+Screen transitions
+Decision points
+Back navigation
+State management
+User goals at each step
+Error handling
+Alternative paths
+Fuel Delivery App - Detailed Flow Structure
+1. APP INITIALIZATION & ONBOARDING
+Screen 1: Location Setup (Entry Point)
+Purpose: First-time user onboarding and location permission
+User State: New user or location not set
+
+Flow Logic:
+
+crmsh
+Copy
+App Launch → Check Location Permission Status
+├── If Location NOT SET → Screen 1 (Location Setup)
+├── If Location SET → Screen 2 (Map Home)
+└── If Location DENIED → Screen 1 (with manual option)
+User Actions & Outcomes:
+
+"Set automatically" → Request GPS permission → Location granted → Screen 2
+"Set later" → Store preference → Screen 2 (with limited functionality)
+"Back button" → Exit app or return to previous state
+Location denied → Show manual location input → Screen 2
+Decision Points:
+
+GPS availability
+User permission granted/denied
+Network connectivity for location services
+2. MAIN APPLICATION HUB
+Screen 2: Map Home (Central Hub)
+Purpose: Primary interface for all app functions
+User State: Location set, ready to use app
+
+Navigation Triggers:
+
+gcode
+Copy
+Screen 2 (Map Home)
+├── Hamburger Menu → Screen 5 (Side Menu)
+├── Search Bar → Screen 3 (Search Results)
+├── Location Button → Screen 1 (Location Setup)
+├── Order Fuel Button → Shopping Flow (Future)
+└── Map Pins (if any) → Screen 3 (Search Results)
+User Actions & Outcomes:
+
+Menu button → Screen 5 (Side navigation)
+Search bar tap → Screen 3 (Location search)
+"Order Fuel Delivery" → Direct to ordering flow
+Location button → Re-set location (Screen 1)
+Map interaction → Show nearby stations (Screen 3)
+State Management:
+
+Current user location
+Nearby fuel stations data
+User session status
+Cart items count
+3. SEARCH & DISCOVERY FLOW
+Screen 3: Search Results
+Purpose: Display available locations and fuel stations
+User State: Actively searching for fuel stations
+
+Entry Points:
+
+From Screen 2 (search interaction)
+From Screen 4 (filter results)
+From Screen 7 (location selection)
+Navigation Logic:
+
+gcode
+Copy
+Screen 3 (Search Results)
+├── Location Item Select → Screen 7 (Merchant Search)
+├── Search Bar → Screen 4 (Search with Filter)
+├── Menu Button → Screen 5 (Side Menu)
+└── Back/Map → Screen 2 (Map Home)
+User Actions & Outcomes:
+
+Location item tap → Screen 7 (Show merchants in that area)
+Search bar focus → Screen 4 (Enhanced search with filters)
+Menu button → Screen 5 (Navigation menu)
+Implicit back → Screen 2 (Return to map)
+Data Flow:
+
+Location search results
+Nearby stations list
+Distance calculations
+Station availability status
+Screen 4: Search with Filter
+Purpose: Advanced search functionality
+User State: Refining search criteria
+
+Enhanced Features:
+
+Filter by distance
+Filter by fuel type
+Filter by price range
+Filter by ratings/reviews
+Filter by amenities
+Navigation Logic:
+
+gcode
+Copy
+Screen 4 (Search Filter)
+├── Filter Apply → Screen 3 (Filtered Results)
+├── Search Execute → Screen 7 (Merchant Search)
+├── Clear Filters → Screen 3 (All Results)
+└── Back → Screen 3 (Previous Results)
+User Actions & Outcomes:
+
+Filter button tap → Open filter options → Apply → Screen 3 (filtered)
+Search with filters → Screen 7 (specific merchant results)
+Clear filters → Screen 3 (reset to all results)
+4. USER ACCOUNT MANAGEMENT
+Screen 5: Side Menu (Navigation Hub)
+Purpose: User account access and app navigation
+User State: Authenticated user accessing account features
+
+Entry Points:
+
+From any screen with hamburger menu
+Primary entry from Screen 2
+Menu Structure & Navigation:
+
+mathematica
+Copy
+Screen 5 (Side Menu)
+├── Account Section
+│   └── Account → Screen 6 (Account Settings)
+├── History Section
+│   ├── Transaction History → Transaction List Screen
+│   └── Order History → Order List Screen
+├── Support Section
+│   ├── Support → Help/Contact Screen
+│   └── About → App Info Screen
+├── Actions
+│   ├── Switch to Vendor → Vendor App Mode
+│   └── Sign Out → Authentication Screen
+└── Close/Back → Return to Previous Screen
+User Actions & Outcomes:
+
+Account → Screen 6 (Account management)
+Transaction History → Transaction list view
+Order History → Order tracking/history
+Support → Help center or contact form
+About → App information and legal
+Switch to Vendor → Vendor interface mode
+Sign Out → End session, return to login
+Tap outside/back → Return to previous screen
+Screen 6: Account Settings
+Purpose: Detailed account management
+User State: Managing personal account settings
+
+Account Features:
+
+sql_more
+Copy
+Screen 6 (Account Settings)
+├── Profile Management
+│   ├── Edit Profile → Profile Edit Form
+│   ├── Payment Methods → Payment Management
+│   ├── Update Password → Password Change Form
+│   └── Notifications → Notification Preferences
+├── History Access
+│   ├── Transaction History → Transaction Details
+│   └── Order History → Order Management
+├── Support Access
+│   ├── Support → Contact Support
+│   └── About → App Information
+└── Back → Screen 5 (Side Menu)
+User Actions & Outcomes:
+
+Profile → Edit personal information
+Payment Method → Manage cards/payment options
+Update Password → Security management
+Notifications toggle → Enable/disable push notifications
+Back button → Screen 5 (Return to side menu)
+5. MERCHANT DISCOVERY & INTERACTION
+Screen 7: Merchant Search Results
+Purpose: List of fuel stations/merchants
+User State: Browsing available merchants
+
+Entry Points:
+
+From Screen 3 (location selection)
+From Screen 4 (filtered search)
+Direct search results
+Navigation Logic:
+
+Copy
+Screen 7 (Merchant Search)
+├── Merchant Select → Screen 8 (Merchant Profile)
+├── Search Refine → Screen 4 (Filter Options)
+├── Location Change → Screen 3 (Area Search)
+└── Back → Previous Screen (3 or 4)
+User Actions & Outcomes:
+
+Merchant tap → Screen 8 (Detailed merchant view)
+Search bar → Refine search criteria
+Back button → Return to previous search screen
+Location filter → Screen 3 (Change search area)
+Data Display:
+
+Merchant name and location
+Distance from user
+Availability status
+Price indicators
+Rating/reviews summary
+Screen 8: Merchant Profile
+Purpose: Detailed merchant information and shopping actions
+User State: Ready to interact with specific merchant
+
+Information Architecture:
+
+Copy
+Screen 8 (Merchant Profile)
+├── Merchant Information
+│   ├── Business Details (Name, Description, Category)
+│   ├── Contact Information (Address, Phone, Email)
+│   ├── Operating Hours
+│   └── Services Offered
+├── Action Buttons
+│   ├── View Commodities → Product Catalog
+│   ├── View Cart → Shopping Cart
+│   ├── Call Merchant → Phone Dialer
+│   └── Get Directions → Maps App
+└── Back → Screen 7 (Merchant Search)
+User Actions & Outcomes:
+
+"View Commodities" → Product catalog (future implementation)
+"View Cart" → Shopping cart review (future implementation)
+Call button → Open phone dialer with merchant number
+Directions → Open maps app with merchant location
+Back button → Screen 7 (Return to merchant list)
+6. COMPLETE USER JOURNEY EXAMPLES
+Journey 1: First-Time User Finding Fuel
+gcode
+Copy
+App Launch → Screen 1 (Location Setup)
+    ↓ "Set automatically"
+Screen 2 (Map Home)
+    ↓ Tap search bar
+Screen 3 (Search Results)
+    ↓ Select "Wuse II"
+Screen 7 (Merchant Search)
+    ↓ Select "Total Energies"
+Screen 8 (Merchant Profile)
+    ↓ "View Commodities"
+Product Catalog (Future)
+Journey 2: Account Management
+gcode
+Copy
+Screen 2 (Map Home)
+    ↓ Hamburger menu
+Screen 5 (Side Menu)
+    ↓ "Account"
+Screen 6 (Account Settings)
+    ↓ "Payment Method"
+Payment Management
+    ↓ Back navigation
+Screen 6 → Screen 5 → Screen 2
+Journey 3: Advanced Search
+gcode
+Copy
+Screen 2 (Map Home)
+    ↓ Search interaction
+Screen 3 (Search Results)
+    ↓ Search bar focus
+Screen 4 (Search with Filter)
+    ↓ Apply filters
+Screen 3 (Filtered Results)
+    ↓ Select location
+Screen 7 (Merchant Search)
+    ↓ Select merchant
+Screen 8 (Merchant Profile)
+7. NAVIGATION PATTERNS & BACK STACK
+Back Button Behavior:
+gcode
+Copy
+Screen 1: Exit app or previous state
+Screen 2: Exit app (home screen)
+Screen 3: → Screen 2 (Map Home)
+Screen 4: → Screen 3 (Search Results)
+Screen 5: → Previous screen (overlay closes)
+Screen 6: → Screen 5 (Side Menu)
+Screen 7: → Screen 3 or 4 (Previous search)
+Screen 8: → Screen 7 (Merchant list)
+State Persistence:
+Location settings persist across sessions
+Search history and recent locations
+User preferences from account settings
+Shopping cart state maintenance
+Authentication session management
+Error Handling:
+No location permission → Manual location entry
+No internet → Cached data + retry options
+No search results → Suggestion alternatives
+Merchant unavailable → Show alternatives
+Payment issues → Error messages + retry
+8. FUTURE EXPANSION POINTS
+Shopping Flow Integration:
+Copy
+Screen 8 (Merchant Profile)
+    ↓ "View Commodities"
+Product Catalog → Product Details → Add to Cart → Checkout → Order Tracking
+Vendor Mode:
+Copy
+Screen 5 (Side Menu)
+    ↓ "Switch to Vendor"
+Vendor Dashboard → Order Management → Inv
