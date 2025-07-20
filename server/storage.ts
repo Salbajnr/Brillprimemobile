@@ -53,7 +53,7 @@ export interface IStorage {
   getWishlistItems(userId: number): Promise<any[]>;
 
   // Chat operations
-  getConversations(userId: number): Promise<any[]>;
+  getConversations(userId: number, role?: string): Promise<any[]>;
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   getMessages(conversationId: string): Promise<any[]>;
   sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
@@ -583,38 +583,111 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Chat operations (using structured sample data for testing)
-  async getConversations(userId: number): Promise<any[]> {
-    // Return sample conversations that demonstrate real chat functionality
-    return [
+  async getConversations(userId: number, role?: string): Promise<any[]> {
+    // Get user's actual profile picture
+    const user = await this.getUser(userId);
+    const userPhoto = user?.profilePicture;
+
+    // Return role-based conversations
+    const allConversations = [
+      // Consumer-Merchant Quote Discussion
       {
         id: "conv-1",
         customerId: 1,
         vendorId: 2,
-        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b", // Using real product ID from database
+        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b",
         conversationType: "QUOTE",
         status: "ACTIVE",
         customerName: "Isaiah Salba",
         vendorName: "Golden Grains Store",
+        customerPhoto: userPhoto,
+        vendorPhoto: null,
         productName: "Designer Jeans",
         lastMessage: "What's your best price for bulk orders?",
         lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
         createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
       },
+      // Consumer-Merchant Order Management
       {
         id: "conv-2",
         customerId: 1,
         vendorId: 3,
-        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6", // Using real product ID from database
+        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6",
         conversationType: "ORDER",
         status: "ACTIVE",
         customerName: "Isaiah Salba",
         vendorName: "TechHub Electronics",
+        customerPhoto: userPhoto,
+        vendorPhoto: null,
         productName: "Organic Face Cream",
         lastMessage: "Order confirmed. When can I expect delivery?",
         lastMessageAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
         createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
+      },
+      // Driver-Merchant Pickup Request
+      {
+        id: "conv-3",
+        customerId: 1,
+        vendorId: 2,
+        driverId: 4,
+        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b",
+        conversationType: "PICKUP",
+        status: "ACTIVE",
+        customerName: "Isaiah Salba",
+        vendorName: "Golden Grains Store",
+        driverName: "Mike Wilson",
+        customerPhoto: userPhoto,
+        vendorPhoto: null,
+        driverPhoto: null,
+        productName: "Designer Jeans",
+        lastMessage: "Package ready for pickup at store location",
+        lastMessageAt: new Date(Date.now() - 30 * 60 * 1000),
+        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
+      },
+      // Driver-Customer Delivery Service
+      {
+        id: "conv-4",
+        customerId: 1,
+        vendorId: 3,
+        driverId: 4,
+        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6",
+        conversationType: "DELIVERY",
+        status: "ACTIVE",
+        customerName: "Isaiah Salba",
+        vendorName: "TechHub Electronics",
+        driverName: "Mike Wilson",
+        customerPhoto: userPhoto,
+        vendorPhoto: null,
+        driverPhoto: null,
+        productName: "Organic Face Cream",
+        lastMessage: "On the way to your delivery address",
+        lastMessageAt: new Date(Date.now() - 15 * 60 * 1000),
+        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
       }
     ];
+
+    // Filter conversations based on user role
+    if (role === "CONSUMER") {
+      return allConversations.filter(conv => 
+        conv.customerId === userId && 
+        (conv.conversationType === "QUOTE" || conv.conversationType === "ORDER" || conv.conversationType === "DELIVERY")
+      );
+    } else if (role === "MERCHANT") {
+      return allConversations.filter(conv => 
+        conv.vendorId === userId && 
+        (conv.conversationType === "QUOTE" || conv.conversationType === "ORDER" || conv.conversationType === "PICKUP")
+      );
+    } else if (role === "DRIVER") {
+      return allConversations.filter(conv => 
+        conv.driverId === userId && 
+        (conv.conversationType === "PICKUP" || conv.conversationType === "DELIVERY")
+      );
+    }
+
+    // Default: return user's conversations
+    return allConversations.filter(conv => 
+      conv.customerId === userId || conv.vendorId === userId || conv.driverId === userId
+    );
   }
 
   async createConversation(conversation: InsertConversation): Promise<Conversation> {

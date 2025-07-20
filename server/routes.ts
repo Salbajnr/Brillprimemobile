@@ -462,15 +462,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Chat Routes
   
-  // Get conversations for user
+  // Get conversations for user with role-based filtering
   app.get("/api/conversations", async (req, res) => {
     try {
-      const { userId } = req.query;
+      const { userId, role } = req.query;
       if (!userId) {
         return res.status(400).json({ message: "User ID required" });
       }
 
-      const conversations = await storage.getConversations(parseInt(userId as string));
+      const conversations = await storage.getConversations(parseInt(userId as string), role as string);
       res.json(conversations);
     } catch (error) {
       console.error("Get conversations error:", error);
