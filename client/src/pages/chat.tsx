@@ -1,17 +1,14 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
+import { Badge } from "@/components/ui/badge";
 import { 
   ArrowLeft, 
-  Send, 
-  ShoppingCart, 
+  MessageCircle, 
+  Send,
   Package, 
   Clock,
   CheckCircle,
@@ -63,6 +60,7 @@ export default function ChatPage() {
   const queryClient = useQueryClient();
   const [newMessage, setNewMessage] = useState("");
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [showChatScreen, setShowChatScreen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Get conversations for current user
@@ -115,13 +113,6 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Auto-select first conversation if none selected
-  useEffect(() => {
-    if (conversations.length > 0 && !selectedConversation) {
-      setSelectedConversation(conversations[0].id);
-    }
-  }, [conversations, selectedConversation]);
-
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversation) return;
     
@@ -132,245 +123,319 @@ export default function ChatPage() {
     });
   };
 
-  const selectedConv = conversations.find((c: Conversation) => c.id === selectedConversation);
+  const handleConversationClick = (conversationId: string) => {
+    setSelectedConversation(conversationId);
+    setShowChatScreen(true);
+  };
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="flex h-screen">
-        {/* Conversations Sidebar */}
-        <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
-          <div className="p-4 border-b border-gray-200">
-            <div className="flex items-center space-x-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/dashboard")}
-                className="p-2"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <h1 className="text-lg font-semibold text-[#131313]">Messages</h1>
-            </div>
+  const handleBackToList = () => {
+    setShowChatScreen(false);
+    setSelectedConversation(null);
+  };
+
+  if (!user) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen" style={{ backgroundColor: COLORS.WHITE }}>
+        <h1 className="text-2xl font-bold mb-4" style={{ color: COLORS.TEXT }}>Please Sign In</h1>
+        <p className="mb-4" style={{ color: COLORS.TEXT + '80' }}>You need to be signed in to access chat</p>
+        <Button 
+          onClick={() => setLocation('/signin')}
+          className="rounded-3xl py-3 px-6"
+          style={{ backgroundColor: COLORS.PRIMARY, color: COLORS.WHITE }}
+        >
+          Sign In
+        </Button>
+      </div>
+    );
+  }
+
+  // Show conversation list first
+  if (!showChatScreen) {
+    return (
+      <div className="min-h-screen" style={{ backgroundColor: '#F8F9FA' }}>
+        {/* Header */}
+        <div className="p-6 pb-4" style={{ backgroundColor: COLORS.WHITE }}>
+          <div className="flex items-center justify-between">
+            <Button 
+              variant="ghost" 
+              onClick={() => setLocation('/dashboard')}
+              className="p-2 rounded-2xl hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-6 w-6" style={{ color: COLORS.TEXT }} />
+            </Button>
+            <h1 className="text-2xl font-bold" style={{ color: COLORS.TEXT }}>Messages</h1>
+            <div className="w-10"></div>
           </div>
+        </div>
 
-          <div className="flex-1 overflow-y-auto">
-            {loadingConversations ? (
-              <div className="p-4 text-center text-gray-500">Loading conversations...</div>
-            ) : conversations.length === 0 ? (
-              <div className="p-4 text-center text-gray-500">
-                <Package className="h-12 w-12 mx-auto mb-2 text-gray-300" />
-                <p>No conversations yet</p>
-                <p className="text-sm">Start by requesting a quote or placing an order</p>
-              </div>
-            ) : (
-              conversations.map((conversation: Conversation) => (
+        {/* Conversations List */}
+        <div className="px-4 pb-6">
+          {loadingConversations ? (
+            <div className="p-8 text-center" style={{ color: COLORS.TEXT + '80' }}>
+              <MessageCircle className="h-12 w-12 mx-auto mb-4" style={{ color: COLORS.PRIMARY }} />
+              <p>Loading conversations...</p>
+            </div>
+          ) : conversations.length === 0 ? (
+            <div className="p-8 text-center" style={{ color: COLORS.TEXT + '80' }}>
+              <MessageCircle className="h-16 w-16 mx-auto mb-4" style={{ color: COLORS.PRIMARY + '40' }} />
+              <h3 className="text-lg font-medium mb-2" style={{ color: COLORS.TEXT }}>No conversations yet</h3>
+              <p>Start shopping to connect with merchants</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {conversations.map((conv: Conversation) => (
                 <div
-                  key={conversation.id}
-                  onClick={() => setSelectedConversation(conversation.id)}
-                  className={`p-4 border-b border-gray-100 cursor-pointer hover:bg-gray-50 ${
-                    selectedConversation === conversation.id ? 'bg-blue-50 border-l-4 border-l-[#4682b4]' : ''
-                  }`}
+                  key={conv.id}
+                  onClick={() => handleConversationClick(conv.id)}
+                  className="rounded-3xl p-4 cursor-pointer transition-all duration-200 hover:shadow-lg card-3d"
+                  style={{ 
+                    backgroundColor: COLORS.WHITE,
+                    border: `1px solid #E5E7EB`
+                  }}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start space-x-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={accountCircleIcon} alt="Profile" />
-                        <AvatarFallback>
-                          {user?.role === "CONSUMER" 
-                            ? conversation.vendorName.charAt(0).toUpperCase()
-                            : conversation.customerName.charAt(0).toUpperCase()
-                          }
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-[#131313] truncate">
-                          {user?.role === "CONSUMER" ? conversation.vendorName : conversation.customerName}
+                  <div className="flex items-center space-x-4">
+                    {/* Profile Avatar */}
+                    <div className="relative">
+                      <div 
+                        className="w-16 h-16 rounded-full flex items-center justify-center"
+                        style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                      >
+                        <img 
+                          src={accountCircleIcon} 
+                          alt="Profile" 
+                          className="w-12 h-12"
+                          style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                        />
+                      </div>
+                      {/* Online indicator */}
+                      <div 
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2"
+                        style={{ 
+                          backgroundColor: '#10B981',
+                          borderColor: COLORS.WHITE
+                        }}
+                      ></div>
+                    </div>
+
+                    {/* Conversation Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-lg truncate" style={{ color: COLORS.TEXT }}>
+                          {user?.role === "CONSUMER" ? conv.vendorName : conv.customerName}
+                        </h3>
+                        <span className="text-xs" style={{ color: COLORS.TEXT + '60' }}>
+                          {new Date(conv.lastMessageAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      
+                      {conv.productName && (
+                        <p className="text-sm mb-2 truncate" style={{ color: COLORS.PRIMARY }}>
+                          About: {conv.productName}
                         </p>
-                        {conversation.productName && (
-                          <p className="text-xs text-gray-500 truncate">{conversation.productName}</p>
-                        )}
-                        <p className="text-sm text-gray-600 truncate">{conversation.lastMessage}</p>
+                      )}
+                      
+                      {conv.lastMessage && (
+                        <p className="text-sm truncate" style={{ color: COLORS.TEXT + '70' }}>
+                          {conv.lastMessage}
+                        </p>
+                      )}
+                      
+                      <div className="flex items-center justify-between mt-2">
+                        <Badge 
+                          variant={conv.conversationType === "QUOTE" ? "secondary" : "default"}
+                          className="rounded-full px-3 py-1"
+                          style={{ 
+                            backgroundColor: conv.conversationType === "QUOTE" ? '#FEF3C7' : COLORS.PRIMARY + '20',
+                            color: conv.conversationType === "QUOTE" ? '#92400E' : COLORS.PRIMARY
+                          }}
+                        >
+                          {conv.conversationType}
+                        </Badge>
+                        
+                        {/* Unread indicator */}
+                        <div 
+                          className="w-3 h-3 rounded-full"
+                          style={{ backgroundColor: COLORS.PRIMARY }}
+                        ></div>
                       </div>
                     </div>
-                    <div className="flex flex-col items-end space-y-1">
-                      <Badge 
-                        variant={conversation.conversationType === "QUOTE" ? "secondary" : "default"}
-                        className="text-xs"
-                      >
-                        {conversation.conversationType}
-                      </Badge>
-                      <span className="text-xs text-gray-400">
-                        {new Date(conversation.lastMessageAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  // Show full chat screen when conversation is selected
+  const selectedConv = conversations.find((c: Conversation) => c.id === selectedConversation);
+  
+  return (
+    <div className="h-screen flex flex-col" style={{ backgroundColor: COLORS.WHITE }}>
+      {/* Chat Header */}
+      <div className="p-4 border-b" style={{ borderColor: '#E5E7EB', backgroundColor: COLORS.WHITE }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Button 
+              variant="ghost" 
+              onClick={handleBackToList}
+              className="p-2 rounded-2xl hover:bg-gray-100"
+            >
+              <ArrowLeft className="h-6 w-6" style={{ color: COLORS.TEXT }} />
+            </Button>
+            
+            {selectedConv && (
+              <>
+                <div 
+                  className="w-12 h-12 rounded-full flex items-center justify-center"
+                  style={{ backgroundColor: COLORS.PRIMARY + '20' }}
+                >
+                  <img 
+                    src={accountCircleIcon} 
+                    alt="Profile" 
+                    className="w-8 h-8"
+                    style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                  />
+                </div>
+                <div>
+                  <h2 className="font-semibold text-lg" style={{ color: COLORS.TEXT }}>
+                    {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
+                  </h2>
+                  {selectedConv.productName && (
+                    <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>About: {selectedConv.productName}</p>
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            {selectedConv && (
+              <Badge 
+                variant={selectedConv.conversationType === "QUOTE" ? "secondary" : "default"}
+                className="rounded-full"
+                style={{ 
+                  backgroundColor: selectedConv.conversationType === "QUOTE" ? '#FEF3C7' : COLORS.PRIMARY + '20',
+                  color: selectedConv.conversationType === "QUOTE" ? '#92400E' : COLORS.PRIMARY
+                }}
+              >
+                {selectedConv.conversationType}
+              </Badge>
+            )}
+            <Button variant="ghost" size="sm" className="rounded-full p-2">
+              <Phone className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+            </Button>
+            <Button variant="ghost" size="sm" className="rounded-full p-2">
+              <Mail className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Messages */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: '#F8F9FA' }}>
+        {loadingMessages ? (
+          <div className="text-center py-8" style={{ color: COLORS.TEXT + '80' }}>Loading messages...</div>
+        ) : (
+          messages.map((message: ChatMessage) => {
+            const isOwnMessage = message.senderId === user?.id;
+            return (
+              <div
+                key={message.id}
+                className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
+              >
+                <div className={`max-w-[70%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
+                  <div
+                    className="rounded-2xl p-4 shadow-sm"
+                    style={{
+                      backgroundColor: isOwnMessage ? COLORS.PRIMARY : COLORS.SECONDARY,
+                      color: COLORS.WHITE,
+                      fontFamily: 'Montserrat',
+                      fontWeight: '500'
+                    }}
+                  >
+                    {message.messageType === "QUOTE_REQUEST" && (
+                      <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <Package className="h-4 w-4 text-yellow-600" />
+                          <span className="text-sm font-medium text-yellow-800">Quote Request</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {message.messageType === "QUOTE_RESPONSE" && (
+                      <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-3">
+                        <div className="flex items-center space-x-2">
+                          <CheckCircle className="h-4 w-4 text-green-600" />
+                          <span className="text-sm font-medium text-green-800">Quote Response</span>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <p className="text-sm leading-relaxed">{message.content}</p>
+                    
+                    <div className="flex items-center justify-between mt-3">
+                      <span className="text-xs opacity-80">
+                        {message.senderName}
+                      </span>
+                      <span className="text-xs opacity-70">
+                        {new Date(message.createdAt).toLocaleTimeString()}
                       </span>
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        </div>
+              </div>
+            );
+          })
+        )}
+        <div ref={messagesEndRef} />
+      </div>
 
-        {/* Chat Area */}
-        <div className="flex-1 flex flex-col">
-          {selectedConv ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 bg-white border-b border-gray-200">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="h-10 w-10">
-                      <AvatarImage src={accountCircleIcon} alt="Profile" />
-                      <AvatarFallback>
-                        {user?.role === "CONSUMER" 
-                          ? selectedConv.vendorName.charAt(0).toUpperCase()
-                          : selectedConv.customerName.charAt(0).toUpperCase()
-                        }
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <h2 className="font-semibold text-[#131313]">
-                        {user?.role === "CONSUMER" ? selectedConv.vendorName : selectedConv.customerName}
-                      </h2>
-                      {selectedConv.productName && (
-                        <p className="text-sm text-gray-600">About: {selectedConv.productName}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={selectedConv.conversationType === "QUOTE" ? "secondary" : "default"}>
-                      {selectedConv.conversationType}
-                    </Badge>
-                    <Button variant="ghost" size="sm">
-                      <Phone className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <Mail className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: COLORS.WHITE }}>
-                {loadingMessages ? (
-                  <div className="text-center text-gray-500">Loading messages...</div>
-                ) : (
-                  messages.map((message: ChatMessage) => {
-                    const isOwnMessage = message.senderId === user?.id;
-                    return (
-                      <div
-                        key={message.id}
-                        className={`flex ${isOwnMessage ? 'justify-end' : 'justify-start'}`}
-                      >
-                        <div className={`max-w-[70%] ${isOwnMessage ? 'order-2' : 'order-1'}`}>
-                          <div
-                            className="rounded-2xl p-3"
-                            style={{
-                              backgroundColor: isOwnMessage ? COLORS.PRIMARY : COLORS.SECONDARY,
-                              color: COLORS.WHITE,
-                              fontFamily: 'Montserrat',
-                              fontWeight: '500'
-                            }}
-                          >
-                            {message.messageType === "QUOTE_REQUEST" && (
-                              <div className="bg-yellow-50 border border-yellow-200 rounded p-2 mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <Package className="h-4 w-4 text-yellow-600" />
-                                  <span className="text-sm font-medium text-yellow-800">Quote Request</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            {message.messageType === "QUOTE_RESPONSE" && (
-                              <div className="bg-green-50 border border-green-200 rounded p-2 mb-2">
-                                <div className="flex items-center space-x-2">
-                                  <CheckCircle className="h-4 w-4 text-green-600" />
-                                  <span className="text-sm font-medium text-green-800">Quote Response</span>
-                                </div>
-                              </div>
-                            )}
-                            
-                            <p className="text-sm">{message.content}</p>
-                            
-                            <div className="flex items-center justify-between mt-2">
-                              <span className="text-xs opacity-80">
-                                {message.senderName}
-                              </span>
-                              <span className="text-xs opacity-70">
-                                {new Date(message.createdAt).toLocaleTimeString()}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <Avatar className={`h-8 w-8 ${isOwnMessage ? 'order-1 mr-2' : 'order-2 ml-2'}`}>
-                          <AvatarImage src={accountCircleIcon} alt="Profile" />
-                          <AvatarFallback className="text-xs">
-                            {message.senderName.charAt(0).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-
-              {/* Message Input - Standardized Chat UI */}
-              <div className="p-5 bg-white">
-                <div className="flex items-center space-x-3">
-                  {/* Message Input Container */}
-                  <div className="flex-1 relative">
-                    <div 
-                      className="rounded-3xl border-3 px-4 py-4"
-                      style={{ borderColor: COLORS.PRIMARY }}
-                    >
-                      <input
-                        value={newMessage}
-                        onChange={(e) => setNewMessage(e.target.value)}
-                        placeholder="Message..."
-                        onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                        className="w-full bg-transparent outline-none text-base"
-                        style={{ 
-                          color: newMessage ? COLORS.TEXT : '#D9D9D9',
-                          fontFamily: 'Montserrat',
-                          fontWeight: '400'
-                        }}
-                      />
-                    </div>
-                  </div>
-                  
-                  {/* Camera Button */}
-                  <Button
-                    onClick={() => {
-                      // In real app, would open camera/image picker
-                      console.log('Camera button clicked');
-                    }}
-                    className="w-15 h-15 p-0 rounded-full border-3"
-                    style={{ 
-                      borderColor: COLORS.PRIMARY,
-                      backgroundColor: COLORS.WHITE
-                    }}
-                  >
-                    <img 
-                      src={cameraIcon} 
-                      alt="Camera" 
-                      className="w-10 h-10"
-                      style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
-                    />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center bg-gray-50">
-              <div className="text-center">
-                <Package className="h-16 w-16 mx-auto mb-4 text-gray-300" />
-                <h3 className="text-lg font-medium text-gray-600 mb-2">Select a conversation</h3>
-                <p className="text-gray-500">Choose a conversation from the sidebar to start chatting</p>
-              </div>
+      {/* Message Input - Standardized Chat UI */}
+      <div className="p-5" style={{ backgroundColor: COLORS.WHITE }}>
+        <div className="flex items-center space-x-3">
+          {/* Message Input Container */}
+          <div className="flex-1 relative">
+            <div 
+              className="rounded-3xl border-3 px-4 py-4"
+              style={{ borderColor: COLORS.PRIMARY }}
+            >
+              <input
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                placeholder="Message..."
+                onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                className="w-full bg-transparent outline-none text-base"
+                style={{ 
+                  color: newMessage ? COLORS.TEXT : '#D9D9D9',
+                  fontFamily: 'Montserrat',
+                  fontWeight: '400'
+                }}
+              />
             </div>
-          )}
+          </div>
+          
+          {/* Camera Button */}
+          <Button
+            onClick={() => {
+              // In real app, would open camera/image picker
+              console.log('Camera button clicked');
+            }}
+            className="w-15 h-15 p-0 rounded-full border-3 hover:opacity-80 transition-opacity"
+            style={{ 
+              borderColor: COLORS.PRIMARY,
+              backgroundColor: COLORS.WHITE
+            }}
+          >
+            <img 
+              src={cameraIcon} 
+              alt="Camera" 
+              className="w-10 h-10"
+              style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+            />
+          </Button>
         </div>
       </div>
     </div>
