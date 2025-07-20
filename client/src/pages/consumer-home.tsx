@@ -171,7 +171,6 @@ export default function ConsumerHome() {
           </div>
         </div>
       </div>
-
       <div className="p-4 space-y-6">
         {/* Live Location Map Card */}
         <Card className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] text-white">
@@ -187,7 +186,7 @@ export default function ConsumerHome() {
               </Button>
             </div>
             <div className="mb-6">
-              <div className="h-32 bg-white/20 rounded-lg flex items-center justify-center mb-3">
+              <div className="h-32 bg-white/20 rounded-lg flex items-center justify-center mt-[8px] mb-[8px] ml-[8px] mr-[8px]">
                 <div className="text-center">
                   <MapPin className="w-8 h-8 mx-auto mb-2" />
                   <p className="text-sm">Live location tracking active</p>
