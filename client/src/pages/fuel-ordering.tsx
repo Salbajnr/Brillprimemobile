@@ -136,7 +136,7 @@ export default function FuelOrdering() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="flex items-center justify-between p-4">

@@ -128,7 +128,7 @@ export default function Support() {
   };
 
   return (
-    <div className="min-h-screen bg-white" style={{ width: '100%', maxWidth: '399px', margin: '0 auto', position: 'relative' }}>
+    <div className="min-h-screen bg-white w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4 relative">{/*Responsive container*/}
       {/* Back Arrow */}
       <div className="absolute top-12 left-6">
         <Button

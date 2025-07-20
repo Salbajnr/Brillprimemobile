@@ -207,7 +207,7 @@ function DriverDashboardContent() {
   };
 
   return (
-    <div className="h-screen flex overflow-hidden" style={{ background: `linear-gradient(to bottom right, #f9fafb, #dbeafe)` }}>
+    <div className="h-screen flex overflow-hidden w-full max-w-full mx-auto" style={{ background: `linear-gradient(to bottom right, #f9fafb, #dbeafe)` }}>{/*Responsive container*/}
       {/* Sidebar */}
       <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-80 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 border-r-2`} style={{ backgroundColor: COLORS.WHITE, borderColor: COLORS.PRIMARY + '40' }}>
         <div className="flex flex-col h-full">
