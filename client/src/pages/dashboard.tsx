@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { Bell, Plus, Send, Download, CreditCard, TrendingUp, Phone, Wifi, ArrowUp, ArrowDown, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,8 +9,14 @@ export default function DashboardPage() {
   const [, setLocation] = useLocation();
 
   // Redirect consumers to their dedicated home page
+  useEffect(() => {
+    if (user?.role === "CONSUMER") {
+      setLocation("/consumer-home");
+    }
+  }, [user, setLocation]);
+
+  // Don't render anything for consumers since they'll be redirected
   if (user?.role === "CONSUMER") {
-    setLocation("/consumer-home");
     return null;
   }
 
