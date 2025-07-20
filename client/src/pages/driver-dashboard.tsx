@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import logoImage from "../assets/images/logo.png";
 import accountCircleIcon from "../assets/images/account_circle.svg";
+import mapBackground from "../assets/images/map_background.png";
 
 interface DeliveryJob {
   id: string;
@@ -429,7 +430,20 @@ function DriverDashboardContent() {
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 overflow-auto p-6">
+        <div 
+          className="flex-1 overflow-auto p-6 relative"
+          style={{
+            backgroundImage: `url(${mapBackground})`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat'
+          }}
+        >
+          {/* Background overlay for better content readability */}
+          <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
+          
+          {/* Content wrapper */}
+          <div className="relative z-10">
           {/* Jobs Tab - Pickup and Delivery Orders */}
           {selectedTab === "jobs" && (
             <div className="space-y-6">
@@ -703,6 +717,7 @@ function DriverDashboardContent() {
               </Card>
             </div>
           )}
+          </div>
         </div>
       </div>
     </div>
