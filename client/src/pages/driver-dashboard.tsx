@@ -261,12 +261,13 @@ function DriverDashboardContent() {
             borderColor: COLORS.PRIMARY + '40'
           }}>
             <div className="flex items-center space-x-4 mb-4">
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg" style={{
-                background: `linear-gradient(135deg, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`
-              }}>
-                <span className="font-bold text-lg" style={{ color: COLORS.WHITE }}>
-                  {sampleProfile.vehiclePlate.split('-')[1] || 'DR'}
-                </span>
+              <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg border-2" style={{ borderColor: COLORS.PRIMARY }}>
+                <img 
+                  src={accountCircleIcon} 
+                  alt="Driver Profile" 
+                  className="w-full h-full object-cover"
+                  style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                />
               </div>
               <div className="flex-1">
                 <h3 className="font-bold text-lg" style={{ color: COLORS.TEXT }}>Driver #{sampleProfile.userId}</h3>
