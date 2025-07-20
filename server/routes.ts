@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema } from "@shared/schema";
+import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import "./middleware/auth"; // Import type declarations
 
@@ -730,6 +730,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Driver registration error:", error);
       res.status(500).json({ message: "Error registering driver" });
+    }
+  });
+
+  // Support Tickets API Endpoints
+  app.post("/api/support/tickets", async (req, res) => {
+    try {
+      const ticketData = insertSupportTicketSchema.parse(req.body);
+      
+      // Generate unique ticket number
+      const ticketNumber = `SP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      
+      const ticket = await storage.createSupportTicket({
+        ...ticketData,
+        ticketNumber
+      });
+      
+      res.json({ 
+        message: "Support ticket created successfully",
+        ticketNumber: ticket.ticketNumber
+      });
+    } catch (error) {
+      console.error("Create support ticket error:", error);
+      res.status(400).json({ message: "Failed to create support ticket" });
+    }
+  });
+
+  app.get("/api/support/tickets", async (req, res) => {
+    try {
+      // Admin endpoint - in real app would check admin permissions
+      const { status, priority, userRole } = req.query;
+      
+      const tickets = await storage.getSupportTickets({
+        status: status as string,
+        priority: priority as string,
+        userRole: userRole as string
+      });
+      
+      res.json(tickets);
+    } catch (error) {
+      console.error("Get support tickets error:", error);
+      res.status(500).json({ message: "Failed to fetch support tickets" });
+    }
+  });
+
+  app.get("/api/support/tickets/:ticketId", async (req, res) => {
+    try {
+      const { ticketId } = req.params;
+      const ticket = await storage.getSupportTicket(ticketId);
+      
+      if (!ticket) {
+        return res.status(404).json({ message: "Ticket not found" });
+      }
+      
+      res.json(ticket);
+    } catch (error) {
+      console.error("Get support ticket error:", error);
+      res.status(500).json({ message: "Failed to fetch ticket" });
+    }
+  });
+
+  app.put("/api/support/tickets/:ticketId", async (req, res) => {
+    try {
+      // Admin endpoint - in real app would check admin permissions
+      const { ticketId } = req.params;
+      const updateData = req.body;
+      
+      const updatedTicket = await storage.updateSupportTicket(ticketId, updateData);
+      
+      res.json({
+        message: "Ticket updated successfully",
+        ticket: updatedTicket
+      });
+    } catch (error) {
+      console.error("Update support ticket error:", error);
+      res.status(400).json({ message: "Failed to update ticket" });
     }
   });
 

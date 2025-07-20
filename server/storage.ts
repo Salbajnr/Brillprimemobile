@@ -1,7 +1,7 @@
 import { 
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
-  driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics,
+  driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
@@ -9,7 +9,8 @@ import {
   type VendorPostLike, type InsertVendorPostLike, type VendorPostComment, type InsertVendorPostComment,
   type Conversation, type InsertConversation, type ChatMessage, type InsertChatMessage,
   type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
-  type DeliveryRequest, type InsertDeliveryRequest, type MerchantAnalytics, type InsertMerchantAnalytics
+  type DeliveryRequest, type InsertDeliveryRequest, type MerchantAnalytics, type InsertMerchantAnalytics,
+  type SupportTicket, type InsertSupportTicket
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, gte, like, desc, sql } from "drizzle-orm";
@@ -84,6 +85,12 @@ export interface IStorage {
   updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void>;
   getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]>;
   createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
+
+  // Support Ticket operations
+  createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
+  getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]>;
+  getSupportTicket(ticketId: string): Promise<SupportTicket | undefined>;
+  updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1013,6 +1020,56 @@ export class DatabaseStorage implements IStorage {
   async createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest> {
     const [newRequest] = await db.insert(deliveryRequests).values(request).returning();
     return newRequest;
+  }
+
+  // Support Ticket operations implementation
+  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
+    const [newTicket] = await db.insert(supportTickets).values({
+      ...ticket,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+    return newTicket;
+  }
+
+  async getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]> {
+    let query = db.select().from(supportTickets);
+
+    const conditions = [];
+    if (filters?.status) {
+      conditions.push(eq(supportTickets.status, filters.status as any));
+    }
+    if (filters?.priority) {
+      conditions.push(eq(supportTickets.priority, filters.priority as any));
+    }
+    if (filters?.userRole) {
+      conditions.push(eq(supportTickets.userRole, filters.userRole as any));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    const tickets = await query.orderBy(desc(supportTickets.createdAt));
+    return tickets;
+  }
+
+  async getSupportTicket(ticketId: string): Promise<SupportTicket | undefined> {
+    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    return ticket || undefined;
+  }
+
+  async updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket> {
+    const [updatedTicket] = await db
+      .update(supportTickets)
+      .set({ 
+        ...updateData, 
+        updatedAt: new Date(),
+        ...(updateData.status === 'RESOLVED' && { resolvedAt: new Date() })
+      })
+      .where(eq(supportTickets.id, ticketId))
+      .returning();
+    return updatedTicket;
   }
 }
 

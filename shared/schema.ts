@@ -283,6 +283,26 @@ export const merchantNotifications = pgTable("merchant_notifications", {
   readAt: timestamp("read_at"),
 });
 
+// Support Tickets
+export const supportTickets = pgTable("support_tickets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  ticketNumber: text("ticket_number").notNull().unique(), // Auto-generated ticket number
+  userId: integer("user_id").references(() => users.id), // Nullable for guest tickets
+  userRole: text("user_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER", "GUEST"] }).notNull(),
+  name: text("name").notNull(),
+  email: text("email").notNull(),
+  subject: text("subject").notNull(),
+  message: text("message").notNull(),
+  status: text("status", { enum: ["OPEN", "IN_PROGRESS", "RESOLVED", "CLOSED"] }).default("OPEN"),
+  priority: text("priority", { enum: ["LOW", "NORMAL", "HIGH", "URGENT"] }).default("NORMAL"),
+  assignedTo: integer("assigned_to").references(() => users.id), // Admin/support staff
+  adminNotes: text("admin_notes"),
+  resolution: text("resolution"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locations: many(userLocations),
@@ -364,6 +384,11 @@ export const merchantNotificationsRelations = relations(merchantNotifications, (
   merchant: one(users, { fields: [merchantNotifications.merchantId], references: [users.id] }),
 }));
 
+export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
+  user: one(users, { fields: [supportTickets.userId], references: [users.id] }),
+  assignedTo: one(users, { fields: [supportTickets.assignedTo], references: [users.id] }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   fullName: true,
   email: true,
@@ -397,6 +422,7 @@ export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytic
 export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
 export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
 export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
+export const insertSupportTicketSchema = createInsertSchema(supportTickets);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -432,3 +458,5 @@ export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
 export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
 export type MerchantNotification = typeof merchantNotifications.$inferSelect;
 export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
