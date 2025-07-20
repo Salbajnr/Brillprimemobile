@@ -208,7 +208,7 @@ export default function TollPayments() {
               {vehicleTypes.map((vehicle) => (
                 <div
                   key={vehicle.id}
-                  className={`border rounded-lg p-3 cursor-pointer transition-colors ${
+                  className={`border rounded-2xl p-3 cursor-pointer transition-colors ${
                     selectedVehicle === vehicle.id
                       ? "border-[#4682b4] bg-[#4682b4]/5"
                       : "border-gray-200 hover:border-[#4682b4]/50"
