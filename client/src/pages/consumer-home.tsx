@@ -95,8 +95,8 @@ export default function ConsumerHome() {
       bgColor: "bg-[#010e42]"
     },
     {
-      id: "shopping",
-      title: "Shopping",
+      id: "cart",
+      title: "Cart",
       icon: viewCartIcon,
       route: "/commodities",
       bgColor: "bg-[#4682b4]"
