@@ -27,8 +27,8 @@ export function RoleCard({ role, isSelected, onSelect }: RoleCardProps) {
       className={cn(
         "border-2 rounded-brill p-3 sm:p-4 cursor-pointer transition-all duration-200 h-10 sm:h-12",
         isSelected 
-          ? "bg-[var(--brill-secondary)] text-[var(--brill-white)] border-[var(--brill-secondary)]" 
-          : "bg-[var(--brill-white)] text-[var(--brill-secondary)] border-[var(--brill-secondary)] hover:bg-[var(--brill-secondary)] hover:text-[var(--brill-white)]"
+          ? "bg-[var(--brill-primary)] text-[var(--brill-white)] border-[var(--brill-primary)]" 
+          : "bg-[var(--brill-white)] text-[var(--brill-primary)] border-[var(--brill-primary)] hover:bg-[var(--brill-primary)] hover:text-[var(--brill-white)]"
       )}
       onClick={onSelect}
     >
@@ -41,10 +41,10 @@ export function RoleCard({ role, isSelected, onSelect }: RoleCardProps) {
             "w-5 h-5 sm:w-6 sm:h-6 border-2 rounded-full flex items-center justify-center flex-shrink-0 ml-3",
             isSelected 
               ? "bg-[var(--brill-white)] border-[var(--brill-white)]" 
-              : "border-[var(--brill-secondary)]"
+              : "border-[var(--brill-primary)]"
           )}
         >
-          {isSelected && <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[var(--brill-secondary)]" />}
+          {isSelected && <Check className="h-2.5 w-2.5 sm:h-3 sm:w-3 text-[var(--brill-primary)]" />}
         </div>
       </div>
     </div>
