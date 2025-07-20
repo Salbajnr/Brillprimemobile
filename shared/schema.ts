@@ -162,6 +162,115 @@ export const chatMessages = pgTable("chat_messages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+// Merchant Business Profiles
+export const merchantProfiles = pgTable("merchant_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  businessName: text("business_name").notNull(),
+  businessType: text("business_type", { 
+    enum: ["APPAREL", "ART_ENTERTAINMENT", "BEAUTY_COSMETICS", "EDUCATION", "EVENT_PLANNING", 
+           "FINANCE", "SUPERMARKET", "HOTEL", "MEDICAL_HEALTH", "NON_PROFIT", "OIL_GAS", 
+           "RESTAURANT", "SHOPPING_RETAIL", "TICKET", "TOLL_GATE", "VEHICLE_SERVICE", "OTHER"] 
+  }).notNull(),
+  businessDescription: text("business_description"),
+  businessAddress: text("business_address"),
+  businessPhone: text("business_phone"),
+  businessEmail: text("business_email"),
+  businessLogo: text("business_logo"),
+  businessHours: json("business_hours"), // Store opening hours
+  isVerified: boolean("is_verified").default(false),
+  subscriptionTier: text("subscription_tier", { enum: ["BASIC", "PREMIUM", "ENTERPRISE"] }).default("BASIC"),
+  subscriptionExpiry: timestamp("subscription_expiry"),
+  totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
+  totalOrders: integer("total_orders").default(0),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+  reviewCount: integer("review_count").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Merchant Analytics
+export const merchantAnalytics = pgTable("merchant_analytics", {
+  id: serial("id").primaryKey(),
+  merchantId: integer("merchant_id").notNull().references(() => users.id),
+  date: timestamp("date").defaultNow(),
+  dailySales: decimal("daily_sales", { precision: 12, scale: 2 }).default("0"),
+  dailyOrders: integer("daily_orders").default(0),
+  dailyViews: integer("daily_views").default(0),
+  dailyClicks: integer("daily_clicks").default(0),
+  topProduct: uuid("top_product").references(() => products.id),
+  peakHour: integer("peak_hour"), // Hour of day with most activity
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Driver Profiles
+export const driverProfiles = pgTable("driver_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  vehicleType: text("vehicle_type", { enum: ["MOTORCYCLE", "CAR", "VAN", "TRUCK"] }).notNull(),
+  vehiclePlate: text("vehicle_plate").notNull(),
+  vehicleModel: text("vehicle_model"),
+  vehicleYear: integer("vehicle_year"),
+  driverLicense: text("driver_license").notNull(),
+  vehicleDocuments: text("vehicle_documents").array(), // Array of document URLs
+  isAvailable: boolean("is_available").default(true),
+  currentLocation: json("current_location"), // Store lat/lng
+  serviceTypes: text("service_types").array(), // ["FUEL_DELIVERY", "PACKAGE_DELIVERY", "TAXI"]
+  totalDeliveries: integer("total_deliveries").default(0),
+  totalEarnings: decimal("total_earnings", { precision: 12, scale: 2 }).default("0"),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
+  reviewCount: integer("review_count").default(0),
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Delivery Requests
+export const deliveryRequests = pgTable("delivery_requests", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: integer("customer_id").notNull().references(() => users.id),
+  merchantId: integer("merchant_id").references(() => users.id),
+  driverId: integer("driver_id").references(() => users.id),
+  orderId: uuid("order_id").references(() => orders.id),
+  deliveryType: text("delivery_type", { enum: ["FUEL", "PACKAGE", "FOOD", "GROCERY", "OTHER"] }).notNull(),
+  pickupAddress: text("pickup_address").notNull(),
+  deliveryAddress: text("delivery_address").notNull(),
+  pickupLocation: json("pickup_location"), // lat/lng
+  deliveryLocation: json("delivery_location"), // lat/lng
+  estimatedDistance: decimal("estimated_distance", { precision: 8, scale: 2 }),
+  deliveryFee: decimal("delivery_fee", { precision: 10, scale: 2 }).notNull(),
+  status: text("status", { 
+    enum: ["PENDING", "ACCEPTED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "CANCELLED"] 
+  }).default("PENDING"),
+  scheduledTime: timestamp("scheduled_time"),
+  acceptedAt: timestamp("accepted_at"),
+  pickedUpAt: timestamp("picked_up_at"),
+  deliveredAt: timestamp("delivered_at"),
+  notes: text("notes"),
+  proofOfDelivery: text("proof_of_delivery"), // Photo URL or QR code
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Merchant Notifications
+export const merchantNotifications = pgTable("merchant_notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  merchantId: integer("merchant_id").notNull().references(() => users.id),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  type: text("type", { 
+    enum: ["ORDER", "PAYMENT", "DELIVERY", "PROMOTION", "SYSTEM", "REVIEW"] 
+  }).notNull(),
+  relatedId: uuid("related_id"), // Can reference orders, products, etc.
+  isRead: boolean("is_read").default(false),
+  priority: text("priority", { enum: ["LOW", "MEDIUM", "HIGH", "URGENT"] }).default("MEDIUM"),
+  actionUrl: text("action_url"), // Deep link for notification action
+  createdAt: timestamp("created_at").defaultNow(),
+  readAt: timestamp("read_at"),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   locations: many(userLocations),
@@ -216,6 +325,33 @@ export const vendorPostCommentsRelations = relations(vendorPostComments, ({ one,
   replies: many(vendorPostComments),
 }));
 
+export const merchantProfilesRelations = relations(merchantProfiles, ({ one, many }) => ({
+  user: one(users, { fields: [merchantProfiles.userId], references: [users.id] }),
+  analytics: many(merchantAnalytics),
+  notifications: many(merchantNotifications),
+}));
+
+export const merchantAnalyticsRelations = relations(merchantAnalytics, ({ one }) => ({
+  merchant: one(users, { fields: [merchantAnalytics.merchantId], references: [users.id] }),
+  topProduct: one(products, { fields: [merchantAnalytics.topProduct], references: [products.id] }),
+}));
+
+export const driverProfilesRelations = relations(driverProfiles, ({ one, many }) => ({
+  user: one(users, { fields: [driverProfiles.userId], references: [users.id] }),
+  deliveryRequests: many(deliveryRequests),
+}));
+
+export const deliveryRequestsRelations = relations(deliveryRequests, ({ one }) => ({
+  customer: one(users, { fields: [deliveryRequests.customerId], references: [users.id] }),
+  merchant: one(users, { fields: [deliveryRequests.merchantId], references: [users.id] }),
+  driver: one(users, { fields: [deliveryRequests.driverId], references: [users.id] }),
+  order: one(orders, { fields: [deliveryRequests.orderId], references: [orders.id] }),
+}));
+
+export const merchantNotificationsRelations = relations(merchantNotifications, ({ one }) => ({
+  merchant: one(users, { fields: [merchantNotifications.merchantId], references: [users.id] }),
+}));
+
 export const insertUserSchema = createInsertSchema(users).pick({
   fullName: true,
   email: true,
@@ -244,6 +380,11 @@ export const insertVendorPostLikeSchema = createInsertSchema(vendorPostLikes);
 export const insertVendorPostCommentSchema = createInsertSchema(vendorPostComments);
 export const insertConversationSchema = createInsertSchema(conversations);
 export const insertChatMessageSchema = createInsertSchema(chatMessages);
+export const insertMerchantProfileSchema = createInsertSchema(merchantProfiles);
+export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytics);
+export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
+export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
+export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -269,3 +410,13 @@ export type Conversation = typeof conversations.$inferSelect;
 export type InsertConversation = z.infer<typeof insertConversationSchema>;
 export type ChatMessage = typeof chatMessages.$inferSelect;
 export type InsertChatMessage = z.infer<typeof insertChatMessageSchema>;
+export type MerchantProfile = typeof merchantProfiles.$inferSelect;
+export type InsertMerchantProfile = z.infer<typeof insertMerchantProfileSchema>;
+export type MerchantAnalytics = typeof merchantAnalytics.$inferSelect;
+export type InsertMerchantAnalytics = z.infer<typeof insertMerchantAnalyticsSchema>;
+export type DriverProfile = typeof driverProfiles.$inferSelect;
+export type InsertDriverProfile = z.infer<typeof insertDriverProfileSchema>;
+export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
+export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
+export type MerchantNotification = typeof merchantNotifications.$inferSelect;
+export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;

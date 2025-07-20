@@ -8,15 +8,19 @@ export default function DashboardPage() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
 
-  // Redirect consumers to their dedicated home page
+  // Redirect users to their role-specific dashboards
   useEffect(() => {
     if (user?.role === "CONSUMER") {
       setLocation("/consumer-home");
+    } else if (user?.role === "MERCHANT") {
+      setLocation("/merchant-dashboard");
+    } else if (user?.role === "DRIVER") {
+      setLocation("/driver-dashboard");
     }
   }, [user, setLocation]);
 
-  // Don't render anything for consumers since they'll be redirected
-  if (user?.role === "CONSUMER") {
+  // Don't render anything since users will be redirected to role-specific dashboards
+  if (user?.role) {
     return null;
   }
 
