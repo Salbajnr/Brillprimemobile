@@ -181,8 +181,8 @@ export default function Notifications() {
             {notifications.map((notification, index) => (
               <Card
                 key={notification.id}
-                className={`rounded-3xl border-2 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slide-up ${
-                  notification.read ? "border-gray-200/50 bg-gray-50/50" : "border-blue-100/50 bg-white"
+                className={`card-3d rounded-3xl border-2 animate-slide-up interactive-element ${
+                  notification.read ? "border-gray-200/50" : "border-blue-100/50"
                 }`}
                 style={{ animationDelay: `${index * 0.1}s` }}
                 onClick={() => markAsRead(notification.id)}
@@ -238,7 +238,7 @@ export default function Notifications() {
 
           <TabsContent value="unread" className="space-y-3 mt-4">
             {unreadNotifications.length === 0 ? (
-              <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+              <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
                 <CardContent className="p-8 text-center">
                   <Check className="w-12 h-12 text-green-500 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-[#131313] mb-2">All caught up!</h3>
@@ -249,7 +249,7 @@ export default function Notifications() {
               unreadNotifications.map((notification, index) => (
                 <Card
                   key={notification.id}
-                  className="rounded-3xl border-2 border-blue-100/50 bg-white transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slide-up"
+                  className="card-3d rounded-3xl border-2 border-blue-100/50 animate-slide-up interactive-element"
                   style={{ animationDelay: `${index * 0.1}s` }}
                   onClick={() => markAsRead(notification.id)}
                 >
@@ -303,7 +303,7 @@ export default function Notifications() {
 
           <TabsContent value="read" className="space-y-3 mt-4">
             {readNotifications.length === 0 ? (
-              <Card className="rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
+              <Card className="card-3d rounded-3xl border-2 border-blue-100/50 animate-fade-in-up">
                 <CardContent className="p-8 text-center">
                   <Bell className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                   <h3 className="text-lg font-medium text-[#131313] mb-2">No read notifications</h3>
@@ -314,7 +314,7 @@ export default function Notifications() {
               readNotifications.map((notification, index) => (
                 <Card
                   key={notification.id}
-                  className="rounded-3xl border-2 border-gray-200/50 bg-gray-50/50 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slide-up"
+                  className="card-3d rounded-3xl border-2 border-gray-200/50 animate-slide-up interactive-element"
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
                   <CardContent className="p-4">

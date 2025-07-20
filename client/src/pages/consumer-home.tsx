@@ -351,7 +351,7 @@ export default function ConsumerHome() {
             {quickActions.map((action, index) => (
               <Card
                 key={action.id}
-                className="cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-lg rounded-3xl border-2 border-blue-100/50 animate-slide-up"
+                className="card-3d cursor-pointer rounded-3xl border-2 border-blue-100/50 animate-slide-up interactive-element"
                 onClick={() => setLocation(action.route)}
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
@@ -372,7 +372,7 @@ export default function ConsumerHome() {
           <div className="grid grid-cols-2 gap-4">
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
+              className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
               onClick={() => setLocation("/commodities")}
               style={{ animationDelay: '0.2s' }}
             >
@@ -381,7 +381,7 @@ export default function ConsumerHome() {
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
+              className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
               onClick={() => setLocation("/merchants")}
               style={{ animationDelay: '0.3s' }}
             >
@@ -390,7 +390,7 @@ export default function ConsumerHome() {
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
+              className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
               onClick={() => setLocation("/fuel-stations")}
               style={{ animationDelay: '0.4s' }}
             >
@@ -399,7 +399,7 @@ export default function ConsumerHome() {
             </Button>
             <Button
               variant="outline"
-              className="h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl transition-all duration-300 hover:scale-105 hover:shadow-lg animate-slide-up"
+              className="service-item-3d h-20 flex-col space-y-2 border-2 border-blue-200/50 text-[#4682b4] hover:bg-[#4682b4]/10 rounded-3xl animate-slide-up"
               onClick={() => setLocation("/payment-methods")}
               style={{ animationDelay: '0.5s' }}
             >
@@ -425,7 +425,7 @@ export default function ConsumerHome() {
             {recentTransactions.slice(0, 4).map((transaction, index) => (
               <Card 
                 key={transaction.id} 
-                className="rounded-3xl border-2 border-blue-100/50 transition-all duration-300 hover:shadow-lg hover:scale-[1.02] animate-slide-up"
+                className="card-3d rounded-3xl border-2 border-blue-100/50 animate-slide-up interactive-element"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-4">
