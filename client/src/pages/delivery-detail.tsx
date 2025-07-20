@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import logoImage from "../assets/images/logo.png";
 import accountCircleIcon from "../assets/images/account_circle.svg";
+import mapBackgroundImage from "../assets/images/map_background.png";
 
 // Color constants
 const COLORS = {
@@ -256,20 +257,19 @@ function DeliveryDetailContent() {
           </div>
         </div>
 
-        {/* Map Placeholder */}
+        {/* Map with Background Image */}
         <div className="mb-6">
           <div 
-            className="w-full h-64 rounded-2xl border flex items-center justify-center"
+            className="w-full h-64 rounded-2xl border relative overflow-hidden"
             style={{ 
-              backgroundColor: '#f3f4f6',
-              borderColor: COLORS.ACTIVE
+              borderColor: COLORS.ACTIVE,
+              backgroundImage: `url(${mapBackgroundImage})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center'
             }}
           >
-            <div className="text-center">
-              <MapPin className="h-12 w-12 mx-auto mb-2" style={{ color: COLORS.PRIMARY }} />
-              <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Route Map</p>
-              <p className="text-xs" style={{ color: COLORS.TEXT + '80' }}>Pickup to Delivery Location</p>
-            </div>
+            {/* Optional overlay for better text visibility */}
+            <div className="absolute inset-0 bg-black bg-opacity-10 rounded-2xl"></div>
           </div>
           
           {/* Navigation overlay */}
