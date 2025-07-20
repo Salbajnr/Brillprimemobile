@@ -322,8 +322,9 @@ export default function OrderHistory() {
             return (
               <Card 
                 key={order.id}
-                className="rounded-3xl border shadow-lg"
+                className="rounded-3xl border shadow-lg cursor-pointer hover:shadow-xl transition-shadow"
                 style={{ borderColor: COLORS.PRIMARY }}
+                onClick={() => setLocation('/order-history-detail')}
               >
                 <CardContent className="p-6">
                   {/* Header with profile and price */}
