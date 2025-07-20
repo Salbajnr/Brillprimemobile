@@ -33,6 +33,7 @@ import AccountSettingsPage from "@/pages/account-settings";
 import BiometricSetupPage from "@/pages/biometric-setup";
 import PaymentMethodsPage from "@/pages/payment-methods";
 import AddPaymentMethodPage from "@/pages/add-payment-method";
+import CartPage from "@/pages/cart";
 import NotFound from "@/pages/not-found";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
@@ -75,6 +76,7 @@ function Router() {
       <Route path="/biometric-setup" component={() => <ProtectedRoute component={BiometricSetupPage} />} />
       <Route path="/payment-methods" component={() => <ProtectedRoute component={PaymentMethodsPage} />} />
       <Route path="/add-payment-method" component={() => <ProtectedRoute component={AddPaymentMethodPage} />} />
+      <Route path="/cart" component={() => <ProtectedRoute component={CartPage} />} />
       <Route component={NotFound} />
     </Switch>
   );

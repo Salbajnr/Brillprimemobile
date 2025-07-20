@@ -98,7 +98,7 @@ export default function ConsumerHome() {
       id: "cart",
       title: "Cart",
       icon: viewCartIcon,
-      route: "/commodities",
+      route: "/cart",
       bgColor: "bg-[#4682b4]"
     }
   ];
