@@ -10,6 +10,14 @@ Preferred communication style: Simple, everyday language.
 User roles: Updated to CONSUMER, MERCHANT, DRIVER (instead of DRIVER, VENDOR)
 Backend: User has existing backend API - frontend connects to external API endpoints
 
+## Icon File Standards (Always Use These Specific Files)
+- Edit Icon: client/src/assets/images/edit_icon.png
+- QR Code Scanner: client/src/assets/images/scan_qr_code_white.png
+- Share QR Code: client/src/assets/images/share_qr_code_icon.png
+- Plus Icon: client/src/assets/images/plus_icon.svg
+- Minus Icon: client/src/assets/images/minus_icon.svg
+- Cart Icon: client/src/assets/images/view_cart.png
+
 ## System Architecture
 
 The application follows a monorepo structure with clear separation between client, server, and shared code:
@@ -689,6 +697,23 @@ Based on the comprehensive user flow documentation, the following features are p
 - ✓ Applied consistent color constants and design patterns across all chat interfaces
 - ✓ Enhanced driver dashboard with "View Details" button linking to delivery detail page
 - ✓ Fixed all profile photos to consistently use client/src/assets/images/account_circle.svg
+
+### Icon File Standardization & QR Scanner Integration (July 20, 2025)
+- ✓ Standardized all icon usage across the platform to use specific image files:
+  - Edit Icon: client/src/assets/images/edit_icon.png (profile pages)
+  - QR Code Scanner: client/src/assets/images/scan_qr_code_white.png (scanning functionality)
+  - Share QR Code: client/src/assets/images/share_qr_code_icon.png (sharing functionality)
+  - Plus Icon: client/src/assets/images/plus_icon.svg (quantity controls in cart)
+  - Minus Icon: client/src/assets/images/minus_icon.svg (quantity controls in cart)
+  - Cart Icon: client/src/assets/images/view_cart.png (consumer home quick actions)
+- ✓ Updated shopping cart page to use plus_icon.svg and minus_icon.svg for quantity controls
+- ✓ Replaced driver dashboard "Today" earnings display with functional scan QR code button:
+  - Uses scan_qr_code_white.png icon for delivery confirmation scanning
+  - Button navigates to /qr-scanner page for successful delivery verification
+  - Applied BrillPrime color scheme with hover effects and proper styling
+- ✓ Enhanced driver dashboard with QR scanning capability for delivery confirmation workflow
+- ✓ Maintained consistent icon usage documentation in replit.md Icon File Standards section
+- ✓ All icons now use specified file paths instead of Lucide React icons where applicable
 
 ### Universal Order History System & Detailed View Implementation (July 20, 2025)
 - ✓ Created comprehensive order history page adapting to all user types (Consumer, Merchant, Driver)

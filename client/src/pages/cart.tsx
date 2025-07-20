@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { ArrowLeft, Plus, Minus, Trash2, ShoppingBag, CreditCard } from "lucide-react";
+import { ArrowLeft, Trash2, ShoppingBag, CreditCard } from "lucide-react";
+import plusIcon from "../assets/images/plus_icon.svg";
+import minusIcon from "../assets/images/minus_icon.svg";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -199,7 +201,7 @@ export default function Cart() {
                           onClick={() => handleUpdateQuantity(item, item.quantity - 1)}
                           disabled={updateCartMutation.isPending}
                         >
-                          <Minus className="w-3 h-3" />
+                          <img src={minusIcon} alt="Minus" className="w-3 h-3" />
                         </Button>
                         
                         <div className="w-8 h-7 bg-[#4682b4] rounded-sm flex items-center justify-center">
@@ -215,7 +217,7 @@ export default function Cart() {
                           onClick={() => handleUpdateQuantity(item, item.quantity + 1)}
                           disabled={updateCartMutation.isPending}
                         >
-                          <Plus className="w-3 h-3" />
+                          <img src={plusIcon} alt="Plus" className="w-3 h-3" />
                         </Button>
                       </div>
                     </div>
