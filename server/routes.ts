@@ -3,6 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
+import "./middleware/auth"; // Import type declarations
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sign up endpoint
@@ -97,17 +98,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Create session for social login
+      const userWithoutPassword = {
+        id: user.id,
+        userId: user.userId,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        isVerified: Boolean(user.isVerified),
+        profilePicture: user.profilePicture || undefined
+      };
+      
+      req.session.userId = user.id;
+      req.session.user = userWithoutPassword;
+      
       res.json({ 
         message: "Social login successful",
-        user: {
-          id: user.id,
-          userId: user.userId,
-          fullName: user.fullName,
-          email: user.email,
-          role: user.role,
-          isVerified: user.isVerified,
-          profilePicture: user.profilePicture
-        }
+        user: userWithoutPassword
       });
     } catch (error) {
       console.error("Social login error:", error);
@@ -134,8 +141,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Please verify your email first" });
       }
 
-      // In a real app, create JWT token here
-      const { password: _, ...userWithoutPassword } = user;
+      // Create session
+      const { password: _, ...userData } = user;
+      const userWithoutPassword = {
+        ...userData,
+        isVerified: Boolean(userData.isVerified),
+        profilePicture: userData.profilePicture || undefined
+      };
+      req.session.userId = user.id;
+      req.session.user = userWithoutPassword;
       
       res.json({ 
         message: "Login successful",
@@ -145,6 +159,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error("Signin error:", error);
       res.status(400).json({ message: "Invalid login data" });
     }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error("Logout error:", err);
+        return res.status(500).json({ message: "Failed to logout" });
+      }
+      res.json({ message: "Logged out successfully" });
+    });
   });
 
   // Resend OTP endpoint
