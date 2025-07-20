@@ -155,12 +155,21 @@ export default function ConsumerHome() {
       return "/attached_assets/image_1752989901533.png"; // Fallback to provided image
     }
     
-    // Using OpenStreetMap tile service via Mapbox style
+    // Using Google Maps Static API
     const zoom = 15;
-    const width = 400;
-    const height = 160;
+    const center = `${locationData.latitude},${locationData.longitude}`;
+    const size = "400x160";
+    const mapType = "roadmap";
+    const marker = `color:red%7Clabel:📍%7C${center}`;
     
-    return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/${width}x${height}@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
+    // Check for Google Maps API key
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
+    if (apiKey) {
+      return `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=${zoom}&size=${size}&maptype=${mapType}&markers=${marker}&key=${apiKey}`;
+    }
+    
+    // Fallback to OpenStreetMap-based service if no Google API key
+    return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/400x160@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
   };
 
   const quickActions: QuickAction[] = [

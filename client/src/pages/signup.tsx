@@ -102,20 +102,17 @@ export default function SignupPage() {
 
     try {
       const { socialAuth } = await import("@/lib/social-auth");
-      socialAuth.setCallbacks(
-        (profile) => {
-          console.log("Google signup success:", profile);
-          // TODO: Send profile to backend for registration
-          setLocation("/otp-verification");
-        },
-        (error) => {
-          setErrorMessage("Google sign-up failed. Please try again.");
-          setShowErrorModal(true);
-        }
-      );
-      await socialAuth.signInWithGoogle();
-    } catch (error) {
-      setErrorMessage("Google sign-up is not available at the moment.");
+      
+      const profile = await socialAuth.signInWithGoogle();
+      const result = await socialAuth.authenticateWithBackend(profile);
+      
+      // Update auth state
+      setUser(result.user);
+      localStorage.setItem("auth", JSON.stringify(result.user));
+      
+      setLocation("/dashboard");
+    } catch (error: any) {
+      setErrorMessage(error.message || "Google sign-up failed. Please try again.");
       setShowErrorModal(true);
     }
   };

@@ -14,8 +14,11 @@ export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
+  getUserBySocialId(socialProvider: string, socialId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string }): Promise<User>;
   verifyUser(email: string): Promise<void>;
+  generateUserId(): Promise<string>;
   
   // OTP operations
   createOtpCode(otpCode: InsertOtpCode): Promise<OtpCode>;
@@ -73,10 +76,47 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserBySocialId(socialProvider: string, socialId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users)
+      .where(and(eq(users.socialProvider, socialProvider), eq(users.socialId, socialId)));
+    return user || undefined;
+  }
+
+  async generateUserId(): Promise<string> {
+    // Get the latest user ID to generate the next sequential ID
+    const [latestUser] = await db.select().from(users)
+      .orderBy(desc(users.id))
+      .limit(1);
+    
+    const nextNumber = latestUser ? latestUser.id + 1 : 1;
+    return `BP-${nextNumber.toString().padStart(6, '0')}`;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
+    const userId = await this.generateUserId();
     const [user] = await db
       .insert(users)
-      .values(insertUser)
+      .values({ ...insertUser, userId })
+      .returning();
+    return user;
+  }
+
+  async createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string }): Promise<User> {
+    const userId = await this.generateUserId();
+    const [user] = await db
+      .insert(users)
+      .values({
+        userId,
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: '', // Will be updated later
+        password: '', // Social login users don't need passwords
+        role: 'CONSUMER', // Default role for social login
+        isVerified: true, // Social login users are pre-verified
+        socialProvider: userData.socialProvider,
+        socialId: userData.socialId,
+        profilePicture: userData.profilePicture,
+      })
       .returning();
     return user;
   }

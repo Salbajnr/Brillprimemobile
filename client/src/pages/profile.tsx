@@ -66,6 +66,13 @@ export default function ProfilePage() {
             </Button>
           </div>
           <h2 className="text-xl font-bold text-[var(--brill-text)] mb-1">{user?.fullName || "User"}</h2>
+          <div className="mb-2">
+            <div className="inline-flex items-center px-3 py-1 rounded-full bg-gray-100 border border-gray-200">
+              <span className="text-gray-600 text-xs font-mono">
+                ID: {user?.userId || 'BP-000001'}
+              </span>
+            </div>
+          </div>
           <p className="text-[var(--brill-text-light)] text-sm">{user?.role || "User"}</p>
         </div>
 

@@ -69,6 +69,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Social login endpoint
+  app.post("/api/auth/social-login", async (req, res) => {
+    try {
+      const { provider, socialId, email, name, picture } = req.body;
+      
+      // Check if user exists with social ID
+      let user = await storage.getUserBySocialId(provider, socialId);
+      
+      if (!user) {
+        // Check if user exists with email
+        user = await storage.getUserByEmail(email);
+        
+        if (user) {
+          return res.status(400).json({ 
+            message: "An account with this email already exists. Please sign in with your password." 
+          });
+        }
+        
+        // Create new social user
+        user = await storage.createSocialUser({
+          fullName: name,
+          email,
+          socialProvider: provider,
+          socialId,
+          profilePicture: picture
+        });
+      }
+
+      res.json({ 
+        message: "Social login successful",
+        user: {
+          id: user.id,
+          userId: user.userId,
+          fullName: user.fullName,
+          email: user.email,
+          role: user.role,
+          isVerified: user.isVerified,
+          profilePicture: user.profilePicture
+        }
+      });
+    } catch (error) {
+      console.error("Social login error:", error);
+      res.status(400).json({ message: "Social login failed" });
+    }
+  });
+
   // Sign in endpoint
   app.post("/api/auth/signin", async (req, res) => {
     try {
