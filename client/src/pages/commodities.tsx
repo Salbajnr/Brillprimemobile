@@ -193,7 +193,7 @@ export default function Commodities() {
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <h1 className="text-xl font-semibold text-gray-900">
+            <h1 className="text-xl font-semibold text-[#131313]">
               {viewMode === "categories" ? "Business Marketplace" : "Products"}
             </h1>
           </div>
@@ -221,8 +221,7 @@ export default function Commodities() {
               <ShoppingCart className="h-5 w-5" />
               {getTotalCartItems() > 0 && (
                 <Badge 
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs"
-                  style={{ backgroundColor: "#4682b4" }}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full p-0 flex items-center justify-center text-xs bg-[#4682b4] hover:bg-[#0b1a51] text-white"
                 >
                   {getTotalCartItems()}
                 </Badge>
@@ -249,7 +248,7 @@ export default function Commodities() {
           <div className="px-4 pb-4">
             <div className="bg-white rounded-lg border overflow-hidden">
               <div className="p-3 border-b bg-gray-50">
-                <h3 className="font-medium text-gray-900">Live Location Tracking</h3>
+                <h3 className="font-medium text-[#131313]">Live Location Tracking</h3>
                 <p className="text-sm text-gray-600">
                   {user?.role === "MERCHANT" ? "Track nearby customers and drivers" : "View nearby merchants and customers"}
                 </p>
@@ -283,7 +282,7 @@ export default function Commodities() {
                 >
                   <CardContent className="p-4 text-center">
                     <div className="text-3xl mb-2">{category.icon}</div>
-                    <h3 className="font-medium text-sm text-gray-900 mb-1">
+                    <h3 className="font-medium text-sm text-[#131313] mb-1">
                       {category.name}
                     </h3>
                     <p className="text-xs text-gray-500">
@@ -336,7 +335,7 @@ export default function Commodities() {
                 <Card key={product.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
-                      <h3 className="font-semibold text-gray-900 text-sm">
+                      <h3 className="font-semibold text-[#131313] text-sm">
                         {product.name}
                       </h3>
                       <Badge 
@@ -360,7 +359,7 @@ export default function Commodities() {
 
                     <div className="flex items-center justify-between mb-3">
                       <div>
-                        <span className="text-lg font-bold text-gray-900">
+                        <span className="text-lg font-bold text-[#4682b4]">
                           ₦{parseFloat(product.price).toLocaleString()}
                         </span>
                         <span className="text-xs text-gray-500 ml-1">/ {product.unit}</span>
@@ -374,7 +373,7 @@ export default function Commodities() {
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-medium text-gray-900 truncate">
+                        <p className="text-xs font-medium text-[#131313] truncate">
                           {product.sellerName}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
@@ -400,8 +399,7 @@ export default function Commodities() {
                           <Button
                             size="sm"
                             onClick={() => handleAddToCart(product)}
-                            className="h-8 w-8 p-0"
-                            style={{ backgroundColor: "#4682b4" }}
+                            className="h-8 w-8 p-0 bg-[#4682b4] hover:bg-[#0b1a51] text-white"
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -416,8 +414,7 @@ export default function Commodities() {
                           size="sm"
                           onClick={() => handleAddToCart(product)}
                           disabled={!product.inStock || addToCartMutation.isPending}
-                          className="flex-1"
-                          style={{ backgroundColor: "#4682b4" }}
+                          className="flex-1 bg-[#4682b4] hover:bg-[#0b1a51] text-white disabled:bg-gray-400"
                         >
                           {addToCartMutation.isPending ? "Adding..." : "Add to Cart"}
                         </Button>
@@ -435,7 +432,7 @@ export default function Commodities() {
           {!productsLoading && products.length === 0 && (
             <div className="text-center py-12">
               <div className="text-gray-400 text-4xl mb-4">🔍</div>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
+              <h3 className="text-lg font-medium text-[#131313] mb-2">No products found</h3>
               <p className="text-gray-600">
                 Try adjusting your search or browse different categories
               </p>
