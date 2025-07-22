@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Bell, Scan, Send, Plus, CreditCard, MapPin, Fuel, Receipt, ShoppingCart, Eye, EyeOff, Clock } from "lucide-react";
+import { Bell, Scan, Send, Plus, CreditCard, MapPin, Fuel, Receipt, ShoppingCart, Eye, EyeOff, Clock, Wifi, WifiOff } from "lucide-react";
+import { useWebSocketOrders, useWebSocketNotifications, useWebSocketChat } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -44,7 +46,7 @@ interface LocationData {
 // Color constants
 const COLORS = {
   PRIMARY: '#4682b4',
-  SECONDARY: '#0b1a51', 
+  SECONDARY: '#0b1a51',
   ACTIVE: '#010e42',
   TEXT: '#131313',
   WHITE: '#ffffff'
@@ -57,6 +59,11 @@ export default function ConsumerHome() {
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [showBalance, setShowBalance] = useState(true);
   const [walletBalance] = useState(45750.00); // Mock data - will be replaced with API
+
+  // WebSocket integration for real-time features
+  const { connected: orderConnected, orderUpdates, connectionError: orderError } = useWebSocketOrders();
+  const { connected: notificationConnected, notifications: wsNotifications, connectionError: notificationError } = useWebSocketNotifications();
+  const { connected: paymentConnected, chatMessages: paymentConfirmations, connectionError: paymentError } = useWebSocketChat();
   const [locationData, setLocationData] = useState<LocationData>({
     latitude: 0,
     longitude: 0,
@@ -117,14 +124,14 @@ export default function ConsumerHome() {
       navigator.geolocation.getCurrentPosition(
         async (position) => {
           const { latitude, longitude } = position.coords;
-          
+
           try {
             // Use reverse geocoding to get city/country
             const response = await fetch(
               `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
             );
             const data = await response.json();
-            
+
             setLocationData({
               latitude,
               longitude,
@@ -138,7 +145,7 @@ export default function ConsumerHome() {
               latitude,
               longitude,
               city: "Unknown City",
-              country: "Unknown Country", 
+              country: "Unknown Country",
               loading: false,
               error: null
             });
@@ -167,20 +174,20 @@ export default function ConsumerHome() {
     if (locationData.loading || locationData.error) {
       return "/attached_assets/image_1752989901533.png"; // Fallback to provided image
     }
-    
+
     // Using Google Maps Static API
     const zoom = 15;
     const center = `${locationData.latitude},${locationData.longitude}`;
     const size = "400x160";
     const mapType = "roadmap";
     const marker = `color:red%7Clabel:📍%7C${center}`;
-    
+
     // Check for Google Maps API key
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
     if (apiKey) {
       return `https://maps.googleapis.com/maps/api/staticmap?center=${center}&zoom=${zoom}&size=${size}&maptype=${mapType}&markers=${marker}&key=${apiKey}`;
     }
-    
+
     // Fallback to OpenStreetMap-based service if no Google API key
     return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/400x160@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
   };
@@ -253,6 +260,46 @@ export default function ConsumerHome() {
     }
   };
 
+  // Process WebSocket order updates
+  useEffect(() => {
+    if (orderUpdates.length > 0) {
+      // Process new order updates from WebSocket
+      orderUpdates.forEach((update: Record<string, any>) => {
+        if (update.type === MessageType.ORDER_STATUS_UPDATE) {
+          console.log(`Order status update: ${update.status} for order ${update.orderId}`);
+          // In a real app, you would show a notification or update the UI
+          // You could also refresh the order history data
+        }
+      });
+    }
+  }, [orderUpdates]);
+
+  // Process WebSocket notifications
+  useEffect(() => {
+    if (wsNotifications.length > 0) {
+      // Process new notifications from WebSocket
+      wsNotifications.forEach((notification: Record<string, any>) => {
+        if (notification.type === MessageType.NOTIFICATION) {
+          // In a real app, you would add these to a notification system
+          console.log(`New notification: ${notification.payload?.title || 'New notification'} - ${notification.payload?.message || 'No message'}`);
+        }
+      });
+    }
+  }, [wsNotifications]);
+
+  // Process WebSocket payment confirmations
+  useEffect(() => {
+    if (paymentConfirmations.length > 0) {
+      // Process new payment confirmations from WebSocket
+      paymentConfirmations.forEach((payment: Record<string, any>) => {
+        if (payment.type === MessageType.PAYMENT_CONFIRMATION) {
+          console.log(`Payment confirmed for order ${payment.payload?.orderId || 'unknown'}: ${payment.payload?.amount || 0}`);
+          // In a real app, you would update the wallet balance and transaction history
+        }
+      });
+    }
+  }, [paymentConfirmations]);
+
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
@@ -268,8 +315,38 @@ export default function ConsumerHome() {
             </div>
           </div>
           <div className="flex items-center space-x-3 animate-slide-in-right">
+            {/* WebSocket Connection Status */}
+            {(orderConnected || notificationConnected || paymentConnected) ? (
+              <Badge
+                variant="default"
+                className="rounded-full px-3 py-1"
+                style={{ backgroundColor: '#D1FAE5', color: '#059669' }}
+              >
+                <Wifi className="w-3 h-3 mr-1" />
+                Live
+              </Badge>
+            ) : (orderError || notificationError || paymentError) ? (
+              <Badge
+                variant="default"
+                className="rounded-full px-3 py-1"
+                style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+              >
+                <WifiOff className="w-3 h-3 mr-1" />
+                Offline
+              </Badge>
+            ) : null}
+
             <NotificationDropdown
-              notifications={notifications}
+              notifications={[...notifications, ...wsNotifications.map((n: Record<string, any>) => ({
+                id: n.payload?.id || Math.random().toString(),
+                title: n.payload?.title || 'Notification',
+                message: n.payload?.message || '',
+                timestamp: new Date(n.timestamp || new Date()),
+                type: n.payload?.type || 'system' as const,
+                isRead: false,
+                priority: n.payload?.priority || 'low' as const,
+                actionUrl: n.payload?.actionUrl
+              }))].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())}
               onMarkAsRead={markAsRead}
               onMarkAllAsRead={markAllAsRead}
               onNotificationClick={handleNotificationClick}
@@ -321,7 +398,7 @@ export default function ConsumerHome() {
                     </div>
                   </div>
                 ) : (
-                  <img 
+                  <img
                     src={getMapUrl()}
                     alt="Live Location Map"
                     className="w-full h-full object-cover"
@@ -331,7 +408,7 @@ export default function ConsumerHome() {
                     }}
                   />
                 )}
-                
+
                 {/* Floating location info */}
                 <div className="absolute bottom-3 left-3 bg-white/95 backdrop-blur-sm rounded-2xl px-3 py-2 shadow-sm border border-blue-200/50 animate-slide-in-left">
                   <div className="flex items-center space-x-2">
@@ -341,7 +418,7 @@ export default function ConsumerHome() {
                     </p>
                   </div>
                 </div>
-                
+
                 {/* Zoom controls */}
                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm rounded-2xl p-1 shadow-sm border border-blue-200/50 animate-slide-in-right">
                   <div className="flex flex-col space-y-1">
@@ -442,20 +519,18 @@ export default function ConsumerHome() {
           </div>
           <div className="space-y-3">
             {recentTransactions.slice(0, 4).map((transaction, index) => (
-              <Card 
-                key={transaction.id} 
+              <Card
+                key={transaction.id}
                 className="card-3d rounded-3xl border-2 border-blue-100/50 animate-slide-up interactive-element"
                 style={{ animationDelay: `${index * 0.1}s` }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                        transaction.type === "credit" ? "bg-green-100" : "bg-red-100"
-                      }`}>
-                        <span className={`text-lg ${
-                          transaction.type === "credit" ? "text-green-600" : "text-red-600"
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${transaction.type === "credit" ? "bg-green-100" : "bg-red-100"
                         }`}>
+                        <span className={`text-lg ${transaction.type === "credit" ? "text-green-600" : "text-red-600"
+                          }`}>
                           {getTransactionIcon(transaction.type)}
                         </span>
                       </div>
@@ -469,9 +544,8 @@ export default function ConsumerHome() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className={`font-semibold ${
-                        transaction.type === "credit" ? "text-green-600" : "text-red-600"
-                      }`}>
+                      <p className={`font-semibold ${transaction.type === "credit" ? "text-green-600" : "text-red-600"
+                        }`}>
                         {transaction.type === "credit" ? "+" : "-"}
                         {formatCurrency(transaction.amount)}
                       </p>
@@ -526,7 +600,7 @@ export default function ConsumerHome() {
           >
             <div className="w-8 h-8 flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>
+                <path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z" />
               </svg>
             </div>
             <span className="text-xs font-medium mt-1">Home</span>
@@ -539,7 +613,7 @@ export default function ConsumerHome() {
           >
             <div className="w-8 h-8 flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
+                <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
               </svg>
             </div>
             <span className="text-xs font-medium mt-1">Search</span>
@@ -552,7 +626,7 @@ export default function ConsumerHome() {
           >
             <div className="w-8 h-8 flex items-center justify-center relative">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/>
+                <path d="M20 2H4c-1.1 0-1.99.9-1.99 2L2 22l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z" />
               </svg>
               {/* Notification badge for unread messages */}
               <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
@@ -569,7 +643,7 @@ export default function ConsumerHome() {
           >
             <div className="w-8 h-8 flex items-center justify-center">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
               </svg>
             </div>
             <span className="text-xs font-medium mt-1">Profile</span>

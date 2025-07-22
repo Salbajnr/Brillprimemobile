@@ -1,8 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { NotificationProvider, useNotifications } from "@/components/ui/notification-system";
+import { useWebSocketDeliveryStatus } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { 
   ArrowLeft,
   Clock,
@@ -11,7 +14,9 @@ import {
   MessageCircle,
   Phone,
   Navigation,
-  AlertTriangle
+  AlertTriangle,
+  Wifi,
+  WifiOff
 } from "lucide-react";
 import logoImage from "../assets/images/logo.png";
 import accountCircleIcon from "../assets/images/account_circle.svg";
@@ -49,8 +54,11 @@ function DeliveryDetailContent() {
   const [, setLocation] = useLocation();
   const { addNotification } = useNotifications();
   
+  // WebSocket integration for real-time delivery tracking
+  const { connected, deliveryUpdates, connectionError } = useWebSocketDeliveryStatus();
+  
   // Sample delivery data - would come from route params in real app
-  const delivery: DeliveryDetails = {
+  const [delivery, setDelivery] = useState<DeliveryDetails>({
     id: "job-1",
     customerName: "Mike Johnson",
     customerPhone: "+234 801 234 5678",
@@ -65,7 +73,29 @@ function DeliveryDetailContent() {
     deliveryFee: 2500,
     status: 'ASSIGNED',
     specialInstructions: "Customer will meet at the main gate"
-  };
+  });
+  
+  // Process WebSocket delivery status updates
+  useEffect(() => {
+    if (Object.keys(deliveryUpdates).length > 0 && deliveryUpdates[delivery.id]) {
+      const update = deliveryUpdates[delivery.id];
+      console.log(`Updating delivery ${delivery.id} status to ${update.status}`);
+      
+      // Update the delivery status in real-time
+      setDelivery(prev => ({
+        ...prev,
+        status: update.status as any
+      }));
+      
+      // Show notification about status change
+      addNotification({
+        type: 'info',
+        title: 'Delivery Update',
+        message: `Delivery status updated to ${update.status}`,
+        duration: 4000
+      });
+    }
+  }, [deliveryUpdates, delivery.id, addNotification]);
 
   const handleStartNavigation = () => {
     addNotification({
@@ -133,7 +163,21 @@ function DeliveryDetailContent() {
           <ArrowLeft className="h-6 w-6" style={{ color: COLORS.TEXT }} />
         </Button>
         <h1 className="text-xl font-bold" style={{ color: COLORS.TEXT }}>Delivery Detail</h1>
-        <div className="w-10"></div>
+        
+        {/* WebSocket Connection Status */}
+        <div className="w-10 flex items-center justify-center">
+          {connected ? (
+            <Badge className="bg-green-500 hover:bg-green-600">
+              <Wifi className="h-3 w-3 mr-1" />
+              <span className="text-xs">Live</span>
+            </Badge>
+          ) : (
+            <Badge className="bg-gray-500 hover:bg-gray-600">
+              <WifiOff className="h-3 w-3 mr-1" />
+              <span className="text-xs">Offline</span>
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Customer Info Section */}
@@ -219,13 +263,27 @@ function DeliveryDetailContent() {
           <div className="flex items-center space-x-3">
             <Clock className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
             <div className="flex-1">
-              <p className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{delivery.estimatedTime}</p>
+              <div className="flex items-center justify-between">
+                <p className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{delivery.estimatedTime}</p>
+                <Badge 
+                  className="rounded-full px-3 py-1"
+                  style={{ 
+                    backgroundColor: `${getStatusColor(delivery.status)}20`, 
+                    color: getStatusColor(delivery.status)
+                  }}
+                >
+                  {getStatusText(delivery.status)}
+                </Badge>
+              </div>
               <div className="w-full h-1 rounded-full mt-2" style={{ backgroundColor: '#D9D9D9' }}>
                 <div 
-                  className="h-1 rounded-full" 
+                  className="h-1 rounded-full transition-all duration-500" 
                   style={{ 
-                    backgroundColor: COLORS.PRIMARY,
-                    width: '64%' // Sample progress based on status
+                    backgroundColor: getStatusColor(delivery.status),
+                    width: delivery.status === 'ASSIGNED' ? '25%' : 
+                           delivery.status === 'PICKED_UP' ? '50%' : 
+                           delivery.status === 'IN_TRANSIT' ? '75%' : 
+                           delivery.status === 'DELIVERED' ? '100%' : '0%'
                   }}
                 ></div>
               </div>
