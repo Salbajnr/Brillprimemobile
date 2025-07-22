@@ -1,0 +1,5721 @@
+{
+	"info": {
+		"_postman_id": "5a40a994-22c7-4958-be9f-f846c0e36450",
+		"name": "BRILLPRIME API",
+		"description": "API for user authentication, including signup, signin, OTP verification, and password management.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "43790306",
+		"_collection_link": "https://blue-meteor-333473.postman.co/workspace/Team-Workspace~cd0d5e82-4229-422f-8634-b610cc1f6633/collection/42386830-5a40a994-22c7-4958-be9f-f846c0e36450?action=share&source=collection_link&creator=43790306"
+	},
+	"item": [
+		{
+			"name": "auth",
+			"item": [
+				{
+					"name": "Register a new user",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"<email>\",\n  \"fullName\": \"<string>\",\n  \"password\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"role\": \"DRIVER\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/signup",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"signup"
+							]
+						},
+						"description": "Endpoint to register a new user with a specific role."
+					},
+					"response": [
+						{
+							"name": "User registered successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"<email>\",\n  \"fullName\": \"<string>\",\n  \"password\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"role\": \"DRIVER\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/signup",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"signup"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"message\": \"<string>\"\n}"
+						},
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"email\": \"kizitohorlong+5@outlook.com\",\n\t\"fullName\": \"Kizito Horlong\",\n\t\"password\": \"testpassword\",\n\t\"phone\": \"07012345679\",\n\t\"role\": \"VENDOR\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/signup",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"signup"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "474"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"1da-t+RQAFhasDwQkVlnHL9UITj95/E\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 08:26:48 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"User Sign Up Successful. Verification token sent.\",\n    \"data\": {\n        \"id\": \"e34a2a36-52a1-4055-b051-5ff7f315e91e\",\n        \"email\": \"kizitohorlong+5@outlook.com\",\n        \"fullName\": \"Kizito Horlong\",\n        \"password\": \"$2a$10$GdhN1Bt0gzvs/FvkhoMpQ.AzYARgrJIwleZPb.FRp4S0WoWREisWi\",\n        \"imageUrl\": null,\n        \"otp\": \"895418\",\n        \"phone\": \"07012345679\",\n        \"verified\": false,\n        \"role\": \"VENDOR\",\n        \"isDeleted\": false,\n        \"createdAt\": \"2025-02-17T08:26:48.160Z\",\n        \"updatedAt\": \"2025-02-17T08:26:48.160Z\",\n        \"deletedAt\": null\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Verify OTP for user authentication",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"kizitohorlong+2@outlook.com\",\n  \"otp\": \"844361\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/auth/verify-otp",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-otp"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\",\n  \"otp\": \"624018\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/verify-otp",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"verify-otp"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "109"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"6d-DRRqMNGhZ6xGG40audxVhirTtqc\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 08:32:45 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"OTP verification successful\",\n    \"data\": {\n        \"message\": \"Email verified successfully\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Resend email verification otp",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/auth/resend-email-otp",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"auth",
+								"resend-email-otp"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/resend-email-otp",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"resend-email-otp"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "106"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"6a-M9vVLNcw+Jmb7Y+6Hb+BC+n1VNw\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 08:30:49 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"User Sign Up Successful. Verification token sent.\",\n    \"data\": {\n        \"otp\": \"624018\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Reset user password",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"password\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/auth/reset-password",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"auth",
+								"reset-password"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Password reset successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"<email>\",\n  \"password\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/reset-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"reset-password"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"message\": \"<string>\"\n}"
+						},
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/reset-password",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"reset-password"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "345"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"159-uQ81ll0tpXsij8W67m3fx6xMEhE\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 10:36:20 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Password reset successful\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrNUBvdXRsb29rLmNvbSIsInN1YiI6ImUzNGEyYTM2LTUyYTEtNDA1NS1iMDUxLTVmZjdmMzE1ZTkxZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3Mzk3ODg1ODAsImV4cCI6MTczOTg3NDk4MH0.1FAxvrr7aNfAUmx9lGNdiRkiyeRuWdcmNLE3549I3l0\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Request a password reset",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"kizitohorlong@outlook.com\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/forgot-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"forgot-password"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Password reset email sent successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"<email>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/forgot-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"forgot-password"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"message\": \"<string>\"\n}"
+						},
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/forgot-password",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"forgot-password"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "126"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"7e-My5KoodtuFlAWhp5ewAOeYI9nE4\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 10:27:54 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Password reset token sent successfully\",\n    \"data\": {\n        \"message\": \"Sent successfully\",\n        \"data\": \"316784\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Verify password reset",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"dangdat.fpk@gmail.com\",\n  \"otp\": \"482444\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/verify-password-reset",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"verify-password-reset"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\",\n  \"otp\": \"316784\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/verify-password-reset",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"verify-password-reset"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "356"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"164-E16MAJdzkn1jFb0oBem3v8RETpE\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 10:30:21 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Password reset verified successfully\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrNUBvdXRsb29rLmNvbSIsInN1YiI6ImUzNGEyYTM2LTUyYTEtNDA1NS1iMDUxLTVmZjdmMzE1ZTkxZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3Mzk3ODgyMjEsImV4cCI6MTczOTg3NDYyMX0.-FwbLOAfET2XmQdqKDBKEvpZo_cig8tt-uxqXgbhlM0\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Sign in",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "// {\n//   \"email\": \"dangdat.fpk@gmail.com\",\n//   \"password\": \"Smart001@@\"\n// }\n\n{\n  \"email\": \"kizitohorlong+1@outlook.com\",\n  \"password\": \"testpassword\",\n  \"role\": \"VENDOR\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/auth/signin",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"auth",
+								"signin"
+							]
+						}
+					},
+					"response": [
+						{
+							"name": "User authenticated successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"<email>\",\n  \"password\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/signin",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"signin"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"token\": \"<string>\"\n}"
+						},
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"email\": \"kizitohorlong+5@outlook.com\",\n  \"password\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/auth/signin",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"auth",
+										"signin"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "X-Powered-By",
+									"value": "Express"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Access-Control-Allow-Credentials",
+									"value": "true"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "343"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"157-r7t0EfOpK5EOM0UtqGH/WG5NeIQ\""
+								},
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 10:45:52 GMT"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "Keep-Alive",
+									"value": "timeout=5"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"User Sign in successful\",\n    \"data\": {\n        \"access_token\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrNUBvdXRsb29rLmNvbSIsInN1YiI6ImUzNGEyYTM2LTUyYTEtNDA1NS1iMDUxLTVmZjdmMzE1ZTkxZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3Mzk3ODkxNTIsImV4cCI6MTczOTg3NTU1Mn0.eus6wnImWerIRfqkVL1JGrNQYvyCzhBTC5PcT1VX2gQ\"\n    }\n}"
+						}
+					]
+				},
+				{
+					"name": "Change the current password for an authenticated user",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							},
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"currentPassword\": \"testpassword\",\n  \"newPassword\": \"testpassword\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/auth/change-password",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"auth",
+								"change-password"
+							]
+						},
+						"description": "Endpoint to change a user’s password with authorization."
+					},
+					"response": [
+						{
+							"name": "Password changed successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"currentPassword\": \"<string>\",\n  \"newPassword\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/change-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"change-password"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"message\": \"<string>\"\n}"
+						},
+						{
+							"name": "Bad request - Incorrect current password",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"currentPassword\": \"<string>\",\n  \"newPassword\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/change-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"change-password"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"statusCode\": \"<integer>\",\n  \"message\": \"<string>\",\n  \"error\": \"<string>\"\n}"
+						},
+						{
+							"name": "Internal server error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"currentPassword\": \"<string>\",\n  \"newPassword\": \"<string>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/change-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"change-password"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"statusCode\": \"<integer>\",\n  \"message\": \"<string>\",\n  \"error\": \"<string>\"\n}"
+						},
+						{
+							"name": "Success",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"currentPassword\": \"testpassword\",\n  \"newPassword\": \"testpassword\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/auth/change-password",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"auth",
+										"change-password"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Date",
+									"value": "Mon, 17 Feb 2025 10:47:29 GMT"
+								},
+								{
+									"key": "Content-Type",
+									"value": "application/json; charset=utf-8"
+								},
+								{
+									"key": "Content-Length",
+									"value": "74"
+								},
+								{
+									"key": "Connection",
+									"value": "keep-alive"
+								},
+								{
+									"key": "CF-Ray",
+									"value": "91353313d8b67785-LHR"
+								},
+								{
+									"key": "CF-Cache-Status",
+									"value": "DYNAMIC"
+								},
+								{
+									"key": "Access-Control-Allow-Origin",
+									"value": "*"
+								},
+								{
+									"key": "Content-Encoding",
+									"value": "br"
+								},
+								{
+									"key": "ETag",
+									"value": "W/\"6e-Tu9XREa9N9x0eB++WvW21PV1fDI\""
+								},
+								{
+									"key": "Vary",
+									"value": "Accept-Encoding"
+								},
+								{
+									"key": "access-control-allow-credentials",
+									"value": "true"
+								},
+								{
+									"key": "rndr-id",
+									"value": "ea4d991b-d280-4f50"
+								},
+								{
+									"key": "x-powered-by",
+									"value": "Express"
+								},
+								{
+									"key": "x-render-origin-server",
+									"value": "Render"
+								},
+								{
+									"key": "Server",
+									"value": "cloudflare"
+								},
+								{
+									"key": "alt-svc",
+									"value": "h3=\":443\"; ma=86400"
+								}
+							],
+							"cookie": [],
+							"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Password change successful\",\n    \"data\": {\n        \"message\": \"Password changed successfully\"\n    }\n}"
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "user",
+			"item": [
+				{
+					"name": "profile",
+					"item": [
+						{
+							"name": "Retrieve user profile",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMUBvdXRsb29rLmNvbSIsInN1YiI6ImZiNGU3ODk4LThjYTktNDEzZS04YzZhLTEzNGNmYjU1YjI0ZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3NDIwMzY0ODUsImV4cCI6MTc0MjEyMjg4NX0.oufrvnIkGWTtPh4CK9kdUcNrco-2t_NJ3Pq_xJkJ82A",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/profile",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"profile"
+									]
+								},
+								"description": "Get the profile information of the authenticated user based on their role."
+							},
+							"response": [
+								{
+									"name": "Successfully retrieved user profile",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/user/profile",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"profile"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": \"<string>\",\n  \"email\": \"<email>\",\n  \"fullName\": \"<string>\",\n  \"phone\": \"<string>\",\n  \"role\": \"CONSUMER\",\n  \"imageUrl\": \"<string>\",\n  \"verified\": \"<boolean>\"\n}"
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/user/profile",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"profile"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"statusCode\": \"<integer>\",\n  \"message\": \"<string>\",\n  \"error\": \"<string>\"\n}"
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/user/profile",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"user",
+												"profile"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"statusCode\": \"<integer>\",\n  \"message\": \"<string>\",\n  \"error\": \"<string>\"\n}"
+								}
+							]
+						},
+						{
+							"name": "Update user profile",
+							"request": {
+								"method": "PATCH",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"fullName\": \"Kizito Horlong\",\n  \"phone\": \"1234567890\",\n  \"location\": \"Gwarimpa, Abuja\",\n  \"imageUrl\": \"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwYkEOsPHY5MfHlsUi1e14w1C344m9u88fJQ&s\"\n\n}",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/profile/update",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"profile",
+										"update"
+									]
+								},
+								"description": "Get the profile information of the authenticated user based on their role."
+							},
+							"response": [
+								{
+									"name": "Successs",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"fullName\": \"Kizito Horlong\",\n  \"phone\": \"1234567890\",\n  \"location\": \"Gwarimpa, Abuja\",\n  \"imageUrl\": \"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwYkEOsPHY5MfHlsUi1e14w1C344m9u88fJQ&s\"\n\n}",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/profile/update",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"profile",
+												"update"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "566"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"236-VpbAXGy791bbLEpNKoNxE7O3gmw\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 15:35:57 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Profile updated successfully\",\n    \"data\": {\n        \"id\": \"e34a2a36-52a1-4055-b051-5ff7f315e91e\",\n        \"email\": \"kizitohorlong+5@outlook.com\",\n        \"fullName\": \"Kizito Horlong\",\n        \"password\": \"$2a$10$gMD2RuAaq5JvNPMIRGRFo.5k.mUiK4FexdGCLBAlHPgVdvrU5N8re\",\n        \"imageUrl\": \"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTwYkEOsPHY5MfHlsUi1e14w1C344m9u88fJQ&s\",\n        \"otp\": null,\n        \"phone\": \"1234567890\",\n        \"verified\": true,\n        \"role\": \"VENDOR\",\n        \"location\": \"Gwarimpa, Abuja\",\n        \"isDeleted\": false,\n        \"createdAt\": \"2025-02-17T08:26:48.160Z\",\n        \"updatedAt\": \"2025-02-17T15:35:57.344Z\",\n        \"deletedAt\": null\n    }\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "vendor",
+					"item": [
+						{
+							"name": "Onboard Vendor",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMUBvdXRsb29rLmNvbSIsInN1YiI6ImZiNGU3ODk4LThjYTktNDEzZS04YzZhLTEzNGNmYjU1YjI0ZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3NDA1OTQzMzgsImV4cCI6MTc0MDY4MDczOH0.hOi7_A503mRY7gTH4ziIuTpu1rsUQJug-ZufIK04HJQ",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"20:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/vendor/onboard",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"vendor",
+										"onboard"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"20:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/vendor/onboard",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"vendor",
+												"onboard"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "72"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"48-QuC0f8hSBqkSG2HoGh8LJkvvlM4\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 14:34:29 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Cendor onboarded successfully\",\n    \"data\": {}\n}"
+								}
+							]
+						},
+						{
+							"name": "Add bank details",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMUBvdXRsb29rLmNvbSIsInN1YiI6ImZiNGU3ODk4LThjYTktNDEzZS04YzZhLTEzNGNmYjU1YjI0ZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3NDIwMzY0ODUsImV4cCI6MTc0MjEyMjg4NX0.oufrvnIkGWTtPh4CK9kdUcNrco-2t_NJ3Pq_xJkJ82A",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"accountName\": \"Pastor Bright\",\n    \"bankName\": \"Access Bank\",\n    \"accountNumber\": \"0690000032\",\n    \"bankCode\": \"044\"\n  }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/vendor/bank-details",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"vendor",
+										"bank-details"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"20:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/vendor/onboard",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"vendor",
+												"onboard"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "72"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"48-QuC0f8hSBqkSG2HoGh8LJkvvlM4\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 14:34:29 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Cendor onboarded successfully\",\n    \"data\": {}\n}"
+								}
+							]
+						},
+						{
+							"name": "Get vendor categories",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/vendor/categories?search=art",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"vendor",
+										"categories"
+									],
+									"query": [
+										{
+											"key": "search",
+											"value": "art"
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"20:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/vendor/onboard",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"vendor",
+												"onboard"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "72"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"48-QuC0f8hSBqkSG2HoGh8LJkvvlM4\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 14:34:29 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Cendor onboarded successfully\",\n    \"data\": {}\n}"
+								}
+							]
+						},
+						{
+							"name": "Get vendors by category",
+							"request": {
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/vendor/category/toll",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"vendor",
+										"category",
+										"toll"
+									],
+									"query": [
+										{
+											"key": "category",
+											"value": "toll gate",
+											"disabled": true
+										}
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "POST",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"20:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/vendor/onboard",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"vendor",
+												"onboard"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "72"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"48-QuC0f8hSBqkSG2HoGh8LJkvvlM4\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 14:34:29 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Cendor onboarded successfully\",\n    \"data\": {}\n}"
+								}
+							]
+						},
+						{
+							"name": "Update Vendor",
+							"request": {
+								"method": "PATCH",
+								"header": [],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"19:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      },\n            {\n        \"dayOfWeek\": \"Wednesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+									"options": {
+										"raw": {
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/user/vendor/update",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"user",
+										"vendor",
+										"update"
+									]
+								}
+							},
+							"response": [
+								{
+									"name": "Success",
+									"originalRequest": {
+										"method": "PATCH",
+										"header": [],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n    \"accountName\": \"Vendor A\",\n    \"bankName\": \"Bank of Earth\",\n    \"accountNumber\": \"1234567890\",\n    \"address\": \"123 Main St\",\n    \"businessCategory\": \"Retail\",\n    \"businessNumber\": \"12345\",\n    \"businessName\": \"Vendor A Business\",\n    \"openingHours\": [\n      {\n        \"dayOfWeek\": \"Monday\",\n        \"openTime\": \"08:00\",\n        \"closeTime\": \"19:00\"\n      },\n      {\n        \"dayOfWeek\": \"Tuesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      },\n            {\n        \"dayOfWeek\": \"Wednesday\",\n        \"openTime\": \"09:00\",\n        \"closeTime\": \"20:00\"\n      }\n    ]\n  }",
+											"options": {
+												"raw": {
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseLocalUrl}}/user/vendor/update",
+											"host": [
+												"{{baseLocalUrl}}"
+											],
+											"path": [
+												"user",
+												"vendor",
+												"update"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "X-Powered-By",
+											"value": "Express"
+										},
+										{
+											"key": "Access-Control-Allow-Origin",
+											"value": "*"
+										},
+										{
+											"key": "Access-Control-Allow-Credentials",
+											"value": "true"
+										},
+										{
+											"key": "Content-Type",
+											"value": "application/json; charset=utf-8"
+										},
+										{
+											"key": "Content-Length",
+											"value": "1295"
+										},
+										{
+											"key": "ETag",
+											"value": "W/\"50f-ULPE+rV2yUyHRlV8VT4UdjfS1fU\""
+										},
+										{
+											"key": "Date",
+											"value": "Mon, 17 Feb 2025 16:04:11 GMT"
+										},
+										{
+											"key": "Connection",
+											"value": "keep-alive"
+										},
+										{
+											"key": "Keep-Alive",
+											"value": "timeout=5"
+										}
+									],
+									"cookie": [],
+									"body": "{\n    \"status\": \"Success\",\n    \"message\": \"Vendor updated successfully\",\n    \"data\": {\n        \"id\": \"f7e7c90d-4169-4218-a0ab-077659602931\",\n        \"accountName\": \"Vendor A\",\n        \"bankName\": \"Bank of Earth\",\n        \"accountNumber\": \"1234567890\",\n        \"address\": \"123 Main St\",\n        \"userId\": \"e34a2a36-52a1-4055-b051-5ff7f315e91e\",\n        \"businessCategory\": \"Retail\",\n        \"businessNumber\": \"12345\",\n        \"businessName\": \"Vendor A Business\",\n        \"isDeleted\": false,\n        \"createdAt\": \"2025-02-17T15:48:22.744Z\",\n        \"updatedAt\": \"2025-02-17T16:04:08.383Z\",\n        \"deletedAt\": null,\n        \"openingHours\": [\n            {\n                \"id\": \"ba736462-174b-4b04-9fc6-da3f84d3c6b5\",\n                \"dayOfWeek\": \"Monday\",\n                \"openTime\": \"08:00\",\n                \"closeTime\": \"19:00\",\n                \"vendorId\": \"f7e7c90d-4169-4218-a0ab-077659602931\",\n                \"isDeleted\": false,\n                \"createdAt\": \"2025-02-17T15:48:22.352Z\",\n                \"updatedAt\": \"2025-02-17T16:04:05.700Z\",\n                \"deletedAt\": null\n            },\n            {\n                \"id\": \"8dd776d0-45e6-45d9-a2ac-29a6078a6558\",\n                \"dayOfWeek\": \"Tuesday\",\n                \"openTime\": \"09:00\",\n                \"closeTime\": \"20:00\",\n                \"vendorId\": \"f7e7c90d-4169-4218-a0ab-077659602931\",\n                \"isDeleted\": false,\n                \"createdAt\": \"2025-02-17T15:48:22.352Z\",\n                \"updatedAt\": \"2025-02-17T16:04:05.700Z\",\n                \"deletedAt\": null\n            },\n            {\n                \"id\": \"f603cd0d-1ffe-4f02-82ab-c7bbb75a6213\",\n                \"dayOfWeek\": \"Wednesday\",\n                \"openTime\": \"09:00\",\n                \"closeTime\": \"20:00\",\n                \"vendorId\": \"f7e7c90d-4169-4218-a0ab-077659602931\",\n                \"isDeleted\": false,\n                \"createdAt\": \"2025-02-17T16:04:05.700Z\",\n                \"updatedAt\": \"2025-02-17T16:04:05.700Z\",\n                \"deletedAt\": null\n            }\n        ]\n    }\n}"
+								}
+							]
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "commodities",
+			"item": [
+				{
+					"name": "add",
+					"item": [
+						{
+							"name": "Add a new commodity",
+							"request": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n\t\"name\": \"Spaghetti\",\n\t\"price\": \"9000\",\n\t\"imageUrl\": \"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTJhOUehYMAZ51KPTUXWDs1iEWMI-Jyy31MRg&s\",\n\t\"unit\": \"Carton\",\n\t\"description\": \"Spag indomie\",\n\t\"quantity\": 30,\n    \"category\": \"food\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/commodities/add",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"commodities",
+										"add"
+									]
+								},
+								"description": "Allows vendors to add a new commodity item."
+							},
+							"response": [
+								{
+									"name": "Commodity created successfully",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"quantity\": \"<integer>\",\n  \"imageUrl\": \"<uri>\",\n  \"description\": \"<string>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/commodities/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"add"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<uri>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\",\n  \"createdAt\": \"<dateTime>\"\n}"
+								},
+								{
+									"name": "Invalid input",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"quantity\": \"<integer>\",\n  \"imageUrl\": \"<uri>\",\n  \"description\": \"<string>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/commodities/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"add"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\",\n  \"details\": \"<string>\"\n}"
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"quantity\": \"<integer>\",\n  \"imageUrl\": \"<uri>\",\n  \"description\": \"<string>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/commodities/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"add"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\",\n  \"message\": \"<string>\"\n}"
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"quantity\": \"<integer>\",\n  \"imageUrl\": \"<uri>\",\n  \"description\": \"<string>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/commodities/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"add"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\",\n  \"message\": \"<string>\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "{id}",
+					"item": [
+						{
+							"name": "Retrieve a specific commodity",
+							"request": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									}
+								],
+								"url": {
+									"raw": "{{baseLocalUrl}}/commodities/cace86ee-96b0-4fc6-a828-a2204f65a9df",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"commodities",
+										"cace86ee-96b0-4fc6-a828-a2204f65a9df"
+									]
+								},
+								"description": "Fetches details of a commodity by its unique ID."
+							},
+							"response": [
+								{
+									"name": "Commodity retrieved successfully",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}"
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\"\n}"
+								},
+								{
+									"name": "Commodity not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\"\n}"
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Accept",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "json",
+									"header": [
+										{
+											"key": "Content-Type",
+											"value": "application/json"
+										}
+									],
+									"cookie": [],
+									"body": "{\n  \"error\": \"<string>\"\n}"
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "vendor",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Retrieve all Commodities from a vendor",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MTEwMjE2NSwiZXhwIjoxNzQxMTg4NTY1fQ.3paf0qcvNAwVY7WODajcRb1kWxDRnhqLfQ9pB0MXl8s",
+													"type": "string"
+												}
+											]
+										},
+										"method": "GET",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/vendor/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"vendor",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "<string>",
+													"description": "(Required) The unique identifier of the vendor"
+												}
+											]
+										},
+										"description": "Fetches details of a commodity by its vendor ID."
+									},
+									"response": [
+										{
+											"name": "Commodity retrieved successfully",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/vendor/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"vendor",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized - Invalid or missing token",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/vendor/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"vendor",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Commodity not found",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/vendor/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"vendor",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Internal server error",
+											"originalRequest": {
+												"method": "GET",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/vendor/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"vendor",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "update",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Update an existing commodity",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{bearerToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/commodities/update/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"update",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "<string>",
+													"description": "(Required) The unique identifier of the commodity"
+												}
+											]
+										},
+										"description": "Updates the details of a commodity by its unique ID."
+									},
+									"response": [
+										{
+											"name": "Commodity updated successfully",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/commodities/update/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"update",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Invalid input",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/commodities/update/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"update",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized - Invalid or missing token",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/commodities/update/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"update",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Commodity not found",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/commodities/update/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"update",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Internal server error",
+											"originalRequest": {
+												"method": "POST",
+												"header": [
+													{
+														"key": "Content-Type",
+														"value": "application/json"
+													},
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"body": {
+													"mode": "raw",
+													"raw": "{\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+													"options": {
+														"raw": {
+															"headerFamily": "json",
+															"language": "json"
+														}
+													}
+												},
+												"url": {
+													"raw": "{{baseUrl}}/commodities/update/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"update",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "remove",
+					"item": [
+						{
+							"name": "{id}",
+							"item": [
+								{
+									"name": "Delete a commodity",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{bearerToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/commodities/remove/:id",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"commodities",
+												"remove",
+												":id"
+											],
+											"variable": [
+												{
+													"key": "id",
+													"value": "<string>",
+													"description": "(Required) The unique identifier of the commodity"
+												}
+											]
+										},
+										"description": "Deletes a commodity by its unique ID."
+									},
+									"response": [
+										{
+											"name": "Commodity deleted successfully",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/remove/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"remove",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized - Invalid or missing token",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/remove/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"remove",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Commodity not found",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/remove/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"remove",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Internal server error",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/commodities/remove/:id",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"commodities",
+														"remove",
+														":id"
+													],
+													"variable": [
+														{
+															"key": "id"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Get all commodities",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MDczNTczMCwiZXhwIjoxNzQwODIyMTMwfQ.kTtO1qQb9Bw1yruV7EGaOTg2HeCQ3Ga6Z_Lwbt1dyKw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [
+							{
+								"key": "Accept",
+								"value": "application/json"
+							}
+						],
+						"url": {
+							"raw": "{{baseLocalUrl}}/commodities/all",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"commodities",
+								"all"
+							]
+						},
+						"description": "Fetches details of a commodity by its unique ID."
+					},
+					"response": [
+						{
+							"name": "Commodity retrieved successfully",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/commodities/:id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"commodities",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id"
+										}
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"id\": \"<string>\",\n  \"name\": \"<string>\",\n  \"price\": \"<string>\",\n  \"imageUrl\": \"<string>\",\n  \"unit\": \"<string>\",\n  \"description\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}"
+						},
+						{
+							"name": "Unauthorized - Invalid or missing token",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/commodities/:id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"commodities",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id"
+										}
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"error\": \"<string>\"\n}"
+						},
+						{
+							"name": "Commodity not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/commodities/:id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"commodities",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id"
+										}
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"error\": \"<string>\"\n}"
+						},
+						{
+							"name": "Internal server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Accept",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/commodities/:id",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"commodities",
+										":id"
+									],
+									"variable": [
+										{
+											"key": "id"
+										}
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "json",
+							"header": [
+								{
+									"key": "Content-Type",
+									"value": "application/json"
+								}
+							],
+							"cookie": [],
+							"body": "{\n  \"error\": \"<string>\"\n}"
+						}
+					]
+				},
+				{
+					"name": "Get commodities sub categories",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseLocalUrl}}/commodities/subcategories?search=indomie",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"commodities",
+								"subcategories"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "indomie"
+								}
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "cart",
+			"item": [
+				{
+					"name": "add",
+					"item": [
+						{
+							"name": "Add a commodity to the cart",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MDczNTczMCwiZXhwIjoxNzQwODIyMTMwfQ.kTtO1qQb9Bw1yruV7EGaOTg2HeCQ3Ga6Z_Lwbt1dyKw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"7f0878b8-a19d-49dc-80ce-5d622357a87d\",\n  \"quantity\": 3\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseLocalUrl}}/cart/add",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								},
+								"description": "Allows a user to add a commodity item to their cart."
+							},
+							"response": [
+								{
+									"name": "Commodity added to cart successfully",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Invalid input - Commodity ID or quantity is incorrect",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Commodity not found",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/add",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"add"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "delete",
+					"item": [
+						{
+							"name": "{cartItemId}",
+							"item": [
+								{
+									"name": "Delete an item from the cart",
+									"request": {
+										"auth": {
+											"type": "bearer",
+											"bearer": [
+												{
+													"key": "token",
+													"value": "{{bearerToken}}",
+													"type": "string"
+												}
+											]
+										},
+										"method": "DELETE",
+										"header": [],
+										"url": {
+											"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"delete",
+												":cartItemId"
+											],
+											"variable": [
+												{
+													"key": "cartItemId",
+													"value": "<string>",
+													"description": "(Required) The ID of the cart item to delete"
+												}
+											]
+										},
+										"description": "Removes a specified item from the user's cart by its cart item ID."
+									},
+									"response": [
+										{
+											"name": "Cart item deleted successfully",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"delete",
+														":cartItemId"
+													],
+													"variable": [
+														{
+															"key": "cartItemId"
+														}
+													]
+												}
+											},
+											"status": "OK",
+											"code": 200,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Invalid cart item ID",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"delete",
+														":cartItemId"
+													],
+													"variable": [
+														{
+															"key": "cartItemId"
+														}
+													]
+												}
+											},
+											"status": "Bad Request",
+											"code": 400,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Unauthorized - Invalid or missing token",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"delete",
+														":cartItemId"
+													],
+													"variable": [
+														{
+															"key": "cartItemId"
+														}
+													]
+												}
+											},
+											"status": "Unauthorized",
+											"code": 401,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Cart item not found",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"delete",
+														":cartItemId"
+													],
+													"variable": [
+														{
+															"key": "cartItemId"
+														}
+													]
+												}
+											},
+											"status": "Not Found",
+											"code": 404,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										},
+										{
+											"name": "Internal server error",
+											"originalRequest": {
+												"method": "DELETE",
+												"header": [
+													{
+														"key": "Authorization",
+														"value": "Bearer <token>",
+														"description": "Added as a part of security scheme: bearer"
+													}
+												],
+												"url": {
+													"raw": "{{baseUrl}}/cart/delete/:cartItemId",
+													"host": [
+														"{{baseUrl}}"
+													],
+													"path": [
+														"cart",
+														"delete",
+														":cartItemId"
+													],
+													"variable": [
+														{
+															"key": "cartItemId"
+														}
+													]
+												}
+											},
+											"status": "Internal Server Error",
+											"code": 500,
+											"_postman_previewlanguage": "text",
+											"header": [],
+											"cookie": [],
+											"body": ""
+										}
+									]
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "update-quantity",
+					"item": [
+						{
+							"name": "Update quantity of an item in the cart",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "{{bearerToken}}",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/update-quantity",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"update-quantity"
+									]
+								},
+								"description": "Updates the quantity of a specified item in the user's cart."
+							},
+							"response": [
+								{
+									"name": "Cart item quantity updated successfully",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/update-quantity",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"update-quantity"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Invalid input or cart item ID",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/update-quantity",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"update-quantity"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/update-quantity",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"update-quantity"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Cart item not found",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/update-quantity",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"update-quantity"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Content-Type",
+												"value": "application/json"
+											},
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"body": {
+											"mode": "raw",
+											"raw": "{\n  \"cartItemId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+											"options": {
+												"raw": {
+													"headerFamily": "json",
+													"language": "json"
+												}
+											}
+										},
+										"url": {
+											"raw": "{{baseUrl}}/cart/update-quantity",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"cart",
+												"update-quantity"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Retrieve cart details",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MTEwMjE2NSwiZXhwIjoxNzQxMTg4NTY1fQ.3paf0qcvNAwVY7WODajcRb1kWxDRnhqLfQ9pB0MXl8s",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseLocalUrl}}/cart",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"cart"
+							]
+						},
+						"description": "Returns the cart details for the authenticated user."
+					},
+					"response": [
+						{
+							"name": "Cart details retrieved successfully",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart"
+									]
+								}
+							},
+							"status": "OK",
+							"code": 200,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Unauthorized - Invalid or missing token",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Cart not found",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart"
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal server error",
+							"originalRequest": {
+								"method": "GET",
+								"header": [
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"url": {
+									"raw": "{{baseUrl}}/cart",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "orders",
+			"item": [
+				{
+					"name": "place",
+					"item": [
+						{
+							"name": "Place a new order",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MTQyNDI3MCwiZXhwIjoxNzQxNTEwNjcwfQ.OPPq7uv9fRjXjnMWXYrduro2DyGcgxNBltZf_GIifTs",
+											"type": "string"
+										}
+									]
+								},
+								"method": "POST",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/orders/place",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"orders",
+										"place"
+									]
+								},
+								"description": "Places an order for the items currently in the user's cart. The endpoint returns a link to the checkout page"
+							},
+							"response": [
+								{
+									"name": "Order placed successfully",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/place",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"place"
+											]
+										}
+									},
+									"status": "Created",
+									"code": 201,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Invalid order request",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/place",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"place"
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/place",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"place"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Cart not found or cart is empty",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/place",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"place"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "POST",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/place",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"place"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "{orderId}",
+					"item": [
+						{
+							"name": "Get order details",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MjAyNDY4NSwiZXhwIjoxNzQyMTExMDg1fQ.Z821wTtIXA0F4FC6dboBWprNztpUMP4dVukzR4Dptmw",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/orders/047308d2-ca02-4529-ae43-51ba8fbce5f2",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"orders",
+										"047308d2-ca02-4529-ae43-51ba8fbce5f2"
+									]
+								},
+								"description": "Retrieves the details of a specific order by its ID."
+							},
+							"response": [
+								{
+									"name": "Order details retrieved successfully",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Invalid order ID format",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Bad Request",
+									"code": 400,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Order not found",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/:orderId",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												":orderId"
+											],
+											"variable": [
+												{
+													"key": "orderId"
+												}
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "consumer-orders",
+					"item": [
+						{
+							"name": "Get consumer's orders",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MTEwMjE2NSwiZXhwIjoxNzQxMTg4NTY1fQ.3paf0qcvNAwVY7WODajcRb1kWxDRnhqLfQ9pB0MXl8s",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/orders/consumer-orders",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"orders",
+										"consumer-orders"
+									]
+								},
+								"description": "Retrieves a list of orders placed by the authenticated consumer."
+							},
+							"response": [
+								{
+									"name": "List of consumer orders retrieved successfully",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/consumer-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"consumer-orders"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/consumer-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"consumer-orders"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "No orders found for the consumer",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/consumer-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"consumer-orders"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/consumer-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"consumer-orders"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "vendor-orders",
+					"item": [
+						{
+							"name": "Get vendor's orders",
+							"request": {
+								"auth": {
+									"type": "bearer",
+									"bearer": [
+										{
+											"key": "token",
+											"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMUBvdXRsb29rLmNvbSIsInN1YiI6ImZiNGU3ODk4LThjYTktNDEzZS04YzZhLTEzNGNmYjU1YjI0ZSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3NDE0MTk5MTIsImV4cCI6MTc0MTUwNjMxMn0.f1Ni7TsrPT_6pYG-4z26sH_fubSCJGIO_XjqirwiHhk",
+											"type": "string"
+										}
+									]
+								},
+								"method": "GET",
+								"header": [],
+								"url": {
+									"raw": "{{baseLocalUrl}}/orders/vendor-orders",
+									"host": [
+										"{{baseLocalUrl}}"
+									],
+									"path": [
+										"orders",
+										"vendor-orders"
+									]
+								},
+								"description": "Retrieves a list of orders that are already paid for associated with the authenticated vendor."
+							},
+							"response": [
+								{
+									"name": "List of vendor orders retrieved successfully",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/vendor-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"vendor-orders"
+											]
+										}
+									},
+									"status": "OK",
+									"code": 200,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Unauthorized - Invalid or missing token",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/vendor-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"vendor-orders"
+											]
+										}
+									},
+									"status": "Unauthorized",
+									"code": 401,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "No orders found for the vendor",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/vendor-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"vendor-orders"
+											]
+										}
+									},
+									"status": "Not Found",
+									"code": 404,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								},
+								{
+									"name": "Internal server error",
+									"originalRequest": {
+										"method": "GET",
+										"header": [
+											{
+												"key": "Authorization",
+												"value": "Bearer <token>",
+												"description": "Added as a part of security scheme: bearer"
+											}
+										],
+										"url": {
+											"raw": "{{baseUrl}}/orders/vendor-orders",
+											"host": [
+												"{{baseUrl}}"
+											],
+											"path": [
+												"orders",
+												"vendor-orders"
+											]
+										}
+									},
+									"status": "Internal Server Error",
+									"code": 500,
+									"_postman_previewlanguage": "text",
+									"header": [],
+									"cookie": [],
+									"body": ""
+								}
+							]
+						}
+					]
+				},
+				{
+					"name": "Verify order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MDczNTczMCwiZXhwIjoxNzQwODIyMTMwfQ.kTtO1qQb9Bw1yruV7EGaOTg2HeCQ3Ga6Z_Lwbt1dyKw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"txnRef\": \"order-8bbb81b2-88aa-402b-a8e0-014071620775-1741102933466\",\n    \"transactionId\": \"8425083\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/orders/verify-order",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"orders",
+								"verify-order"
+							]
+						},
+						"description": "Allows a user to add a commodity item to their cart."
+					},
+					"response": [
+						{
+							"name": "Commodity added to cart successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Invalid input - Commodity ID or quantity is incorrect",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Unauthorized - Invalid or missing token",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Commodity not found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal server error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				},
+				{
+					"name": "confirm order",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MDczNTczMCwiZXhwIjoxNzQwODIyMTMwfQ.kTtO1qQb9Bw1yruV7EGaOTg2HeCQ3Ga6Z_Lwbt1dyKw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"txnRef\": \"string\",\n    \"orderId\": \"string\"\n}",
+							"options": {
+								"raw": {
+									"headerFamily": "json",
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/order/verify-order",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"order",
+								"verify-order"
+							]
+						},
+						"description": "Allows a user to add a commodity item to their cart."
+					},
+					"response": [
+						{
+							"name": "Commodity added to cart successfully",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Created",
+							"code": 201,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Invalid input - Commodity ID or quantity is incorrect",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Bad Request",
+							"code": 400,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Unauthorized - Invalid or missing token",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Unauthorized",
+							"code": 401,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Commodity not found",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Not Found",
+							"code": 404,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						},
+						{
+							"name": "Internal server error",
+							"originalRequest": {
+								"method": "POST",
+								"header": [
+									{
+										"key": "Content-Type",
+										"value": "application/json"
+									},
+									{
+										"key": "Authorization",
+										"value": "Bearer <token>",
+										"description": "Added as a part of security scheme: bearer"
+									}
+								],
+								"body": {
+									"mode": "raw",
+									"raw": "{\n  \"commodityId\": \"<string>\",\n  \"quantity\": \"<integer>\"\n}",
+									"options": {
+										"raw": {
+											"headerFamily": "json",
+											"language": "json"
+										}
+									}
+								},
+								"url": {
+									"raw": "{{baseUrl}}/cart/add",
+									"host": [
+										"{{baseUrl}}"
+									],
+									"path": [
+										"cart",
+										"add"
+									]
+								}
+							},
+							"status": "Internal Server Error",
+							"code": 500,
+							"_postman_previewlanguage": "text",
+							"header": [],
+							"cookie": [],
+							"body": ""
+						}
+					]
+				}
+			]
+		},
+		{
+			"name": "payment",
+			"item": [
+				{
+					"name": "Get banks",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MjAyNDY4NSwiZXhwIjoxNzQyMTExMDg1fQ.Z821wTtIXA0F4FC6dboBWprNztpUMP4dVukzR4Dptmw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseLocalUrl}}/payment/banks?search=gt",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"payment",
+								"banks"
+							],
+							"query": [
+								{
+									"key": "search",
+									"value": "gt"
+								}
+							]
+						}
+					},
+					"response": []
+				},
+				{
+					"name": "Verify account",
+					"request": {
+						"auth": {
+							"type": "bearer",
+							"bearer": [
+								{
+									"key": "token",
+									"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6Imtpeml0b2hvcmxvbmcrMEBvdXRsb29rLmNvbSIsInN1YiI6ImVlNDAwNjRlLWUyODgtNDc4ZC1hMzM3LTdmMzc3ZmFiNWU2ZCIsInJvbGUiOiJDT05TVU1FUiIsImlhdCI6MTc0MjAyNDY4NSwiZXhwIjoxNzQyMTExMDg1fQ.Z821wTtIXA0F4FC6dboBWprNztpUMP4dVukzR4Dptmw",
+									"type": "string"
+								}
+							]
+						},
+						"method": "POST",
+						"header": [],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"accountNumber\": \"0690000032\",\n    \"bankCode\": \"044\"\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseLocalUrl}}/payment/verify-account",
+							"host": [
+								"{{baseLocalUrl}}"
+							],
+							"path": [
+								"payment",
+								"verify-account"
+							]
+						}
+					},
+					"response": []
+				}
+			]
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{token}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "https://brillprime-dev.onrender.com"
+		},
+		{
+			"key": "baseLocalUrl",
+			"value": "http://localhost:3000",
+			"type": "string"
+		},
+		{
+			"key": "token",
+			"value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJlbWFpbCI6InJlYWxkYW5nZGF0QGdtYWlsLmNvbSIsInN1YiI6IjIxZTNlNjY3LTViZDYtNGU2ZS1hODQ2LWNiMzMwOWQ0OTUzNSIsInJvbGUiOiJWRU5ET1IiLCJpYXQiOjE3NDI1NDcxNzIsImV4cCI6MTc0MjYzMzU3Mn0.0elGjdRUwrRxOfsYdfbtr4awE4LbRUscd2kZE4mgqo4",
+			"type": "string"
+		}
+	]
+}

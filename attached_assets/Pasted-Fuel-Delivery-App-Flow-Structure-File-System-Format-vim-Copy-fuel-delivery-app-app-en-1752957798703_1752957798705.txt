@@ -1,0 +1,267 @@
+Fuel Delivery App - Flow Structure (File System Format)
+vim
+
+Copy
+fuel-delivery-app/
+│
+├── 📱 app-entry/
+│   └── 01-location-setup/
+│       ├── components/
+│       │   ├── map-background.jsx
+│       │   ├── location-icon.jsx
+│       │   ├── bottom-sheet.jsx
+│       │   └── back-button.jsx
+│       ├── actions/
+│       │   ├── set-automatically.action
+│       │   └── set-later.action
+│       └── flow-to: → 02-map-home/
+│
+├── 🏠 main-app/
+│   ├── 02-map-home/
+│   │   ├── components/
+│   │   │   ├── map-container.jsx
+│   │   │   ├── hamburger-menu.jsx
+│   │   │   ├── location-button.jsx
+│   │   │   ├── search-bar.jsx
+│   │   │   └── order-fuel-button.jsx
+│   │   ├── actions/
+│   │   │   ├── open-menu.action → 05-side-menu/
+│   │   │   ├── search-vendors.action → 03-search-results/
+│   │   │   └── order-fuel.action
+│   │   └── flow-to: 
+│   │       ├── → 03-search-results/ (via search)
+│   │       ├── → 05-side-menu/ (via menu)
+│   │       └── → order-flow/ (via order button)
+│   │
+│   └── 03-search-results/
+│       ├── components/
+│       │   ├── map-with-pins.jsx
+│       │   ├── location-list.jsx
+│       │   ├── search-bar.jsx
+│       │   └── hamburger-menu.jsx
+│       ├── data/
+│       │   └── locations/
+│       │       ├── wuse-ii.json
+│       │       ├── goldcourt-estate.json
+│       │       └── merchant-locations.json
+│       ├── actions/
+│       │   ├── filter-search.action → 04-search-filter/
+│       │   ├── select-location.action → 07-merchant-search/
+│       │   └── open-menu.action → 05-side-menu/
+│       └── flow-to:
+│           ├── → 04-search-filter/ (via filter)
+│           ├── → 07-merchant-search/ (via location select)
+│           └── → 05-side-menu/ (via menu)
+│
+├── 🔍 enhanced-search/
+│   └── 04-search-filter/
+│       ├── components/
+│       │   ├── map-with-pins.jsx (inherited)
+│       │   ├── location-list.jsx (inherited)
+│       │   ├── search-bar-with-filter.jsx
+│       │   └── filter-button.jsx
+│       ├── filters/
+│       │   ├── distance-filter.js
+│       │   ├── fuel-type-filter.js
+│       │   ├── price-range-filter.js
+│       │   └── rating-filter.js
+│       ├── actions/
+│       │   ├── apply-filters.action
+│       │   ├── reset-filters.action
+│       │   └── search-with-filters.action → 07-merchant-search/
+│       └── flow-to: → 07-merchant-search/ (filtered results)
+│
+├── 👤 user-management/
+│   ├── 05-side-menu/
+│   │   ├── components/
+│   │   │   ├── overlay.jsx
+│   │   │   ├── sidebar-container.jsx
+│   │   │   ├── user-profile-section.jsx
+│   │   │   ├── menu-items.jsx
+│   │   │   └── action-buttons.jsx
+│   │   ├── user-data/
+│   │   │   ├── profile.json
+│   │   │   ├── user-id.json
+│   │   │   └── preferences.json
+│   │   ├── menu-items/
+│   │   │   ├── account.item → 06-account-settings/
+│   │   │   ├── transaction-history.item
+│   │   │   ├── order-history.item
+│   │   │   ├── support.item
+│   │   │   └── about.item
+│   │   ├── actions/
+│   │   │   ├── navigate-to-account.action → 06-account-settings/
+│   │   │   ├── switch-to-vendor.action
+│   │   │   ├── sign-out.action
+│   │   │   └── close-menu.action → 02-map-home/
+│   │   └── flow-to:
+│   │       ├── → 06-account-settings/ (via account)
+│   │       ├── → vendor-app/ (via switch)
+│   │       ├── → login/ (via sign out)
+│   │       └── → previous-screen/ (via close)
+│   │
+│   └── 06-account-settings/
+│       ├── components/
+│       │   ├── overlay.jsx (inherited)
+│       │   ├── sidebar-container.jsx (inherited)
+│       │   ├── back-button.jsx
+│       │   ├── user-profile-section.jsx (inherited)
+│       │   ├── account-options.jsx
+│       │   └── action-buttons.jsx (inherited)
+│       ├── account-sections/
+│       │   ├── profile/
+│       │   │   ├── edit-profile.form
+│       │   │   ├── profile-picture.component
+│       │   │   └── personal-info.form
+│       │   ├── payment-method/
+│       │   │   ├── add-card.form
+│       │   │   ├── saved-cards.list
+│       │   │   └── payment-preferences.settings
+│       │   ├── update-password/
+│       │   │   ├── current-password.input
+│       │   │   ├── new-password.input
+│       │   │   └── confirm-password.input
+│       │   └── notification/
+│       │       ├── push-notifications.toggle
+│       │       ├── email-notifications.toggle
+│       │       └── sms-notifications.toggle
+│       ├── actions/
+│       │   ├── go-back.action → 05-side-menu/
+│       │   ├── save-profile.action
+│       │   ├── update-payment.action
+│       │   ├── change-password.action
+│       │   └── update-notifications.action
+│       └── flow-to: → 05-side-menu/ (via back button)
+│
+├── 🏪 merchant-discovery/
+│   ├── 07-merchant-search/
+│   │   ├── components/
+│   │   │   ├── back-button.jsx
+│   │   │   ├── search-bar.jsx
+│   │   │   ├── merchant-list.jsx
+│   │   │   └── merchant-item.jsx
+│   │   ├── merchant-data/
+│   │   │   ├── wuse-ii-merchants.json
+│   │   │   ├── total-energies.json
+│   │   │   ├── goldcourt-merchants.json
+│   │   │   └── merchant-ratings.json
+│   │   ├── actions/
+│   │   │   ├── go-back.action → 03-search-results/
+│   │   │   ├── search-merchants.action
+│   │   │   └── select-merchant.action → 08-merchant-profile/
+│   │   └── flow-to:
+│   │       ├── → 08-merchant-profile/ (via merchant select)
+│   │       └── → 03-search-results/ (via back)
+│   │
+│   └── 08-merchant-profile/
+│       ├── components/
+│       │   ├── back-button.jsx
+│       │   ├── merchant-logo.jsx
+│       │   ├── merchant-info.jsx
+│       │   ├── contact-details.jsx
+│       │   └── action-buttons.jsx
+│       ├── merchant-details/
+│       │   ├── business-info/
+│       │   │   ├── name.data
+│       │   │   ├── description.data
+│       │   │   ├── category.data
+│       │   │   └── logo.asset
+│       │   ├── contact-info/
+│       │   │   ├── address.data
+│       │   │   ├── email.data
+│       │   │   ├── phone.data
+│       │   │   └── hours.data
+│       │   ├── services/
+│       │   │   ├── fuel-types.list
+│       │   │   ├── delivery-options.list
+│       │   │   └── payment-methods.list
+│       │   └── ratings/
+│       │       ├── overall-rating.score
+│       │       ├── reviews.list
+│       │       └── service-ratings.breakdown
+│       ├── actions/
+│       │   ├── go-back.action → 07-merchant-search/
+│       │   ├── view-commodities.action → commodity-catalog/
+│       │   ├── view-cart.action → shopping-cart/
+│       │   ├── call-merchant.action
+│       │   └── get-directions.action
+│       └── flow-to:
+│           ├── → commodity-catalog/ (via view commodities)
+│           ├── → shopping-cart/ (via view cart)
+│           ├── → phone-dialer/ (via call)
+│           ├── → maps-app/ (via directions)
+│           └── → 07-merchant-search/ (via back)
+│
+├── 🛒 shopping-flow/ (referenced but not implemented)
+│   ├── commodity-catalog/
+│   ├── shopping-cart/
+│   ├── checkout/
+│   └── order-tracking/
+│
+├── 🚚 vendor-app/ (referenced but not implemented)
+│   ├── vendor-dashboard/
+│   ├── order-management/
+│   ├── inventory-management/
+│   └── delivery-tracking/
+│
+└── 🔐 authentication/ (referenced but not implemented)
+    ├── login/
+    ├── signup/
+    ├── forgot-password/
+    └── verification/
+
+Flow Navigation Map:
+vim
+
+Copy
+📱 App Entry Flow:
+01-location-setup/ → 02-map-home/
+
+🏠 Main App Flow:
+02-map-home/ → {
+    ├── 03-search-results/ (via search)
+    ├── 05-side-menu/ (via hamburger menu)
+    └── 🛒 shopping-flow/ (via order button)
+}
+
+🔍 Search Flow:
+03-search-results/ → {
+    ├── 04-search-filter/ (via filter button)
+    ├── 07-merchant-search/ (via location select)
+    └── 05-side-menu/ (via menu)
+}
+
+04-search-filter/ → 07-merchant-search/ (filtered results)
+
+👤 User Management Flow:
+05-side-menu/ → {
+    ├── 06-account-settings/ (via account menu)
+    ├── 🚚 vendor-app/ (via switch to vendor)
+    ├── 🔐 authentication/login/ (via sign out)
+    └── 02-map-home/ (via close menu)
+}
+
+06-account-settings/ → 05-side-menu/ (via back button)
+
+🏪 Merchant Discovery Flow:
+07-merchant-search/ → {
+    ├── 08-merchant-profile/ (via merchant select)
+    └── 03-search-results/ (via back button)
+}
+
+08-merchant-profile/ → {
+    ├── 🛒 commodity-catalog/ (via view commodities)
+    ├── 🛒 shopping-cart/ (via view cart)
+    ├── phone-dialer/ (via call merchant)
+    ├── maps-app/ (via get directions)
+    └── 07-merchant-search/ (via back button)
+}
+Key Directories Explained:
+📱 app-entry/: First-time user onboarding and setup
+🏠 main-app/: Core application functionality
+🔍 enhanced-search/: Advanced search and filtering
+👤 user-management/: User profile and account management
+🏪 merchant-discovery/: Finding and viewing fuel stations
+🛒 shopping-flow/: Purchase and ordering (referenced)
+🚚 vendor-app/: Merchant/vendor interface (referenced)
+🔐 authentication/: Login and security (referenced)

@@ -1,0 +1,448 @@
+import React from "react";
+import styled from "styled-components";
+
+const StyledArrowback = styled.div`
+  width: 24px;
+  height: 24px;
+  left: 25px;
+  top: 50px;
+  position: absolute;
+`;
+
+const StyledBoundingbox = styled.div`
+  width: 24px;
+  height: 24px;
+  left: 25px;
+  top: 50px;
+  position: absolute;
+  background: #D9D9D9;
+`;
+
+const StyledArrowback = styled.div`
+  width: 16px;
+  height: 16px;
+  left: 29px;
+  top: 54px;
+  position: absolute;
+  background: #1C1B1F;
+`;
+
+const StyledCarttext01 = styled.span`
+  color: black;
+  font-size: 20px;
+  font-family: Montserrat;
+  font-weight: 800;
+  word-wrap: break-word;
+`;
+
+const StyledGroup251 = styled.div`
+  width: 76px;
+  height: 19px;
+  left: 240px;
+  top: 303px;
+  position: absolute;
+`;
+
+const Styled1500000text01 = styled.span`
+  color: #0B1A51;
+  font-size: 13px;
+  font-family: Montserrat;
+  font-weight: 600;
+  word-wrap: break-word;
+`;
+
+const StyledNaira = styled.div`
+  width: 13px;
+  height: 19px;
+  left: 240px;
+  top: 303px;
+  position: absolute;
+`;
+
+const StyledPetroltext01 = styled.span`
+  color: #010E42;
+  font-size: 15px;
+  font-family: Montserrat;
+  font-weight: 700;
+  word-wrap: break-word;
+`;
+
+const StyledGroup250 = styled.div`
+  width: 43.34px;
+  height: 15.39px;
+  left: 96px;
+  top: 317.53px;
+  position: absolute;
+`;
+
+const StyledRectangle88 = styled.div`
+  width: 14.37px;
+  height: 14.92px;
+  left: 113.01px;
+  top: 318px;
+  position: absolute;
+  background: #4682B4;
+  border-radius: 2px;
+`;
+
+const Styled1text01 = styled.span`
+  color: white;
+  font-size: 12px;
+  font-family: Montserrat;
+  font-weight: 600;
+  word-wrap: break-word;
+`;
+
+const StyledRectangle = styled.div`
+  width: 11.88px;
+  height: 12.06px;
+  left: 96px;
+  top: 319.15px;
+  position: absolute;
+  background: black;
+`;
+
+const StyledRectangle = styled.div`
+  width: 7.13px;
+  height: 2.29px;
+  left: 132.20px;
+  top: 324.89px;
+  position: absolute;
+  background: black;
+`;
+
+const StyledRectangle87 = styled.div`
+  width: 54.88px;
+  height: 57px;
+  left: 31px;
+  top: 284px;
+  position: absolute;
+  background: #D9D9D9;
+  border-radius: 5px;
+`;
+
+const StyledTrash = styled.div`
+  width: 16.37px;
+  height: 17px;
+  left: 351.63px;
+  top: 304px;
+  position: absolute;
+`;
+
+const StyledLine11 = styled.div`
+  width: 340px;
+  height: 0px;
+  left: 29px;
+  top: 254px;
+  position: absolute;
+  outline: 1px #D4D4D4 solid;
+  outline-offset: -0.50px;
+`;
+
+const StyledLine12 = styled.div`
+  width: 340px;
+  height: 0px;
+  left: 29px;
+  top: 371px;
+  position: absolute;
+  outline: 1px #D4D4D4 solid;
+  outline-offset: -0.50px;
+`;
+
+const StyledGroup292 = styled.div`
+  width: 337px;
+  height: 57px;
+  left: 31px;
+  top: 167px;
+  position: absolute;
+`;
+
+const StyledGroup156 = styled.div`
+  width: 76px;
+  height: 19px;
+  left: 240px;
+  top: 186px;
+  position: absolute;
+`;
+
+const Styled1500000text01 = styled.span`
+  color: #0B1A51;
+  font-size: 13px;
+  font-family: Montserrat;
+  font-weight: 600;
+  word-wrap: break-word;
+`;
+
+const StyledNaira = styled.div`
+  width: 13px;
+  height: 19px;
+  left: 240px;
+  top: 186px;
+  position: absolute;
+`;
+
+const StyledRectangle87 = styled.div`
+  width: 54.88px;
+  height: 57px;
+  left: 31px;
+  top: 167px;
+  position: absolute;
+  background: #D9D9D9;
+  border-radius: 5px;
+`;
+
+const StyledPetroltext01 = styled.span`
+  color: #010E42;
+  font-size: 15px;
+  font-family: Montserrat;
+  font-weight: 700;
+  word-wrap: break-word;
+`;
+
+const StyledGroup158 = styled.div`
+  width: 43.34px;
+  height: 15.39px;
+  left: 96px;
+  top: 200.53px;
+  position: absolute;
+`;
+
+const StyledRectangle88 = styled.div`
+  width: 14.37px;
+  height: 14.92px;
+  left: 113.01px;
+  top: 201px;
+  position: absolute;
+  background: #4682B4;
+  border-radius: 2px;
+`;
+
+const Styled1text01 = styled.span`
+  color: white;
+  font-size: 12px;
+  font-family: Montserrat;
+  font-weight: 600;
+  word-wrap: break-word;
+`;
+
+const StyledRectangle = styled.div`
+  width: 11.88px;
+  height: 12.06px;
+  left: 96px;
+  top: 202.15px;
+  position: absolute;
+  background: black;
+`;
+
+const StyledRectangle = styled.div`
+  width: 7.13px;
+  height: 2.29px;
+  left: 132.20px;
+  top: 207.89px;
+  position: absolute;
+  background: black;
+`;
+
+const StyledTrash = styled.div`
+  width: 16.37px;
+  height: 17px;
+  left: 351.63px;
+  top: 187px;
+  position: absolute;
+`;
+
+const StyledGasStation = styled.div`
+  width: 41px;
+  height: 41px;
+  left: 39px;
+  top: 175px;
+  position: absolute;
+`;
+
+const StyledEngineOil = styled.div`
+  width: 39px;
+  height: 39px;
+  left: 39px;
+  top: 293px;
+  position: absolute;
+`;
+
+const StyledGroup115 = styled.div`
+  width: 264px;
+  height: 54px;
+  left: 67px;
+  top: 782px;
+  position: absolute;
+`;
+
+const StyledRectangle68 = styled.div`
+  width: 264px;
+  height: 54px;
+  left: 67px;
+  top: 782px;
+  position: absolute;
+  background: #0B1A51;
+  border-radius: 30px;
+`;
+
+const StyledMakepaymenttext01 = styled.span`
+  color: white;
+  font-size: 16px;
+  font-family: Montserrat;
+  font-weight: 400;
+  word-wrap: break-word;
+`;
+
+const StyledRectangle91 = styled.div`
+  width: 360px;
+  height: 360px;
+  left: 19px;
+  top: 153px;
+  position: absolute;
+  border-radius: 15px;
+  border: 1px #4682B4 solid;
+`;
+
+const StyledGroup248 = styled.div`
+  width: 360px;
+  height: 116px;
+  left: 19px;
+  top: 533px;
+  position: absolute;
+`;
+
+const StyledRectangle67 = styled.div`
+  width: 360px;
+  height: 116px;
+  left: 19px;
+  top: 533px;
+  position: absolute;
+  background: #4682B4;
+  border-radius: 15px;
+`;
+
+const StyledTotaltext01 = styled.span`
+  color: white;
+  font-size: 15px;
+  font-family: Montserrat;
+  font-weight: 400;
+  word-wrap: break-word;
+`;
+
+const StyledPurchasesummarytext01 = styled.span`
+  color: white;
+  font-size: 16px;
+  font-family: Montserrat;
+  font-weight: 700;
+  word-wrap: break-word;
+`;
+
+const Styled3000000text01 = styled.span`
+  color: white;
+  font-size: 15px;
+  font-family: Montserrat;
+  font-weight: 600;
+  word-wrap: break-word;
+`;
+
+const StyledNaira = styled.div`
+  width: 16px;
+  height: 20px;
+  left: 272px;
+  top: 601px;
+  position: absolute;
+`;
+
+const StyledGroup211 = styled.div`
+  width: 360px;
+  height: 82px;
+  left: 19px;
+  top: 669px;
+  position: absolute;
+`;
+
+const StyledSelectapaymentmethodtext01 = styled.span`
+  color: #D9D9D9;
+  font-size: 16px;
+  font-family: Montserrat;
+  font-weight: 500;
+  word-wrap: break-word;
+`;
+
+const StyledRectangle100 = styled.div`
+  width: 360px;
+  height: 82px;
+  left: 19px;
+  top: 669px;
+  position: absolute;
+  box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 15px;
+  border: 1px #4682B4 solid;
+`;
+
+const StyledMerchantsearch = styled.div`
+  width: 399px;
+  height: 896px;
+  background: white;
+  overflow: hidden;
+`;
+
+export const MerchantSearch = () => {
+  return (
+    <StyledMerchantsearch>
+      <div>
+        <StyledBoundingbox />
+        <StyledArrowback />
+      </div>
+      <StyledCart>Cart</StyledCart>
+      <div>
+        <Styled1500000>15,000.00</Styled1500000>
+        <StyledNaira  src="https://placehold.co/13x19"/>
+      </div>
+      <StyledPetrol>Petrol</StyledPetrol>
+      <div>
+        <StyledRectangle88 />
+        <Styled1>1</Styled1>
+        <StyledDiv />
+        <StyledDiv />
+      </div>
+      <StyledRectangle87 />
+      <StyledTrash  src="https://placehold.co/16x17"/>
+      <div></div>
+      <div></div>
+      <div>
+        <div>
+          <Styled1500000>15,000.00</Styled1500000>
+          <StyledNaira  src="https://placehold.co/13x19"/>
+        </div>
+        <StyledRectangle87 />
+        <StyledPetrol>Petrol</StyledPetrol>
+        <div>
+          <StyledRectangle88 />
+          <Styled1>1</Styled1>
+          <StyledDiv />
+          <StyledDiv />
+        </div>
+        <StyledTrash  src="https://placehold.co/16x17"/>
+        <StyledGasStation  src="https://placehold.co/41x41"/>
+      </div>
+      <StyledEngineOil  src="https://placehold.co/39x39"/>
+      <div>
+        <StyledRectangle68 />
+        <StyledMakePayment>Make Payment</StyledMakePayment>
+      </div>
+      <StyledRectangle91 />
+      <div>
+        <StyledRectangle67 />
+        <StyledTotal>Total</StyledTotal>
+        <StyledPurchaseSummary>Purchase Summary</StyledPurchaseSummary>
+        <Styled3000000>30,000.00</Styled3000000>
+        <StyledNaira  src="https://placehold.co/16x20"/>
+      </div>
+      <div>
+        <StyledSelectaPaymentMethod>Select  a Payment Method....</StyledSelectaPaymentMethod>
+        <StyledRectangle100 />
+      </div>
+    </StyledMerchantsearch>
+  );
+};

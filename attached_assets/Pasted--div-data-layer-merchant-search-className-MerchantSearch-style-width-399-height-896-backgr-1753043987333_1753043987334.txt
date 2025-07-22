@@ -1,0 +1,27 @@
+<div data-layer="merchant/search" className="MerchantSearch" style={{width: 399, height: 896, background: 'white', overflow: 'hidden'}}>
+  <div data-layer="arrow_back" className="ArrowBack" style={{width: 24, height: 24, left: 25, top: 50, position: 'absolute'}}>
+    <div data-layer="Bounding box" className="BoundingBox" style={{width: 24, height: 24, left: 25, top: 50, position: 'absolute', background: '#D9D9D9'}} />
+    <div data-layer="arrow_back" className="ArrowBack" style={{width: 16, height: 16, left: 29, top: 54, position: 'absolute', background: '#1C1B1F'}} />
+  </div>
+  <div data-layer="Group 280" className="Group280" style={{width: 280, height: 60, left: 20, top: 748, position: 'absolute'}}>
+    <div data-layer="Rectangle 121" className="Rectangle121" style={{width: 280, height: 60, left: 20, top: 748, position: 'absolute', borderRadius: 30, border: '3px #4682B4 solid'}} />
+    <div data-layer="Message..." className="Message" style={{left: 35, top: 768, position: 'absolute', color: '#D9D9D9', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '400', wordWrap: 'break-word'}}>Message...</div>
+  </div>
+  <div data-layer="Group 281" className="Group281" style={{width: 60, height: 60, left: 319, top: 748, position: 'absolute'}}>
+    <div data-layer="Ellipse 31" className="Ellipse31" style={{width: 60, height: 60, left: 319, top: 748, position: 'absolute', borderRadius: 9999, border: '3px #4682B4 solid'}} />
+    <img data-layer="Camera" className="Camera" style={{width: 40, height: 40, left: 329, top: 760, position: 'absolute'}} src="https://placehold.co/40x40" />
+  </div>
+  <div data-layer="Hi" className="Hi" style={{left: 37, top: 111, position: 'absolute', color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Hi</div>
+  <div data-layer="Frame 254" className="Frame254" style={{padding: 12, left: 78, top: 153, position: 'absolute', background: '#0B1A51', borderRadius: 15, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+    <div data-layer="Good afternoon sir, where exactly are you?" className="GoodAfternoonSirWhereExactlyAreYou" style={{color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Good afternoon sir, where exactly<br/>are you?</div>
+  </div>
+  <div data-layer="Frame 257" className="Frame257" style={{padding: 12, left: 80, top: 281, position: 'absolute', background: '#0B1A51', borderRadius: 15, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+    <div data-layer="Okay i’m at PRTV roundabout i’m on my way" className="OkayIMAtPrtvRoundaboutIMOnMyWay" style={{color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Okay i’m at PRTV roundabout i’m<br/>on my way</div>
+  </div>
+  <div data-layer="Frame 255" className="Frame255" style={{padding: 12, left: 25, top: 227, position: 'absolute', background: '#4682B4', borderRadius: 15, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+    <div data-layer="At Atiku Junction" className="AtAtikuJunction" style={{color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>At Atiku Junction</div>
+  </div>
+  <div data-layer="Frame 256" className="Frame256" style={{padding: 12, left: 25, top: 99, position: 'absolute', background: '#4682B4', borderRadius: 15, flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: 10, display: 'inline-flex'}}>
+    <div data-layer="Hi" className="Hi" style={{color: 'white', fontSize: 16, fontFamily: 'Montserrat', fontWeight: '500', wordWrap: 'break-word'}}>Hi</div>
+  </div>
+</div>
