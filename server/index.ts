@@ -5,6 +5,8 @@ import { setupVite, serveStatic, log } from "./vite";
 import { registerRoutes } from "./routes";
 import { setupAuth } from "./middleware/auth";
 import { setupWebSocketServer } from "./websocket";
+import { setupAdminRoutes } from "./admin/routes";
+import { adminAuth } from "./middleware/adminAuth";
 
 const app = express();
 app.use(express.json());
@@ -24,6 +26,9 @@ app.use(session({
 
 // Setup authentication middleware
 app.use(setupAuth());
+
+// Setup admin panel routes with authentication
+app.use('/admin/api', adminAuth, setupAdminRoutes());
 
 // Simple logging middleware for development
 app.use((req, res, next) => {
