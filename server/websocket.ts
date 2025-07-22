@@ -23,6 +23,7 @@ export enum ClientRole {
 
 // Define message structure
 export interface WebSocketMessage {
+  id?: string;
   type: MessageType;
   senderId: string;
   senderRole: ClientRole;
@@ -143,6 +144,9 @@ export class WebSocketManager {
   }
 
   private registerClient(connectionId: string, userId: string, role: ClientRole, socket: WebSocket) {
+    if (!Object.values(ClientRole).includes(role)) {
+      throw new Error(`Invalid client role: ${role}`);
+    }
     // If user already has a connection, close the old one
     const existingConnectionId = this.userIdToConnectionId.get(userId);
     if (existingConnectionId) {
@@ -181,12 +185,22 @@ export class WebSocketManager {
   }
 
   private sendToClient(socket: WebSocket, message: WebSocketMessage) {
-    if (socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(message));
+    try {
+      if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+      } else {
+        log(`Cannot send message - socket not open for user ${message.recipientId || 'unknown'}`);
+      }
+    } catch (error) {
+      log(`Error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   private handleMessage(message: WebSocketMessage) {
+    if (!message || !message.type || !message.senderId || !message.senderRole) {
+      log('Invalid message format - missing required fields');
+      return;
+    }
     // Update last activity for the sender
     const senderClient = this.findClientByUserId(message.senderId);
     if (senderClient) {

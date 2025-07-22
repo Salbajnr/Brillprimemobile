@@ -50,7 +50,18 @@ export default function VendorFeed() {
   const queryClient = useQueryClient();
 
   // Create post form state
-  const [newPost, setNewPost] = useState<{
+  type PostFormState = {
+    title: string;
+    content: string;
+    postType: typeof POST_TYPES[number]['value'];
+    tags: string;
+    originalPrice: string;
+    discountPrice: string;
+    discountPercentage: string;
+    validUntil: string;
+  };
+
+  const [newPost, setNewPost] = useState<PostFormState>({
     title: string;
     content: string;
     postType: "PRODUCT_UPDATE" | "NEW_PRODUCT" | "PROMOTION" | "ANNOUNCEMENT" | "RESTOCK";
@@ -99,7 +110,7 @@ export default function VendorFeed() {
   });
 
   // Add to cart mutation
-  const addToCartMutation = useMutation({
+  const addToCartMutation = useMutation<unknown, Error, { productId: string; quantity: number }>({
     mutationFn: (data: { productId: string; quantity: number }) => 
       apiRequest('POST', '/api/cart', { 
         userId: user?.id, 
@@ -112,7 +123,7 @@ export default function VendorFeed() {
   });
 
   // Add to wishlist mutation
-  const addToWishlistMutation = useMutation({
+  const addToWishlistMutation = useMutation<unknown, Error, string>({
     mutationFn: (productId: string) => 
       apiRequest('POST', '/api/wishlist', { userId: user?.id, productId }),
     onSuccess: () => {
@@ -138,7 +149,7 @@ export default function VendorFeed() {
     createPostMutation.mutate(postData);
   };
 
-  const formatTimeAgo = (date: Date | null) => {
+  const formatTimeAgo = (date: Date) => {
     if (!date) return "";
     const now = new Date();
     const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
@@ -150,12 +161,12 @@ export default function VendorFeed() {
     return date.toLocaleDateString();
   };
 
-  const getPostTypeIcon = (postType: string) => {
+  const getPostTypeIcon = (postType: typeof POST_TYPES[number]['value']) => {
     const type = POST_TYPES.find(t => t.value === postType);
     return type?.icon || "📝";
   };
 
-  const getPostTypeBadgeColor = (postType: string) => {
+  const getPostTypeBadgeColor = (postType: typeof POST_TYPES[number]['value']) => {
     switch (postType) {
       case "NEW_PRODUCT": return "bg-green-100 text-green-800";
       case "PROMOTION": return "bg-red-100 text-red-800";
@@ -203,7 +214,7 @@ export default function VendorFeed() {
                   </div>
                   
                   <div>
-                    <Select value={newPost.postType} onValueChange={(value: any) => setNewPost({ ...newPost, postType: value })}>
+                    <Select value={newPost.postType} onValueChange={(value: typeof POST_TYPES[number]['value']) => setNewPost({ ...newPost, postType: value })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select post type" />
                       </SelectTrigger>
