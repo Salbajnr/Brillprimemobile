@@ -1,636 +1,308 @@
 import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { useLocation } from "wouter";
+import { useDashboardData, useBusinessId } from "@/lib/hooks";
+import { useToast } from "@/hooks/use-toast";
+import { NavDrawer } from "@/components/ui/nav-drawer";
+import { BottomNav } from "@/components/ui/bottom-nav";
+import { MetricCard } from "@/components/ui/metric-card";
+import { OrderCard } from "@/components/ui/order-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { 
-  Bell, ShoppingBag, DollarSign, Eye, MessageCircle, Package, 
-  TrendingUp, Users, Clock, CheckCircle, AlertCircle, Truck
+  Bell, 
+  DollarSign, 
+  Truck, 
+  Users, 
+  TrendingUp,
+  Fuel,
+  BarChart3,
+  MessageCircleMore,
+  MapPin,
+  Route
 } from "lucide-react";
 
-interface MerchantProfile {
-  id: number;
-  userId: number;
-  businessName: string;
-  businessType: string;
-  businessDescription?: string;
-  businessAddress?: string;
-  businessPhone?: string;
-  businessEmail?: string;
-  businessLogo?: string;
-  isVerified: boolean;
-  subscriptionTier: string;
-  totalSales: number;
-  totalOrders: number;
-  rating: number;
-  reviewCount: number;
-  isActive: boolean;
-}
-
-interface MerchantOrder {
-  id: string;
-  buyerId: number;
-  sellerId: number;
-  productId: string;
-  quantity: number;
-  totalPrice: number;
-  status: string;
-  deliveryAddress: string;
-  driverId?: number;
-  createdAt: Date;
-  updatedAt: Date;
-  buyer: {
-    fullName: string;
-    phone: string;
-    email: string;
-  };
-  product: {
-    name: string;
-    price: number;
-    unit: string;
-    image?: string;
-  };
-}
-
-interface DashboardStats {
-  todayRevenue: number;
-  ordersCount: number;
-  productViews: number;
-  unreadMessages: number;
-}
-
-interface MerchantAnalytics {
-  id: number;
-  merchantId: number;
-  date: Date;
-  dailySales: number;
-  dailyOrders: number;
-  dailyViews: number;
-  dailyClicks: number;
-  topProduct?: string;
-  peakHour?: number;
-}
-
 export default function MerchantDashboard() {
-  const [selectedTab, setSelectedTab] = useState("orders");
-  const [analyticsFilter, setAnalyticsFilter] = useState("7d");
-  const queryClient = useQueryClient();
+  const [, setLocation] = useLocation();
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const businessId = useBusinessId();
+  const { data: dashboardData, isLoading } = useDashboardData(businessId);
+  const { toast } = useToast();
 
-  // Fetch merchant profile
-  const { data: merchantProfile } = useQuery<MerchantProfile>({
-    queryKey: ["merchant", "profile"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/merchant/profile");
-      return response.json();
-    },
-  });
-
-  // Fetch dashboard stats
-  const { data: dashboardStats } = useQuery<DashboardStats>({
-    queryKey: ["merchant", "dashboard-stats"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/merchant/dashboard-stats");
-      return response.json();
-    },
-    refetchInterval: 60000, // Refresh every minute
-  });
-
-  // Fetch orders
-  const { data: orders = [], isLoading: ordersLoading } = useQuery<MerchantOrder[]>({
-    queryKey: ["merchant", "orders"],
-    queryFn: async () => {
-      const response = await apiRequest("GET", "/api/merchant/orders");
-      return response.json();
-    },
-    refetchInterval: 30000, // Refresh every 30 seconds
-  });
-
-  // Fetch analytics
-  const { data: analytics = [] } = useQuery<MerchantAnalytics[]>({
-    queryKey: ["merchant", "analytics", analyticsFilter],
-    queryFn: async () => {
-      const response = await apiRequest("GET", `/api/merchant/analytics?period=${analyticsFilter}`);
-      return response.json();
-    },
-  });
-
-  // Update order status mutation
-  const updateOrderStatusMutation = useMutation({
-    mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
-      apiRequest("PUT", `/api/merchant/order/${orderId}/status`, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
-      queryClient.invalidateQueries({ queryKey: ["merchant", "dashboard-stats"] });
-    },
-  });
-
-  // Request delivery mutation
-  const requestDeliveryMutation = useMutation({
-    mutationFn: (deliveryData: any) =>
-      apiRequest("POST", "/api/merchant/request-delivery", deliveryData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
-    },
-  });
-
-  const handleUpdateOrderStatus = (orderId: string, status: string) => {
-    updateOrderStatusMutation.mutate({ orderId, status });
+  const handleNavigate = (path: string) => {
+    if (path === 'business-profile' || path === 'inventory' || 
+        path === 'payments' || path === 'promotions' || path === 'settings') {
+      toast({
+        title: "Coming Soon",
+        description: `${path.replace('-', ' ')} feature is under development.`,
+      });
+      return;
+    }
+    setLocation(`/${path}`);
   };
 
-  const handleRequestDelivery = (orderId: string, orderData: MerchantOrder) => {
-    requestDeliveryMutation.mutate({
-      orderId,
-      customerId: orderData.buyerId,
-      deliveryType: "PACKAGE",
-      pickupAddress: merchantProfile?.businessAddress || "Store Address",
-      deliveryAddress: orderData.deliveryAddress,
-      estimatedDistance: 5.0, // Default distance
-      deliveryFee: 2000, // Default fee
-      notes: `Order ${orderId} - ${orderData.product.name} x${orderData.quantity}`,
+  const handleTabChange = (tab: string) => {
+    setActiveTab(tab);
+    if (tab !== 'dashboard' && tab !== 'more') {
+      setLocation(`/${tab}`);
+    }
+  };
+
+  const handleSwitchMode = () => {
+    toast({
+      title: "Mode Switch",
+      description: "Consumer mode not implemented in this demo.",
     });
   };
 
-  const getOrderStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-100 text-yellow-800';
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'processing': return 'bg-purple-100 text-purple-800';
-      case 'shipped': return 'bg-orange-100 text-orange-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      case 'cancelled': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
+  const handleSignOut = () => {
+    toast({
+      title: "Sign Out",
+      description: "Sign out functionality would be implemented here.",
+    });
   };
 
-  const getStatusActions = (status: string) => {
-    switch (status) {
-      case 'pending': return ['confirmed', 'cancelled'];
-      case 'confirmed': return ['processing'];
-      case 'processing': return ['shipped'];
-      case 'shipped': return ['delivered'];
-      default: return [];
-    }
-  };
+  if (isLoading) {
+    return (
+      <div className="relative w-full max-w-md mx-auto h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-gray-500">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
-  // Group orders by status
-  const ordersByStatus = {
-    pending: orders.filter((order: MerchantOrder) => order.status === 'pending'),
-    confirmed: orders.filter((order: MerchantOrder) => order.status === 'confirmed'),
-    processing: orders.filter((order: MerchantOrder) => order.status === 'processing'),
-    shipped: orders.filter((order: MerchantOrder) => order.status === 'shipped'),
-    delivered: orders.filter((order: MerchantOrder) => order.status === 'delivered'),
-  };
+  const stats = dashboardData?.stats;
+  const business = dashboardData?.business;
+  const recentOrders = dashboardData?.recentOrders || [];
+  const lowStockProducts = dashboardData?.lowStockProducts || [];
 
   return (
-    <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-full xl:max-w-full mx-auto px-2 sm:px-4">{/*Responsive container*/}
+    <div className="relative w-full max-w-md mx-auto h-screen bg-white overflow-hidden">
       {/* Header */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h1 className="text-2xl font-bold text-[#0b1a51]">Merchant Dashboard</h1>
-            <p className="text-gray-600">
-              Welcome back, {merchantProfile?.businessName || "Merchant"}!
-            </p>
-          </div>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Badge 
-                variant={merchantProfile?.isVerified ? "default" : "secondary"}
-                className={merchantProfile?.isVerified ? "bg-green-600" : "bg-gray-400"}
-              >
-                {merchantProfile?.isVerified ? "Verified" : "Unverified"}
-              </Badge>
-              <Badge variant="outline" className="capitalize">
-                {merchantProfile?.subscriptionTier?.toLowerCase() || "Basic"}
-              </Badge>
+      <div className="bg-white shadow-sm p-4 flex items-center justify-between">
+        <div className="flex items-center">
+          <NavDrawer
+            business={business}
+            onNavigate={handleNavigate}
+            onSwitchMode={handleSwitchMode}
+            onSignOut={handleSignOut}
+          />
+          <div className="ml-3">
+            <h1 className="text-lg font-bold text-gray-900">Merchant Hub</h1>
+            <div className="flex items-center">
+              <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
+              <span className="text-xs text-gray-500">
+                {business?.isOpen ? 'Online' : 'Offline'}
+              </span>
             </div>
-            <Button variant="outline" size="icon">
-              <Bell className="h-4 w-4" />
-              {(dashboardStats?.unreadMessages || 0) > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {dashboardStats?.unreadMessages}
-                </span>
-              )}
-            </Button>
           </div>
         </div>
-
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <DollarSign className="h-5 w-5 text-green-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Today's Revenue</p>
-                  <p className="text-lg font-semibold">
-                    ₦{dashboardStats?.todayRevenue?.toLocaleString() || '0'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <ShoppingBag className="h-5 w-5 text-blue-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Pending Orders</p>
-                  <p className="text-lg font-semibold">{dashboardStats?.ordersCount || 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <Eye className="h-5 w-5 text-purple-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Product Views</p>
-                  <p className="text-lg font-semibold">
-                    {dashboardStats?.productViews?.toLocaleString() || '0'}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center space-x-2">
-                <MessageCircle className="h-5 w-5 text-orange-600" />
-                <div>
-                  <p className="text-sm text-gray-600">Messages</p>
-                  <p className="text-lg font-semibold">{dashboardStats?.unreadMessages || 0}</p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <div className="flex items-center space-x-3">
+          <Button variant="ghost" size="icon" className="relative">
+            <Bell className="w-6 h-6 text-gray-500" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+          </Button>
+          <Avatar className="w-10 h-10">
+            <AvatarFallback className="bg-blue-100 text-blue-600 text-sm font-bold">
+              M
+            </AvatarFallback>
+          </Avatar>
         </div>
       </div>
 
-      {/* Tabbed Interface */}
-      <Tabs value={selectedTab} onValueChange={setSelectedTab}>
-        <TabsList className="grid w-full grid-cols-7">
-          <TabsTrigger value="orders">Orders</TabsTrigger>
-          <TabsTrigger value="products">Products</TabsTrigger>
-          <TabsTrigger value="feed">Feed</TabsTrigger>
-          <TabsTrigger value="delivery">Delivery</TabsTrigger>
-          <TabsTrigger value="chat">Chat</TabsTrigger>
-          <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
-        </TabsList>
+      {/* Main Content */}
+      <div className="p-4 pb-20 overflow-y-auto" style={{ height: 'calc(100vh - 80px)' }}>
+        {/* Quick Stats Grid */}
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          <MetricCard
+            title="Today's Sales"
+            value={`₦${stats?.todaysSales?.toLocaleString() || '0'}`}
+            icon={DollarSign}
+            iconColor="text-green-500"
+            trend={{ value: '12.5%', isPositive: true }}
+          />
+          <MetricCard
+            title="Active Deliveries"
+            value={stats?.activeOrders || 0}
+            subtitle="2 en route"
+            icon={Truck}
+            iconColor="text-blue-500"
+          />
+          <MetricCard
+            title="Customers"
+            value={stats?.totalCustomers || 0}
+            subtitle="+8 new"
+            icon={Users}
+            iconColor="text-purple-500"
+          />
+          <MetricCard
+            title="Fuel Stock"
+            value={`${stats?.inventoryLevel || 0}%`}
+            subtitle={`${lowStockProducts.length} low stock`}
+            icon={Fuel}
+            iconColor="text-yellow-500"
+          />
+        </div>
 
-        {/* Orders Tab */}
-        <TabsContent value="orders" className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            {/* New Orders */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  New Orders ({ordersByStatus.pending.length})
-                  <AlertCircle className="h-5 w-5 text-orange-500" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {ordersByStatus.pending.map((order: MerchantOrder) => (
-                  <Card key={order.id} className="border border-orange-200">
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-sm">{order.product.name}</p>
-                          <p className="text-xs text-gray-600">
-                            {order.buyer.fullName} • Qty: {order.quantity}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600 text-sm">
-                            ₦{order.totalPrice.toLocaleString()}
-                          </p>
-                          <Badge className={getOrderStatusColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleUpdateOrderStatus(order.id, 'confirmed')}
-                          className="bg-green-600 hover:bg-green-700 text-xs"
-                          disabled={updateOrderStatusMutation.isPending}
-                        >
-                          Accept
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleUpdateOrderStatus(order.id, 'cancelled')}
-                          className="text-xs"
-                        >
-                          Reject
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {ordersByStatus.pending.length === 0 && (
-                  <div className="text-center py-4">
-                    <CheckCircle className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">No new orders</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Recent Orders Section */}
+        <Card className="rounded-xl shadow-sm mb-6">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-gray-900">Recent Orders</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className="text-sm font-medium text-blue-600"
+                onClick={() => setLocation('/merchant-orders')}
+              >
+                View All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="space-y-3">
+              {recentOrders.slice(0, 3).map((order) => (
+                <OrderCard 
+                  key={order.id} 
+                  order={order} 
+                  showActions={false}
+                />
+              ))}
+              {recentOrders.length === 0 && (
+                <div className="text-center py-8">
+                  <Truck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-sm text-gray-500">No recent orders</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
 
-            {/* Processing Orders */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  Processing ({ordersByStatus.processing.length + ordersByStatus.confirmed.length})
-                  <Clock className="h-5 w-5 text-blue-500" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {[...ordersByStatus.confirmed, ...ordersByStatus.processing].map((order: MerchantOrder) => (
-                  <Card key={order.id} className="border border-blue-200">
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-sm">{order.product.name}</p>
-                          <p className="text-xs text-gray-600">
-                            {order.buyer.fullName} • Qty: {order.quantity}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600 text-sm">
-                            ₦{order.totalPrice.toLocaleString()}
-                          </p>
-                          <Badge className={getOrderStatusColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      <div className="flex space-x-2">
-                        {getStatusActions(order.status).map((action) => (
-                          <Button
-                            key={action}
-                            size="sm"
-                            onClick={() => handleUpdateOrderStatus(order.id, action)}
-                            className="bg-[#4682b4] hover:bg-[#0b1a51] text-xs capitalize"
-                            disabled={updateOrderStatusMutation.isPending}
-                          >
-                            Mark {action}
-                          </Button>
-                        ))}
-                        {order.status === 'processing' && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => handleRequestDelivery(order.id, order)}
-                            className="text-xs"
-                          >
-                            <Truck className="h-3 w-3 mr-1" />
-                            Get Driver
-                          </Button>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-                {ordersByStatus.confirmed.length + ordersByStatus.processing.length === 0 && (
-                  <div className="text-center py-4">
-                    <Package className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">No orders processing</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Quick Actions */}
+        <Card className="rounded-xl shadow-sm mb-6">
+          <CardHeader className="pb-4">
+            <CardTitle className="text-base font-bold text-gray-900">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 gap-3">
+              <Button
+                variant="ghost"
+                className="p-4 bg-blue-50 rounded-xl h-auto flex-col"
+                onClick={() => setLocation('/merchant-orders')}
+              >
+                <Truck className="w-8 h-8 mb-2 text-blue-600" />
+                <span className="text-sm font-medium text-blue-600">Manage Deliveries</span>
+              </Button>
 
-            {/* Shipped & Delivered */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg flex items-center justify-between">
-                  Completed ({ordersByStatus.delivered.length + ordersByStatus.shipped.length})
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {[...ordersByStatus.shipped, ...ordersByStatus.delivered].map((order: MerchantOrder) => (
-                  <Card key={order.id} className="border border-green-200">
-                    <CardContent className="p-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div>
-                          <p className="font-medium text-sm">{order.product.name}</p>
-                          <p className="text-xs text-gray-600">
-                            {order.buyer.fullName} • Qty: {order.quantity}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-green-600 text-sm">
-                            ₦{order.totalPrice.toLocaleString()}
-                          </p>
-                          <Badge className={getOrderStatusColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                        </div>
-                      </div>
-                      {order.status === 'shipped' && (
-                        <Button
-                          size="sm"
-                          onClick={() => handleUpdateOrderStatus(order.id, 'delivered')}
-                          className="bg-green-600 hover:bg-green-700 text-xs"
-                          disabled={updateOrderStatusMutation.isPending}
-                        >
-                          Mark Delivered
-                        </Button>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
-                {ordersByStatus.delivered.length + ordersByStatus.shipped.length === 0 && (
-                  <div className="text-center py-4">
-                    <Truck className="h-8 w-8 text-gray-400 mx-auto mb-2" />
-                    <p className="text-sm text-gray-600">No completed orders</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+              <Button
+                variant="ghost"
+                className="p-4 bg-green-50 rounded-xl h-auto flex-col"
+                onClick={() => setLocation('/merchant-products')}
+              >
+                <Fuel className="w-8 h-8 mb-2 text-green-600" />
+                <span className="text-sm font-medium text-green-600">Fuel & Toll Services</span>
+              </Button>
 
-        {/* Products Tab */}
-        <TabsContent value="products" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Product Management
-                <Button className="bg-[#4682b4] hover:bg-[#0b1a51]">
-                  <Package className="h-4 w-4 mr-2" />
-                  Add Product
-                </Button>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Product management interface</p>
-                <p className="text-sm text-gray-500">Add, edit, and manage your product catalog</p>
+              <Button
+                variant="ghost"
+                className="p-4 bg-purple-50 rounded-xl h-auto flex-col"
+                onClick={() => setLocation('/merchant-analytics')}
+              >
+                <BarChart3 className="w-8 h-8 mb-2 text-purple-600" />
+                <span className="text-sm font-medium text-purple-600">View Analytics</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                className="p-4 bg-yellow-50 rounded-xl h-auto flex-col relative"
+                onClick={() => handleNavigate('chat')}
+              >
+                <MessageCircleMore className="w-8 h-8 mb-2 text-yellow-600" />
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium text-yellow-600">Customer Chat</span>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Fuel Stock Alerts */}
+        {lowStockProducts.length > 0 && (
+          <Card className="rounded-xl shadow-sm mb-6">
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-base font-bold text-gray-900">Fuel Stock Alerts</CardTitle>
+                <Badge variant="secondary" className="bg-red-100 text-red-800">
+                  {lowStockProducts.length} items
+                </Badge>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Feed Tab */}
-        <TabsContent value="feed" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Marketing Feed
-                <Button className="bg-[#4682b4] hover:bg-[#0b1a51]">
-                  Create Post
-                </Button>
-              </CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <TrendingUp className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Create engaging posts to promote your products</p>
-                <p className="text-sm text-gray-500">Share updates, promotions, and announcements</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Delivery Tab */}
-        <TabsContent value="delivery" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Delivery Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Truck className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Coordinate deliveries with drivers</p>
-                <p className="text-sm text-gray-500">Track deliveries and manage driver assignments</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Chat Tab */}
-        <TabsContent value="chat" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Customer Messages
-                {(dashboardStats?.unreadMessages || 0) > 0 && (
-                  <Badge variant="destructive">{dashboardStats?.unreadMessages} unread</Badge>
-                )}
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <MessageCircle className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Customer communication hub</p>
-                <p className="text-sm text-gray-500">Respond to customer inquiries and support requests</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        {/* Analytics Tab */}
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between">
-                Business Analytics
-                <Select value={analyticsFilter} onValueChange={setAnalyticsFilter}>
-                  <SelectTrigger className="w-32">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="7d">Last 7 days</SelectItem>
-                    <SelectItem value="30d">Last 30 days</SelectItem>
-                    <SelectItem value="90d">Last 90 days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Sales Overview</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Total Sales:</span>
-                        <span className="font-semibold">₦{merchantProfile?.totalSales?.toLocaleString() || '0'}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Total Orders:</span>
-                        <span className="font-semibold">{merchantProfile?.totalOrders || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Average Rating:</span>
-                        <span className="font-semibold">{merchantProfile?.rating || '0.0'}/5.0</span>
+            <CardContent className="pt-0">
+              <div className="space-y-2">
+                {lowStockProducts.slice(0, 3).map((product) => (
+                  <div 
+                    key={product.id}
+                    className="flex items-center justify-between p-2 bg-red-50 rounded-lg border-l-4 border-red-500"
+                  >
+                    <div className="flex items-center">
+                      <Fuel className="w-4 h-4 mr-2 text-red-600" />
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{product.name}</p>
+                        <p className="text-xs text-red-600">Only {product.stock} liters left</p>
                       </div>
                     </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-lg">Performance</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span>Reviews:</span>
-                        <span className="font-semibold">{merchantProfile?.reviewCount || 0}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Verification:</span>
-                        <span className={`font-semibold ${merchantProfile?.isVerified ? 'text-green-600' : 'text-orange-600'}`}>
-                          {merchantProfile?.isVerified ? 'Verified' : 'Pending'}
-                        </span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span>Store Status:</span>
-                        <span className={`font-semibold ${merchantProfile?.isActive ? 'text-green-600' : 'text-red-600'}`}>
-                          {merchantProfile?.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    <Button 
+                      size="sm"
+                      className="text-xs px-3 py-1 bg-red-600 hover:bg-red-700 rounded-lg"
+                      onClick={() => handleNavigate('restock')}
+                    >
+                      Refill
+                    </Button>
+                  </div>
+                ))}
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
+        )}
 
-        {/* Settings Tab */}
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Store Settings</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8">
-                <Users className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-600">Manage store settings and preferences</p>
-                <p className="text-sm text-gray-500">Configure business information, payment methods, and notifications</p>
+        {/* Performance Chart Preview */}
+        <Card className="rounded-xl shadow-sm">
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-base font-bold text-gray-900">Sales Performance</CardTitle>
+              <select className="text-sm border border-gray-200 rounded-lg px-2 py-1 text-gray-500">
+                <option>This Week</option>
+                <option>This Month</option>
+                <option>This Year</option>
+              </select>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="h-32 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg flex items-center justify-center mb-4">
+              <p className="text-sm text-gray-500">Chart visualization would go here</p>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-lg font-bold text-gray-900">₦285,400</p>
+                <p className="text-xs text-gray-500">Total Revenue</p>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+              <div>
+                <p className="text-lg font-bold text-gray-900">147</p>
+                <p className="text-xs text-gray-500">Orders</p>
+              </div>
+              <div>
+                <p className="text-lg font-bold text-gray-900">₦1,940</p>
+                <p className="text-xs text-gray-500">Avg Order</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Bottom Navigation */}
+      <BottomNav activeTab={activeTab} onTabChange={handleTabChange} />
     </div>
   );
 }

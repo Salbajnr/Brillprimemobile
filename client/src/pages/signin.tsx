@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Button } from "@/components/ui/button";
 import { BiometricLogin } from "@/components/ui/biometric-login";
+import { NotificationModal } from "@/components/ui/notification-modal";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -470,27 +471,25 @@ export default function SignInPage() {
       </div>
 
       {/* Biometric Login Modal */}
-      <NotificationModal
-        isOpen={showBiometricLogin}
-        onClose={() => setShowBiometricLogin(false)}
-        title="Biometric Authentication"
-        message=""
-        type="info"
-        customContent={
-          <BiometricLogin
-            onSuccess={handleBiometricSuccess}
-            onError={handleBiometricError}
-            onCancel={handleBiometricCancel}
-          />
-        }
-      />
+      {showBiometricLogin && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm mx-4">
+            <h2 className="text-xl font-bold text-center mb-4">Biometric Authentication</h2>
+            <BiometricLogin
+              onSuccess={handleBiometricSuccess}
+              onError={handleBiometricError}
+              onCancel={handleBiometricCancel}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Error Modal */}
       <NotificationModal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         title="Authentication Error"
-        message={errorMessage}
+        description={errorMessage}
         type="error"
       />
     </div>

@@ -74,19 +74,63 @@ export default function AddPaymentMethod() {
     }
   ];
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Here you would typically save the payment method
-    console.log("Adding payment method:", {
-      type: selectedType,
-      cardNumber,
-      expiryDate,
-      cvv,
-      cardholderName,
-      isDefault
-    });
-    // Navigate back to payment methods
-    setLocation("/payment-methods");
+    
+    try {
+      // Prepare payment method details based on type
+      let details: any = {};
+      
+      if (selectedType === "mastercard" || selectedType === "visa") {
+        details = {
+          cardNumber: cardNumber.replace(/\s/g, ''),
+          expiryDate,
+          cvv,
+          cardholderName
+        };
+      } else if (selectedType === "bank_transfer") {
+        const bankName = (document.getElementById('bankName') as HTMLInputElement)?.value;
+        const accountNumber = (document.getElementById('accountNumber') as HTMLInputElement)?.value;
+        const accountName = (document.getElementById('accountName') as HTMLInputElement)?.value;
+        details = {
+          bankName,
+          accountNumber,
+          accountName
+        };
+      } else {
+        // For PayPal, Apple Pay, Google Pay - minimal details needed
+        details = {
+          provider: selectedType
+        };
+      }
+      
+      const response = await fetch('/api/payment-methods', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: selectedType,
+          details,
+          isDefault
+        })
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok) {
+        console.log('Payment method added successfully:', data.paymentMethod);
+        // Navigate back to payment methods
+        setLocation("/payment-methods");
+      } else {
+        console.error('Failed to add payment method:', data.message);
+        alert(`Failed to add payment method: ${data.message}`);
+      }
+    } catch (error) {
+      console.error('Network error while adding payment method:', error);
+      alert('Network error. Please try again.');
+    }
   };
 
   const formatCardNumber = (value: string) => {

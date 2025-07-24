@@ -876,6 +876,231 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Wallet API Endpoints
+  app.get("/api/wallet", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      let wallet = await storage.getWallet(req.user.id);
+      if (!wallet) {
+        wallet = await storage.createWallet({
+          userId: req.user.id,
+          balance: 0,
+          currency: 'USD'
+        });
+      }
+      res.json(wallet);
+    } catch (error) {
+      console.error("Get wallet error:", error);
+      res.status(500).json({ message: "Error fetching wallet" });
+    }
+  });
+
+  app.post("/api/wallet/fund", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { amount, paymentMethodId } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      
+      if (!paymentMethodId) {
+        return res.status(400).json({ message: "Payment method required" });
+      }
+      
+      const result = await storage.fundWallet(req.user.id, amount, paymentMethodId);
+      
+      if (result.success) {
+        res.json({ 
+          message: "Wallet funded successfully",
+          transactionId: result.transactionId
+        });
+      } else {
+        res.status(400).json({ 
+          message: result.error || "Wallet funding failed"
+        });
+      }
+    } catch (error) {
+      console.error("Fund wallet error:", error);
+      res.status(500).json({ message: "Error funding wallet" });
+    }
+  });
+
+  app.get("/api/wallet/transactions", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { limit = 50, offset = 0 } = req.query;
+      const transactions = await storage.getWalletTransactions(
+        req.user.id, 
+        parseInt(limit as string), 
+        parseInt(offset as string)
+      );
+      res.json(transactions);
+    } catch (error) {
+      console.error("Get wallet transactions error:", error);
+      res.status(500).json({ message: "Error fetching transactions" });
+    }
+  });
+
+  // Payment Methods API Endpoints
+  app.get("/api/payment-methods", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const paymentMethods = await storage.getPaymentMethods(req.user.id);
+      res.json(paymentMethods);
+    } catch (error) {
+      console.error("Get payment methods error:", error);
+      res.status(500).json({ message: "Error fetching payment methods" });
+    }
+  });
+
+  app.post("/api/payment-methods", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { type, details, isDefault = false } = req.body;
+      
+      if (!type || !details) {
+        return res.status(400).json({ message: "Payment method type and details required" });
+      }
+      
+      const paymentMethod = await storage.createPaymentMethod({
+        userId: req.user.id,
+        type,
+        details,
+        isDefault
+      });
+      
+      // If this is set as default, update other payment methods
+      if (isDefault) {
+        await storage.setDefaultPaymentMethod(req.user.id, paymentMethod.id);
+      }
+      
+      res.json({ 
+        message: "Payment method added successfully",
+        paymentMethod
+      });
+    } catch (error) {
+      console.error("Add payment method error:", error);
+      res.status(500).json({ message: "Error adding payment method" });
+    }
+  });
+
+  app.put("/api/payment-methods/:paymentMethodId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { paymentMethodId } = req.params;
+      const updateData = req.body;
+      
+      const updatedMethod = await storage.updatePaymentMethod(
+        parseInt(paymentMethodId), 
+        updateData
+      );
+      
+      // If setting as default, update other payment methods
+      if (updateData.isDefault) {
+        await storage.setDefaultPaymentMethod(req.user.id, parseInt(paymentMethodId));
+      }
+      
+      res.json({ 
+        message: "Payment method updated successfully",
+        paymentMethod: updatedMethod
+      });
+    } catch (error) {
+      console.error("Update payment method error:", error);
+      res.status(500).json({ message: "Error updating payment method" });
+    }
+  });
+
+  app.delete("/api/payment-methods/:paymentMethodId", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { paymentMethodId } = req.params;
+      await storage.deletePaymentMethod(parseInt(paymentMethodId));
+      
+      res.json({ message: "Payment method deleted successfully" });
+    } catch (error) {
+      console.error("Delete payment method error:", error);
+      res.status(500).json({ message: "Error deleting payment method" });
+    }
+  });
+
+  app.post("/api/payment-methods/:paymentMethodId/set-default", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { paymentMethodId } = req.params;
+      await storage.setDefaultPaymentMethod(req.user.id, parseInt(paymentMethodId));
+      
+      res.json({ message: "Default payment method updated successfully" });
+    } catch (error) {
+      console.error("Set default payment method error:", error);
+      res.status(500).json({ message: "Error setting default payment method" });
+    }
+  });
+
+  // Payment Processing API Endpoint
+  app.post("/api/payments/process", async (req, res) => {
+    if (!req.isAuthenticated()) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    try {
+      const { amount, paymentMethodId, description } = req.body;
+      
+      if (!amount || amount <= 0) {
+        return res.status(400).json({ message: "Invalid amount" });
+      }
+      
+      if (!paymentMethodId) {
+        return res.status(400).json({ message: "Payment method required" });
+      }
+      
+      const result = await storage.processPayment(
+        req.user.id, 
+        amount, 
+        paymentMethodId, 
+        description || 'Payment'
+      );
+      
+      if (result.success) {
+        res.json({ 
+          message: "Payment processed successfully",
+          transactionId: result.transactionId
+        });
+      } else {
+        res.status(400).json({ 
+          message: result.error || "Payment processing failed"
+        });
+      }
+    } catch (error) {
+      console.error("Process payment error:", error);
+      res.status(500).json({ message: "Error processing payment" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

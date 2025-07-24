@@ -38,6 +38,9 @@ import NotificationsPage from "@/pages/notifications";
 import MerchantsPage from "@/pages/merchants";
 import NotFound from "@/pages/not-found";
 import MerchantDashboard from "@/pages/merchant-dashboard";
+import MerchantOrders from "@/pages/merchant-orders";
+import MerchantAnalytics from "@/pages/merchant-analytics";
+import MerchantProducts from "@/pages/merchant-products";
 import DriverDashboard from "@/pages/driver-dashboard";
 import DriverTierSelection from "@/pages/driver-tier-selection";
 import DriverRegistration from "@/pages/driver-registration";
@@ -73,6 +76,9 @@ function Router() {
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
       <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={MerchantDashboard} />} />
+      <Route path="/merchant-orders" component={() => <ProtectedRoute component={MerchantOrders} />} />
+      <Route path="/merchant-analytics" component={() => <ProtectedRoute component={MerchantAnalytics} />} />
+      <Route path="/merchant-products" component={() => <ProtectedRoute component={MerchantProducts} />} />
       <Route path="/driver-dashboard" component={() => <ProtectedRoute component={DriverDashboard} />} />
       <Route path="/driver-withdrawal" component={() => <ProtectedRoute component={DriverWithdrawal} />} />
       <Route path="/delivery-detail" component={() => <ProtectedRoute component={DeliveryDetail} />} />
