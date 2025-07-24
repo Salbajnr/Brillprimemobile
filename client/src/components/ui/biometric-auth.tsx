@@ -62,34 +62,47 @@ export function BiometricAuth({ onSuccess, onError, onCancel }: BiometricAuthPro
     setScanType(type);
 
     try {
+      // Generate a random challenge
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      
       // Create credential request options
       const options: PublicKeyCredentialCreationOptions = {
-        challenge: new Uint8Array(32),
+        challenge,
         rp: {
           name: "Brillprime",
-          id: window.location.hostname,
+          id: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
         },
         user: {
-          id: new TextEncoder().encode("user123"),
+          id: crypto.getRandomValues(new Uint8Array(16)),
           name: "user@brillprime.com",
           displayName: "Brillprime User",
         },
-        pubKeyCredParams: [{ alg: -7, type: "public-key" }],
+        pubKeyCredParams: [
+          { alg: -7, type: "public-key" }, // ES256
+          { alg: -257, type: "public-key" } // RS256
+        ],
         authenticatorSelection: {
           authenticatorAttachment: "platform",
           userVerification: "required",
-          requireResidentKey: false,
+          residentKey: "preferred"
         },
         timeout: 60000,
-        attestation: "direct",
+        attestation: "none",
       };
 
-      // Create credential
       const credential = await navigator.credentials.create({
         publicKey: options,
       });
 
       if (credential) {
+        // Store credential info in localStorage for future authentication
+        const credentialId = Array.from(new Uint8Array(credential.rawId))
+          .map(b => b.toString(16).padStart(2, '0'))
+          .join('');
+        
+        localStorage.setItem('biometric_credential_id', credentialId);
+        localStorage.setItem('biometric_type', type);
+        
         setIsScanning(false);
         onSuccess(type);
       } else {
@@ -106,6 +119,8 @@ export function BiometricAuth({ onSuccess, onError, onCancel }: BiometricAuthPro
         errorMessage = "Authentication timeout";
       } else if (error.name === "NotSupportedError") {
         errorMessage = "This device does not support biometric authentication";
+      } else if (error.name === "SecurityError") {
+        errorMessage = "Security error during biometric authentication";
       }
       
       onError(errorMessage);
@@ -117,11 +132,32 @@ export function BiometricAuth({ onSuccess, onError, onCancel }: BiometricAuthPro
     setScanType(type);
 
     try {
+      // Get stored credential ID
+      const storedCredentialId = localStorage.getItem('biometric_credential_id');
+      const storedType = localStorage.getItem('biometric_type');
+      
+      if (!storedCredentialId || storedType !== type) {
+        throw new Error('No biometric credentials found for this authentication type');
+      }
+      
+      // Convert credential ID back to Uint8Array
+      const credentialIdBytes = new Uint8Array(
+        storedCredentialId.match(/.{2}/g)?.map(byte => parseInt(byte, 16)) || []
+      );
+      
+      // Generate a random challenge
+      const challenge = crypto.getRandomValues(new Uint8Array(32));
+      
       const options: PublicKeyCredentialRequestOptions = {
-        challenge: new Uint8Array(32),
+        challenge,
         timeout: 60000,
         userVerification: "required",
-        rpId: window.location.hostname,
+        rpId: window.location.hostname === 'localhost' ? 'localhost' : window.location.hostname,
+        allowCredentials: [{
+          id: credentialIdBytes,
+          type: "public-key",
+          transports: ["internal"]
+        }]
       };
 
       const assertion = await navigator.credentials.get({
@@ -138,9 +174,17 @@ export function BiometricAuth({ onSuccess, onError, onCancel }: BiometricAuthPro
       setIsScanning(false);
       setScanType(null);
       
-      let errorMessage = "Biometric authentication failed";
+      // Provide more specific error messages
+      let errorMessage = `${type === 'fingerprint' ? 'Fingerprint' : 'Face ID'} authentication failed`;
+      
       if (error.name === "NotAllowedError") {
-        errorMessage = "Authentication cancelled";
+        errorMessage = "Biometric authentication was cancelled or not allowed";
+      } else if (error.name === "NotSupportedError") {
+        errorMessage = "Biometric authentication is not supported on this device";
+      } else if (error.name === "SecurityError") {
+        errorMessage = "Security error during biometric authentication";
+      } else if (error.message && error.message.includes('No biometric credentials')) {
+        errorMessage = "Please set up biometric authentication first";
       }
       
       onError(errorMessage);

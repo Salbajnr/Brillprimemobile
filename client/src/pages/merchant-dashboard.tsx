@@ -82,27 +82,39 @@ export default function MerchantDashboard() {
   // Fetch merchant profile
   const { data: merchantProfile } = useQuery<MerchantProfile>({
     queryKey: ["merchant", "profile"],
-    queryFn: () => apiRequest("GET", "/api/merchant/profile"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/profile");
+      return response.json();
+    },
   });
 
   // Fetch dashboard stats
   const { data: dashboardStats } = useQuery<DashboardStats>({
     queryKey: ["merchant", "dashboard-stats"],
-    queryFn: () => apiRequest("GET", "/api/merchant/dashboard-stats"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/dashboard-stats");
+      return response.json();
+    },
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch orders
   const { data: orders = [], isLoading: ordersLoading } = useQuery<MerchantOrder[]>({
     queryKey: ["merchant", "orders"],
-    queryFn: () => apiRequest("GET", "/api/merchant/orders"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/orders");
+      return response.json();
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch analytics
   const { data: analytics = [] } = useQuery<MerchantAnalytics[]>({
     queryKey: ["merchant", "analytics", analyticsFilter],
-    queryFn: () => apiRequest("GET", `/api/merchant/analytics?period=${analyticsFilter}`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/merchant/analytics?period=${analyticsFilter}`);
+      return response.json();
+    },
   });
 
   // Update order status mutation
@@ -165,11 +177,11 @@ export default function MerchantDashboard() {
 
   // Group orders by status
   const ordersByStatus = {
-    pending: orders.filter(order => order.status === 'pending'),
-    confirmed: orders.filter(order => order.status === 'confirmed'),
-    processing: orders.filter(order => order.status === 'processing'),
-    shipped: orders.filter(order => order.status === 'shipped'),
-    delivered: orders.filter(order => order.status === 'delivered'),
+    pending: orders.filter((order: MerchantOrder) => order.status === 'pending'),
+    confirmed: orders.filter((order: MerchantOrder) => order.status === 'confirmed'),
+    processing: orders.filter((order: MerchantOrder) => order.status === 'processing'),
+    shipped: orders.filter((order: MerchantOrder) => order.status === 'shipped'),
+    delivered: orders.filter((order: MerchantOrder) => order.status === 'delivered'),
   };
 
   return (
@@ -197,9 +209,9 @@ export default function MerchantDashboard() {
             </div>
             <Button variant="outline" size="icon">
               <Bell className="h-4 w-4" />
-              {dashboardStats?.unreadMessages > 0 && (
+              {(dashboardStats?.unreadMessages || 0) > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {dashboardStats.unreadMessages}
+                  {dashboardStats?.unreadMessages}
                 </span>
               )}
             </Button>
@@ -286,7 +298,7 @@ export default function MerchantDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {ordersByStatus.pending.map((order) => (
+                {ordersByStatus.pending.map((order: MerchantOrder) => (
                   <Card key={order.id} className="border border-orange-200">
                     <CardContent className="p-3">
                       <div className="flex justify-between items-start mb-2">
@@ -344,7 +356,7 @@ export default function MerchantDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {[...ordersByStatus.confirmed, ...ordersByStatus.processing].map((order) => (
+                {[...ordersByStatus.confirmed, ...ordersByStatus.processing].map((order: MerchantOrder) => (
                   <Card key={order.id} className="border border-blue-200">
                     <CardContent className="p-3">
                       <div className="flex justify-between items-start mb-2">
@@ -408,7 +420,7 @@ export default function MerchantDashboard() {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-3 max-h-96 overflow-y-auto">
-                {[...ordersByStatus.shipped, ...ordersByStatus.delivered].map((order) => (
+                {[...ordersByStatus.shipped, ...ordersByStatus.delivered].map((order: MerchantOrder) => (
                   <Card key={order.id} className="border border-green-200">
                     <CardContent className="p-3">
                       <div className="flex justify-between items-start mb-2">
@@ -516,8 +528,8 @@ export default function MerchantDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Customer Messages
-                {dashboardStats?.unreadMessages > 0 && (
-                  <Badge variant="destructive">{dashboardStats.unreadMessages} unread</Badge>
+                {(dashboardStats?.unreadMessages || 0) > 0 && (
+                  <Badge variant="destructive">{dashboardStats?.unreadMessages} unread</Badge>
                 )}
               </CardTitle>
             </CardHeader>

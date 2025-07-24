@@ -161,6 +161,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Biometric signin endpoint
+  app.post("/api/auth/biometric-signin", async (req, res) => {
+    try {
+      const { email, biometricType, credentialId } = req.body;
+      
+      if (!email || !biometricType || !credentialId) {
+        return res.status(400).json({ message: "Missing biometric authentication data" });
+      }
+      
+      // Find user by email
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({ message: "User not found" });
+      }
+      
+      // Verify biometric credential (in a real implementation, you would verify the WebAuthn assertion)
+      // For now, we'll just check if the credential ID matches what's stored
+      const storedCredentialId = user.biometricCredentialId;
+      if (storedCredentialId !== credentialId) {
+        return res.status(400).json({ message: "Invalid biometric credentials" });
+      }
+      
+      // Create user session
+      const userWithoutPassword = {
+        id: user.id,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role,
+        isVerified: Boolean(user.isVerified),
+        profilePicture: user.profilePicture || undefined
+      };
+      
+      req.session.userId = user.id;
+      req.session.user = userWithoutPassword;
+      
+      res.json({ 
+        message: "Biometric authentication successful",
+        user: userWithoutPassword
+      });
+    } catch (error) {
+      console.error("Biometric signin error:", error);
+      res.status(400).json({ message: "Biometric authentication failed" });
+    }
+  });
+
   // Logout endpoint
   app.post("/api/auth/logout", (req, res) => {
     req.session.destroy((err) => {
