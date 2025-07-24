@@ -3,6 +3,97 @@ import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
 
+// Admin-specific tables
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull().unique(),
+  role: text("role", { enum: ["ADMIN", "SUPER_ADMIN", "SUPPORT", "MODERATOR"] }).notNull(),
+  permissions: json("permissions").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const adminPaymentActions = pgTable("admin_payment_actions", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").notNull().references(() => adminUsers.id),
+  action: text("action", { enum: ["REFUND", "HOLD", "RELEASE", "DISTRIBUTE"] }).notNull(),
+  paymentId: uuid("payment_id").notNull(),
+  details: json("details"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const deliveryConfirmations = pgTable("delivery_confirmations", {
+  id: serial("id").primaryKey(),
+  orderId: uuid("order_id").notNull().references(() => orders.id),
+  qrCode: text("qr_code").notNull(),
+  scanned: boolean("scanned").default(false),
+  scannedAt: timestamp("scanned_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const contentReports = pgTable("content_reports", {
+  id: serial("id").primaryKey(),
+  reportedBy: integer("reported_by").notNull().references(() => users.id),
+  contentId: text("content_id").notNull(),
+  contentType: text("content_type", { enum: ["POST", "COMMENT", "PRODUCT", "USER"] }).notNull(),
+  reason: text("reason").notNull(),
+  status: text("status", { enum: ["PENDING", "REVIEWED", "RESOLVED", "DISMISSED"] }).default("PENDING"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const moderationResponses = pgTable("moderation_responses", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").notNull().references(() => contentReports.id),
+  adminId: integer("admin_id").notNull().references(() => adminUsers.id),
+  response: text("response").notNull(),
+  action: text("action", { enum: ["WARNING", "REMOVE", "BAN", "NO_ACTION"] }).notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const vendorViolations = pgTable("vendor_violations", {
+  id: serial("id").primaryKey(),
+  vendorId: integer("vendor_id").notNull().references(() => users.id),
+  violationType: text("violation_type", { 
+    enum: ["POLICY_VIOLATION", "QUALITY_ISSUE", "DELIVERY_ISSUE", "PAYMENT_ISSUE", "CUSTOMER_COMPLAINT"]
+  }).notNull(),
+  description: text("description").notNull(),
+  status: text("status", { enum: ["PENDING", "REVIEWED", "RESOLVED", "DISMISSED"] }).default("PENDING"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const complianceDocuments = pgTable("compliance_documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  documentType: text("document_type", {
+    enum: ["ID_CARD", "BUSINESS_LICENSE", "TAX_ID", "VEHICLE_REGISTRATION", "DRIVER_LICENSE", "INSURANCE"]
+  }).notNull(),
+  documentUrl: text("document_url").notNull(),
+  status: text("status", { enum: ["PENDING", "APPROVED", "REJECTED"] }).default("PENDING"),
+  reviewedBy: integer("reviewed_by").references(() => adminUsers.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const escrowAccounts = pgTable("escrow_accounts", {
+  id: serial("id").primaryKey(),
+  balance: decimal("balance", { precision: 12, scale: 2 }).default("0"),
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const paymentDistributions = pgTable("payment_distributions", {
+  id: serial("id").primaryKey(),
+  paymentId: uuid("payment_id").notNull(),
+  recipientId: integer("recipient_id").notNull().references(() => users.id),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  status: text("status", { enum: ["PENDING", "COMPLETED", "FAILED"] }).default("PENDING"),
+  distributedAt: timestamp("distributed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   userId: text("user_id").notNull().unique(), // Unique user ID (e.g., BP-000001)

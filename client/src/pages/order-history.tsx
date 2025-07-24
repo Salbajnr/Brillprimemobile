@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -11,8 +11,12 @@ import {
   Package,
   Fuel,
   ShoppingCart,
-  Truck
+  Truck,
+  Wifi,
+  WifiOff
 } from "lucide-react";
+import { useWebSocketOrders, useWebSocketNotifications } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { useAuth } from "@/hooks/use-auth";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 
@@ -258,13 +262,61 @@ export default function OrderHistory() {
   const [, setLocation] = useLocation();
   
   const userRole = user?.role || 'CONSUMER';
-  const orderHistory = getSampleOrderHistory(userRole);
+  const [orderHistory, setOrderHistory] = useState(getSampleOrderHistory(userRole));
   const pageTitle = getPageTitle(userRole);
   const returnPath = getReturnPath(userRole);
+  
+  // Initialize WebSocket hooks
+  const { 
+    connected: ordersConnected, 
+    orderUpdates, 
+    connectionError: ordersError 
+  } = useWebSocketOrders();
+  
+  const { 
+    connected: notificationsConnected, 
+    notifications, 
+    connectionError: notificationsError 
+  } = useWebSocketNotifications();
 
   const handleBackNavigation = () => {
     setLocation(returnPath);
   };
+  
+  // Process real-time order updates
+  useEffect(() => {
+    if (Object.keys(orderUpdates).length > 0) {
+      // Update order history with real-time updates
+      setOrderHistory(prevOrders => {
+        return prevOrders.map(order => {
+          // If we have an update for this order
+          if (orderUpdates[order.id]) {
+            const update = orderUpdates[order.id];
+            return {
+              ...order,
+              status: update.status
+            };
+          }
+          return order;
+        });
+      });
+    }
+  }, [orderUpdates]);
+  
+  // Process notifications related to orders
+  useEffect(() => {
+    if (notifications.length > 0) {
+      // Filter notifications related to orders
+      const orderNotifications = notifications.filter(
+        notification => notification.payload.type === 'ORDER_UPDATE'
+      );
+      
+      if (orderNotifications.length > 0) {
+        // Process order notifications if needed
+        console.log('Received order notifications:', orderNotifications);
+      }
+    }
+  }, [notifications]);
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
@@ -283,7 +335,19 @@ export default function OrderHistory() {
             <h1 className="text-xl font-bold" style={{ color: COLORS.TEXT }}>
               {pageTitle}
             </h1>
-            <div className="w-10"></div>
+            <div className="w-10 flex items-center justify-center">
+              {ordersConnected ? (
+                <Badge className="bg-green-500 hover:bg-green-600">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Live</span>
+                </Badge>
+              ) : (
+                <Badge className="bg-gray-500 hover:bg-gray-600">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Offline</span>
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>

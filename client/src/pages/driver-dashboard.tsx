@@ -1,22 +1,24 @@
 import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useWebSocketLocation, useWebSocketOrders, useWebSocketNotifications } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NotificationProvider, useNotifications } from "@/components/ui/notification-system";
 import { Link, useLocation } from "wouter";
-import { 
-  Menu, 
+import {
+  Menu,
   X,
-  Truck, 
-  Package, 
-  Navigation, 
-  DollarSign, 
-  Clock, 
-  User, 
-  MessageCircle, 
+  Truck,
+  Package,
+  Navigation,
+  DollarSign,
+  Clock,
+  User,
+  MessageCircle,
   Star,
   MapPin,
   CheckCircle,
@@ -75,7 +77,7 @@ interface DriverEarnings {
 // Color constants
 const COLORS = {
   PRIMARY: '#4682b4',
-  SECONDARY: '#0b1a51', 
+  SECONDARY: '#0b1a51',
   ACTIVE: '#010e42',
   TEXT: '#131313',
   WHITE: '#ffffff'
@@ -90,6 +92,72 @@ function DriverDashboardContent() {
   const queryClient = useQueryClient();
   const { addNotification } = useNotifications();
   const notificationRef = useRef<HTMLDivElement>(null);
+
+  // WebSocket integration for real-time features
+  const { connected: locationConnected, sendLocationUpdate, connectionError: locationError } = useWebSocketLocation();
+  const { connected: orderConnected, orderUpdates, connectionError: orderError } = useWebSocketOrders();
+  const { connected: notificationConnected, notifications: wsNotifications, connectionError: notificationError } = useWebSocketNotifications();
+
+  // Process WebSocket order updates
+  useEffect(() => {
+    if (orderUpdates.length > 0) {
+      // Process new order updates from WebSocket
+      orderUpdates.forEach((update: Record<string, any>) => {
+        if (update.type === MessageType.ORDER_STATUS_UPDATE) {
+          // Refresh the jobs data when we receive updates
+          queryClient.invalidateQueries({ queryKey: ["driver", "available-jobs"] });
+          queryClient.invalidateQueries({ queryKey: ["driver", "delivery-history"] });
+
+          // Show notification for the update
+          addNotification({
+            type: 'info',
+            title: 'Order Update',
+            message: `Order #${update.payload?.orderId || 'unknown'} status changed to ${update.payload?.status || 'updated'}`,
+            duration: 5000
+          });
+        }
+      });
+    }
+  }, [orderUpdates, queryClient, addNotification]);
+
+  // Process WebSocket notifications
+  useEffect(() => {
+    if (wsNotifications.length > 0) {
+      // Process new notifications from WebSocket
+      wsNotifications.forEach((notification: Record<string, any>) => {
+        if (notification.type === MessageType.NOTIFICATION) {
+          // Add the notification to the UI
+          addNotification({
+            type: notification.payload?.notificationType || 'info',
+            title: notification.payload?.title || 'New Notification',
+            message: notification.payload?.message || '',
+            duration: 5000
+          });
+        }
+      });
+    }
+  }, [wsNotifications, addNotification]);
+
+  // Send location updates periodically when driver is online
+  useEffect(() => {
+    let intervalId: NodeJS.Timeout;
+
+    if (isOnline && locationConnected) {
+      // Mock getting GPS coordinates - in a real app, you would use the Geolocation API
+      intervalId = setInterval(() => {
+        // Mock coordinates - in a real app, these would come from the device's GPS
+        const mockLatitude = 6.5244 + (Math.random() - 0.5) * 0.01; // Lagos area
+        const mockLongitude = 3.3792 + (Math.random() - 0.5) * 0.01;
+
+        // Send location update via WebSocket
+        sendLocationUpdate({ latitude: mockLatitude, longitude: mockLongitude });
+      }, 30000); // Send location every 30 seconds
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [isOnline, locationConnected, sendLocationUpdate]);
 
   // Sample data for demonstration
   const sampleJobs: DeliveryJob[] = [
@@ -152,13 +220,31 @@ function DriverDashboardContent() {
 
   // Accept job mutation
   const acceptJobMutation = useMutation({
-    mutationFn: (jobId: string) => 
+    mutationFn: (jobId: string) =>
       apiRequest("POST", `/api/driver/accept-job/${jobId}`, {}),
-    onSuccess: () => {
+    onSuccess: async (data) => {
       queryClient.invalidateQueries({ queryKey: ["driver", "available-jobs"] });
       queryClient.invalidateQueries({ queryKey: ["driver", "delivery-history"] });
+
+      // Send real-time order status update via WebSocket
+      if (data) {
+        const orderData = data.json ? await data.json() : data;
+        if (orderData && orderData.order) {
+          // Notify merchant about order acceptance
+          sendOrderStatusUpdate(orderData.order.id, orderData.order.merchantId, ClientRole.MERCHANT, "ACCEPTED");
+          // Notify customer about order acceptance
+          sendOrderStatusUpdate(orderData.order.id, orderData.order.customerId, ClientRole.CONSUMER, "ACCEPTED");
+        }
+      }
     },
   });
+
+  // Function to send order status updates via WebSocket
+  const sendOrderStatusUpdate = (orderId: string, recipientId: string, recipientRole: ClientRole, status: string) => {
+    // This function would use the WebSocket connection to send real-time updates
+    // In a real implementation, this would be part of the useWebSocketOrderStatus hook
+    console.log(`Sending order status update: ${status} for order ${orderId} to ${recipientRole} ${recipientId}`);
+  };
 
   const handleAcceptJob = (jobId: string) => {
     acceptJobMutation.mutate(jobId);
@@ -231,7 +317,7 @@ function DriverDashboardContent() {
       <div className={`${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} fixed inset-y-0 left-0 z-50 w-80 shadow-2xl transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:inset-0 border-r-2`} style={{ backgroundColor: COLORS.WHITE, borderColor: COLORS.PRIMARY + '40' }}>
         <div className="flex flex-col h-full">
           {/* Sidebar Header */}
-          <div className="flex items-center justify-between p-6 border-b-2" style={{ 
+          <div className="flex items-center justify-between p-6 border-b-2" style={{
             background: `linear-gradient(to right, ${COLORS.PRIMARY}, ${COLORS.SECONDARY})`,
             borderColor: COLORS.PRIMARY + '40'
           }}>
@@ -256,15 +342,15 @@ function DriverDashboardContent() {
           </div>
 
           {/* Driver Status Card */}
-          <div className="p-6 border-b-2" style={{ 
+          <div className="p-6 border-b-2" style={{
             background: `linear-gradient(to bottom right, ${COLORS.PRIMARY}20, ${COLORS.WHITE})`,
             borderColor: COLORS.PRIMARY + '40'
           }}>
             <div className="flex items-center space-x-4 mb-4">
               <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-lg border-2" style={{ borderColor: COLORS.PRIMARY }}>
-                <img 
-                  src={accountCircleIcon} 
-                  alt="Driver Profile" 
+                <img
+                  src={accountCircleIcon}
+                  alt="Driver Profile"
                   className="w-full h-full object-cover"
                   style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
                 />
@@ -279,16 +365,16 @@ function DriverDashboardContent() {
                 </div>
               </div>
             </div>
-            
+
             <div className="grid grid-cols-2 gap-3 mb-4">
-              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{ 
+              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{
                 backgroundColor: COLORS.WHITE,
                 borderColor: COLORS.PRIMARY + '40'
               }}>
                 <p className="text-2xl font-bold" style={{ color: COLORS.SECONDARY }}>{sampleProfile.totalDeliveries}</p>
                 <p className="text-xs" style={{ color: COLORS.TEXT + '80' }}>Completed</p>
               </div>
-              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{ 
+              <div className="text-center p-3 rounded-xl border-2 shadow-sm" style={{
                 backgroundColor: COLORS.WHITE,
                 borderColor: COLORS.PRIMARY + '40'
               }}>
@@ -328,11 +414,11 @@ function DriverDashboardContent() {
                 <div className={`w-3 h-3 rounded-full mr-3 ${isOnline ? 'bg-white animate-pulse' : 'bg-gray-400'}`} />
                 {isOnline ? "Available for Orders" : "Currently Offline"}
               </Button>
-              
+
               <Link href="/identity-verification">
-                <Button 
-                  variant="outline" 
-                  className="w-full py-2 rounded-xl border-2 font-medium transition-all hover:bg-blue-50" 
+                <Button
+                  variant="outline"
+                  className="w-full py-2 rounded-xl border-2 font-medium transition-all hover:bg-blue-50"
                   style={{ borderColor: COLORS.PRIMARY, color: COLORS.PRIMARY }}
                 >
                   Complete Identity Verification
@@ -348,7 +434,7 @@ function DriverDashboardContent() {
                 variant={selectedTab === "jobs" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3 text-left"
                 onClick={() => setSelectedTab("jobs")}
-                style={selectedTab === "jobs" ? { 
+                style={selectedTab === "jobs" ? {
                   backgroundColor: COLORS.PRIMARY,
                   color: COLORS.WHITE
                 } : {}}
@@ -363,7 +449,7 @@ function DriverDashboardContent() {
                 variant={selectedTab === "navigate" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("navigate")}
-                style={selectedTab === "navigate" ? { 
+                style={selectedTab === "navigate" ? {
                   backgroundColor: COLORS.PRIMARY,
                   color: COLORS.WHITE
                 } : {}}
@@ -375,7 +461,7 @@ function DriverDashboardContent() {
                 variant={selectedTab === "earnings" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("earnings")}
-                style={selectedTab === "earnings" ? { 
+                style={selectedTab === "earnings" ? {
                   backgroundColor: COLORS.PRIMARY,
                   color: COLORS.WHITE
                 } : {}}
@@ -387,7 +473,7 @@ function DriverDashboardContent() {
                 variant={selectedTab === "history" ? "default" : "ghost"}
                 className="w-full justify-start rounded-xl py-3"
                 onClick={() => setSelectedTab("history")}
-                style={selectedTab === "history" ? { 
+                style={selectedTab === "history" ? {
                   backgroundColor: COLORS.PRIMARY,
                   color: COLORS.WHITE
                 } : {}}
@@ -424,7 +510,7 @@ function DriverDashboardContent() {
             <Button
               variant="outline"
               className="w-full rounded-xl border-2 border-red-200 text-red-600 hover:bg-red-50"
-              onClick={() => {/* Logout logic */}}
+              onClick={() => {/* Logout logic */ }}
             >
               Sign Out
             </Button>
@@ -434,7 +520,7 @@ function DriverDashboardContent() {
 
       {/* Overlay for mobile */}
       {isSidebarOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={() => setIsSidebarOpen(false)}
         />
@@ -456,25 +542,46 @@ function DriverDashboardContent() {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-[#0b1a51]">
-                  {selectedTab === "jobs" ? "Available Pickup Orders" : 
-                   selectedTab === "navigate" ? "Navigation & GPS" :
-                   selectedTab === "earnings" ? "Earnings Dashboard" : "Delivery History"}
+                  {selectedTab === "jobs" ? "Available Pickup Orders" :
+                    selectedTab === "navigate" ? "Navigation & GPS" :
+                      selectedTab === "earnings" ? "Earnings Dashboard" : "Delivery History"}
                 </h1>
                 <p className="text-gray-600 text-sm">
                   {selectedTab === "jobs" ? `${sampleJobs.length} orders waiting for pickup` :
-                   selectedTab === "navigate" ? "GPS navigation and route planning" :
-                   selectedTab === "earnings" ? "Track your earnings and payouts" : "Your completed deliveries"}
+                    selectedTab === "navigate" ? "GPS navigation and route planning" :
+                      selectedTab === "earnings" ? "Track your earnings and payouts" : "Your completed deliveries"}
                 </p>
               </div>
             </div>
-            
+
             <div className="flex items-center space-x-3">
-              <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-full hidden sm:inline-flex">
-                {isOnline ? "Available" : "Offline"}
-              </Badge>
+              <div className="flex items-center space-x-2">
+                {/* WebSocket Connection Status */}
+                {(locationConnected || orderConnected || notificationConnected) ? (
+                  <Badge
+                    variant="default"
+                    className="rounded-full px-3 py-1"
+                    style={{ backgroundColor: '#D1FAE5', color: '#059669' }}
+                  >
+                    Real-time connected
+                  </Badge>
+                ) : (locationError || orderError || notificationError) ? (
+                  <Badge
+                    variant="default"
+                    className="rounded-full px-3 py-1"
+                    style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+                  >
+                    Connection error
+                  </Badge>
+                ) : null}
+
+                <Badge className="bg-green-100 text-green-800 px-3 py-1 rounded-full hidden sm:inline-flex">
+                  {isOnline ? "Available" : "Offline"}
+                </Badge>
+              </div>
               <div className="relative" ref={notificationRef}>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   size="icon"
                   onClick={() => setShowNotifications(!showNotifications)}
                   className="rounded-xl border-2 border-blue-200 hover:border-blue-400 hover:bg-blue-50 relative"
@@ -493,8 +600,8 @@ function DriverDashboardContent() {
                     <div className="p-4 border-b border-gray-200">
                       <div className="flex items-center justify-between">
                         <h3 className="text-lg font-semibold text-[#0b1a51]">Notifications</h3>
-                        <Button 
-                          variant="ghost" 
+                        <Button
+                          variant="ghost"
                           size="sm"
                           onClick={() => setShowNotifications(false)}
                           className="text-gray-500 hover:text-gray-700"
@@ -551,9 +658,9 @@ function DriverDashboardContent() {
 
                     {/* Footer */}
                     <div className="p-4 border-t border-gray-200">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
+                      <Button
+                        variant="outline"
+                        size="sm"
                         className="w-full text-[#4682b4] border-[#4682b4] hover:bg-blue-50"
                         onClick={() => {
                           setShowNotifications(false);
@@ -571,7 +678,7 @@ function DriverDashboardContent() {
         </div>
 
         {/* Main Content Area */}
-        <div 
+        <div
           className="flex-1 overflow-auto p-6 relative"
           style={{
             backgroundImage: `url(${mapBackground})`,
@@ -582,298 +689,298 @@ function DriverDashboardContent() {
         >
           {/* Background overlay for better content readability */}
           <div className="absolute inset-0 bg-white/85 backdrop-blur-sm"></div>
-          
+
           {/* Content wrapper */}
           <div className="relative z-10">
-          {/* Jobs Tab - Pickup and Delivery Orders */}
-          {selectedTab === "jobs" && (
-            <div className="space-y-6">
-              {sampleJobs.length === 0 ? (
-                <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
-                  <CardContent className="text-center py-12">
-                    <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto mb-6 flex items-center justify-center">
-                      <Package className="h-10 w-10 text-gray-400" />
-                    </div>
-                    <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Available</h3>
-                    <p className="text-gray-500 mb-6">Check back soon for new pickup orders</p>
-                    <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
-                      Refresh Orders
-                    </Button>
-                  </CardContent>
-                </Card>
-              ) : (
-                <div className="space-y-4">
-                  {sampleJobs.map((job) => (
-                    <Card 
-                      key={job.id} 
-                      className="rounded-3xl border shadow-lg hover:shadow-xl transition-all duration-300"
-                      style={{ 
-                        borderColor: COLORS.PRIMARY,
-                        backgroundColor: COLORS.WHITE 
-                      }}
-                    >
-                      <CardContent className="p-6">
-                        {/* Header with customer name and action buttons */}
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="flex items-center space-x-4">
-                            <div className="w-16 h-16 rounded-full overflow-hidden border-2" style={{ borderColor: COLORS.PRIMARY }}>
-                              <img 
-                                src={accountCircleIcon} 
-                                alt="Customer" 
-                                className="w-full h-full object-cover"
-                                style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
-                              />
-                            </div>
-                            <div>
-                              <h3 className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.customerName}</h3>
-                            </div>
-                          </div>
-                          
-                          <div className="flex space-x-3">
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              className="w-10 h-10 p-0 rounded-full border-2"
-                              style={{ 
-                                borderColor: COLORS.PRIMARY,
-                                backgroundColor: COLORS.PRIMARY,
-                                color: COLORS.WHITE
-                              }}
-                            >
-                              <MessageCircle className="h-5 w-5" />
-                            </Button>
-                            <Button 
-                              variant="outline"
-                              size="sm"
-                              className="w-10 h-10 p-0 rounded-full border-2"
-                              style={{ 
-                                borderColor: COLORS.PRIMARY,
-                                backgroundColor: COLORS.PRIMARY,
-                                color: COLORS.WHITE
-                              }}
-                            >
-                              <Phone className="h-5 w-5" />
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Divider */}
-                        <div className="w-full h-px mb-6" style={{ backgroundColor: '#D4D4D4' }}></div>
-
-                        {/* Route and timing information */}
-                        <div className="space-y-4 mb-6">
-                          {/* Time and progress bar */}
-                          <div className="flex items-center space-x-3">
-                            <Clock className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
-                            <div className="flex-1">
-                              <p className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.estimatedTime}</p>
-                              <div className="w-full h-1 rounded-full mt-2" style={{ backgroundColor: '#D9D9D9' }}>
-                                <div 
-                                  className="h-1 rounded-full" 
-                                  style={{ 
-                                    backgroundColor: COLORS.PRIMARY,
-                                    width: '64%' // Sample progress
-                                  }}
-                                ></div>
+            {/* Jobs Tab - Pickup and Delivery Orders */}
+            {selectedTab === "jobs" && (
+              <div className="space-y-6">
+                {sampleJobs.length === 0 ? (
+                  <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
+                    <CardContent className="text-center py-12">
+                      <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto mb-6 flex items-center justify-center">
+                        <Package className="h-10 w-10 text-gray-400" />
+                      </div>
+                      <h3 className="text-xl font-semibold text-gray-700 mb-2">No Orders Available</h3>
+                      <p className="text-gray-500 mb-6">Check back soon for new pickup orders</p>
+                      <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
+                        Refresh Orders
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <div className="space-y-4">
+                    {sampleJobs.map((job) => (
+                      <Card
+                        key={job.id}
+                        className="rounded-3xl border shadow-lg hover:shadow-xl transition-all duration-300"
+                        style={{
+                          borderColor: COLORS.PRIMARY,
+                          backgroundColor: COLORS.WHITE
+                        }}
+                      >
+                        <CardContent className="p-6">
+                          {/* Header with customer name and action buttons */}
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center space-x-4">
+                              <div className="w-16 h-16 rounded-full overflow-hidden border-2" style={{ borderColor: COLORS.PRIMARY }}>
+                                <img
+                                  src={accountCircleIcon}
+                                  alt="Customer"
+                                  className="w-full h-full object-cover"
+                                  style={{ filter: `brightness(0) saturate(100%) invert(27%) sepia(51%) saturate(2878%) hue-rotate(176deg) brightness(102%) contrast(97%)` }}
+                                />
+                              </div>
+                              <div>
+                                <h3 className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.customerName}</h3>
                               </div>
                             </div>
-                          </div>
 
-                          {/* Dotted line connector */}
-                          <div className="flex items-center">
-                            <div className="w-5 h-5 flex-shrink-0"></div>
-                            <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
-                          </div>
-
-                          {/* Distance */}
-                          <div className="flex items-center space-x-3">
-                            <div className="h-5 w-5 flex items-center justify-center">
-                              <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.PRIMARY }}></div>
+                            <div className="flex space-x-3">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-10 h-10 p-0 rounded-full border-2"
+                                style={{
+                                  borderColor: COLORS.PRIMARY,
+                                  backgroundColor: COLORS.PRIMARY,
+                                  color: COLORS.WHITE
+                                }}
+                              >
+                                <MessageCircle className="h-5 w-5" />
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="w-10 h-10 p-0 rounded-full border-2"
+                                style={{
+                                  borderColor: COLORS.PRIMARY,
+                                  backgroundColor: COLORS.PRIMARY,
+                                  color: COLORS.WHITE
+                                }}
+                              >
+                                <Phone className="h-5 w-5" />
+                              </Button>
                             </div>
-                            <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.distance}</p>
                           </div>
 
-                          {/* Dotted line connector */}
-                          <div className="flex items-center">
-                            <div className="w-5 h-5 flex-shrink-0"></div>
-                            <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
+                          {/* Divider */}
+                          <div className="w-full h-px mb-6" style={{ backgroundColor: '#D4D4D4' }}></div>
+
+                          {/* Route and timing information */}
+                          <div className="space-y-4 mb-6">
+                            {/* Time and progress bar */}
+                            <div className="flex items-center space-x-3">
+                              <Clock className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+                              <div className="flex-1">
+                                <p className="text-xl font-medium" style={{ color: COLORS.TEXT }}>{job.estimatedTime}</p>
+                                <div className="w-full h-1 rounded-full mt-2" style={{ backgroundColor: '#D9D9D9' }}>
+                                  <div
+                                    className="h-1 rounded-full"
+                                    style={{
+                                      backgroundColor: COLORS.PRIMARY,
+                                      width: '64%' // Sample progress
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Dotted line connector */}
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 flex-shrink-0"></div>
+                              <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
+                            </div>
+
+                            {/* Distance */}
+                            <div className="flex items-center space-x-3">
+                              <div className="h-5 w-5 flex items-center justify-center">
+                                <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS.PRIMARY }}></div>
+                              </div>
+                              <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.distance}</p>
+                            </div>
+
+                            {/* Dotted line connector */}
+                            <div className="flex items-center">
+                              <div className="w-5 h-5 flex-shrink-0"></div>
+                              <div className="w-px h-8 ml-2.5 border-l-2 border-dashed" style={{ borderColor: COLORS.PRIMARY }}></div>
+                            </div>
+
+                            {/* Destination */}
+                            <div className="flex items-center space-x-3">
+                              <MapPin className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
+                              <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.deliveryAddress}</p>
+                            </div>
                           </div>
 
-                          {/* Destination */}
-                          <div className="flex items-center space-x-3">
-                            <MapPin className="h-5 w-5" style={{ color: COLORS.PRIMARY }} />
-                            <p className="text-base font-medium" style={{ color: COLORS.TEXT }}>{job.deliveryAddress}</p>
-                          </div>
-                        </div>
-
-                        {/* Action buttons */}
-                        <div className="flex space-x-3">
-                          <Button 
-                            onClick={() => handleDeclineJob(job.id)}
-                            className="flex-1 rounded-2xl py-2 px-6 font-normal"
-                            style={{ 
-                              backgroundColor: COLORS.PRIMARY,
-                              color: COLORS.WHITE
-                            }}
-                          >
-                            Decline
-                          </Button>
-                          <Button 
-                            onClick={() => handleAcceptJob(job.id)}
-                            disabled={acceptJobMutation.isPending}
-                            className="flex-1 rounded-2xl py-2 px-6 font-normal"
-                            style={{ 
-                              backgroundColor: COLORS.ACTIVE,
-                              color: COLORS.WHITE
-                            }}
-                          >
-                            {acceptJobMutation.isPending ? "Accepting..." : "Accept"}
-                          </Button>
-                        </div>
-
-                        {/* View Details Link */}
-                        <div className="mt-3">
-                          <Link href="/delivery-detail">
-                            <Button 
-                              variant="outline"
-                              className="w-full rounded-2xl py-2 px-6 font-normal border"
-                              style={{ 
-                                borderColor: COLORS.PRIMARY,
-                                color: COLORS.PRIMARY
+                          {/* Action buttons */}
+                          <div className="flex space-x-3">
+                            <Button
+                              onClick={() => handleDeclineJob(job.id)}
+                              className="flex-1 rounded-2xl py-2 px-6 font-normal"
+                              style={{
+                                backgroundColor: COLORS.PRIMARY,
+                                color: COLORS.WHITE
                               }}
                             >
-                              View Details
+                              Decline
                             </Button>
-                          </Link>
-                        </div>
-
-                        {job.notes && (
-                          <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: '#FFF3CD', border: `1px solid #FFEAA7` }}>
-                            <p className="text-sm font-medium" style={{ color: '#856404' }}>Special Instructions:</p>
-                            <p className="text-sm mt-1" style={{ color: '#6C5A00' }}>{job.notes}</p>
+                            <Button
+                              onClick={() => handleAcceptJob(job.id)}
+                              disabled={acceptJobMutation.isPending}
+                              className="flex-1 rounded-2xl py-2 px-6 font-normal"
+                              style={{
+                                backgroundColor: COLORS.ACTIVE,
+                                color: COLORS.WHITE
+                              }}
+                            >
+                              {acceptJobMutation.isPending ? "Accepting..." : "Accept"}
+                            </Button>
                           </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
 
-          {/* Navigation Tab */}
-          {selectedTab === "navigate" && (
-            <div className="space-y-6">
-              <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-[#0b1a51]">
-                    <div className="p-2 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mr-3">
-                      <Navigation className="h-5 w-5 text-white" />
-                    </div>
-                    GPS Navigation & Routes
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <Navigation className="h-16 w-16 text-blue-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-blue-600 mb-2">No Active Route</h3>
-                    <p className="text-gray-500 mb-6">Accept an order to start navigation</p>
-                    <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
-                      Update Location
-                    </Button>
+                          {/* View Details Link */}
+                          <div className="mt-3">
+                            <Link href="/delivery-detail">
+                              <Button
+                                variant="outline"
+                                className="w-full rounded-2xl py-2 px-6 font-normal border"
+                                style={{
+                                  borderColor: COLORS.PRIMARY,
+                                  color: COLORS.PRIMARY
+                                }}
+                              >
+                                View Details
+                              </Button>
+                            </Link>
+                          </div>
+
+                          {job.notes && (
+                            <div className="mt-4 p-3 rounded-xl" style={{ backgroundColor: '#FFF3CD', border: `1px solid #FFEAA7` }}>
+                              <p className="text-sm font-medium" style={{ color: '#856404' }}>Special Instructions:</p>
+                              <p className="text-sm mt-1" style={{ color: '#6C5A00' }}>{job.notes}</p>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                )}
+              </div>
+            )}
 
-          {/* Earnings Tab */}
-          {selectedTab === "earnings" && (
-            <div className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Navigation Tab */}
+            {selectedTab === "navigate" && (
+              <div className="space-y-6">
                 <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
                   <CardHeader>
                     <CardTitle className="flex items-center text-[#0b1a51]">
-                      <DollarSign className="h-5 w-5 mr-2" />
-                      Earnings Summary
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="flex justify-between items-center p-4 bg-green-50 rounded-xl border-2 border-green-200">
-                      <span className="font-medium text-green-700">Today's Earnings:</span>
-                      <span className="text-2xl font-bold text-green-800">₦{sampleEarnings.todayEarnings.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                      <span className="font-medium text-blue-700">Weekly Earnings:</span>
-                      <span className="text-2xl font-bold text-blue-800">₦{sampleEarnings.weeklyEarnings.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
-                      <span className="font-medium text-purple-700">Total Earnings:</span>
-                      <span className="text-2xl font-bold text-purple-800">₦{sampleEarnings.totalEarnings.toLocaleString()}</span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
-                  <CardHeader>
-                    <CardTitle className="flex items-center text-[#0b1a51]">
-                      <DollarSign className="h-5 w-5 mr-2" />
-                      Withdraw Earnings
+                      <div className="p-2 bg-gradient-to-br from-blue-400 to-blue-600 rounded-full mr-3">
+                        <Navigation className="h-5 w-5 text-white" />
+                      </div>
+                      GPS Navigation & Routes
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-green-200 mb-4">
-                      <h3 className="text-green-800 font-semibold text-lg mb-2">Available Balance</h3>
-                      <p className="text-4xl font-bold text-green-700">₦{sampleEarnings.totalEarnings.toLocaleString()}</p>
-                    </div>
-                    <Link href="/driver-withdrawal">
-                      <Button className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 py-3">
-                        Withdraw Earnings
+                    <div className="text-center py-12">
+                      <Navigation className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-blue-600 mb-2">No Active Route</h3>
+                      <p className="text-gray-500 mb-6">Accept an order to start navigation</p>
+                      <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
+                        Update Location
                       </Button>
-                    </Link>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* History Tab */}
-          {selectedTab === "history" && (
-            <div className="space-y-6">
-              <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
-                <CardHeader>
-                  <CardTitle className="flex items-center text-[#0b1a51]">
-                    <Clock className="h-5 w-5 mr-2" />
-                    Delivery History
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-center py-12">
-                    <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-700 mb-2">No delivery history yet</h3>
-                    <p className="text-gray-500 mb-6">Complete your first delivery to see history here</p>
-                    <div className="flex space-x-3">
-                      <Link href="/order-history">
-                        <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
-                          View Order History
+            {/* Earnings Tab */}
+            {selectedTab === "earnings" && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-[#0b1a51]">
+                        <DollarSign className="h-5 w-5 mr-2" />
+                        Earnings Summary
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="flex justify-between items-center p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                        <span className="font-medium text-green-700">Today's Earnings:</span>
+                        <span className="text-2xl font-bold text-green-800">₦{sampleEarnings.todayEarnings.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+                        <span className="font-medium text-blue-700">Weekly Earnings:</span>
+                        <span className="text-2xl font-bold text-blue-800">₦{sampleEarnings.weeklyEarnings.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between items-center p-4 bg-purple-50 rounded-xl border-2 border-purple-200">
+                        <span className="font-medium text-purple-700">Total Earnings:</span>
+                        <span className="text-2xl font-bold text-purple-800">₦{sampleEarnings.totalEarnings.toLocaleString()}</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
+                    <CardHeader>
+                      <CardTitle className="flex items-center text-[#0b1a51]">
+                        <DollarSign className="h-5 w-5 mr-2" />
+                        Withdraw Earnings
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border-2 border-green-200 mb-4">
+                        <h3 className="text-green-800 font-semibold text-lg mb-2">Available Balance</h3>
+                        <p className="text-4xl font-bold text-green-700">₦{sampleEarnings.totalEarnings.toLocaleString()}</p>
+                      </div>
+                      <Link href="/driver-withdrawal">
+                        <Button className="w-full rounded-xl bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 py-3">
+                          Withdraw Earnings
                         </Button>
                       </Link>
-                      <Link href="/order-history-detail?status=COMPLETED">
-                        <Button className="rounded-full bg-green-600 hover:bg-green-700">
-                          Test Completed
-                        </Button>
-                      </Link>
-                      <Link href="/order-history-detail?status=CANCELLED">
-                        <Button className="rounded-full bg-red-600 hover:bg-red-700">
-                          Test Cancelled
-                        </Button>
-                      </Link>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            )}
+
+            {/* History Tab */}
+            {selectedTab === "history" && (
+              <div className="space-y-6">
+                <Card className="rounded-2xl border-2 border-blue-200 bg-gradient-to-br from-white to-blue-50 shadow-xl">
+                  <CardHeader>
+                    <CardTitle className="flex items-center text-[#0b1a51]">
+                      <Clock className="h-5 w-5 mr-2" />
+                      Delivery History
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-12">
+                      <CheckCircle className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">No delivery history yet</h3>
+                      <p className="text-gray-500 mb-6">Complete your first delivery to see history here</p>
+                      <div className="flex space-x-3">
+                        <Link href="/order-history">
+                          <Button className="rounded-full bg-blue-600 hover:bg-blue-700">
+                            View Order History
+                          </Button>
+                        </Link>
+                        <Link href="/order-history-detail?status=COMPLETED">
+                          <Button className="rounded-full bg-green-600 hover:bg-green-700">
+                            Test Completed
+                          </Button>
+                        </Link>
+                        <Link href="/order-history-detail?status=CANCELLED">
+                          <Button className="rounded-full bg-red-600 hover:bg-red-700">
+                            Test Cancelled
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
           </div>
         </div>
       </div>
