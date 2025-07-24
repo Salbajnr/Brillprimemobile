@@ -1,7 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useWebSocketChat } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -19,7 +21,9 @@ import {
   Image,
   X
 } from "lucide-react";
+// @ts-ignore
 import accountCircleIcon from "../assets/images/account_circle.svg";
+// @ts-ignore
 import cameraIcon from "../assets/images/camera_icon.png";
 
 // Color constants
@@ -74,6 +78,9 @@ export default function ChatPage() {
   const [showCallMenu, setShowCallMenu] = useState(false);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // WebSocket integration for real-time chat
+  const { connected: wsConnected, chatMessages: wsMessages, sendChatMessage, connectionError: wsError } = useWebSocketChat();
 
   // Get conversations for current user based on role
   const { data: conversations = [], isLoading: loadingConversations } = useQuery({
@@ -113,12 +120,65 @@ export default function ChatPage() {
       if (!response.ok) throw new Error('Failed to send message');
       return response.json();
     },
-    onSuccess: () => {
+    onSuccess: (data: ChatMessage) => {
+      // Update queries to refresh the UI
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', user?.id] });
       setNewMessage("");
+      
+      // Also send via WebSocket for real-time delivery
+      if (selectedConversation) {
+        const conversation = conversations.find((c: Conversation) => c.id === selectedConversation);
+        if (conversation) {
+          // Determine recipient based on user role
+          let recipientId: string;
+          let recipientRole: ClientRole;
+          
+          if (user?.role === "CONSUMER") {
+            recipientId = conversation.vendorId.toString();
+            recipientRole = ClientRole.MERCHANT;
+          } else if (user?.role === "MERCHANT") {
+            recipientId = conversation.customerId.toString();
+            recipientRole = ClientRole.CONSUMER;
+          } else if (user?.role === "DRIVER") {
+            // For drivers, determine if they're talking to merchant or consumer
+            if (conversation.conversationType === "PICKUP") {
+              recipientId = conversation.vendorId.toString();
+              recipientRole = ClientRole.MERCHANT;
+            } else {
+              recipientId = conversation.customerId.toString();
+              recipientRole = ClientRole.CONSUMER;
+            }
+          } else {
+            // Default fallback
+            recipientId = conversation.customerId.toString();
+            recipientRole = ClientRole.CONSUMER;
+          }
+          
+          // Send the message via WebSocket
+          sendChatMessage(recipientId, recipientRole, data.content);
+        }
+      }
     }
   });
+  
+  // Process WebSocket messages and add them to the UI
+  useEffect(() => {
+    if (wsMessages.length > 0 && selectedConversation) {
+      // Find new messages for the current conversation
+      const newWsMessages = wsMessages.filter((msg: { type: MessageType; senderId: string; recipientId?: string }) => {
+        // Check if this message belongs to the current conversation
+        // In a real app, you would have a more robust way to match messages to conversations
+        return msg.type === MessageType.CHAT_MESSAGE && 
+               (msg.senderId === String(user?.id) || msg.recipientId === String(user?.id));
+      });
+      
+      if (newWsMessages.length > 0) {
+        // Refresh the messages query to include the new WebSocket messages
+        queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
+      }
+    }
+  }, [wsMessages, selectedConversation, user?.id, queryClient]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -636,6 +696,29 @@ export default function ChatPage() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4" style={{ backgroundColor: '#F8F9FA' }}>
+        {/* WebSocket Connection Status */}
+        {wsConnected ? (
+          <div className="text-center">
+            <Badge 
+              variant="default"
+              className="rounded-full px-3 py-1 mb-2"
+              style={{ backgroundColor: '#D1FAE5', color: '#059669' }}
+            >
+              Real-time connected
+            </Badge>
+          </div>
+        ) : wsError ? (
+          <div className="text-center">
+            <Badge 
+              variant="default"
+              className="rounded-full px-3 py-1 mb-2"
+              style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+            >
+              {wsError}
+            </Badge>
+          </div>
+        ) : null}
+        
         {loadingMessages ? (
           <div className="text-center py-8" style={{ color: COLORS.TEXT + '80' }}>Loading messages...</div>
         ) : (

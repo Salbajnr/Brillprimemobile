@@ -4,6 +4,9 @@ import session from "express-session";
 import { setupVite, serveStatic, log } from "./vite";
 import { registerRoutes } from "./routes";
 import { setupAuth } from "./middleware/auth";
+import { setupWebSocketServer } from "./websocket";
+import { setupAdminRoutes } from "./admin/routes";
+import { adminAuth } from "./middleware/adminAuth";
 
 const app = express();
 app.use(express.json());
@@ -24,6 +27,9 @@ app.use(session({
 // Setup authentication middleware
 app.use(setupAuth());
 
+// Setup admin panel routes with authentication
+app.use('/admin/api', adminAuth, setupAdminRoutes());
+
 // Simple logging middleware for development
 app.use((req, res, next) => {
   const start = Date.now();
@@ -39,6 +45,9 @@ app.use((req, res, next) => {
 (async () => {
   // Register API routes first
   const server = await registerRoutes(app);
+  
+  // Setup WebSocket server
+  setupWebSocketServer(server);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
@@ -67,6 +76,6 @@ app.use((req, res, next) => {
     host: "0.0.0.0",
     reusePort: true,
   }, () => {
-    log(`serving on port ${port}`);
+    log(`HTTP and WebSocket server running on port ${port}`);
   });
 })();

@@ -1,34 +1,18 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
+import { useWebSocketOrders, useWebSocketNotifications, useWebSocketChat } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
+import { MerchantProfile } from "../../../shared/schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { 
-  Bell, ShoppingBag, DollarSign, Eye, MessageCircle, Package, 
+import {
+  Bell, ShoppingBag, DollarSign, Eye, MessageCircle, Package,
   TrendingUp, Users, Clock, CheckCircle, AlertCircle, Truck
 } from "lucide-react";
-
-interface MerchantProfile {
-  id: number;
-  userId: number;
-  businessName: string;
-  businessType: string;
-  businessDescription?: string;
-  businessAddress?: string;
-  businessPhone?: string;
-  businessEmail?: string;
-  businessLogo?: string;
-  isVerified: boolean;
-  subscriptionTier: string;
-  totalSales: number;
-  totalOrders: number;
-  rating: number;
-  reviewCount: number;
-  isActive: boolean;
-}
 
 interface MerchantOrder {
   id: string;
@@ -79,50 +63,130 @@ export default function MerchantDashboard() {
   const [analyticsFilter, setAnalyticsFilter] = useState("7d");
   const queryClient = useQueryClient();
 
+  // WebSocket integration for real-time features
+  const { connected: orderConnected, orderUpdates, sendOrderStatusUpdate, connectionError: orderError } = useWebSocketOrders();
+  const { connected: notificationConnected, notifications: wsNotifications, connectionError: notificationError } = useWebSocketNotifications();
+  const { connected: paymentConnected, chatMessages: paymentConfirmations, connectionError: paymentError } = useWebSocketChat();
+
   // Fetch merchant profile
   const { data: merchantProfile } = useQuery<MerchantProfile>({
     queryKey: ["merchant", "profile"],
-    queryFn: () => apiRequest("GET", "/api/merchant/profile"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/profile");
+      return response.json();
+    },
   });
 
   // Fetch dashboard stats
   const { data: dashboardStats } = useQuery<DashboardStats>({
     queryKey: ["merchant", "dashboard-stats"],
-    queryFn: () => apiRequest("GET", "/api/merchant/dashboard-stats"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/dashboard-stats");
+      return response.json();
+    },
     refetchInterval: 60000, // Refresh every minute
   });
 
   // Fetch orders
   const { data: orders = [], isLoading: ordersLoading } = useQuery<MerchantOrder[]>({
     queryKey: ["merchant", "orders"],
-    queryFn: () => apiRequest("GET", "/api/merchant/orders"),
+    queryFn: async () => {
+      const response = await apiRequest("GET", "/api/merchant/orders");
+      return response.json();
+    },
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
   // Fetch analytics
   const { data: analytics = [] } = useQuery<MerchantAnalytics[]>({
     queryKey: ["merchant", "analytics", analyticsFilter],
-    queryFn: () => apiRequest("GET", `/api/merchant/analytics?period=${analyticsFilter}`),
+    queryFn: async () => {
+      const response = await apiRequest("GET", `/api/merchant/analytics?period=${analyticsFilter}`);
+      return response.json();
+    },
   });
 
   // Update order status mutation
   const updateOrderStatusMutation = useMutation({
     mutationFn: ({ orderId, status }: { orderId: string; status: string }) =>
       apiRequest("PUT", `/api/merchant/order/${orderId}/status`, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
-      queryClient.invalidateQueries({ queryKey: ["merchant", "dashboard-stats"] });
-    },
+    onSuccess: async (response: Response) => {
+        const data = await response.json();
+        queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
+        queryClient.invalidateQueries({ queryKey: ["merchant", "dashboard-stats"] });
+
+        // Send real-time order status update via WebSocket
+        if (data?.order) {
+          // Notify customer and driver about order status change
+          const recipientIds = [data.order.buyerId.toString()];
+          if (data.order.driverId) {
+            recipientIds.push(data.order.driverId.toString());
+          }
+          sendOrderStatusUpdate(data.order.id, status, recipientIds);
+        }
+      },
   });
+
+
 
   // Request delivery mutation
   const requestDeliveryMutation = useMutation({
     mutationFn: (deliveryData: any) =>
       apiRequest("POST", "/api/merchant/request-delivery", deliveryData),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
-    },
+    onSuccess: async (response: Response) => {
+        const data = await response.json();
+        queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
+
+        // Send real-time notification to nearby drivers about new delivery request
+        if (data?.deliveryRequest) {
+          // In a real implementation, this would broadcast to all drivers in the area
+          console.log(`Broadcasting delivery request ${data.deliveryRequest.id} to nearby drivers`);
+        }
+      },
   });
+
+  // Process WebSocket order updates
+  useEffect(() => {
+    if (Object.keys(orderUpdates).length > 0) {
+      // Process new order updates from WebSocket
+      Object.entries(orderUpdates).forEach(([orderId, update]: [string, any]) => {
+        // Refresh the orders data when we receive updates
+        queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
+        queryClient.invalidateQueries({ queryKey: ["merchant", "dashboard-stats"] });
+        console.log(`Order ${orderId} status updated to ${update.status}`);
+      });
+    }
+  }, [orderUpdates, queryClient]);
+
+  // Process WebSocket notifications
+  useEffect(() => {
+    if (wsNotifications.length > 0) {
+      // Process new notifications from WebSocket
+      wsNotifications.forEach((notification: Record<string, any>) => {
+        if (notification.type === MessageType.NOTIFICATION) {
+          // In a real app, you would add these to a notification system
+          console.log(`New notification: ${notification.payload?.title} - ${notification.payload?.message}`);
+        }
+      });
+    }
+  }, [wsNotifications]);
+
+  // Process WebSocket payment confirmations
+  useEffect(() => {
+    if (paymentConfirmations.length > 0) {
+      // Process new payment confirmations from WebSocket
+      paymentConfirmations.forEach((payment: Record<string, any>) => {
+        if (payment.type === MessageType.PAYMENT_CONFIRMATION) {
+          // Refresh the orders and stats when we receive payment confirmations
+          queryClient.invalidateQueries({ queryKey: ["merchant", "orders"] });
+          queryClient.invalidateQueries({ queryKey: ["merchant", "dashboard-stats"] });
+
+          // In a real app, you would show a notification or update the UI
+          console.log(`Payment confirmed for order ${payment.payload?.orderId}: ${payment.payload?.amount}`);
+        }
+      });
+    }
+  }, [paymentConfirmations, queryClient]);
 
   const handleUpdateOrderStatus = (orderId: string, status: string) => {
     updateOrderStatusMutation.mutate({ orderId, status });
@@ -185,7 +249,26 @@ export default function MerchantDashboard() {
           </div>
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2">
-              <Badge 
+              {/* WebSocket Connection Status */}
+              {(orderConnected || notificationConnected || paymentConnected) ? (
+                <Badge
+                  variant="default"
+                  className="rounded-full px-3 py-1"
+                  style={{ backgroundColor: '#D1FAE5', color: '#059669' }}
+                >
+                  Real-time connected
+                </Badge>
+              ) : (orderError || notificationError || paymentError) ? (
+                <Badge
+                  variant="default"
+                  className="rounded-full px-3 py-1"
+                  style={{ backgroundColor: '#FEE2E2', color: '#DC2626' }}
+                >
+                  Connection error
+                </Badge>
+              ) : null}
+
+              <Badge
                 variant={merchantProfile?.isVerified ? "default" : "secondary"}
                 className={merchantProfile?.isVerified ? "bg-green-600" : "bg-gray-400"}
               >
@@ -197,9 +280,9 @@ export default function MerchantDashboard() {
             </div>
             <Button variant="outline" size="icon">
               <Bell className="h-4 w-4" />
-              {dashboardStats?.unreadMessages > 0 && (
+              {(dashboardStats?.unreadMessages ?? 0) > 0 && (
                 <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {dashboardStats.unreadMessages}
+                  {dashboardStats?.unreadMessages}
                 </span>
               )}
             </Button>
@@ -516,8 +599,8 @@ export default function MerchantDashboard() {
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 Customer Messages
-                {dashboardStats?.unreadMessages > 0 && (
-                  <Badge variant="destructive">{dashboardStats.unreadMessages} unread</Badge>
+                {(dashboardStats?.unreadMessages ?? 0) > 0 && (
+                  <Badge variant="destructive">{dashboardStats?.unreadMessages ?? 0} unread</Badge>
                 )}
               </CardTitle>
             </CardHeader>

@@ -13,8 +13,12 @@ import {
   Truck,
   Phone,
   MessageSquare,
-  Navigation
+  Navigation,
+  Wifi,
+  WifiOff
 } from "lucide-react";
+import { useWebSocketOrders, useWebSocketNotifications } from "@/hooks/use-websocket";
+import { ClientRole, MessageType } from "../../../server/websocket";
 import { useAuth } from "@/hooks/use-auth";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 import fuelIcon from "../assets/images/order_fuel_icon.png";
@@ -252,12 +256,32 @@ const getReturnPath = (userRole: string) => {
 export default function OrderHistoryDetail() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
+  const { connected: ordersConnected, orderUpdates, connectionError: ordersError } = useWebSocketOrders();
+  const { connected: notificationsConnected, notifications } = useWebSocketNotifications();
   
   const userRole = user?.role || 'CONSUMER';
-  const orderDetail = getSampleOrderDetail(userRole);
-  const statusConfig = getStatusConfig(orderDetail.status);
+  const [orderDetail, setOrderDetail] = useState<OrderDetail>(getSampleOrderDetail(userRole));
+  const [statusConfig, setStatusConfig] = useState(getStatusConfig(orderDetail.status));
   const pageTitle = getPageTitle(userRole);
   const returnPath = getReturnPath(userRole);
+  
+  // Process order updates from WebSocket
+  useEffect(() => {
+    if (Object.keys(orderUpdates).length > 0 && orderUpdates[orderDetail.id]) {
+      const update = orderUpdates[orderDetail.id];
+      console.log(`Updating order ${orderDetail.id} status to ${update.status}`);
+      
+      setOrderDetail(prevOrder => ({
+        ...prevOrder,
+        status: update.status
+      }));
+    }
+  }, [orderUpdates, orderDetail.id]);
+  
+  // Update status config when order status changes
+  useEffect(() => {
+    setStatusConfig(getStatusConfig(orderDetail.status));
+  }, [orderDetail.status]);
 
   const handleBackNavigation = () => {
     setLocation(returnPath);
@@ -288,7 +312,19 @@ export default function OrderHistoryDetail() {
             <h1 className="text-xl font-bold" style={{ color: COLORS.TEXT }}>
               {pageTitle}
             </h1>
-            <div className="w-10"></div>
+            <div className="w-10 flex items-center justify-center">
+              {ordersConnected ? (
+                <Badge className="bg-green-500 hover:bg-green-600">
+                  <Wifi className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Live</span>
+                </Badge>
+              ) : (
+                <Badge className="bg-gray-500 hover:bg-gray-600">
+                  <WifiOff className="h-3 w-3 mr-1" />
+                  <span className="text-xs">Offline</span>
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       </div>

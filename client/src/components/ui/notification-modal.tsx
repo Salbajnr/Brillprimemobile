@@ -6,17 +6,20 @@ import successIcon from "../../assets/images/congratulations_icon.png";
 
 export type NotificationType = "success" | "error" | "email";
 
-interface NotificationModalProps {
+export interface NotificationModalProps {
   isOpen: boolean;
   onClose: () => void;
   type: NotificationType;
   title: string;
-  description: string;
+  description?: string;
+  message?: string; // Added message prop as an alternative to description
   actionText?: string;
   onAction?: () => void;
   showSecondaryAction?: boolean;
   secondaryActionText?: string;
   onSecondaryAction?: () => void;
+  imageSrc?: string;
+  buttonText?: string;
 }
 
 const getModalConfig = (type: NotificationType) => {
@@ -62,11 +65,14 @@ export function NotificationModal({
   type,
   title,
   description,
+  message,
   actionText = "OK",
   onAction,
   showSecondaryAction = false,
   secondaryActionText = "Cancel",
   onSecondaryAction,
+  imageSrc,
+  buttonText,
 }: NotificationModalProps) {
   const config = getModalConfig(type);
 
@@ -93,7 +99,7 @@ export function NotificationModal({
           {/* Icon */}
           <div className="flex justify-center">
             <img 
-              src={config.icon} 
+              src={imageSrc || config.icon} 
               alt={config.iconAlt}
               className={`${config.iconSize} object-contain`}
             />
@@ -106,7 +112,7 @@ export function NotificationModal({
           
           {/* Description */}
           <DialogDescription className="text-[var(--brill-text-light)] text-sm leading-relaxed px-2">
-            {description}
+            {description || message}
           </DialogDescription>
         </DialogHeader>
 
@@ -116,7 +122,7 @@ export function NotificationModal({
             onClick={handlePrimaryAction}
             className={`w-full py-3 rounded-xl text-white font-medium ${config.buttonColor}`}
           >
-            {actionText}
+            {buttonText || actionText}
           </Button>
           
           {showSecondaryAction && (

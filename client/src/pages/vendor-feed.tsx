@@ -40,7 +40,7 @@ const POST_TYPES = [
   { value: "PROMOTION", label: "Promotion", icon: "🏷️" },
   { value: "RESTOCK", label: "Restock Alert", icon: "📦" },
   { value: "ANNOUNCEMENT", label: "Announcement", icon: "📢" },
-];
+] as const;
 
 export default function VendorFeed() {
   const { user } = useAuth();
@@ -50,29 +50,40 @@ export default function VendorFeed() {
   const queryClient = useQueryClient();
 
   // Create post form state
-  const [newPost, setNewPost] = useState({
+  type PostFormState = {
+    title: string;
+    content: string;
+    postType: typeof POST_TYPES[number]['value'];
+    tags: string;
+    originalPrice: string;
+    discountPrice: string;
+    discountPercentage: string;
+    validUntil: string;
+  };
+
+  const [newPost, setNewPost] = useState<PostFormState>({
+    title: string;
+    content: string;
+    postType: "PRODUCT_UPDATE" | "NEW_PRODUCT" | "PROMOTION" | "ANNOUNCEMENT" | "RESTOCK";
+    tags: string;
+    originalPrice: string;
+    discountPrice: string;
+    discountPercentage: string;
+    validUntil: string;
+  }>({
     title: "",
     content: "",
-    postType: "ANNOUNCEMENT" as const,
+    postType: "ANNOUNCEMENT",
     tags: "",
     originalPrice: "",
     discountPrice: "",
     discountPercentage: "",
-    validUntil: "",
-  });
-
-  // Fetch vendor posts
-  const { data: posts = [], isLoading } = useQuery({
-    queryKey: ['/api/vendor-posts', selectedFilter],
-    queryFn: () => apiRequest('/api/vendor-posts' + (selectedFilter !== 'ALL' ? `?postType=${selectedFilter}` : ''))
+    validUntil: ""
   });
 
   // Create post mutation
   const createPostMutation = useMutation({
-    mutationFn: (postData: InsertVendorPost) => apiRequest('/api/vendor-posts', {
-      method: 'POST',
-      body: JSON.stringify(postData)
-    }),
+    mutationFn: (postData: InsertVendorPost) => apiRequest('POST', '/api/vendor-posts', postData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vendor-posts'] });
       setIsCreatePostOpen(false);
@@ -89,31 +100,34 @@ export default function VendorFeed() {
     }
   });
 
-  // Add to cart mutation
-  const addToCartMutation = useMutation({
-    mutationFn: (data: { productId: number; quantity: number }) => 
-      apiRequest('/api/cart', { 
-        method: 'POST', 
-        body: JSON.stringify({ 
-          userId: user?.id, 
-          productId: data.productId, 
-          quantity: data.quantity 
-        }) 
-      }),
-    onSuccess: () => {
-      // Show success message
+  // Fetch vendor posts
+  const { data: posts = [], isLoading } = useQuery<ExtendedVendorPost[]>({
+    queryKey: ['/api/vendor-posts', selectedFilter],
+    queryFn: async () => {
+      const response = await apiRequest('GET', '/api/vendor-posts' + (selectedFilter !== 'ALL' ? `?postType=${selectedFilter}` : ''));
+      return response.json();
     }
   });
 
-  // Add to wishlist mutation (placeholder for now)
-  const addToWishlistMutation = useMutation({
-    mutationFn: (productId: number) => 
-      apiRequest('/api/wishlist', { 
-        method: 'POST', 
-        body: JSON.stringify({ userId: user?.id, productId }) 
+  // Add to cart mutation
+  const addToCartMutation = useMutation<unknown, Error, { productId: string; quantity: number }>({
+    mutationFn: (data: { productId: string; quantity: number }) => 
+      apiRequest('POST', '/api/cart', { 
+        userId: user?.id, 
+        productId: data.productId, 
+        quantity: data.quantity 
       }),
     onSuccess: () => {
-      // Show success message
+      queryClient.invalidateQueries({ queryKey: ['/api/cart'] });
+    }
+  });
+
+  // Add to wishlist mutation
+  const addToWishlistMutation = useMutation<unknown, Error, string>({
+    mutationFn: (productId: string) => 
+      apiRequest('POST', '/api/wishlist', { userId: user?.id, productId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/wishlist'] });
     }
   });
 
@@ -125,33 +139,34 @@ export default function VendorFeed() {
       title: newPost.title,
       content: newPost.content,
       postType: newPost.postType,
-      tags: newPost.tags ? newPost.tags.split(',').map(tag => tag.trim()) : [],
-      originalPrice: newPost.originalPrice ? newPost.originalPrice : undefined,
-      discountPrice: newPost.discountPrice ? newPost.discountPrice : undefined,
-      discountPercentage: newPost.discountPercentage ? parseInt(newPost.discountPercentage) : undefined,
-      validUntil: newPost.validUntil ? new Date(newPost.validUntil) : undefined,
+      tags: newPost.tags ? newPost.tags.split(',').map(tag => tag.trim()).filter(Boolean) : [],
+      ...(newPost.originalPrice && { originalPrice: newPost.originalPrice }),
+      ...(newPost.discountPrice && { discountPrice: newPost.discountPrice }),
+      ...(newPost.discountPercentage && { discountPercentage: parseInt(newPost.discountPercentage) }),
+      ...(newPost.validUntil && { validUntil: new Date(newPost.validUntil) })
     };
 
     createPostMutation.mutate(postData);
   };
 
   const formatTimeAgo = (date: Date) => {
+    if (!date) return "";
     const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - new Date(date).getTime()) / (1000 * 60 * 60));
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
     
     if (diffInHours < 1) return "Just now";
     if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
     if (diffInDays < 7) return `${diffInDays}d ago`;
-    return new Date(date).toLocaleDateString();
+    return date.toLocaleDateString();
   };
 
-  const getPostTypeIcon = (postType: string) => {
+  const getPostTypeIcon = (postType: typeof POST_TYPES[number]['value']) => {
     const type = POST_TYPES.find(t => t.value === postType);
     return type?.icon || "📝";
   };
 
-  const getPostTypeBadgeColor = (postType: string) => {
+  const getPostTypeBadgeColor = (postType: typeof POST_TYPES[number]['value']) => {
     switch (postType) {
       case "NEW_PRODUCT": return "bg-green-100 text-green-800";
       case "PROMOTION": return "bg-red-100 text-red-800";
@@ -199,7 +214,7 @@ export default function VendorFeed() {
                   </div>
                   
                   <div>
-                    <Select value={newPost.postType} onValueChange={(value: any) => setNewPost({ ...newPost, postType: value })}>
+                    <Select value={newPost.postType} onValueChange={(value: typeof POST_TYPES[number]['value']) => setNewPost({ ...newPost, postType: value })}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select post type" />
                       </SelectTrigger>
