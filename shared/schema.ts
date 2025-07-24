@@ -433,12 +433,83 @@ export const phoneVerifications = pgTable("phone_verifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Wallet System
+export const wallets = pgTable("wallets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  balance: decimal("balance", { precision: 12, scale: 2 }).default("0"),
+  currency: text("currency").default("NGN"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Payment Methods
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type", { enum: ["CARD", "BANK_TRANSFER", "APPLE_PAY", "GOOGLE_PAY", "PAYPAL"] }).notNull(),
+  provider: text("provider"), // "VISA", "MASTERCARD", "VERVE", etc.
+  lastFour: text("last_four"),
+  expiryMonth: text("expiry_month"),
+  expiryYear: text("expiry_year"),
+  cardholderName: text("cardholder_name"),
+  bankName: text("bank_name"),
+  accountNumber: text("account_number"),
+  accountName: text("account_name"),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Wallet Transactions
+export const walletTransactions = pgTable("wallet_transactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  walletId: integer("wallet_id").notNull().references(() => wallets.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type", { enum: ["CREDIT", "DEBIT"] }).notNull(),
+  category: text("category", { enum: ["FUNDING", "PAYMENT", "WITHDRAWAL", "REFUND", "TRANSFER"] }).notNull(),
+  amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  balanceBefore: decimal("balance_before", { precision: 12, scale: 2 }).notNull(),
+  balanceAfter: decimal("balance_after", { precision: 12, scale: 2 }).notNull(),
+  description: text("description").notNull(),
+  reference: text("reference").notNull().unique(),
+  paymentMethodId: integer("payment_method_id").references(() => paymentMethods.id),
+  orderId: uuid("order_id").references(() => orders.id),
+  status: text("status", { enum: ["PENDING", "COMPLETED", "FAILED", "CANCELLED"] }).default("PENDING"),
+  gatewayReference: text("gateway_reference"),
+  gatewayResponse: json("gateway_response"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 // Relations
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ many, one }) => ({
   locations: many(userLocations),
   products: many(products),
   orders: many(orders),
   cartItems: many(cartItems),
+  wallet: one(wallets),
+  paymentMethods: many(paymentMethods),
+  walletTransactions: many(walletTransactions),
+}));
+
+export const walletsRelations = relations(wallets, ({ one, many }) => ({
+  user: one(users, { fields: [wallets.userId], references: [users.id] }),
+  transactions: many(walletTransactions),
+}));
+
+export const paymentMethodsRelations = relations(paymentMethods, ({ one, many }) => ({
+  user: one(users, { fields: [paymentMethods.userId], references: [users.id] }),
+  transactions: many(walletTransactions),
+}));
+
+export const walletTransactionsRelations = relations(walletTransactions, ({ one }) => ({
+  wallet: one(wallets, { fields: [walletTransactions.walletId], references: [wallets.id] }),
+  user: one(users, { fields: [walletTransactions.userId], references: [users.id] }),
+  paymentMethod: one(paymentMethods, { fields: [walletTransactions.paymentMethodId], references: [paymentMethods.id] }),
+  order: one(orders, { fields: [walletTransactions.orderId], references: [orders.id] }),
 }));
 
 export const userLocationsRelations = relations(userLocations, ({ one }) => ({
@@ -553,6 +624,9 @@ export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
 export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
 export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
 export const insertSupportTicketSchema = createInsertSchema(supportTickets);
+export const insertWalletSchema = createInsertSchema(wallets);
+export const insertPaymentMethodSchema = createInsertSchema(paymentMethods);
+export const insertWalletTransactionSchema = createInsertSchema(walletTransactions);
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -590,3 +664,9 @@ export type MerchantNotification = typeof merchantNotifications.$inferSelect;
 export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type Wallet = typeof wallets.$inferSelect;
+export type InsertWallet = z.infer<typeof insertWalletSchema>;
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+export type InsertPaymentMethod = z.infer<typeof insertPaymentMethodSchema>;
+export type WalletTransaction = typeof walletTransactions.$inferSelect;
+export type InsertWalletTransaction = z.infer<typeof insertWalletTransactionSchema>;

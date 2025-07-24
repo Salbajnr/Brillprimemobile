@@ -46,12 +46,42 @@ export default function WalletFund() {
     return selectedAmount || 0;
   };
 
-  const handleFundWallet = () => {
+  const handleFundWallet = async () => {
     const amount = getFinalAmount();
     if (amount > 0 && selectedPaymentMethod) {
-      // TODO: Integrate with payment gateway
-      console.log("Funding wallet with:", amount, "using:", selectedPaymentMethod);
-      setLocation("/consumer-home");
+      try {
+        // Get payment method ID from the selected payment method
+        const paymentMethodId = parseInt(selectedPaymentMethod.replace('card', ''));
+        
+        const response = await fetch('/api/wallet/fund', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include',
+          body: JSON.stringify({
+            amount,
+            paymentMethodId
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+          // Success - show success message and redirect
+          console.log('Wallet funded successfully:', data.transactionId);
+          // You could show a success toast here
+          setLocation("/consumer-home");
+        } else {
+          // Error - show error message
+          console.error('Wallet funding failed:', data.message);
+          // You could show an error toast here
+          alert(`Funding failed: ${data.message}`);
+        }
+      } catch (error) {
+        console.error('Network error during wallet funding:', error);
+        alert('Network error. Please try again.');
+      }
     }
   };
 
