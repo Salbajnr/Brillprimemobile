@@ -159,6 +159,9 @@ export interface DashboardMetrics {
   revenueGrowth: number;
   ordersGrowth: number;
   customersGrowth: number;
+  todaysSales: number;
+  activeOrders: number;
+  inventoryLevel: number;
 }
 
 export interface BusinessSummary {

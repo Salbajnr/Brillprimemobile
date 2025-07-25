@@ -7,8 +7,9 @@ interface MetricCardProps {
   value: string | number;
   subtitle?: string;
   icon: LucideIcon;
+  iconColor?: string;
   trend?: {
-    value: number;
+    value: string | number;
     isPositive: boolean;
   };
   className?: string;
@@ -19,6 +20,7 @@ export function MetricCard({
   value, 
   subtitle, 
   icon: Icon, 
+  iconColor = 'text-blue-600',
   trend, 
   className = '' 
 }: MetricCardProps) {
@@ -27,7 +29,7 @@ export function MetricCard({
       <CardContent className="p-4">
         <div className="flex items-center justify-between mb-2">
           <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-            <Icon className="w-5 h-5 text-blue-600" />
+            <Icon className={`w-5 h-5 ${iconColor}`} />
           </div>
           {trend && (
             <div className={`text-xs font-medium ${

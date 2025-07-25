@@ -62,15 +62,6 @@ export default function VendorFeed() {
   };
 
   const [newPost, setNewPost] = useState<PostFormState>({
-    title: string;
-    content: string;
-    postType: "PRODUCT_UPDATE" | "NEW_PRODUCT" | "PROMOTION" | "ANNOUNCEMENT" | "RESTOCK";
-    tags: string;
-    originalPrice: string;
-    discountPrice: string;
-    discountPercentage: string;
-    validUntil: string;
-  }>({
     title: "",
     content: "",
     postType: "ANNOUNCEMENT",

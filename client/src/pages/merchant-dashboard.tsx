@@ -74,7 +74,7 @@ export default function MerchantDashboard() {
     );
   }
 
-  const stats = dashboardData?.stats;
+  const stats = dashboardData?.metrics;
   const business = dashboardData?.business;
   const recentOrders = dashboardData?.recentOrders || [];
   const lowStockProducts = dashboardData?.lowStockProducts || [];
@@ -95,7 +95,7 @@ export default function MerchantDashboard() {
             <div className="flex items-center">
               <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
               <span className="text-xs text-gray-500">
-                {business?.isOpen ? 'Online' : 'Offline'}
+                {business?.operatingHours ? Object.values(business.operatingHours).some(hours => hours.isOpen) ? 'Online' : 'Offline' : 'Offline'}
               </span>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function MerchantDashboard() {
         <div className="grid grid-cols-2 gap-4 mb-6">
           <MetricCard
             title="Today's Sales"
-            value={`₦${stats?.todaysSales?.toLocaleString() || '0'}`}
+            value={`₦${Number(stats?.todaysSales || 0).toLocaleString()}`}
             icon={DollarSign}
             iconColor="text-green-500"
             trend={{ value: '12.5%', isPositive: true }}
@@ -285,15 +285,15 @@ export default function MerchantDashboard() {
             </div>
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
-                <p className="text-lg font-bold text-gray-900">₦285,400</p>
+                <p className="text-lg font-bold text-gray-900">₦{Number(stats?.totalRevenue || 285400).toLocaleString()}</p>
                 <p className="text-xs text-gray-500">Total Revenue</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900">147</p>
+                <p className="text-lg font-bold text-gray-900">{Number(stats?.totalOrders || 147)}</p>
                 <p className="text-xs text-gray-500">Orders</p>
               </div>
               <div>
-                <p className="text-lg font-bold text-gray-900">₦1,940</p>
+                <p className="text-lg font-bold text-gray-900">₦{Number(stats?.averageOrderValue || 1940).toLocaleString()}</p>
                 <p className="text-xs text-gray-500">Avg Order</p>
               </div>
             </div>

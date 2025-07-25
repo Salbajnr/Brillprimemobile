@@ -20,6 +20,7 @@ interface OrderCardProps {
   onUpdateStatus?: (orderId: string, status: Order['status']) => void;
   onChat?: (customerId: string) => void;
   onCall?: (phone: string) => void;
+  showActions?: boolean;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function OrderCard({
   onUpdateStatus, 
   onChat, 
   onCall, 
+  showActions = true,
   className = '' 
 }: OrderCardProps) {
   const getStatusColor = (status: Order['status']) => {
@@ -152,6 +154,7 @@ export function OrderCard({
         </div>
 
         {/* Action Buttons */}
+        {showActions && (
         <div className="flex space-x-2">
           {canAdvanceStatus && onUpdateStatus && (
             <Button 
@@ -197,6 +200,7 @@ export function OrderCard({
             </Button>
           )}
         </div>
+        )}
       </CardContent>
     </Card>
   );

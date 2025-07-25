@@ -12,11 +12,11 @@ interface AuthState {
   isAuthenticated: () => boolean;
 }
 
-export const useAuth = create<AuthState>((set, get) => ({
+export const useAuth = create<AuthState>((set: (partial: Partial<AuthState>) => void, get: () => AuthState) => ({
   user: localStorage.getUser(),
   selectedRole: localStorage.getRole(),
   
-  setUser: (user) => {
+  setUser: (user: User | null) => {
     console.log("useAuth.setUser called with:", user);
     if (user) {
       localStorage.setUser(user);
@@ -26,14 +26,14 @@ export const useAuth = create<AuthState>((set, get) => ({
     set({ user, selectedRole: user?.role || null });
   },
   
-  setSelectedRole: (role) => {
+  setSelectedRole: (role: "CONSUMER" | "MERCHANT" | "DRIVER" | null) => {
     if (role) {
       localStorage.setRole(role);
     }
     set({ selectedRole: role });
   },
 
-  updateUser: (updates) => {
+  updateUser: (updates: Partial<User>) => {
     const currentUser = get().user;
     if (currentUser) {
       const updatedUser = { ...currentUser, ...updates };
