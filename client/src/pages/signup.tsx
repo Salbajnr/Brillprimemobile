@@ -137,38 +137,10 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
+        (profile) => {
           console.log("Apple signup success:", profile);
-          try {
-            const response = await fetch('/api/auth/social-login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                provider: 'apple',
-                socialId: profile.id,
-                email: profile.email,
-                name: profile.name,
-                picture: profile.picture
-              })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              console.log('Social registration successful:', data.user);
-              setLocation("/consumer-home"); // Redirect to home since user is now logged in
-            } else {
-              setErrorMessage(data.message || "Registration failed. Please try again.");
-              setShowErrorModal(true);
-            }
-          } catch (error) {
-            console.error('Network error during social registration:', error);
-            setErrorMessage("Network error. Please try again.");
-            setShowErrorModal(true);
-          }
+          // TODO: Send profile to backend for registration
+          setLocation("/otp-verification");
         },
         (error) => {
           setErrorMessage("Apple sign-up failed. Please try again.");
@@ -196,38 +168,10 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
+        (profile) => {
           console.log("Facebook signup success:", profile);
-          try {
-            const response = await fetch('/api/auth/social-login', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include',
-              body: JSON.stringify({
-                provider: 'facebook',
-                socialId: profile.id,
-                email: profile.email,
-                name: profile.name,
-                picture: profile.picture
-              })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              console.log('Social registration successful:', data.user);
-              setLocation("/consumer-home"); // Redirect to home since user is now logged in
-            } else {
-              setErrorMessage(data.message || "Registration failed. Please try again.");
-              setShowErrorModal(true);
-            }
-          } catch (error) {
-            console.error('Network error during social registration:', error);
-            setErrorMessage("Network error. Please try again.");
-            setShowErrorModal(true);
-          }
+          // TODO: Send profile to backend for registration
+          setLocation("/otp-verification");
         },
         (error) => {
           setErrorMessage("Facebook sign-up failed. Please try again.");

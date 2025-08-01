@@ -3,10 +3,9 @@ import { db } from '../db';
 import { eq, and, desc } from 'drizzle-orm';
 import {
   users,
-  transactions,
   supportTickets,
-  reports,
-  locations,
+  contentReports as reports,
+  userLocations,
   adminUsers,
   adminPaymentActions,
   deliveryConfirmations,
@@ -38,19 +37,15 @@ export function setupAdminRoutes() {
 
   // Get user statistics
   router.get('/metrics', async (req, res) => {
-    const [userCount, activeTransactions, openTickets] = await Promise.all([
+    const [userCount, openTickets] = await Promise.all([
       db.query.users.findMany().then(users => users.length),
-      db.query.transactions.findMany({
-        where: eq(transactions.status, 'pending')
-      }).then(txns => txns.length),
       db.query.supportTickets.findMany({
-        where: eq(supportTickets.status, 'open')
+        where: eq(supportTickets.status, 'OPEN')
       }).then(tickets => tickets.length)
     ]);
 
     res.json({
       userCount,
-      activeTransactions,
       openTickets
     });
   });
@@ -74,8 +69,8 @@ export function setupAdminRoutes() {
 
   // Get all reports
   router.get('/reports', async (req, res) => {
-    const allReports = await db.query.reports.findMany({
-      orderBy: desc(reports.createdAt)
+    const allReports = await db.query.contentReports.findMany({
+      orderBy: desc(contentReports.createdAt)
     });
     res.json(allReports);
   });
@@ -83,34 +78,16 @@ export function setupAdminRoutes() {
   // Update report status
   router.post('/reports/:id/status', async (req, res) => {
     const { status } = req.body;
-    await db.update(reports)
+    await db.update(contentReports)
       .set({ status })
-      .where(eq(reports.id, req.params.id));
-    res.json({ success: true });
-  });
-
-  // Get all transactions
-  router.get('/transactions', async (req, res) => {
-    const allTransactions = await db.query.transactions.findMany({
-      orderBy: desc(transactions.createdAt)
-    });
-    res.json(allTransactions);
-  });
-
-  // Update transaction status
-  router.post('/transactions/:id/status', async (req, res) => {
-    const { status } = req.body;
-    await db.update(transactions)
-      .set({ status })
-      .where(eq(transactions.id, req.params.id));
+      .where(eq(contentReports.id, parseInt(req.params.id)));
     res.json({ success: true });
   });
 
   // Get all driver locations
   router.get('/driver-locations', async (req, res) => {
-    const driverLocations = await db.query.locations.findMany({
-      where: eq(locations.type, 'driver'),
-      orderBy: desc(locations.updatedAt)
+    const driverLocations = await db.query.userLocations.findMany({
+      orderBy: desc(userLocations.updatedAt)
     });
     res.json(driverLocations);
   });
@@ -129,12 +106,12 @@ export function setupAdminRoutes() {
   router.post('/content-reports/:reportId/respond', async (req, res) => {
     const { reportId } = req.params;
     const { response, action } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user?.id;
 
     try {
       const moderationResponse = await db.insert(moderationResponses).values({
         reportId: parseInt(reportId),
-        adminId,
+        adminId: adminId || 1,
         response,
         action
       }).returning();
@@ -174,7 +151,7 @@ export function setupAdminRoutes() {
   router.put('/compliance/documents/:documentId', async (req, res) => {
     const { documentId } = req.params;
     const { status } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user?.id;
 
     try {
       const updatedDocument = await db.update(complianceDocuments)
@@ -206,7 +183,7 @@ export function setupAdminRoutes() {
 
   router.post('/payments/distribute', async (req, res) => {
     const { paymentId, recipientId, amount } = req.body;
-    const adminId = req.user.id;
+    const adminId = req.user?.id;
 
     try {
       const distribution = await db.insert(paymentDistributions).values({
@@ -217,7 +194,7 @@ export function setupAdminRoutes() {
       }).returning();
 
       await db.insert(adminPaymentActions).values({
-        adminId,
+        adminId: adminId || 1,
         action: 'DISTRIBUTE',
         paymentId,
         details: { distributionId: distribution[0].id, amount }

@@ -1,7 +1,0 @@
-<?xml version='1.0' encoding='utf-8'?>
-<resources>
-    <string name="app_name">Brillprime</string>
-    <string name="title_activity_main">Brillprime</string>
-    <string name="package_name">com.brillprime.app</string>
-    <string name="custom_url_scheme">com.brillprime.app</string>
-</resources>

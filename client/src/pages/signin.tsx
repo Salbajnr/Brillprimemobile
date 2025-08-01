@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Mail, Lock, Fingerprint } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import googleIcon from "../assets/images/google_icon.png";
 import appleIcon from "../assets/images/apple_icon.png";
 import facebookLogo from "../assets/images/facebook_logo.png";
@@ -13,8 +13,6 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from "@/component
 import { Input } from "@/components/ui/input";
 import { LoadingButton } from "@/components/ui/loading-button";
 import { Button } from "@/components/ui/button";
-import { BiometricLogin } from "@/components/ui/biometric-login";
-import { NotificationModal } from "@/components/ui/notification-modal";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
 import { useAuth } from "@/hooks/use-auth";
@@ -29,8 +27,6 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
-  const [showBiometricLogin, setShowBiometricLogin] = useState(false);
-  const [hasBiometricCredentials, setHasBiometricCredentials] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setUser } = useAuth();
@@ -42,76 +38,6 @@ export default function SignInPage() {
       password: "",
     },
   });
-
-  // Check for biometric credentials on component mount
-  useEffect(() => {
-    const credentialId = localStorage.getItem('biometric_credential_id');
-    const biometricType = localStorage.getItem('biometric_type');
-    setHasBiometricCredentials(!!(credentialId && biometricType));
-  }, []);
-
-  // Handle biometric authentication success
-  const handleBiometricSuccess = async (type: 'fingerprint' | 'face') => {
-    try {
-      // Get stored user email for biometric login
-      const storedEmail = localStorage.getItem('biometric_user_email');
-      
-      if (!storedEmail) {
-        throw new Error('No user email found for biometric authentication');
-      }
-      
-      // Simulate biometric login by calling the regular signin endpoint
-      // In a real implementation, you would have a separate biometric auth endpoint
-      const response = await fetch("/api/auth/biometric-signin", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: storedEmail,
-          biometricType: type,
-          credentialId: localStorage.getItem('biometric_credential_id')
-        }),
-      });
-      
-      const data = await response.json();
-      
-      if (response.ok) {
-        toast({
-          title: "Success",
-          description: "Biometric authentication successful!",
-        });
-        
-        // Navigate based on user role
-        if (data.user?.role === "MERCHANT") {
-          setLocation("/merchant-dashboard");
-        } else if (data.user?.role === "DRIVER") {
-          setLocation("/driver-dashboard");
-        } else {
-          setLocation("/consumer-home");
-        }
-      } else {
-        throw new Error(data.message || "Biometric authentication failed");
-      }
-    } catch (error) {
-      console.error("Biometric authentication error:", error);
-      setErrorMessage("Biometric authentication failed. Please try password login.");
-      setShowErrorModal(true);
-      setShowBiometricLogin(false);
-    }
-  };
-
-  // Handle biometric authentication error
-  const handleBiometricError = (error: string) => {
-    setErrorMessage(error);
-    setShowErrorModal(true);
-    setShowBiometricLogin(false);
-  };
-
-  // Handle biometric authentication cancel
-  const handleBiometricCancel = () => {
-    setShowBiometricLogin(false);
-  };
 
   const signInMutation = useMutation({
     mutationFn: authAPI.signin,
@@ -156,44 +82,10 @@ export default function SignInPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Google login success:", profile);
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                fullName: profile.name,
-                profilePicture: profile.picture,
-                role: "CONSUMER" // Default role for social login
-              }),
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              // Navigate based on user role
-              if (data.user?.role === "MERCHANT") {
-                setLocation("/merchant-dashboard");
-              } else if (data.user?.role === "DRIVER") {
-                setLocation("/driver-dashboard");
-              } else {
-                setLocation("/consumer-home");
-              }
-            } else {
-              throw new Error(data.message || "Social login failed");
-            }
-          } catch (error) {
-            console.error("Backend social auth error:", error);
-            setErrorMessage("Authentication failed. Please try again.");
-            setShowErrorModal(true);
-          }
+        (profile) => {
+          console.log("Google login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
         },
         (error) => {
           setErrorMessage("Google sign-in failed. Please try again.");
@@ -211,44 +103,10 @@ export default function SignInPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Apple login success:", profile);
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                fullName: profile.name,
-                profilePicture: profile.picture,
-                role: "CONSUMER" // Default role for social login
-              }),
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              // Navigate based on user role
-              if (data.user?.role === "MERCHANT") {
-                setLocation("/merchant-dashboard");
-              } else if (data.user?.role === "DRIVER") {
-                setLocation("/driver-dashboard");
-              } else {
-                setLocation("/consumer-home");
-              }
-            } else {
-              throw new Error(data.message || "Social login failed");
-            }
-          } catch (error) {
-            console.error("Backend social auth error:", error);
-            setErrorMessage("Authentication failed. Please try again.");
-            setShowErrorModal(true);
-          }
+        (profile) => {
+          console.log("Apple login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
         },
         (error) => {
           setErrorMessage("Apple sign-in failed. Please try again.");
@@ -266,44 +124,10 @@ export default function SignInPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Facebook login success:", profile);
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-              },
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                fullName: profile.name,
-                profilePicture: profile.picture,
-                role: "CONSUMER" // Default role for social login
-              }),
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-              // Navigate based on user role
-              if (data.user?.role === "MERCHANT") {
-                setLocation("/merchant-dashboard");
-              } else if (data.user?.role === "DRIVER") {
-                setLocation("/driver-dashboard");
-              } else {
-                setLocation("/consumer-home");
-              }
-            } else {
-              throw new Error(data.message || "Social login failed");
-            }
-          } catch (error) {
-            console.error("Backend social auth error:", error);
-            setErrorMessage("Authentication failed. Please try again.");
-            setShowErrorModal(true);
-          }
+        (profile) => {
+          console.log("Facebook login success:", profile);
+          // TODO: Send profile to backend for authentication
+          setLocation("/dashboard");
         },
         (error) => {
           setErrorMessage("Facebook sign-in failed. Please try again.");
@@ -419,41 +243,31 @@ export default function SignInPage() {
           </div>
 
           <div className="flex justify-center gap-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleGoogleLogin}
-            className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-          >
-            <img src={googleIcon} alt="Google" className="w-5 h-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAppleLogin}
-            className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-          >
-            <img src={appleIcon} alt="Apple" className="w-5 h-5" />
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleFacebookLogin}
-            className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-          >
-            <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
-          </Button>
-          {hasBiometricCredentials && (
             <Button
               type="button"
               variant="outline"
-              onClick={() => setShowBiometricLogin(true)}
+              onClick={handleGoogleLogin}
               className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
             >
-              <Fingerprint className="w-5 h-5 text-[var(--brill-secondary)]" />
+              <img src={googleIcon} alt="Google" className="w-5 h-5" />
             </Button>
-          )}
-        </div>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleAppleLogin}
+              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
+            >
+              <img src={appleIcon} alt="Apple" className="w-5 h-5" />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleFacebookLogin}
+              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
+            >
+              <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
+            </Button>
+          </div>
         </div>
 
         <div className="text-center">
@@ -469,29 +283,6 @@ export default function SignInPage() {
           </p>
         </div>
       </div>
-
-      {/* Biometric Login Modal */}
-      {showBiometricLogin && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-3xl p-6 w-full max-w-sm mx-4">
-            <h2 className="text-xl font-bold text-center mb-4">Biometric Authentication</h2>
-            <BiometricLogin
-              onSuccess={handleBiometricSuccess}
-              onError={handleBiometricError}
-              onCancel={handleBiometricCancel}
-            />
-          </div>
-        </div>
-      )}
-
-      {/* Error Modal */}
-      <NotificationModal
-        isOpen={showErrorModal}
-        onClose={() => setShowErrorModal(false)}
-        title="Authentication Error"
-        description={errorMessage}
-        type="error"
-      />
     </div>
   );
 }
