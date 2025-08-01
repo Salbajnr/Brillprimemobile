@@ -62,15 +62,6 @@ export default function VendorFeed() {
   };
 
   const [newPost, setNewPost] = useState<PostFormState>({
-    title: string;
-    content: string;
-    postType: "PRODUCT_UPDATE" | "NEW_PRODUCT" | "PROMOTION" | "ANNOUNCEMENT" | "RESTOCK";
-    tags: string;
-    originalPrice: string;
-    discountPrice: string;
-    discountPercentage: string;
-    validUntil: string;
-  }>({
     title: "",
     content: "",
     postType: "ANNOUNCEMENT",
@@ -357,7 +348,7 @@ export default function VendorFeed() {
                       <p className="font-medium text-[#131313]">{post.vendorName}</p>
                       <div className="flex items-center space-x-2 text-sm text-gray-500">
                         <Clock className="h-3 w-3" />
-                        <span>{formatTimeAgo(post.createdAt)}</span>
+                        <span>{post.createdAt ? formatTimeAgo(post.createdAt) : 'Unknown'}</span>
                       </div>
                     </div>
                   </div>
