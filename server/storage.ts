@@ -807,6 +807,91 @@ export class DatabaseStorage implements IStorage {
     return updatedUser;
   }
 
+  // Payment and transaction methods
+  async getUserWallet(userId: number): Promise<any> {
+    const wallets = await import("@shared/schema").then(m => m.wallets);
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, userId));
+    return wallet || null;
+  }
+
+  async createWallet(userId: number): Promise<any> {
+    const wallets = await import("@shared/schema").then(m => m.wallets);
+    const [wallet] = await db
+      .insert(wallets)
+      .values({ userId, balance: "0.00", currency: "NGN" })
+      .returning();
+    return wallet;
+  }
+
+  async updateWalletBalance(userId: number, amount: string): Promise<any> {
+    const wallets = await import("@shared/schema").then(m => m.wallets);
+    const [wallet] = await db
+      .update(wallets)
+      .set({ balance: amount, lastActivity: new Date(), updatedAt: new Date() })
+      .where(eq(wallets.userId, userId))
+      .returning();
+    return wallet;
+  }
+
+  async getUserPaymentMethods(userId: number): Promise<any[]> {
+    const paymentMethods = await import("@shared/schema").then(m => m.paymentMethods);
+    const methods = await db
+      .select()
+      .from(paymentMethods)
+      .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isActive, true)))
+      .orderBy(desc(paymentMethods.createdAt));
+    return methods;
+  }
+
+  async createPaymentMethod(data: any): Promise<any> {
+    const paymentMethods = await import("@shared/schema").then(m => m.paymentMethods);
+    const [method] = await db
+      .insert(paymentMethods)
+      .values(data)
+      .returning();
+    return method;
+  }
+
+  async getUserTransactions(userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
+    const transactions = await import("@shared/schema").then(m => m.transactions);
+    const userTransactions = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    return userTransactions;
+  }
+
+  async createTransaction(data: any): Promise<any> {
+    const transactions = await import("@shared/schema").then(m => m.transactions);
+    const [transaction] = await db
+      .insert(transactions)
+      .values(data)
+      .returning();
+    return transaction;
+  }
+
+  async updateTransaction(transactionId: string, data: any): Promise<any> {
+    const transactions = await import("@shared/schema").then(m => m.transactions);
+    const [transaction] = await db
+      .update(transactions)
+      .set(data)
+      .where(eq(transactions.id, transactionId))
+      .returning();
+    return transaction;
+  }
+
+  async getTransactionByReference(reference: string): Promise<any> {
+    const transactions = await import("@shared/schema").then(m => m.transactions);
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.paystackReference, reference));
+    return transaction || null;
+  }
+
   // Fuel order operations (placeholder implementations)
   async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any> {
     // Mock implementation - replace with real fuel station data

@@ -1,367 +1,213 @@
-import { Server as HttpServer } from 'http';
-import { WebSocketServer, WebSocket } from 'ws';
-import { log } from './vite';
+import { Server as HTTPServer } from 'http';
+import { Server as SocketIOServer } from 'socket.io';
 
-// Define message types for WebSocket communication
-export enum MessageType {
-  CHAT_MESSAGE = 'CHAT_MESSAGE',
-  LOCATION_UPDATE = 'LOCATION_UPDATE',
-  ORDER_STATUS_UPDATE = 'ORDER_STATUS_UPDATE',
-  NOTIFICATION = 'NOTIFICATION',
-  DELIVERY_STATUS = 'DELIVERY_STATUS',
-  PAYMENT_CONFIRMATION = 'PAYMENT_CONFIRMATION',
-  CONNECTION_ACK = 'CONNECTION_ACK',
-  ERROR = 'ERROR'
-}
+export function setupWebSocket(server: HTTPServer) {
+  const io = new SocketIOServer(server, {
+    cors: {
+      origin: "*",
+      methods: ["GET", "POST"]
+    },
+    path: '/ws'
+  });
 
-// Define client roles
-export enum ClientRole {
-  CONSUMER = 'CONSUMER',
-  MERCHANT = 'MERCHANT',
-  DRIVER = 'DRIVER'
-}
+  io.on('connection', (socket) => {
+    console.log('User connected:', socket.id);
 
-// Define message structure
-export interface WebSocketMessage {
-  id?: string;
-  type: MessageType;
-  senderId: string;
-  senderRole: ClientRole;
-  recipientId?: string;
-  recipientRole?: ClientRole;
-  payload: any;
-  timestamp: number;
-}
-
-// Define client connection structure
-interface ClientConnection {
-  userId: string;
-  role: ClientRole;
-  socket: WebSocket;
-  lastActivity: number;
-}
-
-// WebSocket server class
-export class WebSocketManager {
-  private wss: WebSocketServer;
-  private clients: Map<string, ClientConnection> = new Map();
-  private userIdToConnectionId: Map<string, string> = new Map();
-  
-  constructor(server: HttpServer) {
-    this.wss = new WebSocketServer({ server });
-    this.setupWebSocketServer();
-    this.setupHeartbeat();
-    log('WebSocket server initialized');
-  }
-
-  private setupWebSocketServer() {
-    this.wss.on('connection', (socket: WebSocket) => {
-      // Generate a unique connection ID
-      const connectionId = this.generateConnectionId();
-      
-      // Handle authentication and setup
-      socket.on('message', (message: string) => {
-        try {
-          const parsedMessage = JSON.parse(message.toString()) as WebSocketMessage;
-          
-          // Handle authentication message
-          if (parsedMessage.type === MessageType.CONNECTION_ACK) {
-            const { senderId, senderRole } = parsedMessage;
-            
-            // Register the client
-            this.registerClient(connectionId, senderId, senderRole as ClientRole, socket);
-            
-            // Send acknowledgment
-            this.sendToClient(socket, {
-              type: MessageType.CONNECTION_ACK,
-              senderId: 'server',
-              senderRole: ClientRole.CONSUMER, // Placeholder
-              payload: { status: 'connected', userId: senderId },
-              timestamp: Date.now()
-            });
-            
-            log(`Client connected: ${senderId} (${senderRole})`);
-          } else {
-            // Handle other message types
-            this.handleMessage(parsedMessage);
-          }
-        } catch (error) {
-          log(`Error parsing message: ${error}`);
-          this.sendToClient(socket, {
-            type: MessageType.ERROR,
-            senderId: 'server',
-            senderRole: ClientRole.CONSUMER, // Placeholder
-            payload: { error: 'Invalid message format' },
-            timestamp: Date.now()
-          });
-        }
-      });
-
-      // Handle disconnection
-      socket.on('close', () => {
-        const client = this.findClientByConnectionId(connectionId);
-        if (client) {
-          log(`Client disconnected: ${client.userId} (${client.role})`);
-          this.userIdToConnectionId.delete(client.userId);
-          this.clients.delete(connectionId);
-        }
-      });
-
-      // Handle errors
-      socket.on('error', (error) => {
-        log(`WebSocket error: ${error}`);
-        const client = this.findClientByConnectionId(connectionId);
-        if (client) {
-          this.userIdToConnectionId.delete(client.userId);
-          this.clients.delete(connectionId);
-        }
-      });
+    // Join user to their personal room for notifications
+    socket.on('join_user_room', (userId: number) => {
+      socket.join(`user_${userId}`);
+      console.log(`User ${userId} joined their room`);
     });
-  }
 
-  private setupHeartbeat() {
-    // Ping clients every 30 seconds to keep connections alive
-    setInterval(() => {
-      this.wss.clients.forEach((socket) => {
-        if (socket.readyState === WebSocket.OPEN) {
-          socket.ping();
-        }
-      });
-
-      // Clean up inactive connections (inactive for more than 2 minutes)
-      const now = Date.now();
-      const inactiveTimeout = 2 * 60 * 1000; // 2 minutes
-      
-      this.clients.forEach((client, connectionId) => {
-        if (now - client.lastActivity > inactiveTimeout) {
-          log(`Removing inactive client: ${client.userId} (${client.role})`);
-          this.userIdToConnectionId.delete(client.userId);
-          this.clients.delete(connectionId);
-          client.socket.terminate();
-        }
-      });
-    }, 30000);
-  }
-
-  private registerClient(connectionId: string, userId: string, role: ClientRole, socket: WebSocket) {
-    if (!Object.values(ClientRole).includes(role)) {
-      throw new Error(`Invalid client role: ${role}`);
-    }
-    // If user already has a connection, close the old one
-    const existingConnectionId = this.userIdToConnectionId.get(userId);
-    if (existingConnectionId) {
-      const existingClient = this.clients.get(existingConnectionId);
-      if (existingClient) {
-        existingClient.socket.close();
-        this.clients.delete(existingConnectionId);
-      }
-    }
-    
-    // Register the new connection
-    this.clients.set(connectionId, {
-      userId,
-      role,
-      socket,
-      lastActivity: Date.now()
+    // Join order rooms for real-time order updates
+    socket.on('join_order_room', (orderId: string) => {
+      socket.join(`order_${orderId}`);
+      console.log(`Joined order room: ${orderId}`);
     });
-    
-    this.userIdToConnectionId.set(userId, connectionId);
-  }
 
-  private findClientByConnectionId(connectionId: string): ClientConnection | undefined {
-    return this.clients.get(connectionId);
-  }
+    // Join delivery rooms for driver tracking
+    socket.on('join_delivery_room', (deliveryId: string) => {
+      socket.join(`delivery_${deliveryId}`);
+      console.log(`Joined delivery room: ${deliveryId}`);
+    });
 
-  private findClientByUserId(userId: string): ClientConnection | undefined {
-    const connectionId = this.userIdToConnectionId.get(userId);
-    if (connectionId) {
-      return this.clients.get(connectionId);
-    }
-    return undefined;
-  }
-
-  private generateConnectionId(): string {
-    return `conn_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
-  }
-
-  private sendToClient(socket: WebSocket, message: WebSocketMessage) {
-    try {
-      if (socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify(message));
-      } else {
-        log(`Cannot send message - socket not open for user ${message.recipientId || 'unknown'}`);
+    // Handle driver location updates
+    socket.on('driver_location_update', (data: {
+      driverId: number;
+      latitude: number;
+      longitude: number;
+      orderId?: string;
+    }) => {
+      // Broadcast to order room if orderId is provided
+      if (data.orderId) {
+        socket.to(`order_${data.orderId}`).emit('driver_location', {
+          driverId: data.driverId,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          timestamp: Date.now()
+        });
       }
-    } catch (error) {
-      log(`Error sending message: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
+    });
 
-  private handleMessage(message: WebSocketMessage) {
-    if (!message || !message.type || !message.senderId || !message.senderRole) {
-      log('Invalid message format - missing required fields');
-      return;
-    }
-    // Update last activity for the sender
-    const senderClient = this.findClientByUserId(message.senderId);
-    if (senderClient) {
-      senderClient.lastActivity = Date.now();
-    } else {
-      log(`Message from unknown client: ${message.senderId}`);
-      return;
-    }
-
-    // Process message based on type
-    switch (message.type) {
-      case MessageType.CHAT_MESSAGE:
-        this.handleChatMessage(message);
-        break;
-      case MessageType.LOCATION_UPDATE:
-        this.handleLocationUpdate(message);
-        break;
-      case MessageType.ORDER_STATUS_UPDATE:
-        this.handleOrderStatusUpdate(message);
-        break;
-      case MessageType.NOTIFICATION:
-        this.handleNotification(message);
-        break;
-      case MessageType.DELIVERY_STATUS:
-        this.handleDeliveryStatus(message);
-        break;
-      case MessageType.PAYMENT_CONFIRMATION:
-        this.handlePaymentConfirmation(message);
-        break;
-      default:
-        log(`Unknown message type: ${message.type}`);
-    }
-  }
-
-  private handleChatMessage(message: WebSocketMessage) {
-    // If recipient is specified, send only to them
-    if (message.recipientId) {
-      const recipientClient = this.findClientByUserId(message.recipientId);
-      if (recipientClient) {
-        this.sendToClient(recipientClient.socket, message);
-        log(`Chat message sent to ${message.recipientId}`);
-      } else {
-        // Store message for offline delivery or notification
-        log(`Recipient offline: ${message.recipientId}`);
+    // Handle payment status updates
+    socket.on('payment_status_check', async (reference: string) => {
+      try {
+        const { transactionService } = await import('./services/transaction');
+        const result = await transactionService.verifyPayment(reference);
+        
+        socket.emit('payment_status_update', {
+          reference,
+          status: result.transaction?.status,
+          success: result.success
+        });
+      } catch (error) {
+        socket.emit('payment_status_update', {
+          reference,
+          status: 'FAILED',
+          success: false,
+          error: 'Verification failed'
+        });
       }
-    }
-  }
+    });
 
-  private handleLocationUpdate(message: WebSocketMessage) {
-    // For driver location updates, notify relevant consumers or merchants
-    if (message.senderRole === ClientRole.DRIVER && message.payload.orderId) {
-      // In a real implementation, we would look up which users are tracking this order
-      // and send them the location update
-      log(`Driver location update for order ${message.payload.orderId}`);
-    }
-  }
-
-  private handleOrderStatusUpdate(message: WebSocketMessage) {
-    // Notify relevant parties about order status changes
-    if (message.recipientId) {
-      const recipientClient = this.findClientByUserId(message.recipientId);
-      if (recipientClient) {
-        this.sendToClient(recipientClient.socket, message);
-        log(`Order status update sent to ${message.recipientId}`);
-      }
-    }
-  }
-
-  private handleNotification(message: WebSocketMessage) {
-    // Send notification to specific user
-    if (message.recipientId) {
-      const recipientClient = this.findClientByUserId(message.recipientId);
-      if (recipientClient) {
-        this.sendToClient(recipientClient.socket, message);
-        log(`Notification sent to ${message.recipientId}`);
-      }
-    }
-  }
-
-  private handleDeliveryStatus(message: WebSocketMessage) {
-    // Update delivery status for relevant parties
-    if (message.recipientId) {
-      const recipientClient = this.findClientByUserId(message.recipientId);
-      if (recipientClient) {
-        this.sendToClient(recipientClient.socket, message);
-        log(`Delivery status update sent to ${message.recipientId}`);
-      }
-    }
-  }
-
-  private handlePaymentConfirmation(message: WebSocketMessage) {
-    // Notify about payment confirmation
-    if (message.recipientId) {
-      const recipientClient = this.findClientByUserId(message.recipientId);
-      if (recipientClient) {
-        this.sendToClient(recipientClient.socket, message);
-        log(`Payment confirmation sent to ${message.recipientId}`);
-      }
-    }
-  }
-
-  // Public methods for sending messages from the server
-  public sendNotification(userId: string, payload: any) {
-    const client = this.findClientByUserId(userId);
-    if (client) {
-      this.sendToClient(client.socket, {
-        type: MessageType.NOTIFICATION,
-        senderId: 'server',
-        senderRole: ClientRole.CONSUMER, // Placeholder
-        recipientId: userId,
-        payload,
-        timestamp: Date.now()
+    // Handle order status updates
+    socket.on('order_status_update', (data: {
+      orderId: string;
+      status: string;
+      userId: number;
+      driverId?: number;
+    }) => {
+      // Broadcast to all parties involved in the order
+      io.to(`order_${data.orderId}`).emit('order_status_changed', {
+        orderId: data.orderId,
+        status: data.status,
+        timestamp: Date.now(),
+        updatedBy: data.userId
       });
-      return true;
-    }
-    return false;
-  }
 
-  public broadcastToRole(role: ClientRole, message: Omit<WebSocketMessage, 'timestamp'>) {
-    let count = 0;
-    this.clients.forEach((client) => {
-      if (client.role === role) {
-        this.sendToClient(client.socket, {
+      // Send specific notifications to user and driver
+      io.to(`user_${data.userId}`).emit('order_notification', {
+        type: 'ORDER_STATUS_UPDATE',
+        orderId: data.orderId,
+        status: data.status,
+        message: `Your order status has been updated to ${data.status}`
+      });
+
+      if (data.driverId) {
+        io.to(`user_${data.driverId}`).emit('delivery_notification', {
+          type: 'ORDER_STATUS_UPDATE',
+          orderId: data.orderId,
+          status: data.status,
+          message: `Order ${data.orderId} status updated to ${data.status}`
+        });
+      }
+    });
+
+    // Handle wallet balance updates
+    socket.on('wallet_balance_check', async (userId: number) => {
+      try {
+        const { storage } = await import('./storage');
+        const wallet = await storage.getUserWallet(userId);
+        
+        socket.emit('wallet_balance_update', {
+          balance: wallet?.balance || '0.00',
+          currency: wallet?.currency || 'NGN',
+          lastActivity: wallet?.lastActivity
+        });
+      } catch (error) {
+        socket.emit('wallet_balance_update', {
+          balance: '0.00',
+          currency: 'NGN',
+          error: 'Failed to fetch balance'
+        });
+      }
+    });
+
+    // Handle chat messages
+    socket.on('send_message', async (data: {
+      conversationId: string;
+      senderId: number;
+      content: string;
+      messageType: string;
+    }) => {
+      try {
+        const { storage } = await import('./storage');
+        const message = await storage.sendMessage({
+          conversationId: data.conversationId,
+          senderId: data.senderId,
+          content: data.content,
+          messageType: data.messageType as any
+        });
+
+        // Broadcast to conversation participants
+        io.to(`conversation_${data.conversationId}`).emit('new_message', {
           ...message,
           timestamp: Date.now()
         });
-        count++;
+      } catch (error) {
+        socket.emit('message_error', {
+          error: 'Failed to send message'
+        });
       }
     });
-    log(`Broadcast to ${role}: sent to ${count} clients`);
-    return count;
-  }
 
-  public getActiveConnectionsCount(): { total: number, byRole: Record<ClientRole, number> } {
-    const counts = {
-      total: this.clients.size,
-      byRole: {
-        [ClientRole.CONSUMER]: 0,
-        [ClientRole.MERCHANT]: 0,
-        [ClientRole.DRIVER]: 0
-      }
-    };
-
-    this.clients.forEach((client) => {
-      counts.byRole[client.role]++;
+    // Join conversation rooms
+    socket.on('join_conversation', (conversationId: string) => {
+      socket.join(`conversation_${conversationId}`);
+      console.log(`Joined conversation: ${conversationId}`);
     });
 
-    return counts;
-  }
-}
+    // Handle typing indicators
+    socket.on('typing_start', (data: {
+      conversationId: string;
+      userId: number;
+      userName: string;
+    }) => {
+      socket.to(`conversation_${data.conversationId}`).emit('user_typing', {
+        userId: data.userId,
+        userName: data.userName,
+        timestamp: Date.now()
+      });
+    });
 
-// Create and export a singleton instance
-let websocketManager: WebSocketManager | null = null;
+    socket.on('typing_stop', (data: {
+      conversationId: string;
+      userId: number;
+    }) => {
+      socket.to(`conversation_${data.conversationId}`).emit('user_stopped_typing', {
+        userId: data.userId,
+        timestamp: Date.now()
+      });
+    });
 
-export function setupWebSocketServer(server: HttpServer): WebSocketManager {
-  if (!websocketManager) {
-    websocketManager = new WebSocketManager(server);
-  }
-  return websocketManager;
-}
+    // Handle emergency notifications for drivers
+    socket.on('emergency_alert', (data: {
+      driverId: number;
+      location: { latitude: number; longitude: number };
+      orderId?: string;
+      message: string;
+    }) => {
+      // Broadcast emergency alert to relevant parties
+      io.emit('emergency_notification', {
+        type: 'DRIVER_EMERGENCY',
+        driverId: data.driverId,
+        location: data.location,
+        orderId: data.orderId,
+        message: data.message,
+        timestamp: Date.now()
+      });
+    });
 
-export function getWebSocketManager(): WebSocketManager | null {
-  return websocketManager;
+    socket.on('disconnect', () => {
+      console.log('User disconnected:', socket.id);
+    });
+  });
+
+  // Periodic cleanup and health checks
+  setInterval(() => {
+    const rooms = io.sockets.adapter.rooms;
+    console.log(`Active rooms: ${rooms.size}, Connected clients: ${io.sockets.sockets.size}`);
+  }, 60000); // Log every minute
+
+  return io;
 }

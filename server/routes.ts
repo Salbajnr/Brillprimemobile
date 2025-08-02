@@ -909,6 +909,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Register payment routes
+  const { registerPaymentRoutes } = await import("./routes/payments");
+  registerPaymentRoutes(app);
+
   app.get("/api/support/tickets/:ticketId", async (req, res) => {
     try {
       const { ticketId } = req.params;
