@@ -1,12 +1,12 @@
 {
   "name": "Brillprime - Financial Solutions",
   "short_name": "Brillprime",
-  "description": "Your trusted financial partner for secure transactions and seamless money management",
+  "description": "Financial Solutions Web Platform - Your trusted partner for secure transactions",
   "start_url": "/",
-  "display": "standalone",
+  "display": "browser",
   "background_color": "#0B1A51",
   "theme_color": "#4682B4",
-  "orientation": "portrait-primary",
+
   "icons": [
     {
       "src": "/icon-192.png",
