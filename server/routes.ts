@@ -896,6 +896,102 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Merchant Discovery Routes
+  app.get("/api/merchants/search", async (req, res) => {
+    try {
+      const { lat, lng, radius = 10, category, searchTerm } = req.query;
+      
+      const merchants = await storage.searchMerchants({
+        latitude: lat ? parseFloat(lat as string) : undefined,
+        longitude: lng ? parseFloat(lng as string) : undefined,
+        radius: parseInt(radius as string),
+        category: category as string,
+        searchTerm: searchTerm as string
+      });
+
+      res.json({ 
+        success: true, 
+        merchants,
+        count: merchants.length 
+      });
+    } catch (error) {
+      console.error("Merchant search error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Search failed" 
+      });
+    }
+  });
+
+  app.get("/api/merchants/:id", async (req, res) => {
+    try {
+      const merchantId = parseInt(req.params.id);
+      const merchant = await storage.getMerchantProfile(merchantId);
+      
+      if (!merchant) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Merchant not found" 
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        merchant 
+      });
+    } catch (error) {
+      console.error("Get merchant error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to get merchant" 
+      });
+    }
+  });
+
+  app.get("/api/merchants/:id/products", async (req, res) => {
+    try {
+      const merchantId = parseInt(req.params.id);
+      const products = await storage.getMerchantProducts(merchantId);
+
+      res.json({ 
+        success: true, 
+        products 
+      });
+    } catch (error) {
+      console.error("Get merchant products error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to get products" 
+      });
+    }
+  });
+
+  // Fuel Station Discovery Routes  
+  app.get("/api/fuel-stations", async (req, res) => {
+    try {
+      const { lat, lng, radius = 15, fuelType } = req.query;
+      
+      const stations = await storage.getFuelStations({
+        latitude: lat ? parseFloat(lat as string) : undefined,
+        longitude: lng ? parseFloat(lng as string) : undefined,
+        radius: parseInt(radius as string),
+        fuelType: fuelType as string
+      });
+
+      res.json({ 
+        success: true, 
+        stations,
+        count: stations.length 
+      });
+    } catch (error) {
+      console.error("Fuel stations search error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to find fuel stations" 
+      });
+    }
+  });
+
   // Register fuel order routes
   registerFuelOrderRoutes(app);
 

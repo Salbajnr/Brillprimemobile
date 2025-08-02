@@ -64,50 +64,94 @@ export default function FuelOrdering() {
     }
   ]);
 
-  const [fuelStations] = useState<FuelStation[]>([
-    {
-      id: "total-wuse",
-      name: "Total Energies Wuse II",
-      brand: "Total Energies",
-      address: "Plot 123, Ademola Adetokunbo Crescent, Wuse II",
-      distance: 2.3,
-      rating: 4.5,
-      reviewCount: 128,
-      pricePerLiter: 617,
-      fuelTypes: ["PMS", "AGO", "DPK"],
-      isOpen: true,
-      deliveryTime: "15-25 mins",
-      phone: "+234 803 123 4567"
-    },
-    {
-      id: "mobil-goldcourt",
-      name: "Mobil Goldcourt",
-      brand: "Mobil",
-      address: "Goldcourt Estate, Life Camp",
-      distance: 3.1,
-      rating: 4.2,
-      reviewCount: 89,
-      pricePerLiter: 615,
-      fuelTypes: ["PMS", "AGO"],
-      isOpen: true,
-      deliveryTime: "20-30 mins",
-      phone: "+234 805 987 6543"
-    },
-    {
-      id: "conoil-garki",
-      name: "Conoil Garki",
-      brand: "Conoil",
-      address: "Area 3, Garki, Abuja",
-      distance: 4.2,
-      rating: 4.0,
-      reviewCount: 67,
-      pricePerLiter: 620,
-      fuelTypes: ["PMS", "AGO", "DPK"],
-      isOpen: false,
-      deliveryTime: "25-35 mins",
-      phone: "+234 807 456 7890"
+  // Fetch fuel stations from API
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [fuelStations, setFuelStations] = useState<FuelStation[]>([]);
+  const [isLoadingStations, setIsLoadingStations] = useState(false);
+
+  // Get user location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setUserLocation({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        (error) => {
+          console.log("Location access denied:", error);
+          // Use default Lagos coordinates
+          setUserLocation({ lat: 6.5244, lng: 3.3792 });
+        }
+      );
+    } else {
+      // Use default Lagos coordinates
+      setUserLocation({ lat: 6.5244, lng: 3.3792 });
     }
-  ]);
+  }, []);
+
+  // Fetch fuel stations when location is available
+  useEffect(() => {
+    const fetchFuelStations = async () => {
+      if (!userLocation) return;
+      
+      setIsLoadingStations(true);
+      try {
+        const params = new URLSearchParams({
+          lat: userLocation.lat.toString(),
+          lng: userLocation.lng.toString(),
+          radius: '15'
+        });
+
+        const response = await fetch(`/api/fuel-stations?${params}`);
+        if (!response.ok) throw new Error('Failed to fetch fuel stations');
+        
+        const data = await response.json();
+        
+        // Map API data to FuelStation interface
+        const mappedStations: FuelStation[] = data.stations.map((station: any) => ({
+          id: station.id,
+          name: station.name,
+          brand: station.name.split(' ')[0], // Extract brand from name
+          address: station.address,
+          distance: station.distance,
+          rating: station.rating,
+          reviewCount: Math.floor(Math.random() * 200) + 50, // Mock review count
+          pricePerLiter: station.pricePerLiter.PMS || 617,
+          fuelTypes: station.fuelTypes,
+          isOpen: station.isOpen,
+          deliveryTime: `${Math.floor(station.distance * 5)}-${Math.floor(station.distance * 7)} mins`,
+          phone: "+234 803 123 4567" // Mock phone number
+        }));
+        
+        setFuelStations(mappedStations);
+      } catch (error) {
+        console.error("Error fetching fuel stations:", error);
+        // Fallback to mock data if API fails
+        setFuelStations([
+          {
+            id: "station-1",
+            name: "Total Energies Lagos",
+            brand: "Total Energies",
+            address: "Victoria Island, Lagos",
+            distance: 2.5,
+            rating: 4.2,
+            reviewCount: 128,
+            pricePerLiter: 617,
+            fuelTypes: ["PMS", "AGO", "DPK"],
+            isOpen: true,
+            deliveryTime: "15-25 mins",
+            phone: "+234 803 123 4567"
+          }
+        ]);
+      } finally {
+        setIsLoadingStations(false);
+      }
+    };
+
+    fetchFuelStations();
+  }, [userLocation]);
 
   const filteredAreas = locationAreas.filter(area =>
     area.name.toLowerCase().includes(searchQuery.toLowerCase())
