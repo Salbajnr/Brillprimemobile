@@ -109,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             socialProvider: provider,
             socialId,
             profilePicture: picture,
-            isVerified: true // Social accounts are auto-verified
+            role: 'CONSUMER' // Default role for social login
           });
         }
       } else {
@@ -118,6 +118,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           await storage.updateUserProfilePicture(user.id, picture);
           user.profilePicture = picture;
         }
+      }
+
+      if (!user) {
+        return res.status(500).json({ message: "Failed to create or retrieve user" });
       }
 
       // Create session for social login
@@ -141,7 +145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ 
         message: "Social login successful",
         user: userWithoutPassword,
-        isNewUser: !user.lastLogin
+        isNewUser: !user.createdAt || (Date.now() - new Date(user.createdAt).getTime()) < 60000 // Less than 1 minute old
       });
     } catch (error) {
       console.error("Social login error:", error);
@@ -597,12 +601,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Driver Dashboard API Endpoints
-  app.get("/api/driver/profile", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
+  // Authentication middleware
+  const requireAuth = (req: any, res: any, next: any) => {
+    if (!req.session?.userId) {
+      return res.status(401).json({ message: "Authentication required" });
     }
-    
+    req.user = req.session.user;
+    next();
+  };
+
+  const requireRole = (role: string) => (req: any, res: any, next: any) => {
+    if (!req.user || req.user.role !== role) {
+      return res.status(403).json({ message: "Insufficient permissions" });
+    }
+    next();
+  };
+
+  // Driver registration endpoint
+  app.post("/api/driver/register", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session.userId;
+      const registrationData = req.body;
+
+      // Update user role to DRIVER
+      await storage.updateUser(userId, { role: 'DRIVER' });
+
+      // Create driver profile
+      const driverProfile = await storage.createDriverProfile({
+        userId,
+        driverTier: registrationData.driverTier || 'STANDARD',
+        accessLevel: registrationData.accessLevel || 'OPEN',
+        vehicleType: registrationData.vehicleType,
+        vehiclePlate: registrationData.vehiclePlate,
+        vehicleModel: registrationData.vehicleModel,
+        vehicleYear: registrationData.vehicleYear,
+        driverLicense: registrationData.driverLicense,
+        specializations: JSON.stringify(registrationData.specializations || []),
+        bondInsurance: registrationData.bondInsurance || false,
+        backgroundCheckStatus: registrationData.backgroundCheckStatus || 'PENDING',
+        securityClearance: registrationData.securityClearance || 'NONE',
+        maxCargoValue: registrationData.maxCargoValue || '50000',
+        vehicleDocuments: JSON.stringify(registrationData.vehicleDocuments || [])
+      });
+
+      // Update session with new role
+      req.session.user = {
+        ...req.session.user,
+        role: 'DRIVER'
+      };
+
+      res.json({
+        message: "Driver registration successful",
+        profile: driverProfile
+      });
+    } catch (error) {
+      console.error("Driver registration error:", error);
+      res.status(500).json({ message: "Driver registration failed" });
+    }
+  });
+
+  // Driver Dashboard API Endpoints
+  app.get("/api/driver/profile", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const driverProfile = await storage.getDriverProfile(req.user.id);
       res.json(driverProfile);
@@ -612,11 +671,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/driver/available-jobs", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
+  app.get("/api/driver/available-jobs", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const jobs = await storage.getAvailableDeliveryJobs();
       res.json(jobs);
@@ -626,11 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/driver/accept-job/:jobId", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
+  app.post("/api/driver/accept-job/:jobId", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const { jobId } = req.params;
       await storage.acceptDeliveryJob(jobId, req.user.id);
@@ -641,11 +692,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/driver/earnings", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
+  app.get("/api/driver/earnings", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const earnings = await storage.getDriverEarnings(req.user.id);
       res.json(earnings);
@@ -655,11 +702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/driver/delivery-history", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    
+  app.get("/api/driver/delivery-history", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const history = await storage.getDriverDeliveryHistory(req.user.id);
       res.json(history);
@@ -836,10 +879,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique ticket number
       const ticketNumber = `SP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
       
-      const ticket = await storage.createSupportTicket({
-        ...ticketData,
-        ticketNumber
-      });
+      const ticket = await storage.createSupportTicket(ticketData);
       
       res.json({ 
         message: "Support ticket created successfully",

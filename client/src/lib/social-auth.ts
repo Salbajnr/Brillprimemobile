@@ -24,6 +24,9 @@ interface SocialUserProfile {
 class SocialAuthManager {
   private config: SocialAuthConfig;
   private initialized: { [key: string]: boolean } = {};
+  private onAuthSuccess: ((profile: SocialUserProfile) => Promise<void> | void) | null = null;
+  private onAuthError: ((error: string, details?: any) => void) | null = null;
+  private userRole: 'CONSUMER' | 'MERCHANT' | 'DRIVER' = 'CONSUMER';
 
   constructor() {
     this.config = {
@@ -121,8 +124,8 @@ class SocialAuthManager {
     });
   }
 
-  // Google authentication handler
-  private handleGoogleCallback(response: any) {
+  // Handle Google login callback
+  private handleGoogleCallback(response: any): void {
     try {
       const payload = this.parseJWT(response.credential);
       const profile: SocialUserProfile = {
@@ -132,9 +135,13 @@ class SocialAuthManager {
         picture: payload.picture,
         provider: 'google'
       };
-      this.onAuthSuccess(profile);
+      if (this.onAuthSuccess) {
+        this.onAuthSuccess(profile);
+      }
     } catch (error) {
-      this.onAuthError('Google authentication failed', error);
+      if (this.onAuthError) {
+        this.onAuthError('Google authentication failed', error);
+      }
     }
   }
 
@@ -161,19 +168,6 @@ class SocialAuthManager {
            Math.random().toString(36).substring(2, 15);
   }
 
-  // Success callback handlers
-  private onAuthSuccess: (profile: SocialUserProfile) => void = () => {};
-  private onAuthError: (message: string, error?: any) => void = () => {};
-
-  // Set callback handlers
-  public setCallbacks(
-    onSuccess: (profile: SocialUserProfile) => void,
-    onError: (message: string, error?: any) => void
-  ) {
-    this.onAuthSuccess = onSuccess;
-    this.onAuthError = onError;
-  }
-
   // Google Sign In
   public async signInWithGoogle(): Promise<void> {
     try {
@@ -184,7 +178,9 @@ class SocialAuthManager {
         throw new Error('Google Client ID not configured');
       }
     } catch (error) {
-      this.onAuthError('Google sign-in failed', error);
+      if (this.onAuthError) {
+        this.onAuthError('Google sign-in failed', error);
+      }
     }
   }
 
@@ -201,13 +197,17 @@ class SocialAuthManager {
             name: response.name ? `${response.name.firstName} ${response.name.lastName}` : '',
             provider: 'apple'
           };
-          this.onAuthSuccess(profile);
+          if (this.onAuthSuccess) {
+            this.onAuthSuccess(profile);
+          }
         }
       } else {
         throw new Error('Apple Client ID not configured');
       }
     } catch (error) {
-      this.onAuthError('Apple sign-in failed', error);
+      if (this.onAuthError) {
+        this.onAuthError('Apple sign-in failed', error);
+      }
     }
   }
 
@@ -227,7 +227,9 @@ class SocialAuthManager {
                 picture: profile.picture?.data?.url,
                 provider: 'facebook'
               };
-              this.onAuthSuccess(userProfile);
+              if (this.onAuthSuccess) {
+                this.onAuthSuccess(userProfile);
+              }
             });
           } else {
             throw new Error('Facebook login failed');
@@ -237,7 +239,9 @@ class SocialAuthManager {
         throw new Error('Facebook App ID not configured');
       }
     } catch (error) {
-      this.onAuthError('Facebook sign-in failed', error);
+      if (this.onAuthError) {
+        this.onAuthError('Facebook sign-in failed', error);
+      }
     }
   }
 
@@ -259,6 +263,20 @@ class SocialAuthManager {
     } catch (error) {
       console.error('Sign out error:', error);
     }
+  }
+
+  // Set callbacks for success and error
+  public setCallbacks(
+    onSuccess: (profile: SocialUserProfile) => Promise<void> | void,
+    onError: (error: string, details?: any) => void
+  ): void {
+    this.onAuthSuccess = onSuccess;
+    this.onAuthError = onError;
+  }
+
+  // Set role for new user registration
+  public setUserRole(role: 'CONSUMER' | 'MERCHANT' | 'DRIVER'): void {
+    this.userRole = role;
   }
 
   // Check if provider is configured
