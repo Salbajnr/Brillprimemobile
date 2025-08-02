@@ -105,6 +105,8 @@ export default function DriverRegistrationPage() {
 
   const isRestricted = selectedTier === 'RESTRICTED';
 
+  const isRestricted = sessionStorage.getItem('selectedDriverTier') === 'RESTRICTED';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-4">
       <div className="max-w-2xl mx-auto">
@@ -125,6 +127,54 @@ export default function DriverRegistrationPage() {
             </Badge>
           </div>
         </div>
+
+        {/* Registration Content */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="text-center mb-6">
+            <Car className="w-12 h-12 mx-auto text-blue-600 mb-3" />
+            <h2 className="text-xl font-semibold text-gray-900">
+              Welcome to Brillprime Driver Program
+            </h2>
+            <p className="text-gray-600 mt-2">
+              Complete your registration to start earning with deliveries
+            </p>
+          </div>
+
+          <div className="space-y-4">
+            <div className="p-4 bg-blue-50 rounded-lg">
+              <h3 className="font-medium text-blue-900 mb-2">Next Steps:</h3>
+              <ul className="space-y-2 text-sm text-blue-800">
+                <li className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                  Complete basic account setup
+                </li>
+                <li className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                  Upload required documents
+                </li>
+                <li className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                  Complete identity verification
+                </li>
+                <li className="flex items-center">
+                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                  Start earning!
+                </li>
+              </ul>
+            </div>
+
+            <Button
+              onClick={() => navigate('/signup')}
+              className="w-full h-12 text-lg font-medium"
+            >
+              Continue to Account Setup
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
         {/* Tier Information */}
         <Card className={`mb-6 rounded-3xl card-3d ${isRestricted ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}`}>

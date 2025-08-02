@@ -192,7 +192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, password } = signInSchema.parse(req.body);
       
-      const user = await storage.getUserByEmail(email);
+      let user;
+      try {
+        user = await storage.getUserByEmail(email);
+      } catch (dbError) {
+        console.error("Database error during user lookup:", dbError);
+        return res.status(500).json({ message: "Database connection error. Please ensure database is properly set up." });
+      }
+      
       if (!user) {
         return res.status(401).json({ message: "Invalid credentials" });
       }

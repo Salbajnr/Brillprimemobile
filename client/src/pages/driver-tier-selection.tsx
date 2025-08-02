@@ -223,7 +223,7 @@ export default function DriverTierSelectionPage() {
             Continue with {selectedTier ? tierData[selectedTier].title.split(' - ')[0] : 'Selection'}
             <ChevronRight className="w-5 h-5 ml-2" />
           </Button>
-          
+
           <p className="text-sm text-gray-500 mt-4">
             You can always upgrade your tier later through your driver dashboard
           </p>

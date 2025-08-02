@@ -30,6 +30,7 @@ export default function SignInPage() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setUser } = useAuth();
+  const [loading, setLoading] = useState(false);
 
   const form = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
@@ -46,7 +47,7 @@ export default function SignInPage() {
       if (data.user) {
         console.log("Setting user data:", data.user, "Role:", data.user.role);
         setUser(data.user);
-        
+
         // Direct role-based navigation instead of going through dashboard
         if (data.user.role === "CONSUMER") {
           console.log("Navigating CONSUMER to /consumer-home");
@@ -86,7 +87,7 @@ export default function SignInPage() {
         async (profile) => {
           try {
             console.log("Google login success:", profile);
-            
+
             // Send profile to backend for authentication
             const response = await fetch("/api/auth/social-login", {
               method: "POST",
@@ -110,15 +111,24 @@ export default function SignInPage() {
             }
 
             // Update auth context
-            await authAPI.getCurrentUser();
-            
-            // Show success and redirect
+            setUser(data.user);
+
+            // Show success and redirect based on role
             toast({
               title: "Welcome back!",
               description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
             });
-            
-            setLocation("/dashboard");
+
+            // Role-based navigation
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              setLocation("/driver-dashboard");
+            } else {
+              setLocation("/dashboard");
+            }
           } catch (error) {
             console.error("Google backend authentication failed:", error);
             setErrorMessage(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
@@ -151,7 +161,7 @@ export default function SignInPage() {
         async (profile) => {
           try {
             console.log("Apple login success:", profile);
-            
+
             // Send profile to backend for authentication
             const response = await fetch("/api/auth/social-login", {
               method: "POST",
@@ -175,15 +185,24 @@ export default function SignInPage() {
             }
 
             // Update auth context
-            await authAPI.getCurrentUser();
-            
-            // Show success and redirect
+            setUser(data.user);
+
+            // Show success and redirect based on role
             toast({
               title: "Welcome back!",
               description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
             });
-            
-            setLocation("/dashboard");
+
+            // Role-based navigation
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              setLocation("/driver-dashboard");
+            } else {
+              setLocation("/dashboard");
+            }
           } catch (error) {
             console.error("Apple backend authentication failed:", error);
             setErrorMessage(error instanceof Error ? error.message : "Apple sign-in failed. Please try again.");
@@ -216,7 +235,7 @@ export default function SignInPage() {
         async (profile) => {
           try {
             console.log("Facebook login success:", profile);
-            
+
             // Send profile to backend for authentication
             const response = await fetch("/api/auth/social-login", {
               method: "POST",
@@ -240,15 +259,24 @@ export default function SignInPage() {
             }
 
             // Update auth context
-            await authAPI.getCurrentUser();
-            
-            // Show success and redirect
+             setUser(data.user);
+
+            // Show success and redirect based on role
             toast({
               title: "Welcome back!",
               description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
             });
-            
-            setLocation("/dashboard");
+
+            // Role-based navigation
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              setLocation("/driver-dashboard");
+            } else {
+              setLocation("/dashboard");
+            }
           } catch (error) {
             console.error("Facebook backend authentication failed:", error);
             setErrorMessage(error instanceof Error ? error.message : "Facebook sign-in failed. Please try again.");

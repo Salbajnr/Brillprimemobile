@@ -148,6 +148,37 @@ export default function IdentityVerification() {
               Driver Identity Verification
             </h1>
             <p className="text-gray-600">Complete your verification to start earning</p>
+            
+            {/* Progress Indicator */}
+            <div className="mt-6">
+              <div className="flex justify-center items-center space-x-4">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className="flex items-center">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                        step <= currentStep
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-200 text-gray-600'
+                      }`}
+                    >
+                      {step}
+                    </div>
+                    {step < 3 && (
+                      <div
+                        className={`w-8 h-1 ${
+                          step < currentStep ? 'bg-blue-600' : 'bg-gray-200'
+                        }`}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mt-2 text-sm text-gray-600">
+                <span>License Info</span>
+                <span>Vehicle Details</span>
+                <span>Photo Verification</span>
+              </div>
+            </div>
           </div>
 
           {/* Step 1: License Information */}

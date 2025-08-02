@@ -79,8 +79,9 @@ function Router() {
       <Route path="/driver-dashboard" component={() => <ProtectedRoute component={DriverDashboard} />} />
       <Route path="/driver-withdrawal" component={() => <ProtectedRoute component={DriverWithdrawal} />} />
       <Route path="/delivery-detail" component={() => <ProtectedRoute component={DeliveryDetail} />} />
-      <Route path="/driver-tier-selection" component={() => <ProtectedRoute component={DriverTierSelection} />} />
+      <Route path="/driver-tier-selection" component={DriverTierSelection} />
       <Route path="/driver-registration" component={() => <ProtectedRoute component={DriverRegistration} />} />
+      <Route path="/identity-verification" component={() => <ProtectedRoute component={IdentityVerification} />} />
       <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
       <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
       <Route path="/fuel-order-details/:stationId" component={lazy(() => import("./pages/fuel-order-details"))} />
