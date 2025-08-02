@@ -552,7 +552,32 @@ export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytic
 export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
 export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
 export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
-export const insertSupportTicketSchema = createInsertSchema(supportTickets);
+export const insertSupportTicketSchema = z.object({
+  subject: z.string().min(1, "Subject is required"),
+  description: z.string().min(1, "Description is required"),
+  category: z.enum(["TECHNICAL", "BILLING", "GENERAL", "FEATURE_REQUEST", "BUG_REPORT"]),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH", "URGENT"]).default("MEDIUM"),
+  userEmail: z.string().email(),
+  userRole: z.enum(["CONSUMER", "MERCHANT", "DRIVER", "ADMIN"]),
+  attachments: z.array(z.string()).optional()
+});
+
+export type SupportTicket = z.infer<typeof insertSupportTicketSchema>;
+
+export const insertFuelOrderSchema = z.object({
+  stationId: z.string(),
+  fuelType: z.enum(["PMS", "AGO", "DPK"]),
+  quantity: z.number().positive(),
+  unitPrice: z.number().positive(),
+  totalAmount: z.number().positive(),
+  deliveryAddress: z.string().min(1),
+  deliveryLatitude: z.number(),
+  deliveryLongitude: z.number(),
+  scheduledDeliveryTime: z.string().optional(),
+  notes: z.string().optional()
+});
+
+export type FuelOrder = z.infer<typeof insertFuelOrderSchema>;
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;

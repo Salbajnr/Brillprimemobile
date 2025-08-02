@@ -25,30 +25,30 @@ export interface IStorage {
   createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string }): Promise<User>;
   verifyUser(email: string): Promise<void>;
   generateUserId(): Promise<string>;
-  
+
   // OTP operations
   createOtpCode(otpCode: InsertOtpCode): Promise<OtpCode>;
   getOtpCode(email: string, code: string): Promise<OtpCode | undefined>;
   markOtpAsUsed(id: number): Promise<void>;
-  
+
   // Location operations
   upsertUserLocation(location: InsertUserLocation): Promise<UserLocation>;
   getNearbyUsers(lat: number, lng: number, radiusMeters: number, excludeRole?: string): Promise<UserLocation[]>;
-  
+
   // Category operations
   getCategories(): Promise<Category[]>;
   createCategory(category: InsertCategory): Promise<Category>;
-  
+
   // Product operations
   getProducts(filters: { categoryId?: number; search?: string; limit?: number; offset?: number }): Promise<Product[]>;
   createProduct(product: InsertProduct): Promise<Product>;
-  
+
   // Cart operations
   getCartItems(userId: number): Promise<CartItem[]>;
   addToCart(cartItem: InsertCartItem): Promise<CartItem>;
   updateCartItem(cartItemId: number, quantity: number): Promise<CartItem>;
   removeFromCart(cartItemId: number): Promise<void>;
-  
+
   // Wishlist operations (placeholder for future implementation)
   addToWishlist(userId: number, productId: number): Promise<void>;
   removeFromWishlist(userId: number, productId: number): Promise<void>;
@@ -59,7 +59,7 @@ export interface IStorage {
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   getMessages(conversationId: string): Promise<any[]>;
   sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
-  
+
   // Vendor Feed operations
   getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
   createVendorPost(post: InsertVendorPost): Promise<VendorPost>;
@@ -101,9 +101,18 @@ export interface IStorage {
   createPhoneVerification(data: any): Promise<any>;
   verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null>;
   updateUser(userId: number, data: any): Promise<any>;
+
+    // Fuel order operations
+  getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any>;
+  createFuelOrder(data: any): Promise<any>;
+  getFuelOrders(userId: number): Promise<any>;
+  updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
+  getAvailableFuelOrders(): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
+  private fuelOrders?: Map<string, any>; // Temporary storage for fuel orders
+
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -126,7 +135,7 @@ export class DatabaseStorage implements IStorage {
     const [latestUser] = await db.select().from(users)
       .orderBy(desc(users.id))
       .limit(1);
-    
+
     const nextNumber = latestUser ? latestUser.id + 1 : 1;
     return `BP-${nextNumber.toString().padStart(6, '0')}`;
   }
@@ -227,7 +236,7 @@ export class DatabaseStorage implements IStorage {
       .insert(userLocations)
       .values(location)
       .returning();
-    
+
     return newLocation;
   }
 
@@ -556,7 +565,7 @@ export class DatabaseStorage implements IStorage {
       productPrice: insertPost.discountPrice || insertPost.originalPrice || null,
       productImage: insertPost.productId ? "/api/placeholder/100/100" : null
     };
-    
+
     console.log("Created vendor post:", newPost);
     return newPost;
   }
@@ -720,7 +729,7 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     console.log("Created conversation:", newConversation);
     return newConversation;
   }
@@ -776,7 +785,7 @@ export class DatabaseStorage implements IStorage {
       createdAt: new Date(),
       updatedAt: new Date()
     };
-    
+
     console.log("Sent message:", newMessage);
     return newMessage;
   }
@@ -1151,6 +1160,123 @@ export class DatabaseStorage implements IStorage {
       .where(eq(users.id, userId))
       .returning();
     return user;
+  }
+  // Fuel order methods
+  async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any> {
+    // Mock data for now - in a real app this would query a fuel stations database
+    return [
+      {
+        id: 'station-1',
+        name: 'Total Energies Wuse II',
+        brand: 'Total Energies',
+        address: 'Plot 123, Ademola Adetokunbo Crescent, Wuse II',
+        latitude: latitude + 0.01,
+        longitude: longitude + 0.01,
+        distance: 2.3,
+        rating: 4.5,
+        reviewCount: 128,
+        prices: {
+          PMS: 617,
+          AGO: 620,
+          DPK: 615
+        },
+        fuelTypes: ['PMS', 'AGO', 'DPK'],
+        isOpen: true,
+        deliveryTime: '15-25 mins',
+        phone: '+234 803 123 4567'
+      },
+      {
+        id: 'station-2',
+        name: 'Mobil Goldcourt',
+        brand: 'Mobil',
+        address: 'Goldcourt Estate, Life Camp',
+        latitude: latitude + 0.02,
+        longitude: longitude - 0.01,
+        distance: 3.1,
+        rating: 4.2,
+        reviewCount: 89,
+        prices: {
+          PMS: 615,
+          AGO: 618,
+          DPK: 613
+        },
+        fuelTypes: ['PMS', 'AGO'],
+        isOpen: true,
+        deliveryTime: '20-30 mins',
+        phone: '+234 805 987 6543'
+      }
+    ];
+  }
+
+  async createFuelOrder(data: any): Promise<any> {
+    try {
+      // In a real app, this would insert into a fuel_orders table
+      const orderId = `FO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      const order = {
+        id: orderId,
+        ...data,
+        customerId: data.userId, // Ensure customerId is set correctly
+        status: 'PENDING',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+
+      // Store in memory for now (in production, use database)
+      if (!this.fuelOrders) this.fuelOrders = new Map();
+      this.fuelOrders.set(orderId, order);
+
+      return order;
+    } catch (error) {
+      console.error("Error creating fuel order:", error);
+      throw error;
+    }
+  }
+
+  async getFuelOrders(userId: number): Promise<any> {
+    try {
+      // Mock data - in real app would query database
+      return Array.from(this.fuelOrders?.values() || [])
+        .filter(order => order.customerId === userId)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error("Error fetching fuel orders:", error);
+      throw error;
+    }
+  }
+
+  async updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any> {
+    try {
+      if (!this.fuelOrders) this.fuelOrders = new Map();
+
+      const order = this.fuelOrders.get(orderId);
+      if (!order) {
+        throw new Error('Order not found');
+      }
+
+      const updatedOrder = {
+        ...order,
+        status,
+        driverId,
+        updatedAt: new Date()
+      };
+
+      this.fuelOrders.set(orderId, updatedOrder);
+      return updatedOrder;
+    } catch (error) {
+      console.error("Error updating fuel order status:", error);
+      throw error;
+    }
+  }
+
+  async getAvailableFuelOrders(): Promise<any> {
+    try {
+      return Array.from(this.fuelOrders?.values() || [])
+        .filter(order => order.status === 'PENDING')
+        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    } catch (error) {
+      console.error("Error fetching available fuel orders:", error);
+      throw error;
+    }
   }
 }
 
