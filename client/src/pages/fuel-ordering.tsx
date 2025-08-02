@@ -132,7 +132,7 @@ export default function FuelOrdering() {
   };
 
   const handleStationSelect = (station: FuelStation) => {
-    setLocation(`/fuel-ordering/station/${station.id}`);
+    setLocation(`/fuel-order-details/${station.id}`);
   };
 
   return (

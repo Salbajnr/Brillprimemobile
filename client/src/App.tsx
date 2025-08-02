@@ -4,7 +4,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
-import { useEffect } from "react";
+import { useEffect, lazy } from "react";
 
 import SplashPage from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
@@ -51,11 +51,11 @@ import IdentityVerification from "@/pages/identity-verification-simple";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
-  
+
   if (!isAuthenticated()) {
     return <SignInPage />;
   }
-  
+
   return <Component />;
 }
 
@@ -80,6 +80,9 @@ function Router() {
       <Route path="/driver-registration" component={() => <ProtectedRoute component={DriverRegistration} />} />
       <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
       <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
+      <Route path="/fuel-order-details/:stationId" component={lazy(() => import("./pages/fuel-order-details"))} />
+      <Route path="/order-confirmation/:orderId" component={lazy(() => import("./pages/order-confirmation"))} />
+      <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
       <Route path="/commodities" component={() => <ProtectedRoute component={CommoditiesPage} />} />

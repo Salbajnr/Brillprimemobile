@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import { registerFuelOrderRoutes } from "./routes/fuel-orders";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import "./middleware/auth"; // Import type declarations
@@ -830,6 +831,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(400).json({ message: "Failed to update ticket" });
     }
   });
+
+  // Register fuel order routes
+  registerFuelOrderRoutes(app);
 
   const httpServer = createServer(app);
   return httpServer;
