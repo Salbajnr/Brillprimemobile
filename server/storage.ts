@@ -109,11 +109,20 @@ export interface IStorage {
   updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
   getAvailableFuelOrders(): Promise<any>;
 
-    //Missing social login storage methods
+  // Social login storage methods
   linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string): Promise<any>;
   updateUserProfilePicture(userId: number, profilePicture: string): Promise<any>;
   storePushSubscription(userId: number, subscription: any): Promise<any>;
   removePushSubscription(userId: number): Promise<any>;
+
+  // Merchant Discovery methods
+  searchMerchants(params: { latitude?: number; longitude?: number; radius?: number; category?: string; searchTerm?: string }): Promise<any[]>;
+  getMerchantProfile(merchantId: number): Promise<any>;
+  getMerchantProducts(merchantId: number): Promise<Product[]>;
+
+  // Fuel Station Discovery methods
+  getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]>;
+  getDriverOrders(driverId: number, status?: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1360,6 +1369,185 @@ export class DatabaseStorage implements IStorage {
         .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     } catch (error) {
       console.error("Error fetching available fuel orders:", error);
+      throw error;
+    }
+  }
+
+  // Merchant Discovery implementations
+  async searchMerchants(params: { latitude?: number; longitude?: number; radius?: number; category?: string; searchTerm?: string }): Promise<any[]> {
+    try {
+      const { latitude, longitude, radius = 10, category, searchTerm } = params;
+      
+      // Get merchants with profiles
+      let query = db.select({
+        id: users.id,
+        userId: users.userId,
+        fullName: users.fullName,
+        email: users.email,
+        profilePicture: users.profilePicture,
+        businessName: merchantProfiles.businessName,
+        businessType: merchantProfiles.businessType,
+        businessDescription: merchantProfiles.businessDescription,
+        businessAddress: merchantProfiles.businessAddress,
+        businessLogo: merchantProfiles.businessLogo,
+        rating: merchantProfiles.rating,
+        reviewCount: merchantProfiles.reviewCount,
+        isVerified: merchantProfiles.isVerified
+      })
+      .from(users)
+      .innerJoin(merchantProfiles, eq(users.id, merchantProfiles.userId))
+      .where(eq(users.role, "MERCHANT"));
+
+      if (category) {
+        query = query.where(eq(merchantProfiles.businessType, category));
+      }
+
+      if (searchTerm) {
+        query = query.where(
+          sql`${merchantProfiles.businessName} ILIKE ${'%' + searchTerm + '%'} OR 
+              ${merchantProfiles.businessDescription} ILIKE ${'%' + searchTerm + '%'}`
+        );
+      }
+
+      const merchants = await query;
+      
+      // For location-based search, you'd need to add location data and calculate distance
+      // This is a simplified version
+      return merchants.slice(0, 20); // Limit results
+    } catch (error) {
+      console.error("Error searching merchants:", error);
+      throw error;
+    }
+  }
+
+  async getMerchantProfile(merchantId: number): Promise<any> {
+    try {
+      const [merchant] = await db.select({
+        id: users.id,
+        userId: users.userId,
+        fullName: users.fullName,
+        email: users.email,
+        profilePicture: users.profilePicture,
+        businessName: merchantProfiles.businessName,
+        businessType: merchantProfiles.businessType,
+        businessDescription: merchantProfiles.businessDescription,
+        businessAddress: merchantProfiles.businessAddress,
+        businessPhone: merchantProfiles.businessPhone,
+        businessEmail: merchantProfiles.businessEmail,
+        businessLogo: merchantProfiles.businessLogo,
+        businessHours: merchantProfiles.businessHours,
+        rating: merchantProfiles.rating,
+        reviewCount: merchantProfiles.reviewCount,
+        totalSales: merchantProfiles.totalSales,
+        totalOrders: merchantProfiles.totalOrders,
+        isVerified: merchantProfiles.isVerified,
+        subscriptionTier: merchantProfiles.subscriptionTier,
+        createdAt: merchantProfiles.createdAt
+      })
+      .from(users)
+      .innerJoin(merchantProfiles, eq(users.id, merchantProfiles.userId))
+      .where(eq(users.id, merchantId));
+      
+      return merchant || null;
+    } catch (error) {
+      console.error("Error getting merchant profile:", error);
+      throw error;
+    }
+  }
+
+  async getMerchantProducts(merchantId: number): Promise<Product[]> {
+    try {
+      return await db.select()
+        .from(products)
+        .where(and(eq(products.sellerId, merchantId), eq(products.isActive, true)))
+        .orderBy(desc(products.createdAt));
+    } catch (error) {
+      console.error("Error getting merchant products:", error);
+      throw error;
+    }
+  }
+
+  // Fuel Station Discovery implementations
+  async getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]> {
+    try {
+      // Mock fuel stations data - in a real app this would query actual fuel station data
+      const mockStations = [
+        {
+          id: "station-1",
+          name: "Total Energies Lagos",
+          address: "Victoria Island, Lagos",
+          latitude: 6.4281,
+          longitude: 3.4219,
+          fuelTypes: ["PMS", "AGO", "DPK"],
+          pricePerLiter: {
+            PMS: 617.0,
+            AGO: 750.0,
+            DPK: 650.0
+          },
+          rating: 4.2,
+          isOpen: true,
+          distance: 2.5
+        },
+        {
+          id: "station-2", 
+          name: "NNPC Mega Station",
+          address: "Ikeja, Lagos",
+          latitude: 6.5964,
+          longitude: 3.3515,
+          fuelTypes: ["PMS", "AGO"],
+          pricePerLiter: {
+            PMS: 612.0,
+            AGO: 745.0
+          },
+          rating: 4.0,
+          isOpen: true,
+          distance: 8.2
+        },
+        {
+          id: "station-3",
+          name: "Mobil Filling Station",
+          address: "Yaba, Lagos", 
+          latitude: 6.5158,
+          longitude: 3.3617,
+          fuelTypes: ["PMS", "AGO", "DPK"],
+          pricePerLiter: {
+            PMS: 620.0,
+            AGO: 755.0,
+            DPK: 655.0
+          },
+          rating: 3.8,
+          isOpen: true,
+          distance: 5.1
+        }
+      ];
+
+      let filteredStations = mockStations;
+
+      if (params.fuelType) {
+        filteredStations = filteredStations.filter(station => 
+          station.fuelTypes.includes(params.fuelType!)
+        );
+      }
+
+      // Sort by distance
+      return filteredStations.sort((a, b) => a.distance - b.distance);
+    } catch (error) {
+      console.error("Error getting fuel stations:", error);
+      throw error;
+    }
+  }
+
+  async getDriverOrders(driverId: number, status?: string): Promise<any[]> {
+    try {
+      return Array.from(this.fuelOrders?.values() || [])
+        .filter(order => {
+          const matchesDriver = order.driverId === driverId;
+          const matchesStatus = !status || order.status === status;
+          return matchesDriver && matchesStatus;
+        })
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } catch (error) {
+      console.error("Error fetching driver orders:", error);
       throw error;
     }
   }

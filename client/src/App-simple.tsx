@@ -11,6 +11,9 @@ import RoleSelectionPage from "@/pages/role-selection";
 import SignupPage from "@/pages/signup";
 import SignInPage from "@/pages/signin";
 import DashboardPage from "@/pages/dashboard";
+import MerchantsPage from "@/pages/merchants";
+import FuelOrderingPage from "@/pages/fuel-ordering";
+import SearchResultsPage from "@/pages/search-results";
 import NotFound from "@/pages/not-found";
 
 function App() {
@@ -25,6 +28,9 @@ function App() {
           <Route path="/signup" component={SignupPage} />
           <Route path="/signin" component={SignInPage} />
           <Route path="/dashboard" component={DashboardPage} />
+          <Route path="/merchants" component={MerchantsPage} />
+          <Route path="/fuel-ordering" component={FuelOrderingPage} />
+          <Route path="/search-results" component={SearchResultsPage} />
           <Route component={NotFound} />
         </Switch>
       </TooltipProvider>
