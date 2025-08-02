@@ -562,7 +562,7 @@ export const insertSupportTicketSchema = z.object({
   attachments: z.array(z.string()).optional()
 });
 
-export type SupportTicket = z.infer<typeof insertSupportTicketSchema>;
+
 
 export const insertFuelOrderSchema = z.object({
   stationId: z.string(),
