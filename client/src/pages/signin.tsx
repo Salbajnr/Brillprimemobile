@@ -80,64 +80,196 @@ export default function SignInPage() {
   // Social login handlers
   const handleGoogleLogin = async () => {
     try {
+      setLoading(true);
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        (profile) => {
-          console.log("Google login success:", profile);
-          // TODO: Send profile to backend for authentication
-          setLocation("/dashboard");
+        async (profile) => {
+          try {
+            console.log("Google login success:", profile);
+            
+            // Send profile to backend for authentication
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                provider: profile.provider,
+                socialId: profile.id,
+                email: profile.email,
+                name: profile.name,
+                picture: profile.picture
+              })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Social login failed");
+            }
+
+            // Update auth context
+            await authAPI.getCurrentUser();
+            
+            // Show success and redirect
+            toast({
+              title: "Welcome back!",
+              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
+            });
+            
+            setLocation("/dashboard");
+          } catch (error) {
+            console.error("Google backend authentication failed:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Google sign-in failed. Please try again.");
+            setShowErrorModal(true);
+          } finally {
+            setLoading(false);
+          }
         },
         (error) => {
+          console.error("Google login error:", error);
           setErrorMessage("Google sign-in failed. Please try again.");
           setShowErrorModal(true);
+          setLoading(false);
         }
       );
       await socialAuth.signInWithGoogle();
     } catch (error) {
+      console.error("Google login initialization error:", error);
       setErrorMessage("Google sign-in is not available at the moment.");
       setShowErrorModal(true);
+      setLoading(false);
     }
   };
 
   const handleAppleLogin = async () => {
     try {
+      setLoading(true);
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        (profile) => {
-          console.log("Apple login success:", profile);
-          // TODO: Send profile to backend for authentication
-          setLocation("/dashboard");
+        async (profile) => {
+          try {
+            console.log("Apple login success:", profile);
+            
+            // Send profile to backend for authentication
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                provider: profile.provider,
+                socialId: profile.id,
+                email: profile.email,
+                name: profile.name,
+                picture: profile.picture
+              })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Social login failed");
+            }
+
+            // Update auth context
+            await authAPI.getCurrentUser();
+            
+            // Show success and redirect
+            toast({
+              title: "Welcome back!",
+              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
+            });
+            
+            setLocation("/dashboard");
+          } catch (error) {
+            console.error("Apple backend authentication failed:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Apple sign-in failed. Please try again.");
+            setShowErrorModal(true);
+          } finally {
+            setLoading(false);
+          }
         },
         (error) => {
+          console.error("Apple login error:", error);
           setErrorMessage("Apple sign-in failed. Please try again.");
           setShowErrorModal(true);
+          setLoading(false);
         }
       );
       await socialAuth.signInWithApple();
     } catch (error) {
+      console.error("Apple login initialization error:", error);
       setErrorMessage("Apple sign-in is not available at the moment.");
       setShowErrorModal(true);
+      setLoading(false);
     }
   };
 
   const handleFacebookLogin = async () => {
     try {
+      setLoading(true);
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        (profile) => {
-          console.log("Facebook login success:", profile);
-          // TODO: Send profile to backend for authentication
-          setLocation("/dashboard");
+        async (profile) => {
+          try {
+            console.log("Facebook login success:", profile);
+            
+            // Send profile to backend for authentication
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                provider: profile.provider,
+                socialId: profile.id,
+                email: profile.email,
+                name: profile.name,
+                picture: profile.picture
+              })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Social login failed");
+            }
+
+            // Update auth context
+            await authAPI.getCurrentUser();
+            
+            // Show success and redirect
+            toast({
+              title: "Welcome back!",
+              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
+            });
+            
+            setLocation("/dashboard");
+          } catch (error) {
+            console.error("Facebook backend authentication failed:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Facebook sign-in failed. Please try again.");
+            setShowErrorModal(true);
+          } finally {
+            setLoading(false);
+          }
         },
         (error) => {
+          console.error("Facebook login error:", error);
           setErrorMessage("Facebook sign-in failed. Please try again.");
           setShowErrorModal(true);
+          setLoading(false);
         }
       );
       await socialAuth.signInWithFacebook();
     } catch (error) {
+      console.error("Facebook login initialization error:", error);
       setErrorMessage("Facebook sign-in is not available at the moment.");
       setShowErrorModal(true);
+      setLoading(false);
     }
   };
 

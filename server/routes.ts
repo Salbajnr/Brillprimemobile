@@ -76,27 +76,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { provider, socialId, email, name, picture } = req.body;
       
+      if (!provider || !socialId || !email) {
+        return res.status(400).json({ message: "Missing required social login data" });
+      }
+
+      // Validate provider
+      const validProviders = ['google', 'apple', 'facebook'];
+      if (!validProviders.includes(provider)) {
+        return res.status(400).json({ message: "Invalid social login provider" });
+      }
+      
       // Check if user exists with social ID
       let user = await storage.getUserBySocialId(provider, socialId);
       
       if (!user) {
         // Check if user exists with email
-        user = await storage.getUserByEmail(email);
+        const existingUser = await storage.getUserByEmail(email);
         
-        if (user) {
+        if (existingUser && !existingUser.socialProvider) {
+          // User exists with regular account, link social account
+          await storage.linkSocialAccount(existingUser.id, provider, socialId, picture);
+          user = await storage.getUserByEmail(email);
+        } else if (existingUser && existingUser.socialProvider !== provider) {
           return res.status(400).json({ 
-            message: "An account with this email already exists. Please sign in with your password." 
+            message: `An account with this email already exists using ${existingUser.socialProvider} login. Please use ${existingUser.socialProvider} to sign in.` 
+          });
+        } else {
+          // Create new social user
+          user = await storage.createSocialUser({
+            fullName: name || email.split('@')[0],
+            email,
+            socialProvider: provider,
+            socialId,
+            profilePicture: picture,
+            isVerified: true // Social accounts are auto-verified
           });
         }
-        
-        // Create new social user
-        user = await storage.createSocialUser({
-          fullName: name,
-          email,
-          socialProvider: provider,
-          socialId,
-          profilePicture: picture
-        });
+      } else {
+        // Update profile picture if provided
+        if (picture && picture !== user.profilePicture) {
+          await storage.updateUserProfilePicture(user.id, picture);
+          user.profilePicture = picture;
+        }
       }
 
       // Create session for social login
@@ -107,19 +128,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: user.email,
         role: user.role,
         isVerified: Boolean(user.isVerified),
-        profilePicture: user.profilePicture || undefined
+        profilePicture: user.profilePicture || undefined,
+        socialProvider: user.socialProvider
       };
       
       req.session.userId = user.id;
       req.session.user = userWithoutPassword;
       
+      // Log successful social login
+      console.log(`Social login successful: ${email} via ${provider}`);
+      
       res.json({ 
         message: "Social login successful",
-        user: userWithoutPassword
+        user: userWithoutPassword,
+        isNewUser: !user.lastLogin
       });
     } catch (error) {
       console.error("Social login error:", error);
-      res.status(400).json({ message: "Social login failed" });
+      res.status(500).json({ message: "Social login failed. Please try again." });
+    }
+  });
+
+  // Push notification subscription endpoint
+  app.post("/api/push/subscribe", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { subscription } = req.body;
+      
+      if (!subscription) {
+        return res.status(400).json({ message: "Subscription data required" });
+      }
+
+      // Store push subscription in database
+      await storage.storePushSubscription(req.session.userId, subscription);
+      
+      res.json({ message: "Push subscription saved successfully" });
+    } catch (error) {
+      console.error("Push subscription error:", error);
+      res.status(500).json({ message: "Failed to save push subscription" });
+    }
+  });
+
+  app.post("/api/push/unsubscribe", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      await storage.removePushSubscription(req.session.userId);
+      
+      res.json({ message: "Push subscription removed successfully" });
+    } catch (error) {
+      console.error("Push unsubscribe error:", error);
+      res.status(500).json({ message: "Failed to remove push subscription" });
     }
   });
 
