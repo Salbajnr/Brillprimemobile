@@ -108,6 +108,12 @@ export interface IStorage {
   getFuelOrders(userId: number): Promise<any>;
   updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
   getAvailableFuelOrders(): Promise<any>;
+
+    //Missing social login storage methods
+  linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string): Promise<any>;
+  updateUserProfilePicture(userId: number, profilePicture: string): Promise<any>;
+  storePushSubscription(userId: number, subscription: any): Promise<any>;
+  removePushSubscription(userId: number): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -752,7 +758,7 @@ export class DatabaseStorage implements IStorage {
         id: "msg-2", 
         conversationId,
         senderId: 1,
-        senderName: "Golden Grains Store",
+        senderName: "GoldenGrains Store",
         senderRole: "MERCHANT",
         content: "Hello! For orders of 100+ bags, I can offer 15% discount. That brings the price to ₦34,000 per bag. Quality guaranteed!",
         messageType: "QUOTE_RESPONSE",
@@ -1161,6 +1167,85 @@ export class DatabaseStorage implements IStorage {
       .returning();
     return user;
   }
+
+  async createSocialUser(userData: any) {
+    const userId = await this.generateUserId();
+    const [user] = await db
+      .insert(users)
+      .values({
+        userId,
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: '', // Will be updated later
+        password: '', // Social login users don't need passwords
+        role: 'CONSUMER', // Default role for social login
+        isVerified: userData.isVerified || true, // Social accounts are auto-verified
+        socialProvider: userData.socialProvider,
+        socialId: userData.socialId,
+        profilePicture: userData.profilePicture,
+      })
+      .returning();
+
+    return user;
+  }
+
+  async linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string) {
+    const updateData: any = {
+      socialProvider: provider,
+      socialId: socialId,
+      updatedAt: new Date()
+    };
+
+    if (profilePicture) {
+      updateData.profilePicture = profilePicture;
+    }
+
+    const [result] = await db.update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return result;
+  }
+
+  async updateUserProfilePicture(userId: number, profilePicture: string) {
+    const [result] = await db.update(users)
+      .set({ 
+        profilePicture,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return result;
+  }
+
+  async storePushSubscription(userId: number, subscription: any) {
+    // Store push subscription in database
+    // This would typically be a separate table for push subscriptions
+    const [result] = await db.update(users)
+      .set({ 
+        pushSubscription: JSON.stringify(subscription),
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return result;
+  }
+
+  async removePushSubscription(userId: number) {
+    const [result] = await db.update(users)
+      .set({ 
+        pushSubscription: null,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    return result;
+  }
+
   // Fuel order methods
   async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any> {
     // Mock data for now - in a real app this would query a fuel stations database
