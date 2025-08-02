@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, MapPin, Search, Filter, Phone, Star, Navigation } from "lucide-react";
+import { ArrowLeft, MapPin, Search, Filter, Phone, Star, Navigation, Truck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -133,6 +133,15 @@ export default function FuelOrdering() {
 
   const handleStationSelect = (station: FuelStation) => {
     setLocation(`/fuel-order-details/${station.id}`);
+  };
+
+  const handleCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
+  };
+
+  const handleOrderFuel = (stationId: string, fuelType: string) => {
+    // Navigate to fuel delivery tracking after order
+    setLocation("/fuel-delivery-tracking");
   };
 
   return (
