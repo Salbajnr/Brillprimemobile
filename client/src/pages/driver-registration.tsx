@@ -1,44 +1,49 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Upload, Shield, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Upload, Shield, Lock, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
-import { useForm } from "react-hook-form";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { apiRequest } from "@/lib/queryClient";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useLocation } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const driverRegistrationSchema = z.object({
   vehicleType: z.string().min(1, "Vehicle type is required"),
   vehiclePlate: z.string().min(1, "License plate is required"),
   vehicleModel: z.string().min(1, "Vehicle model is required"),
-  vehicleYear: z.number().min(1900).max(new Date().getFullYear() + 1),
-  driverLicense: z.string().min(1, "Driver's license number is required"),
+  vehicleYear: z.number().min(1990, "Vehicle year must be 1990 or later"),
+  driverLicense: z.string().min(1, "Driver's license is required"),
   specializations: z.array(z.string()).optional(),
   bondInsurance: z.boolean().optional(),
-  agreedToTerms: z.boolean().refine(val => val === true, "You must agree to terms and conditions")
+  agreedToTerms: z.boolean().refine(val => val === true, {
+    message: "You must agree to the terms and conditions"
+  })
 });
 
 type DriverRegistrationForm = z.infer<typeof driverRegistrationSchema>;
 
-export default function DriverRegistrationPage() {
-  const [selectedTier, setSelectedTier] = useState<"RESTRICTED" | "OPEN" | null>(null);
-  const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
+export default function DriverRegistration() {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
   const { toast } = useToast();
+  const [uploadedDocs, setUploadedDocs] = useState<string[]>([]);
+  const [selectedTier, setSelectedTier] = useState<'RESTRICTED' | 'OPEN' | null>(null);
 
   const form = useForm<DriverRegistrationForm>({
     resolver: zodResolver(driverRegistrationSchema),
     defaultValues: {
+      vehicleType: "",
+      vehiclePlate: "",
+      vehicleModel: "",
+      vehicleYear: new Date().getFullYear(),
+      driverLicense: "",
       specializations: [],
       bondInsurance: false,
       agreedToTerms: false
@@ -46,32 +51,25 @@ export default function DriverRegistrationPage() {
   });
 
   useEffect(() => {
-    const tier = sessionStorage.getItem('selectedDriverTier') as "RESTRICTED" | "OPEN";
+    const tier = sessionStorage.getItem('selectedDriverTier') as 'RESTRICTED' | 'OPEN' | null;
     setSelectedTier(tier);
-    if (!tier) {
-      navigate('/driver-tier-selection');
-    }
-  }, [navigate]);
+  }, []);
 
   const onSubmit = async (data: DriverRegistrationForm) => {
     try {
-      const registrationData = {
-        ...data,
-        driverTier: selectedTier === 'RESTRICTED' ? 'PREMIUM' : 'STANDARD',
-        accessLevel: selectedTier,
-        vehicleDocuments: uploadedDocs,
-        backgroundCheckStatus: selectedTier === 'RESTRICTED' ? 'PENDING' : 'APPROVED',
-        securityClearance: selectedTier === 'RESTRICTED' ? 'BASIC' : 'NONE',
-        maxCargoValue: selectedTier === 'RESTRICTED' ? '1000000' : '50000'
-      };
+      await apiRequest("/api/driver/register", {
+        method: "POST",
+        body: JSON.stringify({
+          ...data,
+          driverTier: selectedTier,
+          accessLevel: selectedTier === 'RESTRICTED' ? 'RESTRICTED' : 'OPEN',
+          vehicleDocuments: uploadedDocs
+        })
+      });
 
-      await apiRequest("POST", "/api/driver/register", registrationData);
-      
       toast({
-        title: "Registration Submitted",
-        description: selectedTier === 'RESTRICTED' 
-          ? "Your application is under review. We'll contact you within 7-14 days."
-          : "Your driver profile has been created. You can start accepting deliveries now!",
+        title: "Registration Successful",
+        description: "Your driver profile has been created successfully!",
       });
 
       // Clear session storage and navigate to dashboard
@@ -105,8 +103,6 @@ export default function DriverRegistrationPage() {
 
   const isRestricted = selectedTier === 'RESTRICTED';
 
-  const isRestricted = sessionStorage.getItem('selectedDriverTier') === 'RESTRICTED';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-4">
       <div className="max-w-2xl mx-auto">
@@ -128,123 +124,121 @@ export default function DriverRegistrationPage() {
           </div>
         </div>
 
-        {/* Registration Content */}
-        <div className="bg-white rounded-lg shadow-lg p-6">
-          <div className="text-center mb-6">
-            <Car className="w-12 h-12 mx-auto text-blue-600 mb-3" />
-            <h2 className="text-xl font-semibold text-gray-900">
-              Welcome to Brillprime Driver Program
-            </h2>
-            <p className="text-gray-600 mt-2">
-              Complete your registration to start earning with deliveries
-            </p>
-          </div>
-
-          <div className="space-y-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-medium text-blue-900 mb-2">Next Steps:</h3>
-              <ul className="space-y-2 text-sm text-blue-800">
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
-                  Complete basic account setup
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
-                  Upload required documents
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
-                  Complete identity verification
-                </li>
-                <li className="flex items-center">
-                  <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
-                  Start earning!
-                </li>
-              </ul>
-            </div>
-
-            <Button
-              onClick={() => navigate('/signup')}
-              className="w-full h-12 text-lg font-medium"
-            >
-              Continue to Account Setup
-              <ArrowRight className="w-4 h-4 ml-2" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-
-        {/* Tier Information */}
-        <Card className={`mb-6 rounded-3xl card-3d ${isRestricted ? 'border-blue-200 bg-blue-50' : 'border-green-200 bg-green-50'}`}>
-          <CardContent className="p-4">
-            <div className="flex items-center">
-              {isRestricted ? (
-                <Shield className="w-6 h-6 text-blue-600 mr-3" />
-              ) : (
-                <AlertTriangle className="w-6 h-6 text-green-600 mr-3" />
-              )}
-              <div>
-                <h3 className="font-semibold">
-                  {isRestricted ? 'High-Security Verification Required' : 'Quick Registration Process'}
-                </h3>
-                <p className="text-sm text-gray-600">
-                  {isRestricted 
-                    ? 'Complete verification needed for high-value item transport authorization'
-                    : 'Basic verification allows immediate access to general deliveries'
-                  }
-                </p>
+        {/* Registration Form */}
+        <Card className="bg-white shadow-lg rounded-3xl border-0">
+          <CardHeader className="text-center pb-4">
+            <div className="flex justify-center mb-4">
+              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center">
+                <Shield className="w-8 h-8 text-blue-600" />
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Registration Form */}
-        <Card className="rounded-3xl card-3d border-blue-100">
-          <CardHeader>
-            <CardTitle>Driver Information</CardTitle>
-            <CardDescription>
-              Please provide accurate information for verification
+            <CardTitle className="text-2xl font-bold text-gray-900">
+              Driver Registration
+            </CardTitle>
+            <CardDescription className="text-gray-600">
+              Complete your profile to start delivering with BrillPrime
             </CardDescription>
           </CardHeader>
+
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 {/* Vehicle Information */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vehicleType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vehicle Type *</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                    Vehicle Information
+                  </h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="vehicleType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vehicle Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Select vehicle type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="motorcycle">Motorcycle</SelectItem>
+                              <SelectItem value="car">Car</SelectItem>
+                              <SelectItem value="van">Van</SelectItem>
+                              <SelectItem value="truck">Truck</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="vehiclePlate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>License Plate</FormLabel>
                           <FormControl>
-                            <SelectTrigger className="rounded-2xl border-blue-100">
-                              <SelectValue placeholder="Select vehicle type" />
-                            </SelectTrigger>
+                            <Input placeholder="ABC-123-XY" {...field} />
                           </FormControl>
-                          <SelectContent>
-                            <SelectItem value="MOTORCYCLE">Motorcycle</SelectItem>
-                            <SelectItem value="CAR">Car</SelectItem>
-                            <SelectItem value="VAN">Van</SelectItem>
-                            <SelectItem value="TRUCK">Truck</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
+                    <FormField
+                      control={form.control}
+                      name="vehicleModel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vehicle Model</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Toyota Camry, Honda Civic, etc." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="vehicleYear"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Vehicle Year</FormLabel>
+                          <FormControl>
+                            <Input 
+                              type="number" 
+                              placeholder="2020" 
+                              {...field}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Driver License */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
+                    Driver Information
+                  </h3>
+                  
                   <FormField
                     control={form.control}
-                    name="vehiclePlate"
+                    name="driverLicense"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>License Plate *</FormLabel>
+                        <FormLabel>Driver's License Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="ABC-123-DEF" className="rounded-2xl border-blue-100" {...field} />
+                          <Input placeholder="Enter your driver's license number" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -252,85 +246,55 @@ export default function DriverRegistrationPage() {
                   />
                 </div>
 
-                <div className="grid md:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="vehicleModel"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Vehicle Model *</FormLabel>
-                        <FormControl>
-                          <Input placeholder="Toyota Camry" className="rounded-2xl border-blue-100" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-
-                  <FormField
-                    control={form.control}
-                    name="vehicleYear"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Year *</FormLabel>
-                        <FormControl>
-                          <Input
-                            type="number"
-                            placeholder="2020"
-                            className="rounded-2xl border-blue-100"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value))}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-
-                <FormField
-                  control={form.control}
-                  name="driverLicense"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Driver's License Number *</FormLabel>
-                      <FormControl>
-                        <Input placeholder="DL123456789" className="rounded-2xl border-blue-100" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Restricted Access Specific Fields */}
+                {/* Specializations for Restricted Access */}
                 {isRestricted && (
-                  <>
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                      <Lock className="w-5 h-5 text-blue-600 mr-2" />
+                      Premium Specializations
+                    </h3>
+                    
                     <FormField
                       control={form.control}
                       name="specializations"
-                      render={({ field }) => (
+                      render={() => (
                         <FormItem>
-                          <FormLabel>Specializations (Optional)</FormLabel>
-                          <div className="grid grid-cols-2 gap-2">
+                          <div className="grid grid-cols-2 gap-3">
                             {specializationOptions.map((spec) => (
-                              <div key={spec} className="flex items-center space-x-2">
-                                <Checkbox
-                                  id={spec}
-                                  checked={field.value?.includes(spec) || false}
-                                  onCheckedChange={(checked) => {
-                                    if (checked) {
-                                      field.onChange([...(field.value || []), spec]);
-                                    } else {
-                                      field.onChange(field.value?.filter(s => s !== spec) || []);
-                                    }
-                                  }}
-                                />
-                                <Label htmlFor={spec} className="text-sm">
-                                  {spec.replace('_', ' ')}
-                                </Label>
-                              </div>
+                              <FormField
+                                key={spec}
+                                control={form.control}
+                                name="specializations"
+                                render={({ field }) => {
+                                  return (
+                                    <FormItem
+                                      key={spec}
+                                      className="flex flex-row items-start space-x-3 space-y-0"
+                                    >
+                                      <FormControl>
+                                        <Checkbox
+                                          checked={field.value?.includes(spec)}
+                                          onCheckedChange={(checked) => {
+                                            return checked
+                                              ? field.onChange([...field.value, spec])
+                                              : field.onChange(
+                                                  field.value?.filter(
+                                                    (value) => value !== spec
+                                                  )
+                                                )
+                                          }}
+                                        />
+                                      </FormControl>
+                                      <FormLabel className="text-sm font-normal">
+                                        {spec.replace(/_/g, ' ')}
+                                      </FormLabel>
+                                    </FormItem>
+                                  )
+                                }}
+                              />
                             ))}
                           </div>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -339,7 +303,7 @@ export default function DriverRegistrationPage() {
                       control={form.control}
                       name="bondInsurance"
                       render={({ field }) => (
-                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                           <FormControl>
                             <Checkbox
                               checked={field.value}
@@ -348,26 +312,26 @@ export default function DriverRegistrationPage() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>
-                              I have or will obtain bond insurance coverage
+                              Bond Insurance Coverage Required
                             </FormLabel>
                             <p className="text-sm text-muted-foreground">
-                              Required for high-value item transport authorization
+                              I understand that bond insurance is required for premium driver access
                             </p>
                           </div>
                         </FormItem>
                       )}
                     />
-                  </>
+                  </div>
                 )}
 
                 {/* Document Upload */}
-                <div className="space-y-3">
-                  <Label>Required Documents</Label>
-                  <div className="border-2 border-dashed border-blue-200 rounded-3xl p-6 text-center bg-blue-50/30">
-                    <Upload className="mx-auto h-8 w-8 text-gray-400 mb-2" />
-                    <p className="text-sm text-gray-600 mb-2">
-                      Upload your documents (License, Insurance, Vehicle Registration)
-                    </p>
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                    <Upload className="w-5 h-5 text-blue-600 mr-2" />
+                    Required Documents
+                  </h3>
+                  
+                  <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <input
                       type="file"
                       multiple
@@ -376,30 +340,36 @@ export default function DriverRegistrationPage() {
                       className="hidden"
                       id="document-upload"
                     />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="rounded-2xl border-blue-200 hover:bg-blue-50"
-                      onClick={() => document.getElementById('document-upload')?.click()}
-                    >
-                      Choose Files
-                    </Button>
+                    <Label htmlFor="document-upload" className="cursor-pointer">
+                      <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="text-sm text-gray-600">
+                        Click to upload vehicle registration, insurance, and driver's license
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        PDF, JPG, PNG up to 10MB each
+                      </p>
+                    </Label>
                   </div>
+
                   {uploadedDocs.length > 0 && (
-                    <div className="space-y-1">
-                      {uploadedDocs.map((doc, idx) => (
-                        <p key={idx} className="text-sm text-green-600">✓ {doc}</p>
+                    <div className="space-y-2">
+                      <p className="text-sm font-medium text-gray-700">Uploaded Documents:</p>
+                      {uploadedDocs.map((doc, index) => (
+                        <div key={index} className="flex items-center text-sm text-gray-600">
+                          <div className="w-2 h-2 bg-green-500 rounded-full mr-2" />
+                          {doc}
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
 
-                {/* Terms Agreement */}
+                {/* Terms and Conditions */}
                 <FormField
                   control={form.control}
                   name="agreedToTerms"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
@@ -408,10 +378,10 @@ export default function DriverRegistrationPage() {
                       </FormControl>
                       <div className="space-y-1 leading-none">
                         <FormLabel>
-                          I agree to the terms and conditions *
+                          I agree to the Terms and Conditions
                         </FormLabel>
                         <p className="text-sm text-muted-foreground">
-                          Including driver responsibilities, safety protocols, and platform policies
+                          By checking this box, you agree to our driver terms of service and privacy policy
                         </p>
                       </div>
                       <FormMessage />
@@ -422,39 +392,14 @@ export default function DriverRegistrationPage() {
                 {/* Submit Button */}
                 <Button
                   type="submit"
-                  size="lg"
-                  className="w-full bg-[var(--brill-secondary)] hover:bg-[var(--brill-active)] text-white rounded-3xl btn-3d"
-                  disabled={form.formState.isSubmitting}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-xl font-semibold text-lg"
+                  disabled={!form.formState.isValid}
                 >
-                  {form.formState.isSubmitting ? "Submitting..." : 
-                    isRestricted ? "Submit for Review" : "Complete Registration"
-                  }
+                  {isRestricted ? 'Submit for Review' : 'Complete Registration'}
+                  <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
               </form>
             </Form>
-          </CardContent>
-        </Card>
-
-        {/* Next Steps Info */}
-        <Card className="mt-6 rounded-3xl card-3d border-blue-100">
-          <CardContent className="p-4">
-            <h3 className="font-semibold mb-2">Next Steps:</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              {isRestricted ? (
-                <>
-                  <li>• Background verification will begin within 24 hours</li>
-                  <li>• Security clearance assessment (7-14 days)</li>
-                  <li>• Bond insurance verification</li>
-                  <li>• Final approval and platform access</li>
-                </>
-              ) : (
-                <>
-                  <li>• Basic document verification (1-3 days)</li>
-                  <li>• Driver orientation materials</li>
-                  <li>• Platform access and first delivery assignments</li>
-                </>
-              )}
-            </ul>
           </CardContent>
         </Card>
       </div>

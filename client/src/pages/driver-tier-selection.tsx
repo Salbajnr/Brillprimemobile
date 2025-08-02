@@ -13,10 +13,10 @@ export default function DriverTierSelectionPage() {
 
   const handleContinue = () => {
     if (selectedTier) {
-      // Store selected tier in session storage for signup process
+      // Store selected tier in session storage for registration process
       sessionStorage.setItem('selectedDriverTier', selectedTier);
-      // Continue to standard signup with driver role and tier info
-      navigate('/signup');
+      // Navigate to driver registration page
+      navigate('/driver-registration');
     }
   };
 

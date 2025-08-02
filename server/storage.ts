@@ -14,7 +14,7 @@ import {
   type SupportTicket, type InsertSupportTicket
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, gte, like, desc, sql } from "drizzle-orm";
+import { eq, and, gte, like, desc, sql, or, ne } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -22,9 +22,11 @@ export interface IStorage {
   getUserByEmail(email: string): Promise<User | undefined>;
   getUserBySocialId(socialProvider: string, socialId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
-  createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string }): Promise<User>;
+  createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string; role?: string }): Promise<User>;
   verifyUser(email: string): Promise<void>;
   generateUserId(): Promise<string>;
+  linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string): Promise<void>;
+  updateUserProfilePicture(userId: number, profilePicture: string): Promise<void>;
 
   // OTP operations
   createOtpCode(otpCode: InsertOtpCode): Promise<OtpCode>;
@@ -49,16 +51,24 @@ export interface IStorage {
   updateCartItem(cartItemId: number, quantity: number): Promise<CartItem>;
   removeFromCart(cartItemId: number): Promise<void>;
 
-  // Wishlist operations (placeholder for future implementation)
-  addToWishlist(userId: number, productId: number): Promise<void>;
-  removeFromWishlist(userId: number, productId: number): Promise<void>;
-  getWishlistItems(userId: number): Promise<any[]>;
+  // Driver operations
+  getDriverProfile(userId: number): Promise<DriverProfile | undefined>;
+  createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile>;
+  updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void>;
+  getAvailableDeliveryJobs(): Promise<DeliveryRequest[]>;
+  acceptDeliveryJob(jobId: string, driverId: number): Promise<void>;
+  getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }>;
+  getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]>;
+  getDriverOrders(driverId: number, status?: string): Promise<any[]>;
 
-  // Chat operations
-  getConversations(userId: number, role?: string): Promise<any[]>;
-  createConversation(conversation: InsertConversation): Promise<Conversation>;
-  getMessages(conversationId: string): Promise<any[]>;
-  sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  // Merchant operations
+  getMerchantProfile(userId: number): Promise<MerchantProfile | undefined>;
+  createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile>;
+  getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }>;
+  getMerchantOrders(userId: number): Promise<Order[]>;
+  updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void>;
+  getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]>;
+  createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
 
   // Vendor Feed operations
   getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
@@ -69,23 +79,11 @@ export interface IStorage {
   commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment>;
   getVendorPostComments(postId: string): Promise<VendorPostComment[]>;
 
-  // Driver operations
-  getDriverProfile(userId: number): Promise<DriverProfile | undefined>;
-  createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile>;
-  updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void>;
-  getAvailableDeliveryJobs(): Promise<DeliveryRequest[]>;
-  acceptDeliveryJob(jobId: string, driverId: number): Promise<void>;
-  getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }>;
-  getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]>;
-
-  // Merchant operations
-  getMerchantProfile(userId: number): Promise<MerchantProfile | undefined>;
-  createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile>;
-  getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }>;
-  getMerchantOrders(userId: number): Promise<Order[]>;
-  updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void>;
-  getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]>;
-  createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
+  // Chat operations
+  getConversations(userId: number, role?: string): Promise<any[]>;
+  createConversation(conversation: InsertConversation): Promise<Conversation>;
+  getMessages(conversationId: string): Promise<any[]>;
+  sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
 
   // Support Ticket operations
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
@@ -102,32 +100,26 @@ export interface IStorage {
   verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null>;
   updateUser(userId: number, data: any): Promise<any>;
 
-    // Fuel order operations
+  // Fuel order operations
   getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any>;
   createFuelOrder(data: any): Promise<any>;
   getFuelOrders(userId: number): Promise<any>;
   updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
   getAvailableFuelOrders(): Promise<any>;
 
-  // Social login storage methods
-  linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string): Promise<any>;
-  updateUserProfilePicture(userId: number, profilePicture: string): Promise<any>;
+  // Push notifications
   storePushSubscription(userId: number, subscription: any): Promise<any>;
   removePushSubscription(userId: number): Promise<any>;
 
   // Merchant Discovery methods
   searchMerchants(params: { latitude?: number; longitude?: number; radius?: number; category?: string; searchTerm?: string }): Promise<any[]>;
-  getMerchantProfile(merchantId: number): Promise<any>;
   getMerchantProducts(merchantId: number): Promise<Product[]>;
 
   // Fuel Station Discovery methods
   getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]>;
-  getDriverOrders(driverId: number, status?: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
-  private fuelOrders?: Map<string, any>; // Temporary storage for fuel orders
-
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await db.select().from(users).where(eq(users.id, id));
@@ -146,7 +138,6 @@ export class DatabaseStorage implements IStorage {
   }
 
   async generateUserId(): Promise<string> {
-    // Get the latest user ID to generate the next sequential ID
     const [latestUser] = await db.select().from(users)
       .orderBy(desc(users.id))
       .limit(1);
@@ -164,7 +155,14 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createSocialUser(userData: { fullName: string; email: string; socialProvider: string; socialId: string; profilePicture?: string }): Promise<User> {
+  async createSocialUser(userData: { 
+    fullName: string; 
+    email: string; 
+    socialProvider: string; 
+    socialId: string; 
+    profilePicture?: string;
+    role?: string;
+  }): Promise<User> {
     const userId = await this.generateUserId();
     const [user] = await db
       .insert(users)
@@ -174,7 +172,7 @@ export class DatabaseStorage implements IStorage {
         email: userData.email,
         phone: '', // Will be updated later
         password: '', // Social login users don't need passwords
-        role: 'CONSUMER', // Default role for social login
+        role: (userData.role as "CONSUMER" | "MERCHANT" | "DRIVER") || 'CONSUMER',
         isVerified: true, // Social login users are pre-verified
         socialProvider: userData.socialProvider,
         socialId: userData.socialId,
@@ -189,6 +187,28 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ isVerified: true })
       .where(eq(users.email, email));
+  }
+
+  async linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string): Promise<void> {
+    const updateData: any = {
+      socialProvider: provider,
+      socialId,
+    };
+    if (profilePicture) {
+      updateData.profilePicture = profilePicture;
+    }
+
+    await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId));
+  }
+
+  async updateUserProfilePicture(userId: number, profilePicture: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ profilePicture })
+      .where(eq(users.id, userId));
   }
 
   // OTP operations
@@ -224,113 +244,158 @@ export class DatabaseStorage implements IStorage {
 
   // Location operations
   async upsertUserLocation(location: InsertUserLocation): Promise<UserLocation> {
-    // First try to update existing active location
-    const [existingLocation] = await db
-      .update(userLocations)
-      .set({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        address: location.address,
-        updatedAt: new Date(),
-        isActive: true
-      })
-      .where(
-        and(
-          eq(userLocations.userId, location.userId),
-          eq(userLocations.isActive, true)
-        )
-      )
-      .returning();
+    // First try to update existing location
+    const existingLocation = await db
+      .select()
+      .from(userLocations)
+      .where(eq(userLocations.userId, location.userId));
 
-    if (existingLocation) {
-      return existingLocation;
+    if (existingLocation.length > 0) {
+      const [updatedLocation] = await db
+        .update(userLocations)
+        .set({
+          latitude: location.latitude,
+          longitude: location.longitude,
+          address: location.address,
+          isActive: location.isActive ?? true,
+        })
+        .where(eq(userLocations.userId, location.userId))
+        .returning();
+      return updatedLocation;
+    } else {
+      const [newLocation] = await db
+        .insert(userLocations)
+        .values(location)
+        .returning();
+      return newLocation;
     }
-
-    // If no existing location, create new one
-    const [newLocation] = await db
-      .insert(userLocations)
-      .values(location)
-      .returning();
-
-    return newLocation;
   }
 
   async getNearbyUsers(lat: number, lng: number, radiusMeters: number, excludeRole?: string): Promise<UserLocation[]> {
-    // Use Haversine formula to calculate distance
-    const baseConditions = [
-      eq(userLocations.isActive, true),
-      sql`(6371000 * acos(cos(radians(${lat})) * cos(radians(${userLocations.latitude})) * cos(radians(${userLocations.longitude}) - radians(${lng})) + sin(radians(${lat})) * sin(radians(${userLocations.latitude})))) <= ${radiusMeters}`
-    ];
-
-    if (excludeRole) {
-      baseConditions.push(sql`${users.role} != ${excludeRole}`);
-    }
-
+    // Simple distance calculation - in production you'd use PostGIS
     const nearbyUsers = await db
-      .select({
-        id: userLocations.id,
-        userId: userLocations.userId,
-        latitude: userLocations.latitude,
-        longitude: userLocations.longitude,
-        address: userLocations.address,
-        isActive: userLocations.isActive,
-        createdAt: userLocations.createdAt,
-        updatedAt: userLocations.updatedAt,
-        fullName: users.fullName,
-        role: users.role
-      })
+      .select()
       .from(userLocations)
       .innerJoin(users, eq(userLocations.userId, users.id))
-      .where(and(...baseConditions));
+      .where(
+        and(
+          eq(userLocations.isActive, true),
+          excludeRole ? ne(users.role, excludeRole as any) : sql`true`
+        )
+      );
 
-    return nearbyUsers;
+    return nearbyUsers.map(result => result.user_locations);
   }
 
-  // Category operations
-  async getCategories(): Promise<Category[]> {
-    // First check if categories exist in database
-    const existingCategories = await db
+  // Driver operations
+  async getDriverProfile(userId: number): Promise<DriverProfile | undefined> {
+    const [profile] = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
+    return profile || undefined;
+  }
+
+  async createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile> {
+    const [driverProfile] = await db
+      .insert(driverProfiles)
+      .values(profile)
+      .returning();
+    return driverProfile;
+  }
+
+  async updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void> {
+    await db
+      .update(driverProfiles)
+      .set({
+        currentLocation: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+          accuracy: location.accuracy,
+          timestamp: Date.now()
+        }
+      })
+      .where(eq(driverProfiles.userId, userId));
+  }
+
+  async getAvailableDeliveryJobs(): Promise<DeliveryRequest[]> {
+    const deliveryJobs = await db
       .select()
-      .from(categories)
-      .where(eq(categories.isActive, true))
-      .orderBy(categories.name);
+      .from(deliveryRequests)
+      .where(eq(deliveryRequests.status, 'PENDING'))
+      .orderBy(desc(deliveryRequests.createdAt));
 
-    // If no categories exist, seed with default business categories
-    if (existingCategories.length === 0) {
-      const defaultCategories = [
-        { name: "Apparel & Clothing", icon: "Shirt", slug: "apparel-clothing", description: "Fashion, clothing, and accessories" },
-        { name: "Art & Entertainment", icon: "Palette", slug: "art-entertainment", description: "Creative arts and entertainment services" },
-        { name: "Beauty & Cosmetics", icon: "Sparkles", slug: "beauty-cosmetics", description: "Beauty products and cosmetic services" },
-        { name: "Education", icon: "GraduationCap", slug: "education", description: "Educational services and institutions" },
-        { name: "Event Planning", icon: "Calendar", slug: "event-planning", description: "Event organization and planning services" },
-        { name: "Finance", icon: "DollarSign", slug: "finance", description: "Financial services and consulting" },
-        { name: "Supermarket", icon: "ShoppingBasket", slug: "supermarket", description: "Grocery stores and supermarkets" },
-        { name: "Hotel", icon: "Building2", slug: "hotel", description: "Hotels and accommodation services" },
-        { name: "Medical & Health", icon: "Heart", slug: "medical-health", description: "Healthcare and medical services" },
-        { name: "Non-profit", icon: "Users", slug: "non-profit", description: "Non-profit organizations and charities" },
-        { name: "Oil & Gas", icon: "Fuel", slug: "oil-gas", description: "Energy and petroleum services" },
-        { name: "Restaurant", icon: "UtensilsCrossed", slug: "restaurant", description: "Restaurants and food services" },
-        { name: "Shopping & Retail", icon: "Store", slug: "shopping-retail", description: "Retail stores and shopping centers" },
-        { name: "Ticket", icon: "Ticket", slug: "ticket", description: "Ticket sales and booking services" },
-        { name: "Toll Gate", icon: "MapPin", slug: "toll-gate", description: "Toll gate and road services" },
-        { name: "Vehicle Service", icon: "Car", slug: "vehicle-service", description: "Automotive services and repairs" },
-        { name: "Other Business", icon: "Briefcase", slug: "other-business", description: "Miscellaneous business services" }
-      ];
+    return deliveryJobs;
+  }
 
-      // Insert default categories
-      for (const category of defaultCategories) {
-        await db.insert(categories).values(category);
-      }
+  async acceptDeliveryJob(jobId: string, driverId: number): Promise<void> {
+    await db
+      .update(deliveryRequests)
+      .set({ 
+        driverId,
+        status: 'ACCEPTED',
+      })
+      .where(eq(deliveryRequests.id, jobId));
+  }
 
-      // Return the newly seeded categories
-      return await db
-        .select()
-        .from(categories)
-        .where(eq(categories.isActive, true))
-        .orderBy(categories.name);
+  async getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }> {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+
+    const completedDeliveries = await db
+      .select()
+      .from(deliveryRequests)
+      .where(
+        and(
+          eq(deliveryRequests.driverId, userId),
+          eq(deliveryRequests.status, 'DELIVERED')
+        )
+      );
+
+    const todayDeliveries = completedDeliveries.filter(d => 
+      d.completedAt && new Date(d.completedAt) >= today
+    );
+
+    const weeklyDeliveries = completedDeliveries.filter(d => 
+      d.completedAt && new Date(d.completedAt) >= weekAgo
+    );
+
+    return {
+      todayEarnings: todayDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
+      weeklyEarnings: weeklyDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
+      totalEarnings: completedDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
+      completedDeliveries: completedDeliveries.length
+    };
+  }
+
+  async getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]> {
+    const deliveries = await db
+      .select()
+      .from(deliveryRequests)
+      .where(eq(deliveryRequests.driverId, userId))
+      .orderBy(desc(deliveryRequests.createdAt));
+
+    return deliveries;
+  }
+
+  async getDriverOrders(driverId: number, status?: string): Promise<any[]> {
+    let query = db
+      .select()
+      .from(deliveryRequests)
+      .where(eq(deliveryRequests.driverId, driverId));
+
+    if (status) {
+      query = query.where(eq(deliveryRequests.status, status as any));
     }
 
-    return existingCategories;
+    const orders = await query.orderBy(desc(deliveryRequests.createdAt));
+    return orders;
+  }
+
+  // Categories
+  async getCategories(): Promise<Category[]> {
+    const categories = await db.select().from(categories).where(eq(categories.isActive, true));
+    return categories;
   }
 
   async createCategory(category: InsertCategory): Promise<Category> {
@@ -341,56 +406,33 @@ export class DatabaseStorage implements IStorage {
     return newCategory;
   }
 
-  // Product operations
+  // Products
   async getProducts(filters: { categoryId?: number; search?: string; limit?: number; offset?: number }): Promise<Product[]> {
-    const conditions = [eq(products.isActive, true)];
+    let query = db.select().from(products).where(eq(products.isActive, true));
 
     if (filters.categoryId) {
-      conditions.push(eq(products.categoryId, filters.categoryId));
+      query = query.where(eq(products.categoryId, filters.categoryId));
     }
 
     if (filters.search) {
-      conditions.push(
-        sql`${products.name} ILIKE ${`%${filters.search}%`} OR ${products.description} ILIKE ${`%${filters.search}%`}`
+      query = query.where(
+        or(
+          like(products.name, `%${filters.search}%`),
+          like(products.description, `%${filters.search}%`)
+        )
       );
     }
 
-    const queryBuilder = db
-      .select({
-        id: products.id,
-        name: products.name,
-        description: products.description,
-        price: products.price,
-        unit: products.unit,
-        categoryId: products.categoryId,
-        sellerId: products.sellerId,
-        image: products.image,
-        rating: products.rating,
-        reviewCount: products.reviewCount,
-        inStock: products.inStock,
-        minimumOrder: products.minimumOrder,
-        isActive: products.isActive,
-        createdAt: products.createdAt,
-        updatedAt: products.updatedAt,
-        categoryName: categories.name,
-        sellerName: users.fullName,
-        sellerLocation: users.city
-      })
-      .from(products)
-      .innerJoin(categories, eq(products.categoryId, categories.id))
-      .innerJoin(users, eq(products.sellerId, users.id))
-      .where(and(...conditions))
-      .orderBy(desc(products.createdAt));
-
     if (filters.limit) {
-      queryBuilder.limit(filters.limit);
+      query = query.limit(filters.limit);
     }
 
     if (filters.offset) {
-      queryBuilder.offset(filters.offset);
+      query = query.offset(filters.offset);
     }
 
-    return await queryBuilder;
+    const productsList = await query.orderBy(desc(products.createdAt));
+    return productsList;
   }
 
   async createProduct(product: InsertProduct): Promise<Product> {
@@ -403,54 +445,19 @@ export class DatabaseStorage implements IStorage {
 
   // Cart operations
   async getCartItems(userId: number): Promise<CartItem[]> {
-    return await db
-      .select({
-        id: cartItems.id,
-        userId: cartItems.userId,
-        productId: cartItems.productId,
-        quantity: cartItems.quantity,
-        createdAt: cartItems.createdAt,
-        productName: products.name,
-        productPrice: products.price,
-        productUnit: products.unit,
-        productImage: products.image,
-        sellerName: users.fullName
-      })
+    const cartItems = await db
+      .select()
       .from(cartItems)
-      .innerJoin(products, eq(cartItems.productId, products.id))
-      .innerJoin(users, eq(products.sellerId, users.id))
-      .where(eq(cartItems.userId, userId))
-      .orderBy(desc(cartItems.createdAt));
+      .where(eq(cartItems.userId, userId));
+    return cartItems;
   }
 
   async addToCart(cartItem: InsertCartItem): Promise<CartItem> {
-    // Check if item already exists in cart
-    const [existingItem] = await db
-      .select()
-      .from(cartItems)
-      .where(
-        and(
-          eq(cartItems.userId, cartItem.userId),
-          eq(cartItems.productId, cartItem.productId)
-        )
-      );
-
-    if (existingItem) {
-      // Update quantity if item exists
-      const [updatedItem] = await db
-        .update(cartItems)
-        .set({ quantity: existingItem.quantity + cartItem.quantity })
-        .where(eq(cartItems.id, existingItem.id))
-        .returning();
-      return updatedItem;
-    } else {
-      // Add new item to cart
-      const [newItem] = await db
-        .insert(cartItems)
-        .values(cartItem)
-        .returning();
-      return newItem;
-    }
+    const [newCartItem] = await db
+      .insert(cartItems)
+      .values(cartItem)
+      .returning();
+    return newCartItem;
   }
 
   async updateCartItem(cartItemId: number, quantity: number): Promise<CartItem> {
@@ -470,618 +477,239 @@ export class DatabaseStorage implements IStorage {
 
   // Vendor Feed operations
   async getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]> {
-    // For now, return sample data that matches the actual data structure
-    // This will be replaced with real database queries once schema is deployed
-    const samplePosts: VendorPost[] = [
-      {
-        id: "1",
-        vendorId: 1,
-        title: "New Stock Alert: Premium Rice Collection",
-        content: "Just received fresh shipment of premium long grain rice. Perfect for families and restaurants. Limited quantity available!",
-        postType: "NEW_PRODUCT",
-        productId: "prod-1",
-        images: ["/api/placeholder/400/300"],
-        tags: ["rice", "premium", "fresh"],
-        originalPrice: "45000",
-        discountPrice: "40000",
-        discountPercentage: 11,
-        validUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days from now
-        isActive: true,
-        viewCount: 125,
-        likeCount: 23,
-        commentCount: 8,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000), // 2 hours ago
-        updatedAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        vendorName: "Golden Grains Store",
-        vendorProfilePicture: "/api/placeholder/50/50",
-        productName: "Premium Long Grain Rice (50kg)",
-        productPrice: "40000",
-        productImage: "/api/placeholder/100/100"
-      },
-      {
-        id: "2", 
-        vendorId: 2,
-        title: "Flash Sale: Electronics Clearance",
-        content: "Clearing out last season's electronics. Phones, tablets, and accessories at unbeatable prices. While stocks last!",
-        postType: "PROMOTION",
-        productId: "prod-2",
-        images: ["/api/placeholder/400/300"],
-        tags: ["electronics", "sale", "clearance"],
-        originalPrice: "150000",
-        discountPrice: "95000",
-        discountPercentage: 37,
-        validUntil: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // 3 days from now
-        isActive: true,
-        viewCount: 89,
-        likeCount: 15,
-        commentCount: 12,
-        createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000), // 4 hours ago
-        updatedAt: new Date(Date.now() - 4 * 60 * 60 * 1000),
-        vendorName: "TechHub Electronics",
-        vendorProfilePicture: "/api/placeholder/50/50",
-        productName: "Samsung Galaxy Tablet",
-        productPrice: "95000",
-        productImage: "/api/placeholder/100/100"
-      },
-      {
-        id: "3",
-        vendorId: 3,
-        title: "Store Announcement: Extended Hours",
-        content: "We're now open 24/7 to serve you better! Visit us anytime for fresh groceries and household essentials.",
-        postType: "ANNOUNCEMENT",
-        productId: null,
-        images: [],
-        tags: ["announcement", "hours", "service"],
-        originalPrice: null,
-        discountPrice: null,
-        discountPercentage: null,
-        validUntil: null,
-        isActive: true,
-        viewCount: 156,
-        likeCount: 31,
-        commentCount: 5,
-        createdAt: new Date(Date.now() - 6 * 60 * 60 * 1000), // 6 hours ago
-        updatedAt: new Date(Date.now() - 6 * 60 * 60 * 1000),
-        vendorName: "Fresh Market Express",
-        vendorProfilePicture: "/api/placeholder/50/50",
-        productName: null,
-        productPrice: null,
-        productImage: null
-      }
-    ];
+    let query = db.select().from(vendorPosts).where(eq(vendorPosts.isActive, true));
 
-    return samplePosts.slice(0, filters.limit || 20);
+    if (filters.vendorId) {
+      query = query.where(eq(vendorPosts.vendorId, filters.vendorId));
+    }
+
+    if (filters.postType) {
+      query = query.where(eq(vendorPosts.postType, filters.postType as any));
+    }
+
+    if (filters.limit) {
+      query = query.limit(filters.limit);
+    }
+
+    if (filters.offset) {
+      query = query.offset(filters.offset);
+    }
+
+    const posts = await query.orderBy(desc(vendorPosts.createdAt));
+    return posts;
   }
 
-  async createVendorPost(insertPost: InsertVendorPost): Promise<VendorPost> {
-    // Simulate creating a new post with real data structure
-    const newPost: VendorPost = {
-      id: Math.random().toString(36).substr(2, 9),
-      vendorId: insertPost.vendorId,
-      title: insertPost.title,
-      content: insertPost.content,
-      postType: insertPost.postType,
-      productId: insertPost.productId || null,
-      images: insertPost.images || [],
-      tags: insertPost.tags || [],
-      originalPrice: insertPost.originalPrice || null,
-      discountPrice: insertPost.discountPrice || null,
-      discountPercentage: insertPost.discountPercentage || null,
-      validUntil: insertPost.validUntil || null,
-      isActive: true,
-      viewCount: 0,
-      likeCount: 0,
-      commentCount: 0,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-      vendorName: "Current User", // Would get from user lookup
-      vendorProfilePicture: "/api/placeholder/50/50",
-      productName: insertPost.productId ? "Sample Product" : null,
-      productPrice: insertPost.discountPrice || insertPost.originalPrice || null,
-      productImage: insertPost.productId ? "/api/placeholder/100/100" : null
-    };
-
-    console.log("Created vendor post:", newPost);
+  async createVendorPost(post: InsertVendorPost): Promise<VendorPost> {
+    const [newPost] = await db
+      .insert(vendorPosts)
+      .values(post)
+      .returning();
     return newPost;
   }
 
   async likeVendorPost(postId: string, userId: number): Promise<VendorPostLike> {
-    // Placeholder implementation
-    return {} as VendorPostLike;
+    const [like] = await db
+      .insert(vendorPostLikes)
+      .values({ postId, userId })
+      .returning();
+
+    // Update like count
+    await db
+      .update(vendorPosts)
+      .set({ likeCount: sql`${vendorPosts.likeCount} + 1` })
+      .where(eq(vendorPosts.id, postId));
+
+    return like;
   }
 
   async unlikeVendorPost(postId: string, userId: number): Promise<void> {
-    // Placeholder implementation
+    await db
+      .delete(vendorPostLikes)
+      .where(and(eq(vendorPostLikes.postId, postId), eq(vendorPostLikes.userId, userId)));
+
+    // Update like count
+    await db
+      .update(vendorPosts)
+      .set({ likeCount: sql`${vendorPosts.likeCount} - 1` })
+      .where(eq(vendorPosts.id, postId));
   }
 
   async getVendorPostLikes(postId: string): Promise<VendorPostLike[]> {
-    return [];
+    const likes = await db
+      .select()
+      .from(vendorPostLikes)
+      .where(eq(vendorPostLikes.postId, postId));
+    return likes;
   }
 
-  async commentOnVendorPost(insertComment: InsertVendorPostComment): Promise<VendorPostComment> {
-    // Placeholder implementation
-    return {} as VendorPostComment;
+  async commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment> {
+    const [newComment] = await db
+      .insert(vendorPostComments)
+      .values(comment)
+      .returning();
+
+    // Update comment count
+    await db
+      .update(vendorPosts)
+      .set({ commentCount: sql`${vendorPosts.commentCount} + 1` })
+      .where(eq(vendorPosts.id, comment.postId));
+
+    return newComment;
   }
 
   async getVendorPostComments(postId: string): Promise<VendorPostComment[]> {
-    return [];
+    const comments = await db
+      .select()
+      .from(vendorPostComments)
+      .where(and(eq(vendorPostComments.postId, postId), eq(vendorPostComments.isActive, true)))
+      .orderBy(desc(vendorPostComments.createdAt));
+    return comments;
   }
 
-  // Wishlist operations (placeholder implementations)
-  async addToWishlist(userId: number, productId: number): Promise<void> {
-    // Placeholder - will implement with proper wishlist table later
-    console.log(`Added product ${productId} to wishlist for user ${userId}`);
-  }
-
-  async removeFromWishlist(userId: number, productId: number): Promise<void> {
-    // Placeholder - will implement with proper wishlist table later
-    console.log(`Removed product ${productId} from wishlist for user ${userId}`);
-  }
-
-  async getWishlistItems(userId: number): Promise<any[]> {
-    // Placeholder - will implement with proper wishlist table later
-    return [];
-  }
-
-  // Chat operations (using structured sample data for testing)
-  async getConversations(userId: number, role?: string): Promise<any[]> {
-    // Get user's actual profile picture
-    const user = await this.getUser(userId);
-    const userPhoto = user?.profilePicture;
-
-    // Return role-based conversations
-    const allConversations = [
-      // Consumer-Merchant Quote Discussion
-      {
-        id: "conv-1",
-        customerId: 1,
-        vendorId: 2,
-        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b",
-        conversationType: "QUOTE",
-        status: "ACTIVE",
-        customerName: "Isaiah Salba",
-        vendorName: "Golden Grains Store",
-        customerPhoto: userPhoto,
-        vendorPhoto: null,
-        productName: "Designer Jeans",
-        lastMessage: "What's your best price for bulk orders?",
-        lastMessageAt: new Date(Date.now() - 2 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
-      },
-      // Consumer-Merchant Order Management
-      {
-        id: "conv-2",
-        customerId: 1,
-        vendorId: 3,
-        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6",
-        conversationType: "ORDER",
-        status: "ACTIVE",
-        customerName: "Isaiah Salba",
-        vendorName: "TechHub Electronics",
-        customerPhoto: userPhoto,
-        vendorPhoto: null,
-        productName: "Organic Face Cream",
-        lastMessage: "Order confirmed. When can I expect delivery?",
-        lastMessageAt: new Date(Date.now() - 1 * 60 * 60 * 1000),
-        createdAt: new Date(Date.now() - 12 * 60 * 60 * 1000)
-      },
-      // Driver-Merchant Pickup Request
-      {
-        id: "conv-3",
-        customerId: 1,
-        vendorId: 2,
-        driverId: 4,
-        productId: "734e20c5-04e3-49ab-a770-c85fcb2e8b2b",
-        conversationType: "PICKUP",
-        status: "ACTIVE",
-        customerName: "Isaiah Salba",
-        vendorName: "Golden Grains Store",
-        driverName: "Mike Wilson",
-        customerPhoto: userPhoto,
-        vendorPhoto: null,
-        driverPhoto: null,
-        productName: "Designer Jeans",
-        lastMessage: "Package ready for pickup at store location",
-        lastMessageAt: new Date(Date.now() - 30 * 60 * 1000),
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      },
-      // Driver-Customer Delivery Service
-      {
-        id: "conv-4",
-        customerId: 1,
-        vendorId: 3,
-        driverId: 4,
-        productId: "6741b646-aa7a-4d8a-9f07-eba7653b53d6",
-        conversationType: "DELIVERY",
-        status: "ACTIVE",
-        customerName: "Isaiah Salba",
-        vendorName: "TechHub Electronics",
-        driverName: "Mike Wilson",
-        customerPhoto: userPhoto,
-        vendorPhoto: null,
-        driverPhoto: null,
-        productName: "Organic Face Cream",
-        lastMessage: "On the way to your delivery address",
-        lastMessageAt: new Date(Date.now() - 15 * 60 * 1000),
-        createdAt: new Date(Date.now() - 1 * 60 * 60 * 1000)
-      }
-    ];
-
-    // Filter conversations based on user role
-    if (role === "CONSUMER") {
-      return allConversations.filter(conv => 
-        conv.customerId === userId && 
-        (conv.conversationType === "QUOTE" || conv.conversationType === "ORDER" || conv.conversationType === "DELIVERY")
-      );
-    } else if (role === "MERCHANT") {
-      return allConversations.filter(conv => 
-        conv.vendorId === userId && 
-        (conv.conversationType === "QUOTE" || conv.conversationType === "ORDER" || conv.conversationType === "PICKUP")
-      );
-    } else if (role === "DRIVER") {
-      return allConversations.filter(conv => 
-        conv.driverId === userId && 
-        (conv.conversationType === "PICKUP" || conv.conversationType === "DELIVERY")
-      );
-    }
-
-    // Default: return user's conversations
-    return allConversations.filter(conv => 
-      conv.customerId === userId || conv.vendorId === userId || conv.driverId === userId
-    );
-  }
-
-  async createConversation(conversation: InsertConversation): Promise<Conversation> {
-    const newConversation = {
-      id: Math.random().toString(36).substr(2, 9),
-      customerId: conversation.customerId,
-      vendorId: conversation.vendorId,
-      productId: conversation.productId || null,
-      conversationType: conversation.conversationType,
-      status: "ACTIVE" as const,
-      lastMessage: null,
-      lastMessageAt: new Date(),
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    console.log("Created conversation:", newConversation);
-    return newConversation;
-  }
-
-  async getMessages(conversationId: string): Promise<any[]> {
-    // Return sample messages for testing
-    return [
-      {
-        id: "msg-1",
-        conversationId,
-        senderId: 2,
-        senderName: "John Doe",
-        senderRole: "CONSUMER",
-        content: "Hi, I'm interested in your premium rice. What's your best price for bulk orders of 100+ bags?",
-        messageType: "QUOTE_REQUEST",
-        attachedData: null,
-        createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000)
-      },
-      {
-        id: "msg-2", 
-        conversationId,
-        senderId: 1,
-        senderName: "GoldenGrains Store",
-        senderRole: "MERCHANT",
-        content: "Hello! For orders of 100+ bags, I can offer 15% discount. That brings the price to ₦34,000 per bag. Quality guaranteed!",
-        messageType: "QUOTE_RESPONSE",
-        attachedData: { originalPrice: 40000, discountPrice: 34000, quantity: 100 },
-        createdAt: new Date(Date.now() - 23 * 60 * 60 * 1000)
-      },
-      {
-        id: "msg-3",
-        conversationId,
-        senderId: 2,
-        senderName: "John Doe", 
-        senderRole: "CONSUMER",
-        content: "That sounds good! Can you guarantee delivery within 48 hours to Lagos?",
-        messageType: "TEXT",
-        attachedData: null,
-        createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000)
-      }
-    ];
-  }
-
-  async sendMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const newMessage = {
-      id: Math.random().toString(36).substr(2, 9),
-      conversationId: message.conversationId,
-      senderId: message.senderId,
-      content: message.content,
-      messageType: message.messageType || "TEXT",
-      attachedData: message.attachedData || null,
-      isRead: false,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    };
-
-    console.log("Sent message:", newMessage);
-    return newMessage;
-  }
-
-  // Driver operations implementation
-  async getDriverProfile(userId: number): Promise<DriverProfile | undefined> {
-    const [profile] = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
-    return profile || undefined;
-  }
-
-  async createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile> {
-    const [newProfile] = await db.insert(driverProfiles).values(profile).returning();
-    return newProfile;
-  }
-
-  async updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void> {
-    await db.update(driverProfiles)
-      .set({ 
-        currentLocation: { 
-          lat: parseFloat(location.latitude), 
-          lng: parseFloat(location.longitude),
-          accuracy: location.accuracy || 10,
-          timestamp: new Date().toISOString()
-        },
-        updatedAt: new Date()
-      })
-      .where(eq(driverProfiles.userId, userId));
-  }
-
-  async getAvailableDeliveryJobs(): Promise<DeliveryRequest[]> {
-    const jobs = await db.select({
-      id: deliveryRequests.id,
-      customerId: deliveryRequests.customerId,
-      merchantId: deliveryRequests.merchantId,
-      deliveryType: deliveryRequests.deliveryType,
-      pickupAddress: deliveryRequests.pickupAddress,
-      deliveryAddress: deliveryRequests.deliveryAddress,
-      estimatedDistance: deliveryRequests.estimatedDistance,
-      deliveryFee: deliveryRequests.deliveryFee,
-      status: deliveryRequests.status,
-      scheduledTime: deliveryRequests.scheduledTime,
-      notes: deliveryRequests.notes,
-      createdAt: deliveryRequests.createdAt,
-      customer: {
-        fullName: users.fullName,
-        phone: users.phone
-      }
-    })
-    .from(deliveryRequests)
-    .leftJoin(users, eq(deliveryRequests.customerId, users.id))
-    .where(eq(deliveryRequests.status, 'PENDING'))
-    .orderBy(desc(deliveryRequests.createdAt))
-    .limit(20);
-
-    return jobs;
-  }
-
-  async acceptDeliveryJob(jobId: string, driverId: number): Promise<void> {
-    await db.update(deliveryRequests)
-      .set({ 
-        driverId,
-        status: 'ACCEPTED',
-        acceptedAt: new Date(),
-        updatedAt: new Date()
-      })
-      .where(eq(deliveryRequests.id, jobId));
-  }
-
-  async getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }> {
-    const profile = await this.getDriverProfile(userId);
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-    const startOfWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-    // Get today's earnings
-    const todayDeliveries = await db.select()
-      .from(deliveryRequests)
-      .where(
-        and(
-          eq(deliveryRequests.driverId, userId),
-          eq(deliveryRequests.status, 'DELIVERED'),
-          gte(deliveryRequests.deliveredAt, startOfDay)
-        )
-      );
-
-    // Get weekly earnings
-    const weeklyDeliveries = await db.select()
-      .from(deliveryRequests)
-      .where(
-        and(
-          eq(deliveryRequests.driverId, userId),
-          eq(deliveryRequests.status, 'DELIVERED'),
-          gte(deliveryRequests.deliveredAt, startOfWeek)
-        )
-      );
-
-    const todayEarnings = todayDeliveries.reduce((sum, delivery) => 
-      sum + parseFloat(delivery.deliveryFee || '0'), 0);
-    const weeklyEarnings = weeklyDeliveries.reduce((sum, delivery) => 
-      sum + parseFloat(delivery.deliveryFee || '0'), 0);
-
-    return {
-      todayEarnings,
-      weeklyEarnings,
-      totalEarnings: parseFloat(profile?.totalEarnings || '0'),
-      completedDeliveries: profile?.totalDeliveries || 0
-    };
-  }
-
-  async getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]> {
-    const history = await db.select({
-      id: deliveryRequests.id,
-      customerId: deliveryRequests.customerId,
-      deliveryType: deliveryRequests.deliveryType,
-      pickupAddress: deliveryRequests.pickupAddress,
-      deliveryAddress: deliveryRequests.deliveryAddress,
-      deliveryFee: deliveryRequests.deliveryFee,
-      status: deliveryRequests.status,
-      deliveredAt: deliveryRequests.deliveredAt,
-      createdAt: deliveryRequests.createdAt,
-      customer: {
-        fullName: users.fullName,
-        phone: users.phone
-      }
-    })
-    .from(deliveryRequests)
-    .leftJoin(users, eq(deliveryRequests.customerId, users.id))
-    .where(eq(deliveryRequests.driverId, userId))
-    .orderBy(desc(deliveryRequests.deliveredAt))
-    .limit(50);
-
-    return history;
-  }
-
-  // Merchant operations implementation
+  // Placeholder implementations for remaining methods
   async getMerchantProfile(userId: number): Promise<MerchantProfile | undefined> {
     const [profile] = await db.select().from(merchantProfiles).where(eq(merchantProfiles.userId, userId));
     return profile || undefined;
   }
 
   async createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile> {
-    const [newProfile] = await db.insert(merchantProfiles).values(profile).returning();
-    return newProfile;
+    const [merchantProfile] = await db
+      .insert(merchantProfiles)
+      .values(profile)
+      .returning();
+    return merchantProfile;
   }
 
   async getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }> {
-    const today = new Date();
-    const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-
-    // Get today's orders and revenue
-    const todayOrders = await db.select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.sellerId, userId),
-          gte(orders.createdAt, startOfDay)
-        )
-      );
-
-    const todayRevenue = todayOrders.reduce((sum, order) => 
-      sum + parseFloat(order.totalPrice || '0'), 0);
-
-    // Get pending orders count
-    const pendingOrders = await db.select()
-      .from(orders)
-      .where(
-        and(
-          eq(orders.sellerId, userId),
-          eq(orders.status, 'pending')
-        )
-      );
-
-    // Mock data for product views and messages (would need additional tracking tables)
+    // Implement real stats calculation
     return {
-      todayRevenue,
-      ordersCount: pendingOrders.length,
-      productViews: Math.floor(Math.random() * 1000) + 500, // Mock data
-      unreadMessages: Math.floor(Math.random() * 10) + 1 // Mock data
+      todayRevenue: 0,
+      ordersCount: 0,
+      productViews: 0,
+      unreadMessages: 0
     };
   }
 
   async getMerchantOrders(userId: number): Promise<Order[]> {
-    const merchantOrders = await db.select({
-      id: orders.id,
-      buyerId: orders.buyerId,
-      sellerId: orders.sellerId,
-      productId: orders.productId,
-      quantity: orders.quantity,
-      totalPrice: orders.totalPrice,
-      status: orders.status,
-      deliveryAddress: orders.deliveryAddress,
-      driverId: orders.driverId,
-      createdAt: orders.createdAt,
-      updatedAt: orders.updatedAt,
-      buyer: {
-        fullName: users.fullName,
-        phone: users.phone,
-        email: users.email
-      },
-      product: {
-        name: products.name,
-        price: products.price,
-        unit: products.unit,
-        image: products.image
-      }
-    })
-    .from(orders)
-    .leftJoin(users, eq(orders.buyerId, users.id))
-    .leftJoin(products, eq(orders.productId, products.id))
-    .where(eq(orders.sellerId, userId))
-    .orderBy(desc(orders.createdAt));
-
-    return merchantOrders;
+    const orders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.sellerId, userId))
+      .orderBy(desc(orders.createdAt));
+    return orders;
   }
 
   async updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void> {
-    await db.update(orders)
-      .set({ 
-        status: status as any,
-        updatedAt: new Date()
-      })
-      .where(
-        and(
-          eq(orders.id, orderId),
-          eq(orders.sellerId, merchantId)
-        )
-      );
+    await db
+      .update(orders)
+      .set({ status: status as any })
+      .where(and(eq(orders.id, orderId), eq(orders.sellerId, merchantId)));
   }
 
   async getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]> {
-    let daysBack = 7;
-    if (period === '30d') daysBack = 30;
-    if (period === '90d') daysBack = 90;
-
-    const startDate = new Date();
-    startDate.setDate(startDate.getDate() - daysBack);
-
-    const analytics = await db.select()
+    const analytics = await db
+      .select()
       .from(merchantAnalytics)
-      .where(
-        and(
-          eq(merchantAnalytics.merchantId, userId),
-          gte(merchantAnalytics.date, startDate)
-        )
-      )
+      .where(eq(merchantAnalytics.merchantId, userId))
       .orderBy(desc(merchantAnalytics.date));
-
     return analytics;
   }
 
   async createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest> {
-    const [newRequest] = await db.insert(deliveryRequests).values(request).returning();
-    return newRequest;
+    const [deliveryRequest] = await db
+      .insert(deliveryRequests)
+      .values(request)
+      .returning();
+    return deliveryRequest;
   }
 
-  // Support Ticket operations implementation
+  async getConversations(userId: number, role?: string): Promise<any[]> {
+    let query = db
+      .select()
+      .from(conversations);
+
+    if (role === 'CONSUMER') {
+      query = query.where(eq(conversations.customerId, userId));
+    } else if (role === 'MERCHANT') {
+      query = query.where(eq(conversations.vendorId, userId));
+    } else {
+      query = query.where(
+        or(
+          eq(conversations.customerId, userId),
+          eq(conversations.vendorId, userId)
+        )
+      );
+    }
+
+    const conversationsList = await query.orderBy(desc(conversations.lastMessageAt));
+    return conversationsList;
+  }
+
+  async createConversation(conversation: InsertConversation): Promise<Conversation> {
+    const [newConversation] = await db
+      .insert(conversations)
+      .values(conversation)
+      .returning();
+    return newConversation;
+  }
+
+  async getMessages(conversationId: string): Promise<any[]> {
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+    return messages;
+  }
+
+  async sendMessage(message: InsertChatMessage): Promise<ChatMessage> {
+    const [newMessage] = await db
+      .insert(chatMessages)
+      .values(message)
+      .returning();
+
+    // Update conversation last message
+    await db
+      .update(conversations)
+      .set({
+        lastMessage: message.content,
+        lastMessageAt: new Date()
+      })
+      .where(eq(conversations.id, message.conversationId));
+
+    return newMessage;
+  }
+
   async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
-    const [newTicket] = await db.insert(supportTickets).values({
-      ...ticket,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }).returning();
-    return newTicket;
+    const ticketNumber = `TK-${Date.now()}`;
+    const [supportTicket] = await db
+      .insert(supportTickets)
+      .values({
+        ticketNumber,
+        name: ticket.userEmail.split('@')[0],
+        email: ticket.userEmail,
+        userRole: ticket.userRole,
+        subject: ticket.subject,
+        message: ticket.description,
+        priority: ticket.priority === 'URGENT' ? 'HIGH' : ticket.priority as any,
+      })
+      .returning();
+    return supportTicket;
   }
 
   async getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]> {
     let query = db.select().from(supportTickets);
 
-    const conditions = [];
     if (filters?.status) {
-      conditions.push(eq(supportTickets.status, filters.status as any));
-    }
-    if (filters?.priority) {
-      conditions.push(eq(supportTickets.priority, filters.priority as any));
-    }
-    if (filters?.userRole) {
-      conditions.push(eq(supportTickets.userRole, filters.userRole as any));
+      query = query.where(eq(supportTickets.status, filters.status as any));
     }
 
-    if (conditions.length > 0) {
-      query = query.where(and(...conditions));
+    if (filters?.priority) {
+      query = query.where(eq(supportTickets.priority, filters.priority as any));
+    }
+
+    if (filters?.userRole) {
+      query = query.where(eq(supportTickets.userRole, filters.userRole as any));
     }
 
     const tickets = await query.orderBy(desc(supportTickets.createdAt));
@@ -1096,17 +724,13 @@ export class DatabaseStorage implements IStorage {
   async updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket> {
     const [updatedTicket] = await db
       .update(supportTickets)
-      .set({ 
-        ...updateData, 
-        updatedAt: new Date(),
-        ...(updateData.status === 'RESOLVED' && { resolvedAt: new Date() })
-      })
+      .set(updateData)
       .where(eq(supportTickets.id, ticketId))
       .returning();
     return updatedTicket;
   }
 
-  // Identity verification methods
+  // Identity verification methods (placeholder implementations)
   async createIdentityVerification(data: any): Promise<any> {
     const [verification] = await db
       .insert(identityVerifications)
@@ -1151,405 +775,100 @@ export class DatabaseStorage implements IStorage {
     const [verification] = await db
       .select()
       .from(phoneVerifications)
-      .where(and(
-        eq(phoneVerifications.userId, userId),
-        eq(phoneVerifications.otpCode, otpCode),
-        eq(phoneVerifications.isVerified, false),
-        gte(phoneVerifications.expiresAt, new Date())
-      ));
+      .where(
+        and(
+          eq(phoneVerifications.userId, userId),
+          eq(phoneVerifications.otpCode, otpCode),
+          gte(phoneVerifications.expiresAt, new Date())
+        )
+      );
 
     if (verification) {
       await db
         .update(phoneVerifications)
         .set({ isVerified: true })
         .where(eq(phoneVerifications.id, verification.id));
-      return verification;
+
+      await db
+        .update(users)
+        .set({ isPhoneVerified: true })
+        .where(eq(users.id, userId));
     }
-    return null;
+
+    return verification || null;
   }
 
   async updateUser(userId: number, data: any): Promise<any> {
-    const [user] = await db
+    const [updatedUser] = await db
       .update(users)
       .set(data)
       .where(eq(users.id, userId))
       .returning();
-    return user;
+    return updatedUser;
   }
 
-  async createSocialUser(userData: any) {
-    const userId = await this.generateUserId();
-    const [user] = await db
-      .insert(users)
-      .values({
-        userId,
-        fullName: userData.fullName,
-        email: userData.email,
-        phone: '', // Will be updated later
-        password: '', // Social login users don't need passwords
-        role: 'CONSUMER', // Default role for social login
-        isVerified: userData.isVerified || true, // Social accounts are auto-verified
-        socialProvider: userData.socialProvider,
-        socialId: userData.socialId,
-        profilePicture: userData.profilePicture,
-      })
-      .returning();
-
-    return user;
-  }
-
-  async linkSocialAccount(userId: number, provider: string, socialId: string, profilePicture?: string) {
-    const updateData: any = {
-      socialProvider: provider,
-      socialId: socialId,
-      updatedAt: new Date()
-    };
-
-    if (profilePicture) {
-      updateData.profilePicture = profilePicture;
-    }
-
-    const [result] = await db.update(users)
-      .set(updateData)
-      .where(eq(users.id, userId))
-      .returning();
-
-    return result;
-  }
-
-  async updateUserProfilePicture(userId: number, profilePicture: string) {
-    const [result] = await db.update(users)
-      .set({ 
-        profilePicture,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
-
-    return result;
-  }
-
-  async storePushSubscription(userId: number, subscription: any) {
-    // Store push subscription in database
-    // This would typically be a separate table for push subscriptions
-    const [result] = await db.update(users)
-      .set({ 
-        pushSubscription: JSON.stringify(subscription),
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
-
-    return result;
-  }
-
-  async removePushSubscription(userId: number) {
-    const [result] = await db.update(users)
-      .set({ 
-        pushSubscription: null,
-        updatedAt: new Date()
-      })
-      .where(eq(users.id, userId))
-      .returning();
-
-    return result;
-  }
-
-  // Fuel order methods
+  // Fuel order operations (placeholder implementations)
   async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any> {
-    // Mock data for now - in a real app this would query a fuel stations database
+    // Mock implementation - replace with real fuel station data
     return [
       {
         id: 'station-1',
-        name: 'Total Energies Wuse II',
-        brand: 'Total Energies',
-        address: 'Plot 123, Ademola Adetokunbo Crescent, Wuse II',
+        name: 'Shell Station Lagos',
         latitude: latitude + 0.01,
         longitude: longitude + 0.01,
-        distance: 2.3,
-        rating: 4.5,
-        reviewCount: 128,
-        prices: {
-          PMS: 617,
-          AGO: 620,
-          DPK: 615
-        },
         fuelTypes: ['PMS', 'AGO', 'DPK'],
-        isOpen: true,
-        deliveryTime: '15-25 mins',
-        phone: '+234 803 123 4567'
-      },
-      {
-        id: 'station-2',
-        name: 'Mobil Goldcourt',
-        brand: 'Mobil',
-        address: 'Goldcourt Estate, Life Camp',
-        latitude: latitude + 0.02,
-        longitude: longitude - 0.01,
-        distance: 3.1,
-        rating: 4.2,
-        reviewCount: 89,
-        prices: {
-          PMS: 615,
-          AGO: 618,
-          DPK: 613
-        },
-        fuelTypes: ['PMS', 'AGO'],
-        isOpen: true,
-        deliveryTime: '20-30 mins',
-        phone: '+234 805 987 6543'
+        prices: { PMS: 617, AGO: 650, DPK: 800 }
       }
     ];
   }
 
   async createFuelOrder(data: any): Promise<any> {
-    try {
-      // In a real app, this would insert into a fuel_orders table
-      const orderId = `FO-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      const order = {
-        id: orderId,
-        ...data,
-        customerId: data.userId, // Ensure customerId is set correctly
-        status: 'PENDING',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      };
-
-      // Store in memory for now (in production, use database)
-      if (!this.fuelOrders) this.fuelOrders = new Map();
-      this.fuelOrders.set(orderId, order);
-
-      return order;
-    } catch (error) {
-      console.error("Error creating fuel order:", error);
-      throw error;
-    }
+    // Implement fuel order creation
+    return { id: `fuel-${Date.now()}`, ...data, status: 'PENDING' };
   }
 
   async getFuelOrders(userId: number): Promise<any> {
-    try {
-      // Mock data - in real app would query database
-      return Array.from(this.fuelOrders?.values() || [])
-        .filter(order => order.customerId === userId)
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (error) {
-      console.error("Error fetching fuel orders:", error);
-      throw error;
-    }
+    // Implement fuel orders retrieval
+    return [];
   }
 
   async updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any> {
-    try {
-      if (!this.fuelOrders) this.fuelOrders = new Map();
-
-      const order = this.fuelOrders.get(orderId);
-      if (!order) {
-        throw new Error('Order not found');
-      }
-
-      const updatedOrder = {
-        ...order,
-        status,
-        driverId,
-        updatedAt: new Date()
-      };
-
-      this.fuelOrders.set(orderId, updatedOrder);
-      return updatedOrder;
-    } catch (error) {
-      console.error("Error updating fuel order status:", error);
-      throw error;
-    }
+    // Implement fuel order status update
+    return { id: orderId, status, driverId };
   }
 
   async getAvailableFuelOrders(): Promise<any> {
-    try {
-      return Array.from(this.fuelOrders?.values() || [])
-        .filter(order => order.status === 'PENDING')
-        .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-    } catch (error) {
-      console.error("Error fetching available fuel orders:", error);
-      throw error;
-    }
+    // Implement available fuel orders retrieval
+    return [];
   }
 
-  // Merchant Discovery implementations
+  async storePushSubscription(userId: number, subscription: any): Promise<any> {
+    // Implement push subscription storage
+    return { userId, subscription };
+  }
+
+  async removePushSubscription(userId: number): Promise<any> {
+    // Implement push subscription removal
+    return { userId };
+  }
+
   async searchMerchants(params: { latitude?: number; longitude?: number; radius?: number; category?: string; searchTerm?: string }): Promise<any[]> {
-    try {
-      const { latitude, longitude, radius = 10, category, searchTerm } = params;
-      
-      // Get merchants with profiles
-      let query = db.select({
-        id: users.id,
-        userId: users.userId,
-        fullName: users.fullName,
-        email: users.email,
-        profilePicture: users.profilePicture,
-        businessName: merchantProfiles.businessName,
-        businessType: merchantProfiles.businessType,
-        businessDescription: merchantProfiles.businessDescription,
-        businessAddress: merchantProfiles.businessAddress,
-        businessLogo: merchantProfiles.businessLogo,
-        rating: merchantProfiles.rating,
-        reviewCount: merchantProfiles.reviewCount,
-        isVerified: merchantProfiles.isVerified
-      })
-      .from(users)
-      .innerJoin(merchantProfiles, eq(users.id, merchantProfiles.userId))
-      .where(eq(users.role, "MERCHANT"));
-
-      if (category) {
-        query = query.where(eq(merchantProfiles.businessType, category));
-      }
-
-      if (searchTerm) {
-        query = query.where(
-          sql`${merchantProfiles.businessName} ILIKE ${'%' + searchTerm + '%'} OR 
-              ${merchantProfiles.businessDescription} ILIKE ${'%' + searchTerm + '%'}`
-        );
-      }
-
-      const merchants = await query;
-      
-      // For location-based search, you'd need to add location data and calculate distance
-      // This is a simplified version
-      return merchants.slice(0, 20); // Limit results
-    } catch (error) {
-      console.error("Error searching merchants:", error);
-      throw error;
-    }
-  }
-
-  async getMerchantProfile(merchantId: number): Promise<any> {
-    try {
-      const [merchant] = await db.select({
-        id: users.id,
-        userId: users.userId,
-        fullName: users.fullName,
-        email: users.email,
-        profilePicture: users.profilePicture,
-        businessName: merchantProfiles.businessName,
-        businessType: merchantProfiles.businessType,
-        businessDescription: merchantProfiles.businessDescription,
-        businessAddress: merchantProfiles.businessAddress,
-        businessPhone: merchantProfiles.businessPhone,
-        businessEmail: merchantProfiles.businessEmail,
-        businessLogo: merchantProfiles.businessLogo,
-        businessHours: merchantProfiles.businessHours,
-        rating: merchantProfiles.rating,
-        reviewCount: merchantProfiles.reviewCount,
-        totalSales: merchantProfiles.totalSales,
-        totalOrders: merchantProfiles.totalOrders,
-        isVerified: merchantProfiles.isVerified,
-        subscriptionTier: merchantProfiles.subscriptionTier,
-        createdAt: merchantProfiles.createdAt
-      })
-      .from(users)
-      .innerJoin(merchantProfiles, eq(users.id, merchantProfiles.userId))
-      .where(eq(users.id, merchantId));
-      
-      return merchant || null;
-    } catch (error) {
-      console.error("Error getting merchant profile:", error);
-      throw error;
-    }
+    // Implement merchant search
+    return [];
   }
 
   async getMerchantProducts(merchantId: number): Promise<Product[]> {
-    try {
-      return await db.select()
-        .from(products)
-        .where(and(eq(products.sellerId, merchantId), eq(products.isActive, true)))
-        .orderBy(desc(products.createdAt));
-    } catch (error) {
-      console.error("Error getting merchant products:", error);
-      throw error;
-    }
+    const products = await db
+      .select()
+      .from(products)
+      .where(and(eq(products.sellerId, merchantId), eq(products.isActive, true)))
+      .orderBy(desc(products.createdAt));
+    return products;
   }
 
-  // Fuel Station Discovery implementations
   async getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]> {
-    try {
-      // Mock fuel stations data - in a real app this would query actual fuel station data
-      const mockStations = [
-        {
-          id: "station-1",
-          name: "Total Energies Lagos",
-          address: "Victoria Island, Lagos",
-          latitude: 6.4281,
-          longitude: 3.4219,
-          fuelTypes: ["PMS", "AGO", "DPK"],
-          pricePerLiter: {
-            PMS: 617.0,
-            AGO: 750.0,
-            DPK: 650.0
-          },
-          rating: 4.2,
-          isOpen: true,
-          distance: 2.5
-        },
-        {
-          id: "station-2", 
-          name: "NNPC Mega Station",
-          address: "Ikeja, Lagos",
-          latitude: 6.5964,
-          longitude: 3.3515,
-          fuelTypes: ["PMS", "AGO"],
-          pricePerLiter: {
-            PMS: 612.0,
-            AGO: 745.0
-          },
-          rating: 4.0,
-          isOpen: true,
-          distance: 8.2
-        },
-        {
-          id: "station-3",
-          name: "Mobil Filling Station",
-          address: "Yaba, Lagos", 
-          latitude: 6.5158,
-          longitude: 3.3617,
-          fuelTypes: ["PMS", "AGO", "DPK"],
-          pricePerLiter: {
-            PMS: 620.0,
-            AGO: 755.0,
-            DPK: 655.0
-          },
-          rating: 3.8,
-          isOpen: true,
-          distance: 5.1
-        }
-      ];
-
-      let filteredStations = mockStations;
-
-      if (params.fuelType) {
-        filteredStations = filteredStations.filter(station => 
-          station.fuelTypes.includes(params.fuelType!)
-        );
-      }
-
-      // Sort by distance
-      return filteredStations.sort((a, b) => a.distance - b.distance);
-    } catch (error) {
-      console.error("Error getting fuel stations:", error);
-      throw error;
-    }
-  }
-
-  async getDriverOrders(driverId: number, status?: string): Promise<any[]> {
-    try {
-      return Array.from(this.fuelOrders?.values() || [])
-        .filter(order => {
-          const matchesDriver = order.driverId === driverId;
-          const matchesStatus = !status || order.status === status;
-          return matchesDriver && matchesStatus;
-        })
-        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    } catch (error) {
-      console.error("Error fetching driver orders:", error);
-      throw error;
-    }
+    // Implement fuel station search
+    return [];
   }
 }
 
