@@ -48,6 +48,8 @@ import OrderHistoryDetail from "@/pages/order-history-detail";
 import Support from "@/pages/support";
 import Messages from "@/pages/messages";
 import IdentityVerification from "@/pages/identity-verification-simple";
+import TollPayments from "./pages/toll-payments";
+import FuelDeliveryTracking from "./pages/fuel-delivery-tracking";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();

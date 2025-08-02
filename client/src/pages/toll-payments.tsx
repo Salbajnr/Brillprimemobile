@@ -1,11 +1,19 @@
+
 import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, MapPin, Car, Clock, CreditCard, Navigation, Ticket } from "lucide-react";
+import { ArrowLeft, MapPin, Car, Clock, CreditCard, Navigation, Ticket, CheckCircle, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
+interface VehicleType {
+  id: string;
+  name: string;
+  icon: string;
+  description: string;
+}
 
 interface TollGate {
   id: string;
@@ -23,13 +31,18 @@ interface TollGate {
   isOpen: boolean;
   estimatedTime: string;
   paymentMethods: string[];
+  trafficStatus: 'light' | 'moderate' | 'heavy';
+  queueTime: string;
 }
 
-interface VehicleType {
+interface TollTransaction {
   id: string;
-  name: string;
-  icon: string;
-  description: string;
+  tollGateId: string;
+  vehicleType: string;
+  amount: number;
+  timestamp: string;
+  status: 'pending' | 'completed' | 'failed';
+  qrCode: string;
 }
 
 export default function TollPayments() {
@@ -37,6 +50,17 @@ export default function TollPayments() {
   const [selectedVehicle, setSelectedVehicle] = useState<string>("car");
   const [selectedTollGate, setSelectedTollGate] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTransactions, setActiveTransactions] = useState<TollTransaction[]>([
+    {
+      id: "TP-2024-0001",
+      tollGateId: "lagos-ibadan-1",
+      vehicleType: "car",
+      amount: 600,
+      timestamp: "2024-01-15 14:30",
+      status: "completed",
+      qrCode: "QR123456789"
+    }
+  ]);
 
   const vehicleTypes: VehicleType[] = [
     {
@@ -81,7 +105,9 @@ export default function TollPayments() {
       operatingHours: "24 hours",
       isOpen: true,
       estimatedTime: "22 mins",
-      paymentMethods: ["Cash", "Card", "Mobile"]
+      paymentMethods: ["Cash", "Card", "Mobile"],
+      trafficStatus: "moderate",
+      queueTime: "5-10 mins"
     },
     {
       id: "abuja-kaduna-1",
@@ -98,7 +124,9 @@ export default function TollPayments() {
       operatingHours: "24 hours",
       isOpen: true,
       estimatedTime: "35 mins",
-      paymentMethods: ["Cash", "Card", "Mobile"]
+      paymentMethods: ["Cash", "Card", "Mobile"],
+      trafficStatus: "light",
+      queueTime: "2-5 mins"
     },
     {
       id: "lekki-toll",
@@ -115,7 +143,9 @@ export default function TollPayments() {
       operatingHours: "5:00 AM - 11:00 PM",
       isOpen: true,
       estimatedTime: "18 mins",
-      paymentMethods: ["Card", "Mobile"]
+      paymentMethods: ["Card", "Mobile"],
+      trafficStatus: "heavy",
+      queueTime: "15-20 mins"
     },
     {
       id: "kara-bridge",
@@ -127,12 +157,14 @@ export default function TollPayments() {
         motorcycle: 250,
         car: 500,
         suv: 800,
-        truck: 1200
+        truck: 1300
       },
       operatingHours: "24 hours",
       isOpen: false,
       estimatedTime: "32 mins",
-      paymentMethods: ["Cash", "Card"]
+      paymentMethods: ["Cash", "Card"],
+      trafficStatus: "light",
+      queueTime: "N/A"
     }
   ]);
 
@@ -158,6 +190,19 @@ export default function TollPayments() {
     if (selectedTollGate) {
       const selectedGate = tollGates.find(g => g.id === selectedTollGate);
       const amount = selectedGate?.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']];
+      
+      // Create new transaction
+      const newTransaction: TollTransaction = {
+        id: `TP-${Date.now()}`,
+        tollGateId: selectedTollGate,
+        vehicleType: selectedVehicle,
+        amount: amount || 0,
+        timestamp: new Date().toISOString(),
+        status: 'pending',
+        qrCode: `QR${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+      };
+      
+      setActiveTransactions(prev => [...prev, newTransaction]);
       setLocation(`/payment/confirm?type=toll&gate=${selectedTollGate}&vehicle=${selectedVehicle}&amount=${amount}`);
     }
   };
@@ -166,8 +211,26 @@ export default function TollPayments() {
     return tollGates.find(g => g.id === selectedTollGate);
   };
 
+  const getTrafficStatusColor = (status: string) => {
+    switch (status) {
+      case 'light': return 'bg-green-100 text-green-800';
+      case 'moderate': return 'bg-yellow-100 text-yellow-800';
+      case 'heavy': return 'bg-red-100 text-red-800';
+      default: return 'bg-gray-100 text-gray-800';
+    }
+  };
+
+  const getTransactionStatusIcon = (status: string) => {
+    switch (status) {
+      case 'completed': return <CheckCircle className="w-4 h-4 text-green-500" />;
+      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />;
+      case 'failed': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      default: return null;
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
+    <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">
       {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="flex items-center justify-between p-4">
@@ -180,7 +243,7 @@ export default function TollPayments() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-lg font-semibold text-[#131313]">Toll Gates</h1>
+              <h1 className="text-lg font-semibold text-[#131313]">Electronic Toll Payments</h1>
               <p className="text-sm text-gray-600">Pay toll fees in advance</p>
             </div>
           </div>
@@ -198,29 +261,62 @@ export default function TollPayments() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Vehicle Selection */}
+        {/* Active Transactions */}
+        {activeTransactions.length > 0 && (
+          <Card>
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-[#131313] mb-3">Recent Transactions</h3>
+              <div className="space-y-3">
+                {activeTransactions.slice(0, 3).map((transaction) => {
+                  const gate = tollGates.find(g => g.id === transaction.tollGateId);
+                  return (
+                    <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        {getTransactionStatusIcon(transaction.status)}
+                        <div>
+                          <p className="font-medium text-sm">{gate?.name}</p>
+                          <p className="text-xs text-gray-600">{transaction.timestamp}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-medium text-sm">{formatCurrency(transaction.amount)}</p>
+                        <Badge variant="secondary" className={`text-xs ${
+                          transaction.status === 'completed' ? 'bg-green-100 text-green-800' :
+                          transaction.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-red-100 text-red-800'
+                        }`}>
+                          {transaction.status}
+                        </Badge>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Vehicle Type Selection */}
         <Card>
-          <CardContent className="p-6">
-            <Label className="text-base font-semibold text-[#131313] mb-4 block">
-              Select Vehicle Type
-            </Label>
+          <CardContent className="p-4">
+            <Label className="text-sm font-medium text-[#131313] mb-3 block">Select Vehicle Type</Label>
             <div className="grid grid-cols-2 gap-3">
               {vehicleTypes.map((vehicle) => (
-                <div
+                <button
                   key={vehicle.id}
-                  className={`border rounded-2xl p-3 cursor-pointer transition-colors ${
+                  onClick={() => setSelectedVehicle(vehicle.id)}
+                  className={`p-3 rounded-lg border text-left transition-colors ${
                     selectedVehicle === vehicle.id
                       ? "border-[#4682b4] bg-[#4682b4]/5"
-                      : "border-gray-200 hover:border-[#4682b4]/50"
+                      : "border-gray-200 hover:border-gray-300"
                   }`}
-                  onClick={() => setSelectedVehicle(vehicle.id)}
                 >
-                  <div className="text-center">
-                    <div className="text-2xl mb-2">{vehicle.icon}</div>
-                    <h4 className="font-medium text-[#131313] text-sm">{vehicle.name}</h4>
-                    <p className="text-xs text-gray-500">{vehicle.description}</p>
+                  <div className="flex items-center space-x-2 mb-1">
+                    <span className="text-lg">{vehicle.icon}</span>
+                    <span className="font-medium text-sm">{vehicle.name}</span>
                   </div>
-                </div>
+                  <p className="text-xs text-gray-600">{vehicle.description}</p>
+                </button>
               ))}
             </div>
           </CardContent>
@@ -228,12 +324,7 @@ export default function TollPayments() {
 
         {/* Toll Gates List */}
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-[#131313]">Available Toll Gates</h2>
-            <Badge variant="outline" className="text-[#4682b4] border-[#4682b4]">
-              {filteredTollGates.filter(g => g.isOpen).length} open
-            </Badge>
-          </div>
+          <h2 className="font-semibold text-[#131313]">Available Toll Gates</h2>
 
           {filteredTollGates.map((gate) => (
             <Card
@@ -262,49 +353,36 @@ export default function TollPayments() {
                       </div>
                     </div>
                     <div className="text-right">
-                      <Badge className={gate.isOpen ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                      <Badge variant={gate.isOpen ? "default" : "secondary"}>
                         {gate.isOpen ? "Open" : "Closed"}
                       </Badge>
                     </div>
                   </div>
 
-                  {/* Highway and Hours */}
-                  <div className="flex items-center justify-between py-2 border-t border-gray-100">
-                    <div>
-                      <p className="text-sm font-medium text-[#131313]">{gate.highway}</p>
-                      <p className="text-xs text-gray-500">Operating: {gate.operatingHours}</p>
+                  {/* Traffic Status */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <Badge className={getTrafficStatusColor(gate.trafficStatus)}>
+                        {gate.trafficStatus} traffic
+                      </Badge>
+                      <span className="text-sm text-gray-600">Queue: {gate.queueTime}</span>
                     </div>
                     <div className="text-right">
                       <p className="text-lg font-bold text-[#4682b4]">
-                        {formatCurrency(gate.pricePerVehicle[selectedVehicle as keyof typeof gate.pricePerVehicle])}
+                        {formatCurrency(gate.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']])}
                       </p>
-                      <p className="text-xs text-gray-500">
-                        {vehicleTypes.find(v => v.id === selectedVehicle)?.name}
-                      </p>
+                      <p className="text-sm text-gray-600">{gate.operatingHours}</p>
                     </div>
                   </div>
 
                   {/* Payment Methods */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex space-x-2">
-                      {gate.paymentMethods.map((method) => (
-                        <Badge key={method} variant="secondary" className="text-xs">
-                          {method}
-                        </Badge>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        window.open(`https://maps.google.com/?q=${encodeURIComponent(gate.location)}`, '_blank');
-                      }}
-                    >
-                      <Navigation className="w-3 h-3 mr-1" />
-                      Directions
-                    </Button>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-sm text-gray-600">Payment:</span>
+                    {gate.paymentMethods.map((method) => (
+                      <Badge key={method} variant="outline" className="text-xs">
+                        {method}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
               </CardContent>
@@ -331,6 +409,12 @@ export default function TollPayments() {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Distance:</span>
                   <span className="font-medium">{getSelectedTollGate()?.distance} km</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Current Traffic:</span>
+                  <Badge className={getTrafficStatusColor(getSelectedTollGate()?.trafficStatus || 'light')}>
+                    {getSelectedTollGate()?.trafficStatus} traffic
+                  </Badge>
                 </div>
                 <hr />
                 <div className="flex justify-between font-semibold text-lg">
