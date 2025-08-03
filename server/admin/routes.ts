@@ -599,6 +599,7 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const updates = req.body;
+    const oldTicket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
 
     if (updates.assignedTo !== undefined) {
       updates.assignedTo = parseInt(updates.assignedTo);
@@ -612,6 +613,32 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
 
     await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticketId));
 
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      if (oldTicket[0] && updates.status && oldTicket[0].status !== updates.status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: oldTicket[0].status,
+          newStatus: updates.status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+
+      if (updates.assignedTo) {
+        server.io.to('admin_support').emit('ticket_assigned', {
+          type: 'ticket_assigned',
+          ticketId,
+          assignedTo: updates.assignedTo,
+          assignedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
+
     res.json({ success: true, message: 'Ticket updated successfully' });
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -624,11 +651,43 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
     const ticketId = req.params.id;
     const { response, status } = req.body;
 
+    // Get ticket details for email notification
+    const ticket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+    
+    if (ticket.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
     await db.update(supportTickets).set({
       adminNotes: response,
       status: status || 'IN_PROGRESS',
       updatedAt: new Date()
     }).where(eq(supportTickets.id, ticketId));
+
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('ticket_response_sent', {
+        type: 'ticket_response_sent',
+        ticketId,
+        response,
+        sentBy: req.adminUser.adminId,
+        customerEmail: ticket[0].email,
+        timestamp: Date.now()
+      });
+
+      if (status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: ticket[0].status,
+          newStatus: status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Response sent successfully' });
   } catch (error) {

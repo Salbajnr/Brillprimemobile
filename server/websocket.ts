@@ -281,6 +281,60 @@ export function setupWebSocketServer(server: HTTPServer) {
       });
     });
 
+    // Support ticket management events
+    socket.on('new_support_ticket', (ticketData: any) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('new_support_ticket', {
+        type: 'new_support_ticket',
+        ticket: ticketData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_status_updated', (data: {
+      ticketId: string;
+      oldStatus: string;
+      newStatus: string;
+      updatedBy: number;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_status_updated', {
+        type: 'ticket_status_updated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_assigned', (data: {
+      ticketId: string;
+      assignedTo: number;
+      assignedBy: number;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_assigned', {
+        type: 'ticket_assigned',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_response_sent', (data: {
+      ticketId: string;
+      response: string;
+      sentBy: number;
+      customerEmail: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_response_sent', {
+        type: 'ticket_response_sent',
+        ...data,
+        timestamp: Date.now()
+      });
+
+      // Send email notification to customer (in real implementation)
+      console.log(`Email notification sent to ${data.customerEmail} for ticket ${data.ticketId}`);
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       
