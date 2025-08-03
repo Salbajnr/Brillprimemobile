@@ -14,13 +14,20 @@ import "./middleware/auth"; // Import type declarations
 import { Request, Response } from 'express';
 import cors from 'cors';
 import { db } from './db';
-import { users, supportTickets, contentReports, wallets, transactions, paymentMethods, vendorPosts, vendorPostLikes, products, orders } from '../shared/schema';
+import { users, supportTickets, contentReports, wallets, transactions, paymentMethods, vendorPosts, vendorPostLikes, products, orders, socialProfiles } from '../shared/schema';
 import { eq, and, desc, count, sql, or, like } from "drizzle-orm";
 import jwt from 'jsonwebtoken';
 import { requireAuth, auth, verifyToken } from './middleware/auth';
+import { handleSocialAuth, linkSocialAccount, getLinkedSocialAccounts, unlinkSocialAccount } from './auth/social-auth';
 import multer from 'multer';
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Enhanced Social Authentication Routes
+  app.post("/api/auth/social-login", handleSocialAuth);
+  app.post("/api/auth/link-social", linkSocialAccount);
+  app.get("/api/auth/social-accounts", getLinkedSocialAccounts);
+  app.delete("/api/auth/social-accounts/:provider", unlinkSocialAccount);
+
   // Sign up endpoint
   app.post("/api/auth/signup", async (req, res) => {
     try {

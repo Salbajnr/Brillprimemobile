@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, decimal, uuid, serial, json } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, boolean, integer, decimal, uuid, serial, json, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -379,6 +379,25 @@ export const merchantNotifications = pgTable("merchant_notifications", {
   readAt: timestamp("read_at"),
 });
 
+// Social Profiles for OAuth integration
+export const socialProfiles = pgTable("social_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  provider: text("provider", { enum: ["GOOGLE", "APPLE", "FACEBOOK"] }).notNull(),
+  providerId: text("provider_id").notNull(), // Social platform's user ID
+  email: text("email"),
+  displayName: text("display_name"),
+  profilePicture: text("profile_picture"),
+  accessToken: text("access_token"), // Encrypted in production
+  refreshToken: text("refresh_token"), // Encrypted in production
+  tokenExpiresAt: timestamp("token_expires_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  providerAccountIdx: index("social_provider_account_idx").on(table.provider, table.providerId),
+  userProviderIdx: index("social_user_provider_idx").on(table.userId, table.provider),
+}));
+
 // Support Tickets
 export const supportTickets = pgTable("support_tickets", {
   id: uuid("id").primaryKey().defaultRandom(),
@@ -442,6 +461,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   products: many(products),
   orders: many(orders),
   cartItems: many(cartItems),
+  socialProfiles: many(socialProfiles),
 }));
 
 export const userLocationsRelations = relations(userLocations, ({ one }) => ({
@@ -515,6 +535,10 @@ export const deliveryRequestsRelations = relations(deliveryRequests, ({ one }) =
 
 export const merchantNotificationsRelations = relations(merchantNotifications, ({ one }) => ({
   merchant: one(users, { fields: [merchantNotifications.merchantId], references: [users.id] }),
+}));
+
+export const socialProfilesRelations = relations(socialProfiles, ({ one }) => ({
+  user: one(users, { fields: [socialProfiles.userId], references: [users.id] }),
 }));
 
 export const supportTicketsRelations = relations(supportTickets, ({ one }) => ({
@@ -607,8 +631,7 @@ export type CartItem = typeof cartItems.$inferSelect;
 export type InsertCartItem = z.infer<typeof insertCartItemSchema>;
 export type UserLocation = typeof userLocations.$inferSelect;
 export type InsertUserLocation = z.infer<typeof insertUserLocationSchema>;
-export type VendorPost = typeof vendorPosts.$inferSelect;
-export type InsertVendorPost = z.infer<typeof insertVendorPostSchema>;
+
 export type VendorPostLike = typeof vendorPostLikes.$inferSelect;
 export type InsertVendorPostLike = z.infer<typeof insertVendorPostLikeSchema>;
 export type VendorPostComment = typeof vendorPostComments.$inferSelect;
@@ -629,6 +652,8 @@ export type MerchantNotification = typeof merchantNotifications.$inferSelect;
 export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
+export type SocialProfile = typeof socialProfiles.$inferSelect;
+export type InsertSocialProfile = typeof socialProfiles.$inferInsert;
 
 // Payment and Transaction Management Tables
 export const wallets = pgTable("wallets", {
