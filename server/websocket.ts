@@ -1,4 +1,3 @@
-
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -22,14 +21,14 @@ export function setupWebSocketServer(server: HTTPServer) {
     socket.on('join_user_room', (userId: number) => {
       socket.join(`user_${userId}`);
       onlineUsers.set(userId, socket.id);
-      
+
       // Notify admins of user status change
       io.to('admin_user_management').emit('user_status_update', {
         userId,
         isOnline: true,
         timestamp: Date.now()
       });
-      
+
       console.log(`User ${userId} joined their room`);
     });
 
@@ -47,7 +46,7 @@ export function setupWebSocketServer(server: HTTPServer) {
         ...data,
         adminSocket: socket.id
       });
-      
+
       // Notify the affected user
       io.to(`user_${data.userId}`).emit('account_status_update', {
         action: data.action,
@@ -70,7 +69,7 @@ export function setupWebSocketServer(server: HTTPServer) {
         reviewedBy: socket.id,
         timestamp: data.timestamp
       });
-      
+
       // Notify the user about verification status
       io.to(`user_${data.userId}`).emit('verification_status_update', {
         documentId: data.documentId,
@@ -137,7 +136,7 @@ export function setupWebSocketServer(server: HTTPServer) {
       try {
         const { transactionService } = await import('./services/transaction');
         const result = await transactionService.verifyPayment(reference);
-        
+
         socket.emit('payment_status_update', {
           reference,
           status: result.transaction?.status,
@@ -191,7 +190,7 @@ export function setupWebSocketServer(server: HTTPServer) {
       try {
         const { storage } = await import('./storage');
         const wallet = await storage.getUserWallet(userId);
-        
+
         socket.emit('wallet_balance_update', {
           balance: wallet?.balance || '0.00',
           currency: wallet?.currency || 'NGN',
@@ -383,14 +382,83 @@ export function setupWebSocketServer(server: HTTPServer) {
       });
     });
 
+    // Fraud Detection Events
+    socket.on('new_fraud_alert', (alertData: any) => {
+      // Broadcast to all admin fraud dashboards
+      io.to('admin_fraud').emit('fraud_alert', {
+        type: 'fraud_alert',
+        alert: alertData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('suspicious_activity_detected', (activityData: any) => {
+      // Broadcast to all admin fraud dashboards
+      io.to('admin_fraud').emit('suspicious_activity', {
+        type: 'suspicious_activity',
+        activity: activityData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('fraud_alert_updated', (data: {
+      alertId: string;
+      oldStatus: string;
+      newStatus: string;
+      updatedBy: number;
+    }) => {
+      // Notify all admin fraud dashboards
+      io.to('admin_fraud').emit('fraud_alert_updated', {
+        type: 'fraud_alert_updated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Real-time Monitoring Events
+    socket.on('system_metric_update', (metricData: any) => {
+      // Broadcast to all admin monitoring dashboards
+      io.to('admin_monitoring').emit('system_metric_update', {
+        type: 'system_metric_update',
+        metrics: metricData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('driver_location_broadcast', (data: {
+      driverId: number;
+      latitude: number;
+      longitude: number;
+      status: string;
+      orderId?: string;
+    }) => {
+      // Broadcast to admin monitoring dashboards
+      io.to('admin_monitoring').emit('driver_location_update', {
+        type: 'driver_location_update',
+        ...data,
+        timestamp: Date.now()
+      });
+
+      // Also broadcast to specific order room if orderId exists
+      if (data.orderId) {
+        socket.to(`order_${data.orderId}`).emit('driver_location', {
+          driverId: data.driverId,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          status: data.status,
+          timestamp: Date.now()
+        });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
-      
+
       // Remove from online users tracking
       for (const [userId, socketId] of onlineUsers.entries()) {
         if (socketId === socket.id) {
           onlineUsers.delete(userId);
-          
+
           // Notify admins of user going offline
           io.to('admin_user_management').emit('user_status_update', {
             userId,
@@ -400,7 +468,7 @@ export function setupWebSocketServer(server: HTTPServer) {
           break;
         }
       }
-      
+
       // Remove from admin connections
       adminConnections.delete(socket.id);
     });

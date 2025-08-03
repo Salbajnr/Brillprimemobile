@@ -8,6 +8,8 @@ import { AdminUserManagement } from './pages/admin-user-management';
 import { AdminKYCVerification } from './pages/admin-kyc-verification';
 import { AdminTransactions } from './pages/admin-transactions';
 import { AdminFraud } from './pages/admin-fraud';
+import { AdminModeration } from './pages/admin-moderation';
+import { AdminMonitoring } from './pages/admin-monitoring';
 import { AdminSupport } from './pages/admin-support';
 
 const queryClient = new QueryClient();
@@ -24,6 +26,8 @@ function App() {
             <Route path="/kyc" element={<AdminKYCVerification />} />
             <Route path="/transactions" element={<AdminTransactions />} />
             <Route path="/fraud" element={<AdminFraud />} />
+            <Route path="/moderation" element={<AdminModeration />} />
+            <Route path="/monitoring" element={<AdminMonitoring />} />
             <Route path="/support" element={<AdminSupport />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
