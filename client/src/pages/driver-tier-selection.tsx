@@ -15,8 +15,8 @@ export default function DriverTierSelectionPage() {
     if (selectedTier) {
       // Store selected tier in session storage for registration process
       sessionStorage.setItem('selectedDriverTier', selectedTier);
-      // Navigate to driver registration page
-      navigate('/driver-registration');
+      // Navigate to signup page, not driver registration
+      navigate('/signup');
     }
   };
 
