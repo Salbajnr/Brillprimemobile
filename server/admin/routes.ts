@@ -696,6 +696,139 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
   }
 });
 
+// Bulk ticket assignment
+router.post('/support/tickets/bulk-assign', adminAuth, async (req, res) => {
+  try {
+    const { ticketIds, adminId, priority } = req.body;
+
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket IDs' });
+    }
+
+    const updates: any = {
+      assignedTo: adminId,
+      status: 'IN_PROGRESS',
+      updatedAt: new Date()
+    };
+
+    if (priority) {
+      updates.priority = priority;
+    }
+
+    await db.update(supportTickets)
+      .set(updates)
+      .where(inArray(supportTickets.id, ticketIds));
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('tickets_bulk_assigned', {
+        type: 'tickets_bulk_assigned',
+        ticketIds,
+        assignedTo: adminId,
+        assignedBy: req.adminUser.adminId,
+        priority,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${ticketIds.length} tickets assigned successfully` 
+    });
+  } catch (error) {
+    console.error('Bulk assign tickets error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign tickets' });
+  }
+});
+
+// Escalate ticket
+router.post('/support/tickets/:id/escalate', adminAuth, async (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const { priority, reason } = req.body;
+
+    const ticket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+    
+    if (ticket.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    await db.update(supportTickets).set({
+      priority: priority || 'HIGH',
+      status: 'IN_PROGRESS',
+      adminNotes: reason ? `Escalated: ${reason}` : 'Ticket escalated',
+      updatedAt: new Date()
+    }).where(eq(supportTickets.id, ticketId));
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('ticket_escalated', {
+        type: 'ticket_escalated',
+        ticketId,
+        oldPriority: ticket[0].priority,
+        newPriority: priority || 'HIGH',
+        escalatedBy: req.adminUser.adminId,
+        reason,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ success: true, message: 'Ticket escalated successfully' });
+  } catch (error) {
+    console.error('Escalate ticket error:', error);
+    res.status(500).json({ success: false, message: 'Failed to escalate ticket' });
+  }
+});
+
+// Get ticket statistics for dashboard
+router.get('/support/statistics', adminAuth, async (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalTickets,
+      openTickets,
+      inProgressTickets,
+      resolvedTickets,
+      urgentTickets,
+      todayTickets,
+      weekTickets,
+      avgResponseTime
+    ] = await Promise.all([
+      db.select({ count: count() }).from(supportTickets),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'OPEN')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'IN_PROGRESS')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'RESOLVED')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.priority, 'URGENT')),
+      db.select({ count: count() }).from(supportTickets).where(gte(supportTickets.createdAt, today)),
+      db.select({ count: count() }).from(supportTickets).where(gte(supportTickets.createdAt, thisWeek)),
+      // Mock average response time calculation
+      Promise.resolve([{ avg: 2.5 }])
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total: totalTickets[0].count,
+        open: openTickets[0].count,
+        inProgress: inProgressTickets[0].count,
+        resolved: resolvedTickets[0].count,
+        urgent: urgentTickets[0].count,
+        today: todayTickets[0].count,
+        thisWeek: weekTickets[0].count,
+        avgResponseTime: avgResponseTime[0].avg
+      }
+    });
+  } catch (error) {
+    console.error('Get support statistics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get statistics' });
+  }
+});
+
 // Transaction Management
 router.get('/transactions', adminAuth, async (req, res) => {
   try {

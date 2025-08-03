@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { MessageCircle, Clock, CheckCircle, AlertTriangle, User, Phone, Mail, Calendar, ArrowUp, ArrowDown, Filter, Search, RefreshCw } from 'lucide-react';
 
 interface SupportTicket {
   id: string;
@@ -192,6 +193,41 @@ export function AdminSupport() {
     });
   };
 
+  const handleEscalateTicket = (ticketId: string, priority: string) => {
+    updateTicketMutation.mutate({
+      ticketId,
+      updates: { priority, status: 'IN_PROGRESS' }
+    });
+  };
+
+  const handleBulkAssign = (ticketIds: string[], adminId: number) => {
+    ticketIds.forEach(ticketId => {
+      updateTicketMutation.mutate({
+        ticketId,
+        updates: { assignedTo: adminId, status: 'IN_PROGRESS' }
+      });
+    });
+  };
+
+  const getTicketAge = (createdAt: string) => {
+    const created = new Date(createdAt);
+    const now = new Date();
+    const diffHours = Math.floor((now.getTime() - created.getTime()) / (1000 * 60 * 60));
+    
+    if (diffHours < 1) return 'Just now';
+    if (diffHours < 24) return `${diffHours}h ago`;
+    return `${Math.floor(diffHours / 24)}d ago`;
+  };
+
+  const getUrgencyColor = (ticket: SupportTicket) => {
+    const age = new Date().getTime() - new Date(ticket.createdAt).getTime();
+    const hoursOld = age / (1000 * 60 * 60);
+    
+    if (ticket.priority === 'URGENT' || hoursOld > 48) return 'border-red-500 bg-red-50';
+    if (ticket.priority === 'HIGH' || hoursOld > 24) return 'border-orange-500 bg-orange-50';
+    return 'border-gray-200 bg-white';
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'OPEN': return 'bg-red-100 text-red-800';
@@ -309,7 +345,21 @@ export function AdminSupport() {
         {/* Tickets List */}
         <div className="bg-white rounded-lg shadow">
           <div className="p-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Support Tickets</h2>
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-gray-900">Support Tickets</h2>
+              <div className="flex items-center space-x-2">
+                <button
+                  onClick={() => queryClient.invalidateQueries({ queryKey: ['support-tickets'] })}
+                  className="p-2 text-gray-500 hover:text-gray-700"
+                  title="Refresh"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+                <span className="text-sm text-gray-500">
+                  {tickets.length} tickets
+                </span>
+              </div>
+            </div>
           </div>
           <div className="max-h-96 overflow-y-auto">
             {isLoading ? (
@@ -321,8 +371,8 @@ export function AdminSupport() {
                 <div
                   key={ticket.id}
                   onClick={() => handleTicketSelect(ticket)}
-                  className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 ${
-                    selectedTicket?.id === ticket.id ? 'bg-blue-50 border-blue-200' : ''
+                  className={`p-4 border-b border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors ${
+                    selectedTicket?.id === ticket.id ? 'bg-blue-50 border-blue-200' : getUrgencyColor(ticket)
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -337,17 +387,43 @@ export function AdminSupport() {
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getPriorityColor(ticket.priority)}`}>
                           {ticket.priority}
                         </span>
+                        {ticket.assignedTo && (
+                          <span className="px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                            Assigned
+                          </span>
+                        )}
                       </div>
                       <h3 className="font-medium text-gray-900 text-sm mb-1">
                         {ticket.subject}
                       </h3>
-                      <p className="text-xs text-gray-600 mb-2">
-                        From: {ticket.name} ({ticket.email})
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        {new Date(ticket.createdAt).toLocaleDateString()} at{' '}
-                        {new Date(ticket.createdAt).toLocaleTimeString()}
-                      </p>
+                      <div className="flex items-center text-xs text-gray-600 mb-2 space-x-3">
+                        <span className="flex items-center">
+                          <User className="h-3 w-3 mr-1" />
+                          {ticket.name}
+                        </span>
+                        <span className="flex items-center">
+                          <Mail className="h-3 w-3 mr-1" />
+                          {ticket.email}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                          <Clock className="h-3 w-3 inline mr-1" />
+                          {getTicketAge(ticket.createdAt)}
+                        </p>
+                        {ticket.status === 'OPEN' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEscalateTicket(ticket.id, 'HIGH');
+                            }}
+                            className="text-xs text-orange-600 hover:text-orange-800 flex items-center"
+                          >
+                            <ArrowUp className="h-3 w-3 mr-1" />
+                            Escalate
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

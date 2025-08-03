@@ -335,6 +335,54 @@ export function setupWebSocketServer(server: HTTPServer) {
       console.log(`Email notification sent to ${data.customerEmail} for ticket ${data.ticketId}`);
     });
 
+    socket.on('ticket_escalated', (data: {
+      ticketId: string;
+      oldPriority: string;
+      newPriority: string;
+      escalatedBy: number;
+      reason?: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_escalated', {
+        type: 'ticket_escalated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('tickets_bulk_assigned', (data: {
+      ticketIds: string[];
+      assignedTo: number;
+      assignedBy: number;
+      priority?: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('tickets_bulk_assigned', {
+        type: 'tickets_bulk_assigned',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Support ticket real-time notifications for customers
+    socket.on('join_support_room', (ticketId: string) => {
+      socket.join(`support_ticket_${ticketId}`);
+      console.log(`Joined support ticket room: ${ticketId}`);
+    });
+
+    socket.on('customer_ticket_update', (data: {
+      ticketId: string;
+      customerId: number;
+      update: string;
+    }) => {
+      // Notify admin dashboards about customer updates
+      io.to('admin_support').emit('customer_ticket_update', {
+        type: 'customer_ticket_update',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       

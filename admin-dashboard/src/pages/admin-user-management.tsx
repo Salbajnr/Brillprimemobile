@@ -235,8 +235,17 @@ export default function AdminUserManagement() {
 
       const result = await response.json();
       if (result.success) {
-        // Refresh users after action
-        loadUsers();
+        // Update local state immediately for better UX
+        setUsers(prevUsers => 
+          prevUsers.map(user => 
+            user.id === userId 
+              ? { 
+                  ...user, 
+                  isVerified: action === 'verify' ? true : action === 'suspend' ? false : user.isVerified 
+                }
+              : user
+          )
+        );
         
         // Emit real-time update
         if (socket) {
@@ -246,6 +255,39 @@ export default function AdminUserManagement() {
     } catch (err) {
       console.error('User action error:', err);
       setError(`Failed to ${action} user`);
+      // Refresh on error to ensure consistency
+      loadUsers();
+    }
+  };
+
+  const handleBulkUserAction = async (userIds: number[], action: string) => {
+    try {
+      const response = await fetch('/api/admin/users/bulk-action', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ userIds, action })
+      });
+
+      if (!response.ok) {
+        throw new Error('Bulk action failed');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        // Refresh users after bulk action
+        loadUsers();
+        
+        // Emit real-time update
+        if (socket) {
+          socket.emit('admin_bulk_user_action', { userIds, action, timestamp: Date.now() });
+        }
+      }
+    } catch (err) {
+      console.error('Bulk user action error:', err);
+      setError(`Failed to ${action} users`);
     }
   };
 
