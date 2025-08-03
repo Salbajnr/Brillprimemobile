@@ -108,6 +108,9 @@ export interface IStorage {
   getFuelOrders(userId: number): Promise<any>;
   updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
   getAvailableFuelOrders(): Promise<any>;
+  getFuelStationById(stationId: string): Promise<any | null>;
+  getFuelOrderById(orderId: string): Promise<any | null>;
+  getMerchantFuelOrders(merchantId: number): Promise<any[]>;
 
   // Push notifications
   storePushSubscription(userId: number, subscription: any): Promise<any>;
@@ -127,11 +130,11 @@ export interface IStorage {
   getUserTransactions(userId: number, limit: number, offset: number): Promise<any[]>;
   addToWishlist(userId: number, productId: string): Promise<any>;
   getWishlistItems(userId: number): Promise<any[]>;
-  
+
   // QR Code operations
   generateDeliveryQR(orderId: string): Promise<any>;
   verifyDeliveryQR(qrCode: string): Promise<any>;
-  
+
   // Real-time order tracking
   updateOrderTracking(orderId: string, status: string, location?: any): Promise<any>;
   getOrderTracking(orderId: string): Promise<any>;
@@ -356,7 +359,7 @@ export class DatabaseStorage implements IStorage {
   async getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }> {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const weekAgo = new Date();
     weekAgo.setDate(weekAgo.getDate() - 7);
 
@@ -882,7 +885,8 @@ export class DatabaseStorage implements IStorage {
     return method;
   }
 
-  async getUserTransactions(userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
+  async getUserTransactions(```tool_code
+userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
     const transactions = await import("@shared/schema").then(m => m.transactions);
     const userTransactions = await db
       .select()
@@ -952,9 +956,102 @@ export class DatabaseStorage implements IStorage {
     return { id: orderId, status, driverId };
   }
 
-  async getAvailableFuelOrders(): Promise<any> {
-    // Implement available fuel orders retrieval
-    return [];
+  async getAvailableFuelOrders(): Promise<any[]> {
+    try {
+      const orders = await db
+        .select()
+        .from(fuelOrders)
+        .where(eq(fuelOrders.status, 'PENDING'))
+        .orderBy(desc(fuelOrders.createdAt));
+
+      return orders;
+    } catch (error) {
+      console.error('Error getting available fuel orders:', error);
+      throw error;
+    }
+  }
+
+  async getFuelStationById(stationId: string): Promise<any | null> {
+    try {
+      // Mock data for now - in production this would query a fuel_stations table
+      const mockStation = {
+        id: stationId,
+        name: "Total Energies Wuse II",
+        brand: "Total Energies",
+        address: "Plot 123, Ademola Adetokunbo Crescent, Wuse II",
+        latitude: 9.0765,
+        longitude: 7.3986,
+        distance: 2.3,
+        rating: 4.5,
+        reviewCount: 128,
+        prices: {
+          PMS: 617,
+          AGO: 620,
+          DPK: 615
+        },
+        fuelTypes: ["PMS", "AGO", "DPK"],
+        isOpen: true,
+        deliveryTime: "15-25 mins",
+        phone: "+234 803 123 4567"
+      };
+
+      return mockStation;
+    } catch (error) {
+      console.error('Error getting fuel station by ID:', error);
+      throw error;
+    }
+  }
+
+  async getFuelOrderById(orderId: string): Promise<any | null> {
+    try {
+      const order = await db
+        .select()
+        .from(fuelOrders)
+        .where(eq(fuelOrders.id, orderId))
+        .limit(1);
+
+      return order[0] || null;
+    } catch (error) {
+      console.error('Error getting fuel order by ID:', error);
+      throw error;
+    }
+  }
+
+  async getMerchantFuelOrders(merchantId: number): Promise<any[]> {
+    try {
+      const orders = await db
+        .select({
+          id: fuelOrders.id,
+          orderNumber: fuelOrders.id,
+          customerId: fuelOrders.customerId,
+          customerName: users.fullName,
+          customerPhone: users.phone,
+          customerEmail: users.email,
+          fuelType: fuelOrders.fuelType,
+          quantity: fuelOrders.quantity,
+          totalAmount: fuelOrders.totalAmount,
+          status: fuelOrders.status,
+          paymentStatus: sql`'PAID'`,
+          deliveryAddress: fuelOrders.deliveryAddress,
+          deliveryLatitude: fuelOrders.deliveryLatitude,
+          deliveryLongitude: fuelOrders.deliveryLongitude,
+          orderDate: fuelOrders.createdAt,
+          estimatedDelivery: fuelOrders.scheduledDeliveryTime,
+          driverId: fuelOrders.driverId,
+          driverName: sql`null`,
+          notes: fuelOrders.notes,
+          urgentOrder: sql`false`
+        })
+        .from(fuelOrders)
+        .leftJoin(users, eq(fuelOrders.customerId, users.id))
+        .where(eq(fuelOrders.stationId, merchantId.toString()))
+        .orderBy(desc(fuelOrders.createdAt));
+
+      return orders;
+    } catch (error) {
+      console.error('Error getting merchant fuel orders:', error);
+      throw error;
+    }
   }
 
   async storePushSubscription(userId: number, subscription: any): Promise<any> {

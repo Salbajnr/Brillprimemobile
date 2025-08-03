@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle, MapPin, Clock, Fuel, Phone, MessageSquare, Navigation } from "lucide-react";
@@ -6,7 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
-import { useWebSocketOrders } from "@/hooks/use-websocket";
+import { useWebSocketOrders, useWebSocketPayments } from "@/hooks/use-websocket";
+import LiveMap from "@/components/ui/live-map";
 
 interface Order {
   id: string;
@@ -15,54 +15,103 @@ interface Order {
   quantity: number;
   totalAmount: number;
   deliveryAddress: string;
+  deliveryLatitude: number;
+  deliveryLongitude: number;
   status: string;
   estimatedDeliveryTime: string;
   driverName?: string;
   driverPhone?: string;
+  driverId?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export default function OrderConfirmation() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { connected, orderUpdates } = useWebSocketOrders();
-  
+  const { paymentUpdates } = useWebSocketPayments();
+
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [driverLocation, setDriverLocation] = useState<{lat: number, lng: number} | null>(null);
 
   // Get order ID from URL
-  useEffect(() => {
-    const urlPath = window.location.pathname;
-    const orderId = urlPath.split('/').pop();
-    
-    if (orderId) {
-      // Mock order data - in real app would fetch from API
-      setTimeout(() => {
-        setOrder({
-          id: orderId,
-          stationName: "Total Energies Wuse II",
-          fuelType: "PMS",
-          quantity: 20,
-          totalAmount: 12840,
-          deliveryAddress: "123 Main Street, Wuse II, Abuja",
-          status: "CONFIRMED",
-          estimatedDeliveryTime: "15-25 mins",
-          driverName: "Ahmed Hassan",
-          driverPhone: "+234 803 123 4567"
-        });
-        setIsLoading(false);
-      }, 1000);
-    }
-  }, []);
+  const orderId = window.location.pathname.split('/').pop();
 
-  // Listen for order updates via WebSocket
+  // Fetch order data from API
   useEffect(() => {
-    if (orderUpdates.length > 0 && order) {
-      const latestUpdate = orderUpdates[orderUpdates.length - 1];
-      if (latestUpdate.orderId === order.id) {
-        setOrder(prev => prev ? { ...prev, status: latestUpdate.status } : null);
+    const fetchOrder = async () => {
+      if (!orderId) return;
+
+      try {
+        const response = await fetch(`/api/fuel/orders/${orderId}`, {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setOrder(data.order);
+        } else {
+          console.error('Failed to fetch order data');
+        }
+      } catch (error) {
+        console.error('Error fetching order:', error);
+      } finally {
+        setIsLoading(false);
       }
+    };
+
+    fetchOrder();
+  }, [orderId]);
+
+  // Listen for real-time order updates
+  useEffect(() => {
+    if (orderUpdates[orderId || ''] && order) {
+      const update = orderUpdates[orderId || ''];
+      setOrder(prev => prev ? { ...prev, status: update.status } : null);
     }
-  }, [orderUpdates, order]);
+  }, [orderUpdates, orderId, order]);
+
+  // Listen for payment updates
+  useEffect(() => {
+    if (Object.keys(paymentUpdates).length > 0) {
+      // Handle payment status updates
+      console.log('Payment updates:', paymentUpdates);
+    }
+  }, [paymentUpdates]);
+
+  // Fetch driver location if assigned
+  useEffect(() => {
+    const fetchDriverLocation = async () => {
+      if (order?.driverId) {
+        try {
+          const response = await fetch(`/api/tracking/driver/${order.driverId}/location`, {
+            credentials: 'include'
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            if (data.location) {
+              setDriverLocation({
+                lat: parseFloat(data.location.latitude),
+                lng: parseFloat(data.location.longitude)
+              });
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching driver location:', error);
+        }
+      }
+    };
+
+    if (order?.driverId) {
+      fetchDriverLocation();
+      // Poll for driver location every 30 seconds
+      const interval = setInterval(fetchDriverLocation, 30000);
+      return () => clearInterval(interval);
+    }
+  }, [order?.driverId]);
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-NG', {
@@ -140,6 +189,12 @@ export default function OrderConfirmation() {
               <Clock className="w-4 h-4" />
               <span>Estimated delivery: {order.estimatedDeliveryTime}</span>
             </div>
+            {connected && (
+              <div className="flex items-center space-x-2 text-xs text-green-600 mt-2">
+                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                <span>Real-time updates active</span>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -172,13 +227,38 @@ export default function OrderConfirmation() {
           </CardContent>
         </Card>
 
-        {/* Delivery Address */}
+        {/* Delivery Address & Map */}
         <Card>
           <CardContent className="p-4">
-            <h3 className="font-semibold text-[#131313] mb-3">Delivery Address</h3>
-            <div className="flex items-start space-x-3">
+            <h3 className="font-semibold text-[#131313] mb-3">Delivery Location</h3>
+            <div className="flex items-start space-x-3 mb-3">
               <MapPin className="w-5 h-5 text-[#4682b4] mt-0.5" />
               <p className="text-gray-600">{order.deliveryAddress}</p>
+            </div>
+
+            {/* Live Map */}
+            <div className="h-48 rounded-lg overflow-hidden">
+              <LiveMap
+                showUserLocation={false}
+                showNearbyUsers={false}
+                className="w-full h-full"
+                userRole="CONSUMER"
+                center={{ lat: order.deliveryLatitude, lng: order.deliveryLongitude }}
+                markers={[
+                  {
+                    lat: order.deliveryLatitude,
+                    lng: order.deliveryLongitude,
+                    title: 'Delivery Location',
+                    type: 'delivery'
+                  },
+                  ...(driverLocation ? [{
+                    lat: driverLocation.lat,
+                    lng: driverLocation.lng,
+                    title: 'Driver Location',
+                    type: 'driver'
+                  }] : [])
+                ]}
+              />
             </div>
           </CardContent>
         </Card>
@@ -198,6 +278,9 @@ export default function OrderConfirmation() {
                   <div>
                     <p className="font-medium text-[#131313]">{order.driverName}</p>
                     <p className="text-sm text-gray-600">Fuel Delivery Driver</p>
+                    {driverLocation && (
+                      <p className="text-xs text-green-600">Live tracking active</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex space-x-2">
@@ -230,7 +313,7 @@ export default function OrderConfirmation() {
             <Navigation className="w-4 h-4 mr-2" />
             Track Order
           </Button>
-          
+
           <Button
             variant="outline"
             onClick={() => setLocation("/order-history")}
@@ -238,7 +321,7 @@ export default function OrderConfirmation() {
           >
             View Order History
           </Button>
-          
+
           <Button
             variant="ghost"
             onClick={() => setLocation("/consumer-home")}
@@ -247,176 +330,6 @@ export default function OrderConfirmation() {
             Back to Home
           </Button>
         </div>
-      </div>
-    </div>
-  );
-}
-import { useEffect, useState } from "react";
-import { useLocation, useParams } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Clock, MapPin, Phone } from "lucide-react";
-
-export default function OrderConfirmationPage() {
-  const { orderId } = useParams();
-  const [, setLocation] = useLocation();
-  const [countdown, setCountdown] = useState(30);
-
-  // Mock order data
-  const orderData = {
-    id: orderId,
-    type: "fuel_delivery",
-    status: "confirmed",
-    estimatedTime: "15-25 minutes",
-    totalAmount: 1950,
-    fuelType: "Petrol (PMS)",
-    quantity: "10 liters",
-    station: "Total Energy Station",
-    deliveryAddress: "123 Main Street, Lagos",
-    driverName: "John Adebayo",
-    driverPhone: "+234 809 123 4567",
-    vehicleNumber: "LAG 123 ABC"
-  };
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setCountdown((prev) => {
-        if (prev <= 1) {
-          setLocation(`/track-order/${orderId}`);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  }, [orderId, setLocation]);
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Success Header */}
-      <div className="bg-green-600 text-white px-4 py-6 text-center">
-        <CheckCircle className="h-16 w-16 mx-auto mb-3" />
-        <h1 className="text-2xl font-bold">Order Confirmed!</h1>
-        <p className="text-green-100 mt-1">Order #{orderData.id}</p>
-      </div>
-
-      <div className="p-4 space-y-4">
-        {/* Order Status */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              Order Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center">
-              <div className="inline-block bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium mb-2">
-                Preparing for Delivery
-              </div>
-              <p className="text-gray-600">
-                Estimated delivery time: <span className="font-semibold">{orderData.estimatedTime}</span>
-              </p>
-              <p className="text-sm text-gray-500 mt-1">
-                Redirecting to tracking in {countdown} seconds...
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Order Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Details</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Fuel Type:</span>
-                <span className="font-medium">{orderData.fuelType}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Quantity:</span>
-                <span className="font-medium">{orderData.quantity}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Station:</span>
-                <span className="font-medium">{orderData.station}</span>
-              </div>
-              <div className="border-t pt-3 flex justify-between">
-                <span className="text-gray-600">Total Amount:</span>
-                <span className="font-bold text-lg">₦{orderData.totalAmount.toLocaleString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Delivery Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <MapPin className="h-5 w-5 text-green-600" />
-              Delivery Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <div>
-                <p className="text-sm text-gray-600">Delivery Address:</p>
-                <p className="font-medium">{orderData.deliveryAddress}</p>
-              </div>
-              
-              <div className="border-t pt-3">
-                <p className="text-sm text-gray-600 mb-2">Driver Details:</p>
-                <div className="bg-gray-50 p-3 rounded-lg">
-                  <p className="font-medium">{orderData.driverName}</p>
-                  <p className="text-sm text-gray-600">Vehicle: {orderData.vehicleNumber}</p>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="mt-2 w-full"
-                    onClick={() => window.open(`tel:${orderData.driverPhone}`)}
-                  >
-                    <Phone className="h-4 w-4 mr-2" />
-                    Call Driver
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <Button
-            onClick={() => setLocation(`/track-order/${orderId}`)}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700"
-            size="lg"
-          >
-            Track Order
-          </Button>
-          
-          <Button
-            variant="outline"
-            onClick={() => setLocation("/consumer-home")}
-            className="w-full"
-          >
-            Back to Home
-          </Button>
-        </div>
-
-        {/* Order Tips */}
-        <Card>
-          <CardContent className="pt-4">
-            <h3 className="font-medium mb-2">Order Tips:</h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• Ensure someone is available at the delivery location</li>
-              <li>• Have your payment method ready</li>
-              <li>• Contact the driver if you need to change the location</li>
-            </ul>
-          </CardContent>
-        </Card>
       </div>
     </div>
   );

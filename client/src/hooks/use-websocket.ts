@@ -413,12 +413,24 @@ export function useWebSocketDriverTracking() {
       }
       
       if (lastMessage.type === 'delivery_eta_update') {
-        const { orderId, eta, distance } = lastMessage.payload;
+        const { orderId, eta, distance, driverLocation } = lastMessage.payload;
         setEtaUpdates((prev: Record<string, any>) => ({
           ...prev,
           [orderId]: {
             eta,
             distance,
+            driverLocation,
+            timestamp: lastMessage.timestamp
+          }
+        }));
+      }
+
+      if (lastMessage.type === 'driver_position_update') {
+        const { driverId, position } = lastMessage.payload;
+        setDriverLocations((prev: Record<string, any>) => ({
+          ...prev,
+          [`driver_${driverId}`]: {
+            location: position,
             timestamp: lastMessage.timestamp
           }
         }));

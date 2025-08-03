@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, Clock, Fuel, Plus, Minus, Calendar, MessageSquare, Phone } from "lucide-react";
@@ -9,12 +8,15 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
 import { useWebSocketOrders } from "@/hooks/use-websocket";
+import LiveMap from "@/components/ui/live-map";
 
 interface FuelStation {
   id: string;
   name: string;
   brand: string;
   address: string;
+  latitude: number;
+  longitude: number;
   distance: number;
   rating: number;
   reviewCount: number;
@@ -33,47 +35,78 @@ export default function FuelOrderDetails() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { connected, sendMessage } = useWebSocketOrders();
-  
+
   const [station, setStation] = useState<FuelStation | null>(null);
   const [selectedFuelType, setSelectedFuelType] = useState<"PMS" | "AGO" | "DPK">("PMS");
-  const [quantity, setQuantity] = useState(20); // Default 20 liters
+  const [quantity, setQuantity] = useState(20);
   const [deliveryAddress, setDeliveryAddress] = useState("");
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
   const [scheduledTime, setScheduledTime] = useState("");
   const [notes, setNotes] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [stationLoading, setStationLoading] = useState(true);
 
   // Get station ID from URL
+  const stationId = window.location.pathname.split('/').pop();
+
+  // Get user's current GPS location
   useEffect(() => {
-    const urlPath = window.location.pathname;
-    const stationId = urlPath.split('/').pop();
-    
-    if (stationId) {
-      // Mock station data - in real app would fetch from API
-      setStation({
-        id: stationId,
-        name: "Total Energies Wuse II",
-        brand: "Total Energies",
-        address: "Plot 123, Ademola Adetokunbo Crescent, Wuse II",
-        distance: 2.3,
-        rating: 4.5,
-        reviewCount: 128,
-        prices: {
-          PMS: 617,
-          AGO: 620,
-          DPK: 615
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setUserLocation({ lat: latitude, lng: longitude });
+
+          // Reverse geocode to get address
+          fetch(`https://api.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+            .then(res => res.json())
+            .then(data => {
+              if (data.display_name) {
+                setDeliveryAddress(data.display_name);
+              }
+            })
+            .catch(console.error);
         },
-        fuelTypes: ["PMS", "AGO", "DPK"],
-        isOpen: true,
-        deliveryTime: "15-25 mins",
-        phone: "+234 803 123 4567"
-      });
+        (error) => {
+          console.error('Error getting location:', error);
+          // Fallback to default location (Abuja)
+          setUserLocation({ lat: 9.0765, lng: 7.3986 });
+        },
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 300000 }
+      );
     }
   }, []);
+
+  // Fetch station data from API
+  useEffect(() => {
+    const fetchStation = async () => {
+      if (!stationId) return;
+
+      try {
+        const response = await fetch(`/api/fuel/stations/${stationId}`, {
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setStation(data.station);
+        } else {
+          console.error('Failed to fetch station data');
+        }
+      } catch (error) {
+        console.error('Error fetching station:', error);
+      } finally {
+        setStationLoading(false);
+      }
+    };
+
+    fetchStation();
+  }, [stationId]);
 
   const calculateTotal = () => {
     if (!station) return 0;
     const unitPrice = station.prices[selectedFuelType];
-    const deliveryFee = 500; // Fixed delivery fee
+    const deliveryFee = 500;
     return (quantity * unitPrice) + deliveryFee;
   };
 
@@ -93,7 +126,7 @@ export default function FuelOrderDetails() {
   };
 
   const handlePlaceOrder = async () => {
-    if (!station || !user || !deliveryAddress.trim()) return;
+    if (!station || !user || !deliveryAddress.trim() || !userLocation) return;
 
     setIsLoading(true);
     try {
@@ -104,8 +137,8 @@ export default function FuelOrderDetails() {
         unitPrice: station.prices[selectedFuelType],
         totalAmount: calculateTotal(),
         deliveryAddress,
-        deliveryLatitude: 9.0765, // Mock coordinates
-        deliveryLongitude: 7.3986,
+        deliveryLatitude: userLocation.lat,
+        deliveryLongitude: userLocation.lng,
         scheduledDeliveryTime: scheduledTime || undefined,
         notes: notes || undefined
       };
@@ -115,13 +148,13 @@ export default function FuelOrderDetails() {
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify(orderData),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        // Send WebSocket notification about new order
         if (connected) {
           sendMessage({
             type: 'ORDER_CREATED',
@@ -130,7 +163,8 @@ export default function FuelOrderDetails() {
               customerName: user.fullName,
               fuelType: selectedFuelType,
               quantity,
-              deliveryAddress
+              deliveryAddress,
+              location: userLocation
             }
           });
         }
@@ -147,12 +181,25 @@ export default function FuelOrderDetails() {
     }
   };
 
-  if (!station) {
+  if (stationLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="text-gray-600">Loading station details...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!station) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-gray-600 mb-4">Station not found</p>
+          <Button onClick={() => setLocation("/fuel-ordering")}>
+            Back to Fuel Ordering
+          </Button>
         </div>
       </div>
     );
@@ -186,7 +233,7 @@ export default function FuelOrderDetails() {
                 <div className="flex items-center space-x-4 text-sm text-gray-500">
                   <div className="flex items-center space-x-1">
                     <MapPin className="w-3 h-3" />
-                    <span>{station.distance} km away</span>
+                    <span>{station.distance.toFixed(1)} km away</span>
                   </div>
                   <div className="flex items-center space-x-1">
                     <Clock className="w-3 h-3" />
@@ -194,7 +241,9 @@ export default function FuelOrderDetails() {
                   </div>
                 </div>
               </div>
-              <Badge className="bg-green-100 text-green-800">Open</Badge>
+              <Badge className={station.isOpen ? "bg-green-100 text-green-800" : "bg-red-100 text-red-800"}>
+                {station.isOpen ? "Open" : "Closed"}
+              </Badge>
             </div>
             <div className="flex space-x-2">
               <Button
@@ -216,6 +265,38 @@ export default function FuelOrderDetails() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Live Map */}
+        {userLocation && (
+          <Card>
+            <CardContent className="p-4">
+              <h4 className="font-medium text-[#131313] mb-3">Station Location</h4>
+              <div className="h-48 rounded-lg overflow-hidden">
+                <LiveMap
+                  showUserLocation={true}
+                  showNearbyUsers={false}
+                  className="w-full h-full"
+                  userRole="CONSUMER"
+                  center={{ lat: station.latitude, lng: station.longitude }}
+                  markers={[
+                    {
+                      lat: station.latitude,
+                      lng: station.longitude,
+                      title: station.name,
+                      type: 'station'
+                    },
+                    {
+                      lat: userLocation.lat,
+                      lng: userLocation.lng,
+                      title: 'Your Location',
+                      type: 'user'
+                    }
+                  ]}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Fuel Type Selection */}
         <Card>
@@ -277,7 +358,7 @@ export default function FuelOrderDetails() {
         <Card>
           <CardContent className="p-4 space-y-4">
             <h4 className="font-medium text-[#131313]">Delivery Details</h4>
-            
+
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Delivery Address *
@@ -289,6 +370,11 @@ export default function FuelOrderDetails() {
                 className="resize-none"
                 rows={3}
               />
+              {userLocation && (
+                <p className="text-xs text-gray-500 mt-1">
+                  GPS coordinates: {userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}
+                </p>
+              )}
             </div>
 
             <div>
@@ -342,7 +428,7 @@ export default function FuelOrderDetails() {
         {/* Place Order Button */}
         <Button
           onClick={handlePlaceOrder}
-          disabled={!deliveryAddress.trim() || isLoading}
+          disabled={!deliveryAddress.trim() || isLoading || !userLocation}
           className="w-full h-12 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-xl"
         >
           {isLoading ? (
@@ -353,222 +439,6 @@ export default function FuelOrderDetails() {
           ) : (
             `Place Order - ${formatCurrency(calculateTotal())}`
           )}
-        </Button>
-      </div>
-    </div>
-  );
-}
-import { useState } from "react";
-import { useLocation, useParams } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, MapPin, Clock, Fuel, CreditCard } from "lucide-react";
-
-interface FuelStation {
-  id: string;
-  name: string;
-  address: string;
-  distance: string;
-  pricePerLiter: number;
-  rating: number;
-  amenities: string[];
-}
-
-export default function FuelOrderDetailsPage() {
-  const { stationId } = useParams();
-  const [, setLocation] = useLocation();
-  const [selectedFuelType, setSelectedFuelType] = useState("petrol");
-  const [liters, setLiters] = useState(10);
-
-  // Mock station data
-  const station: FuelStation = {
-    id: stationId || "1",
-    name: "Total Energy Station",
-    address: "123 Lagos-Ibadan Expressway, Lagos",
-    distance: "2.5 km away",
-    pricePerLiter: 195,
-    rating: 4.5,
-    amenities: ["24/7", "ATM", "Car Wash", "Mini Mart"]
-  };
-
-  const fuelTypes = [
-    { id: "petrol", name: "Petrol (PMS)", price: 195 },
-    { id: "diesel", name: "Diesel (AGO)", price: 280 },
-    { id: "kerosene", name: "Kerosene (DPK)", price: 150 }
-  ];
-
-  const selectedFuel = fuelTypes.find(f => f.id === selectedFuelType);
-  const totalAmount = selectedFuel ? selectedFuel.price * liters : 0;
-
-  const handleOrderConfirm = () => {
-    const orderId = `FO${Date.now()}`;
-    setLocation(`/order-confirmation/${orderId}`);
-  };
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setLocation("/fuel-ordering")}
-            className="p-2"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-lg font-semibold">Fuel Order Details</h1>
-            <p className="text-sm text-gray-600">{station.name}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-4">
-        {/* Station Info */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Fuel className="h-5 w-5 text-blue-600" />
-              {station.name}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex items-start gap-2">
-                <MapPin className="h-4 w-4 text-gray-500 mt-1" />
-                <div>
-                  <p className="text-sm">{station.address}</p>
-                  <p className="text-xs text-gray-500">{station.distance}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="flex text-yellow-400">
-                  {"★".repeat(Math.floor(station.rating))}
-                </div>
-                <span className="text-sm text-gray-600">{station.rating}</span>
-              </div>
-              <div className="flex flex-wrap gap-1 mt-2">
-                {station.amenities.map((amenity) => (
-                  <Badge key={amenity} variant="secondary" className="text-xs">
-                    {amenity}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Fuel Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Select Fuel Type</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {fuelTypes.map((fuel) => (
-                <div
-                  key={fuel.id}
-                  className={`p-3 border rounded-lg cursor-pointer transition-colors ${
-                    selectedFuelType === fuel.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300"
-                  }`}
-                  onClick={() => setSelectedFuelType(fuel.id)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="font-medium">{fuel.name}</p>
-                      <p className="text-sm text-gray-600">₦{fuel.price}/liter</p>
-                    </div>
-                    <div className={`w-4 h-4 rounded-full border-2 ${
-                      selectedFuelType === fuel.id
-                        ? "border-blue-500 bg-blue-500"
-                        : "border-gray-300"
-                    }`} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Quantity Selection */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quantity (Liters)</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLiters(Math.max(1, liters - 1))}
-                disabled={liters <= 1}
-              >
-                -
-              </Button>
-              <span className="text-xl font-semibold">{liters}L</span>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setLiters(liters + 1)}
-              >
-                +
-              </Button>
-            </div>
-            <div className="mt-4 grid grid-cols-4 gap-2">
-              {[5, 10, 20, 50].map((amount) => (
-                <Button
-                  key={amount}
-                  variant={liters === amount ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => setLiters(amount)}
-                >
-                  {amount}L
-                </Button>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Order Summary */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Order Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>Fuel Type:</span>
-                <span>{selectedFuel?.name}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Quantity:</span>
-                <span>{liters} liters</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Price per liter:</span>
-                <span>₦{selectedFuel?.price}</span>
-              </div>
-              <div className="border-t pt-2 flex justify-between font-semibold">
-                <span>Total Amount:</span>
-                <span>₦{totalAmount.toLocaleString()}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Order Button */}
-        <Button
-          onClick={handleOrderConfirm}
-          className="w-full py-3 bg-blue-600 hover:bg-blue-700"
-          size="lg"
-        >
-          <CreditCard className="h-5 w-5 mr-2" />
-          Place Order - ₦{totalAmount.toLocaleString()}
         </Button>
       </div>
     </div>

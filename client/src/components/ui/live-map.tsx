@@ -1,281 +1,284 @@
+
 import React, { useEffect, useRef, useState } from 'react';
-import { useAuth } from '@/hooks/use-auth';
+import { MapPin, Navigation, Truck, Home } from 'lucide-react';
+
+interface MapMarker {
+  lat: number;
+  lng: number;
+  title: string;
+  type: 'user' | 'driver' | 'station' | 'delivery' | 'merchant';
+}
+
+interface RouteInfo {
+  start: { lat: number; lng: number };
+  end: { lat: number; lng: number };
+}
 
 interface LiveMapProps {
   showUserLocation?: boolean;
   showNearbyUsers?: boolean;
-  onLocationUpdate?: (lat: number, lng: number) => void;
   className?: string;
-  userRole?: 'CONSUMER' | 'MERCHANT' | 'DRIVER';
+  userRole: 'CONSUMER' | 'DRIVER' | 'MERCHANT' | 'ADMIN';
+  center?: { lat: number; lng: number };
+  markers?: MapMarker[];
+  showRoute?: RouteInfo;
+  onLocationUpdate?: (location: { lat: number; lng: number }) => void;
 }
 
-interface UserLocation {
-  id: number;
-  fullName: string;
-  role: string;
-  latitude: number;
-  longitude: number;
-  isActive: boolean;
-}
-
-declare global {
-  interface Window {
-    L: any;
-  }
-}
-
-export default function LiveMap({ 
-  showUserLocation = true, 
-  showNearbyUsers = false, 
-  onLocationUpdate, 
-  className = "",
-  userRole 
-}: LiveMapProps) {
+const LiveMap: React.FC<LiveMapProps> = ({
+  showUserLocation = true,
+  showNearbyUsers = false,
+  className = '',
+  userRole,
+  center,
+  markers = [],
+  showRoute,
+  onLocationUpdate
+}) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const userMarkerRef = useRef<any>(null);
-  const nearbyMarkersRef = useRef<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [nearbyUsers, setNearbyUsers] = useState<UserLocation[]>([]);
-  const { user } = useAuth();
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [locationError, setLocationError] = useState<string | null>(null);
+  const mapInstanceRef = useRef<google.maps.Map | null>(null);
+  const markersRef = useRef<google.maps.Marker[]>([]);
+  const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
 
   // Get user's current location
-  const getCurrentLocation = (): Promise<{lat: number, lng: number}> => {
-    return new Promise((resolve, reject) => {
-      if (!navigator.geolocation) {
-        reject(new Error('Geolocation is not supported'));
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
+  useEffect(() => {
+    if (showUserLocation && navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const lat = position.coords.latitude;
-          const lng = position.coords.longitude;
-          resolve({ lat, lng });
+          const newLocation = {
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          };
+          setUserLocation(newLocation);
+          setLocationError(null);
+          
+          // Notify parent component of location updates
+          if (onLocationUpdate) {
+            onLocationUpdate(newLocation);
+          }
         },
         (error) => {
-          reject(error);
+          console.error('Geolocation error:', error);
+          setLocationError('Unable to get your location');
+          // Fallback to Abuja center
+          const fallbackLocation = { lat: 9.0765, lng: 7.3986 };
+          setUserLocation(fallbackLocation);
         },
         {
           enableHighAccuracy: true,
           timeout: 10000,
-          maximumAge: 60000
+          maximumAge: 30000 // Cache location for 30 seconds
         }
       );
-    });
-  };
 
-  // Update user location in database
-  const updateLocationInDatabase = async (lat: number, lng: number) => {
-    if (!user) return;
-    
-    try {
-      await fetch('/api/user/location', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          userId: user.id,
-          latitude: lat,
-          longitude: lng,
-          isActive: true
-        }),
+      return () => navigator.geolocation.clearWatch(watchId);
+    }
+  }, [showUserLocation, onLocationUpdate]);
+
+  // Initialize Google Maps
+  useEffect(() => {
+    const initializeMap = () => {
+      if (!mapRef.current || mapLoaded) return;
+
+      const mapCenter = center || userLocation || { lat: 9.0765, lng: 7.3986 };
+
+      const map = new google.maps.Map(mapRef.current, {
+        center: mapCenter,
+        zoom: 14,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        zoomControl: true,
+        streetViewControl: false,
+        fullscreenControl: false,
+        mapTypeControl: false,
+        styles: [
+          {
+            featureType: 'poi',
+            elementType: 'labels',
+            stylers: [{ visibility: 'off' }]
+          }
+        ]
       });
-    } catch (error) {
-      console.error('Failed to update location:', error);
+
+      mapInstanceRef.current = map;
+      setMapLoaded(true);
+    };
+
+    // Load Google Maps API if not already loaded
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&libraries=geometry,places`;
+      script.async = true;
+      script.defer = true;
+      script.onload = initializeMap;
+      document.head.appendChild(script);
+    } else {
+      initializeMap();
     }
-  };
+  }, [center, userLocation, mapLoaded]);
 
-  // Fetch nearby users based on role visibility
-  const fetchNearbyUsers = async (lat: number, lng: number) => {
-    if (!showNearbyUsers || !user) return;
-
-    try {
-      // Only show vendor/driver locations to consumers and other drivers/vendors
-      const response = await fetch(`/api/user/nearby?lat=${lat}&lng=${lng}&role=${user.role}&radius=5000`);
-      const data = await response.json();
-      
-      if (data.success) {
-        setNearbyUsers(data.users || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch nearby users:', error);
-    }
-  };
-
-  // Initialize map
-  const initializeMap = async () => {
-    if (!mapRef.current || mapInstanceRef.current) return;
-
-    try {
-      // Load Leaflet CSS and JS
-      const leafletCSS = document.createElement('link');
-      leafletCSS.rel = 'stylesheet';
-      leafletCSS.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(leafletCSS);
-
-      if (!window.L) {
-        const leafletJS = document.createElement('script');
-        leafletJS.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        await new Promise((resolve) => {
-          leafletJS.onload = resolve;
-          document.head.appendChild(leafletJS);
-        });
-      }
-
-      // Get user location
-      const location = await getCurrentLocation();
-      setUserLocation(location);
-
-      // Initialize map centered on user location
-      mapInstanceRef.current = window.L.map(mapRef.current).setView([location.lat, location.lng], 15);
-
-      // Add tile layer
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-      }).addTo(mapInstanceRef.current);
-
-      if (showUserLocation) {
-        // Add user location marker
-        const userIcon = window.L.divIcon({
-          className: 'custom-user-marker',
-          html: `<div class="w-4 h-4 bg-blue-500 rounded-full border-2 border-white shadow-lg pulse"></div>`,
-          iconSize: [16, 16],
-          iconAnchor: [8, 8]
-        });
-
-        userMarkerRef.current = window.L.marker([location.lat, location.lng], { icon: userIcon })
-          .addTo(mapInstanceRef.current)
-          .bindPopup(`<strong>You are here</strong><br/>Your current location`);
-      }
-
-      // Update location in database
-      await updateLocationInDatabase(location.lat, location.lng);
-      
-      // Fetch nearby users if needed
-      if (showNearbyUsers) {
-        await fetchNearbyUsers(location.lat, location.lng);
-      }
-
-      // Notify parent component
-      if (onLocationUpdate) {
-        onLocationUpdate(location.lat, location.lng);
-      }
-
-      setIsLoading(false);
-
-    } catch (error) {
-      console.error('Failed to initialize map:', error);
-      setIsLoading(false);
-    }
-  };
-
-  // Update nearby user markers
-  const updateNearbyMarkers = () => {
-    if (!mapInstanceRef.current) return;
+  // Update markers
+  useEffect(() => {
+    if (!mapInstanceRef.current || !mapLoaded) return;
 
     // Clear existing markers
-    nearbyMarkersRef.current.forEach(marker => {
-      mapInstanceRef.current.removeLayer(marker);
-    });
-    nearbyMarkersRef.current = [];
+    markersRef.current.forEach(marker => marker.setMap(null));
+    markersRef.current = [];
 
-    // Add markers for nearby users
-    nearbyUsers.forEach(nearbyUser => {
-      let markerColor = '#10b981'; // green for merchants
-      let markerLabel = '🏪';
-      
-      if (nearbyUser.role === 'DRIVER') {
-        markerColor = '#f59e0b'; // amber for drivers
-        markerLabel = '🚗';
-      } else if (nearbyUser.role === 'CONSUMER') {
-        markerColor = '#3b82f6'; // blue for consumers
-        markerLabel = '👤';
-      }
-
-      const nearbyIcon = window.L.divIcon({
-        className: 'custom-nearby-marker',
-        html: `<div class="w-6 h-6 rounded-full border-2 border-white shadow-lg flex items-center justify-center text-xs" style="background-color: ${markerColor}">${markerLabel}</div>`,
-        iconSize: [24, 24],
-        iconAnchor: [12, 12]
-      });
-
-      const marker = window.L.marker([nearbyUser.latitude, nearbyUser.longitude], { icon: nearbyIcon })
-        .addTo(mapInstanceRef.current)
-        .bindPopup(`<strong>${nearbyUser.fullName}</strong><br/>${nearbyUser.role.toLowerCase()}`);
-
-      nearbyMarkersRef.current.push(marker);
-    });
-  };
-
-  // Watch user location changes
-  useEffect(() => {
-    let watchId: number;
-
+    // Add user location marker
     if (showUserLocation && userLocation) {
-      watchId = navigator.geolocation.watchPosition(
-        async (position) => {
-          const newLat = position.coords.latitude;
-          const newLng = position.coords.longitude;
-          
-          // Update user marker
-          if (userMarkerRef.current) {
-            userMarkerRef.current.setLatLng([newLat, newLng]);
-          }
-
-          // Update location in database
-          await updateLocationInDatabase(newLat, newLng);
-
-          // Refresh nearby users
-          if (showNearbyUsers) {
-            await fetchNearbyUsers(newLat, newLng);
-          }
-
-          if (onLocationUpdate) {
-            onLocationUpdate(newLat, newLng);
-          }
-        },
-        (error) => console.error('Location watch error:', error),
-        {
-          enableHighAccuracy: true,
-          timeout: 30000,
-          maximumAge: 60000
+      const userMarker = new google.maps.Marker({
+        position: userLocation,
+        map: mapInstanceRef.current,
+        title: 'Your Location',
+        icon: {
+          path: google.maps.SymbolPath.CIRCLE,
+          scale: 8,
+          fillColor: '#4285F4',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
         }
-      );
+      });
+      markersRef.current.push(userMarker);
     }
 
-    return () => {
-      if (watchId) {
-        navigator.geolocation.clearWatch(watchId);
+    // Add custom markers
+    markers.forEach(marker => {
+      let icon: google.maps.Icon | google.maps.Symbol;
+      
+      switch (marker.type) {
+        case 'driver':
+          icon = {
+            path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+            scale: 6,
+            fillColor: '#FF6B35',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          };
+          break;
+        case 'station':
+          icon = {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 10,
+            fillColor: '#4CAF50',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          };
+          break;
+        case 'delivery':
+          icon = {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#FF5722',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          };
+          break;
+        case 'merchant':
+          icon = {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 8,
+            fillColor: '#9C27B0',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          };
+          break;
+        default:
+          icon = {
+            path: google.maps.SymbolPath.CIRCLE,
+            scale: 6,
+            fillColor: '#757575',
+            fillOpacity: 1,
+            strokeColor: '#ffffff',
+            strokeWeight: 2
+          };
       }
-    };
-  }, [showUserLocation, userLocation, showNearbyUsers, onLocationUpdate]);
 
-  // Update markers when nearby users change
+      const mapMarker = new google.maps.Marker({
+        position: { lat: marker.lat, lng: marker.lng },
+        map: mapInstanceRef.current,
+        title: marker.title,
+        icon: icon
+      });
+
+      // Add info window
+      const infoWindow = new google.maps.InfoWindow({
+        content: `<div class="p-2"><strong>${marker.title}</strong></div>`
+      });
+
+      mapMarker.addListener('click', () => {
+        infoWindow.open(mapInstanceRef.current, mapMarker);
+      });
+
+      markersRef.current.push(mapMarker);
+    });
+  }, [mapLoaded, userLocation, showUserLocation, markers]);
+
+  // Show route if provided
   useEffect(() => {
-    updateNearbyMarkers();
-  }, [nearbyUsers]);
+    if (!mapInstanceRef.current || !mapLoaded || !showRoute) return;
 
-  // Initialize map on mount
-  useEffect(() => {
-    initializeMap();
+    // Clear existing route
+    if (routeRendererRef.current) {
+      routeRendererRef.current.setMap(null);
+    }
 
-    return () => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
+    const directionsService = new google.maps.DirectionsService();
+    const directionsRenderer = new google.maps.DirectionsRenderer({
+      draggable: false,
+      polylineOptions: {
+        strokeColor: '#4285F4',
+        strokeWeight: 4,
+        strokeOpacity: 0.8
       }
-    };
-  }, []);
+    });
+
+    directionsRenderer.setMap(mapInstanceRef.current);
+    routeRendererRef.current = directionsRenderer;
+
+    directionsService.route(
+      {
+        origin: showRoute.start,
+        destination: showRoute.end,
+        travelMode: google.maps.TravelMode.DRIVING,
+        avoidTolls: false,
+        avoidHighways: false
+      },
+      (result, status) => {
+        if (status === 'OK' && result) {
+          directionsRenderer.setDirections(result);
+        } else {
+          console.error('Directions request failed:', status);
+        }
+      }
+    );
+  }, [mapLoaded, showRoute]);
+
+  const getMarkerIcon = (type: string) => {
+    switch (type) {
+      case 'driver': return <Truck className="w-4 h-4 text-orange-500" />;
+      case 'station': return <MapPin className="w-4 h-4 text-green-500" />;
+      case 'delivery': return <Home className="w-4 h-4 text-red-500" />;
+      case 'merchant': return <MapPin className="w-4 h-4 text-purple-500" />;
+      default: return <MapPin className="w-4 h-4 text-gray-500" />;
+    }
+  };
 
   return (
     <div className={`relative ${className}`}>
+      {/* Map Container */}
       <div ref={mapRef} className="w-full h-full rounded-lg" />
       
-      {isLoading && (
-        <div className="absolute inset-0 bg-blue-50 rounded-lg flex items-center justify-center">
+      {/* Loading State */}
+      {!mapLoaded && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-sm text-gray-600">Loading map...</p>
@@ -283,26 +286,47 @@ export default function LiveMap({
         </div>
       )}
 
-      <style jsx>{`
-        .pulse {
-          animation: pulse 2s infinite;
-        }
-        
-        @keyframes pulse {
-          0% {
-            transform: scale(1);
-            opacity: 1;
-          }
-          50% {
-            transform: scale(1.2);
-            opacity: 0.7;
-          }
-          100% {
-            transform: scale(1);
-            opacity: 1;
-          }
-        }
-      `}</style>
+      {/* Location Error */}
+      {locationError && (
+        <div className="absolute top-2 left-2 right-2 bg-yellow-100 border border-yellow-400 text-yellow-700 px-3 py-2 rounded text-sm">
+          {locationError}
+        </div>
+      )}
+
+      {/* Map Legend */}
+      {markers.length > 0 && (
+        <div className="absolute bottom-2 left-2 bg-white rounded-lg shadow-md p-3 max-w-xs">
+          <h4 className="text-sm font-semibold mb-2">Map Legend</h4>
+          <div className="space-y-1">
+            {showUserLocation && userLocation && (
+              <div className="flex items-center space-x-2 text-xs">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span>Your Location</span>
+              </div>
+            )}
+            {Array.from(new Set(markers.map(m => m.type))).map(type => (
+              <div key={type} className="flex items-center space-x-2 text-xs">
+                {getMarkerIcon(type)}
+                <span className="capitalise">{type}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* GPS Status */}
+      {showUserLocation && (
+        <div className="absolute top-2 right-2 bg-white rounded-lg shadow-md p-2">
+          <div className="flex items-center space-x-2">
+            <Navigation className={`w-4 h-4 ${userLocation ? 'text-green-500' : 'text-gray-400'}`} />
+            <span className="text-xs text-gray-600">
+              {userLocation ? 'GPS Active' : 'GPS Searching...'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
-}
+};
+
+export default LiveMap;

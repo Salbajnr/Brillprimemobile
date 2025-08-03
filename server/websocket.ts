@@ -252,10 +252,10 @@ export async function setupWebSocketServer(server: HTTPServer) {
           data.destination.lat,
           data.destination.lng
         );
-        
+
         const avgSpeedKmh = 25; // City average with traffic
         const etaMinutes = Math.round((distance / avgSpeedKmh) * 60);
-        
+
         socket.emit('eta_calculated', {
           orderId: data.orderId,
           eta: `${etaMinutes} minutes`,
@@ -616,10 +616,10 @@ export async function setupWebSocketServer(server: HTTPServer) {
   try {
     const orderBroadcastingModule = await import('./services/order-broadcasting');
     const liveChatModule = await import('./services/live-chat');
-    
+
     orderBroadcastingModule.orderBroadcastingService.setSocketServer(io);
     liveChatModule.liveChatService.setSocketServer(io);
-    
+
     console.log('Real-time services initialized successfully');
   } catch (error) {
     console.error('Failed to initialize real-time services:', error);
