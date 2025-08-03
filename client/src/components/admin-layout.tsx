@@ -1,15 +1,15 @@
 import React, { useState } from 'react';
-import { useAuth } from '../contexts/AuthContext';
+import { useAdmin } from '../lib/admin-auth';
 
-interface LayoutProps {
+interface AdminLayoutProps {
   children: React.ReactNode;
   currentPage: string;
   onPageChange: (page: string) => void;
 }
 
-export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
+export function AdminLayout({ children, currentPage, onPageChange }: AdminLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout } = useAdmin();
 
   const navigation = [
     { name: 'Dashboard', page: 'dashboard', icon: '📊' },
@@ -128,12 +128,8 @@ export function Layout({ children, currentPage, onPageChange }: LayoutProps) {
           </div>
         </div>
 
-        <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
-          </div>
+        <main className="flex-1 p-6">
+          {children}
         </main>
       </div>
     </div>
