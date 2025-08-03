@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, timestamp, decimal, uuid, json } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, timestamp, boolean, integer, decimal, uuid, serial, json, sql } from 'drizzle-orm/pg-core';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { relations } from "drizzle-orm";
@@ -656,7 +656,7 @@ export const transactions = pgTable("transactions", {
   walletId: integer("wallet_id").references(() => wallets.id),
   paymentMethodId: integer("payment_method_id").references(() => paymentMethods.id),
   orderId: uuid("order_id").references(() => orders.id),
-  
+
   // Transaction details
   type: text("type", { 
     enum: ["DEPOSIT", "WITHDRAWAL", "TRANSFER", "PAYMENT", "REFUND", "COMMISSION", "ESCROW_HOLD", "ESCROW_RELEASE"] 
@@ -664,26 +664,26 @@ export const transactions = pgTable("transactions", {
   status: text("status", { 
     enum: ["PENDING", "PROCESSING", "SUCCESS", "FAILED", "CANCELLED", "REVERSED"] 
   }).default("PENDING"),
-  
+
   // Amount details
   amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
   fee: decimal("fee", { precision: 15, scale: 2 }).default("0.00"),
   netAmount: decimal("net_amount", { precision: 15, scale: 2 }).notNull(),
   currency: text("currency").default("NGN"),
-  
+
   // Payment gateway details
   paystackReference: text("paystack_reference").unique(),
   paystackTransactionId: text("paystack_transaction_id"),
   paystackAccessCode: text("paystack_access_code"),
   gatewayResponse: json("gateway_response"),
-  
+
   // Transaction metadata
   description: text("description"),
   metadata: json("metadata"),
   channel: text("channel"), // card, bank, ussd, qr, etc
   ipAddress: text("ip_address"),
   userAgent: text("user_agent"),
-  
+
   // Timestamps
   initiatedAt: timestamp("initiated_at").defaultNow(),
   completedAt: timestamp("completed_at"),
@@ -699,28 +699,28 @@ export const escrowTransactions = pgTable("escrow_transactions", {
   buyerId: integer("buyer_id").notNull().references(() => users.id),
   sellerId: integer("seller_id").notNull().references(() => users.id),
   driverId: integer("driver_id").references(() => users.id),
-  
+
   // Escrow details
   totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   sellerAmount: decimal("seller_amount", { precision: 15, scale: 2 }).notNull(),
   driverAmount: decimal("driver_amount", { precision: 15, scale: 2 }).default("0.00"),
   platformFee: decimal("platform_fee", { precision: 15, scale: 2 }).default("0.00"),
-  
+
   status: text("status", { 
     enum: ["HELD", "RELEASED_TO_SELLER", "RELEASED_TO_DRIVER", "REFUNDED", "DISPUTED"] 
   }).default("HELD"),
-  
+
   // Release conditions
   releaseCondition: text("release_condition", { 
     enum: ["DELIVERY_CONFIRMED", "MANUAL_RELEASE", "AUTO_RELEASE", "DISPUTE_RESOLVED"] 
   }),
   autoReleaseAt: timestamp("auto_release_at"),
   releasedAt: timestamp("released_at"),
-  
+
   // Dispute handling
   disputeReason: text("dispute_reason"),
   disputeResolvedBy: integer("dispute_resolved_by").references(() => users.id),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -729,24 +729,24 @@ export const paymentNotifications = pgTable("payment_notifications", {
   id: serial("id").primaryKey(),
   transactionId: uuid("transaction_id").notNull().references(() => transactions.id),
   userId: integer("user_id").notNull().references(() => users.id),
-  
+
   // Notification details
   type: text("type", { 
     enum: ["PAYMENT_SUCCESS", "PAYMENT_FAILED", "REFUND_PROCESSED", "ESCROW_RELEASED", "LOW_BALANCE"] 
   }).notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
-  
+
   // Delivery status
   isRead: boolean("is_read").default(false),
   isDelivered: boolean("is_delivered").default(false),
   deliveredAt: timestamp("delivered_at"),
-  
+
   // Notification channels
   sentViaEmail: boolean("sent_via_email").default(false),
   sentViaSms: boolean("sent_via_sms").default(false),
   sentViaPush: boolean("sent_via_push").default(false),
-  
+
   metadata: json("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
 });

@@ -1,7 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
+import jwt from 'jsonwebtoken';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
-import { users, adminUsers } from '../../shared/schema';
+import { adminUsers } from '../../shared/schema';
 
 // Extend Express Request type to include user
 declare global {
@@ -14,39 +15,50 @@ declare global {
 
 export const adminAuth = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    // Check if user is authenticated
-    if (!req.session.userId) {
-      return res.status(401).json({ message: 'Unauthorized - Please login first' });
+    // Get token from Authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    // Get user from database
-    const user = await db.query.users.findFirst({
-      where: eq(users.id, req.session.userId),
-    });
+    const token = authHeader.substring(7); // Remove 'Bearer ' prefix
 
-    if (!user) {
-      return res.status(401).json({ message: 'Unauthorized - User not found' });
-    }
+    // Verify JWT token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'admin-secret-key') as any;
 
-    // Check if user is an admin
+    // Get admin user from database
     const adminUser = await db.query.adminUsers.findFirst({
-      where: eq(adminUsers.userId, user.userId)
+      where: eq(adminUsers.id, decoded.adminId)
     });
 
     if (!adminUser) {
-      return res.status(403).json({ message: 'Forbidden - Admin access required' });
+      return res.status(401).json({ success: false, message: 'Admin user not found' });
     }
 
-    // Add user and admin info to request for use in admin routes
+    // Check if admin is still active
+    if (adminUser.status !== 'ACTIVE') {
+      return res.status(401).json({ success: false, message: 'Admin account is not active' });
+    }
+
+    // Add admin info to request for use in admin routes
     req.user = {
-      ...user,
-      adminRole: adminUser.role,
-      adminPermissions: adminUser.permissions
+      adminId: adminUser.id,
+      username: adminUser.username,
+      email: adminUser.email,
+      role: adminUser.role,
+      permissions: adminUser.permissions || []
     };
     
     next();
   } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ success: false, message: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ success: false, message: 'Token expired' });
+    }
+    
     console.error('Admin authentication error:', error);
-    res.status(500).json({ message: 'Internal server error during authentication' });
+    res.status(500).json({ success: false, message: 'Authentication error' });
   }
 };
