@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations, adminPaymentActions, fraudAlerts, suspiciousActivities, accountFlags } from '../../shared/schema';
+import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, moderationResponses, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations, adminPaymentActions, fraudAlerts, suspiciousActivities, accountFlags } from '../../shared/schema';
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
 import { adminAuth, requirePermission } from '../middleware/adminAuth';
 import { Request, Response, Router } from "express";
@@ -1465,15 +1465,453 @@ router.get('/monitoring/orders/active', adminAuth, async (req, res) => {
 // Content Moderation
 router.get('/moderation/reports', adminAuth, async (req, res) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = (page - 1) * limit;
+    const { 
+      page = '1', 
+      limit = '20', 
+      status = '', 
+      contentType = '', 
+      priority = '',
+      search = '',
+      startDate = '',
+      endDate = ''
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    let whereConditions = [];
+
+    if (status) whereConditions.push(eq(contentReports.status, status as string));
+    if (contentType) whereConditions.push(eq(contentReports.contentType, contentType as string));
+    if (startDate) whereConditions.push(gte(contentReports.createdAt, new Date(startDate as string)));
+    if (endDate) whereConditions.push(lte(contentReports.createdAt, new Date(endDate as string)));
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      whereConditions.push(
+        or(
+          like(contentReports.reason, searchTerm),
+          like(users.fullName, searchTerm),
+          like(users.email, searchTerm)
+        )
+      );
+    }
+
+    const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
 
     const reports = await db
       .select({
         id: contentReports.id,
         contentType: contentReports.contentType,
         contentId: contentReports.contentId,
+        reason: contentReports.reason,
+        status: contentReports.status,
+        createdAt: contentReports.createdAt,
+        updatedAt: contentReports.updatedAt,
+        priority: sql<string>`CASE 
+          WHEN ${contentReports.contentType} = 'USER' THEN 'HIGH'
+          WHEN ${contentReports.createdAt} < NOW() - INTERVAL '24 hours' THEN 'HIGH'
+          ELSE 'MEDIUM'
+        END`.as('priority'),
+        reportCount: sql<number>`(
+          SELECT COUNT(*) FROM ${contentReports} cr2 
+          WHERE cr2.content_id = ${contentReports.contentId} 
+          AND cr2.content_type = ${contentReports.contentType}
+        )`.as('reportCount'),
+        reporter: {
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role
+        }
+      })
+      .from(contentReports)
+      .leftJoin(users, eq(contentReports.reportedBy, users.id))
+      .where(whereClause)
+      .limit(limitNum)
+      .offset(offset)
+      .orderBy(desc(contentReports.createdAt));
+
+    const totalCount = await db.select({ count: count() }).from(contentReports).where(whereClause);
+
+    // Get moderation stats
+    const [pendingCount, reviewedCount, resolvedCount, todayReports] = await Promise.all([
+      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'PENDING')),
+      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'REVIEWED')),
+      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'RESOLVED')),
+      db.select({ count: count() }).from(contentReports).where(
+        gte(contentReports.createdAt, new Date(new Date().setHours(0, 0, 0, 0)))
+      )
+    ]);
+
+    const stats = {
+      pending: pendingCount[0].count,
+      reviewed: reviewedCount[0].count,
+      resolved: resolvedCount[0].count,
+      todayReports: todayReports[0].count,
+      avgResolutionTime: 2.5 // Mock - would be calculated from actual data
+    };
+
+    res.json({
+      success: true,
+      data: {
+        reports,
+        stats,
+        pagination: {
+          currentPage: pageNum,
+          totalPages: Math.ceil(totalCount[0].count / limitNum),
+          totalReports: totalCount[0].count,
+          hasNext: pageNum * limitNum < totalCount[0].count,
+          hasPrev: pageNum > 1
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Get moderation reports error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get moderation reports' });
+  }
+});
+
+router.get('/moderation/reports/:id', adminAuth, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+
+    const report = await db
+      .select({
+        id: contentReports.id,
+        contentType: contentReports.contentType,
+        contentId: contentReports.contentId,
+        reason: contentReports.reason,
+        status: contentReports.status,
+        createdAt: contentReports.createdAt,
+        updatedAt: contentReports.updatedAt,
+        reporter: {
+          id: users.id,
+          fullName: users.fullName,
+          email: users.email,
+          role: users.role
+        }
+      })
+      .from(contentReports)
+      .leftJoin(users, eq(contentReports.reportedBy, users.id))
+      .where(eq(contentReports.id, reportId))
+      .limit(1);
+
+    if (report.length === 0) {
+      return res.status(404).json({ success: false, message: 'Report not found' });
+    }
+
+    // Get related reports for the same content
+    const relatedReports = await db
+      .select({
+        id: contentReports.id,
+        reason: contentReports.reason,
+        createdAt: contentReports.createdAt,
+        reporter: {
+          fullName: users.fullName,
+          email: users.email
+        }
+      })
+      .from(contentReports)
+      .leftJoin(users, eq(contentReports.reportedBy, users.id))
+      .where(and(
+        eq(contentReports.contentId, report[0].contentId),
+        eq(contentReports.contentType, report[0].contentType),
+        sql`${contentReports.id} != ${reportId}`
+      ))
+      .orderBy(desc(contentReports.createdAt));
+
+    // Get moderation history
+    const moderationHistory = await db
+      .select({
+        id: moderationResponses.id,
+        response: moderationResponses.response,
+        action: moderationResponses.action,
+        createdAt: moderationResponses.createdAt,
+        admin: {
+          fullName: users.fullName,
+          email: users.email
+        }
+      })
+      .from(moderationResponses)
+      .leftJoin(adminUsers, eq(moderationResponses.adminId, adminUsers.id))
+      .leftJoin(users, eq(adminUsers.userId, users.id))
+      .where(eq(moderationResponses.reportId, reportId))
+      .orderBy(desc(moderationResponses.createdAt));
+
+    // Mock content data - in real app, you'd fetch from appropriate tables
+    let contentData = null;
+    switch (report[0].contentType) {
+      case 'POST':
+        contentData = { title: 'Sample Post', content: 'Post content here...', author: 'User Name' };
+        break;
+      case 'PRODUCT':
+        contentData = { name: 'Sample Product', description: 'Product description...', price: '$99.99' };
+        break;
+      case 'USER':
+        contentData = { username: 'sample_user', email: 'user@example.com', joinDate: '2024-01-01' };
+        break;
+      default:
+        contentData = { type: report[0].contentType, id: report[0].contentId };
+    }
+
+    res.json({
+      success: true,
+      data: {
+        report: report[0],
+        relatedReports,
+        moderationHistory,
+        contentData
+      }
+    });
+  } catch (error) {
+    console.error('Get report details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get report details' });
+  }
+});
+
+router.post('/moderation/reports/:id/action', adminAuth, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    const { action, reason, notifyUser = true } = req.body;
+    const adminId = req.adminUser.adminId;
+
+    const report = await db.select().from(contentReports).where(eq(contentReports.id, reportId)).limit(1);
+    
+    if (report.length === 0) {
+      return res.status(404).json({ success: false, message: 'Report not found' });
+    }
+
+    // Create moderation response
+    await db.insert(moderationResponses).values({
+      reportId,
+      adminId,
+      response: reason || `Content ${action.toLowerCase()}`,
+      action: action.toUpperCase()
+    });
+
+    // Update report status
+    const newStatus = action === 'NO_ACTION' ? 'DISMISSED' : 'RESOLVED';
+    await db.update(contentReports).set({
+      status: newStatus,
+      updatedAt: new Date()
+    }).where(eq(contentReports.id, reportId));
+
+    // If taking action on user content, update related reports
+    if (action !== 'NO_ACTION') {
+      await db.update(contentReports).set({
+        status: 'RESOLVED',
+        updatedAt: new Date()
+      }).where(and(
+        eq(contentReports.contentId, report[0].contentId),
+        eq(contentReports.contentType, report[0].contentType),
+        eq(contentReports.status, 'PENDING')
+      ));
+    }
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_moderation').emit('content_action_taken', {
+        type: 'content_action_taken',
+        reportId,
+        contentId: report[0].contentId,
+        contentType: report[0].contentType,
+        action,
+        reason,
+        moderatedBy: adminId,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Content ${action.toLowerCase()} action completed successfully` 
+    });
+  } catch (error) {
+    console.error('Content action error:', error);
+    res.status(500).json({ success: false, message: 'Failed to complete content action' });
+  }
+});
+
+router.post('/moderation/reports/bulk-action', adminAuth, async (req, res) => {
+  try {
+    const { reportIds, action, reason } = req.body;
+    const adminId = req.adminUser.adminId;
+
+    if (!Array.isArray(reportIds) || reportIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid report IDs' });
+    }
+
+    // Get reports for validation
+    const reports = await db.select().from(contentReports).where(inArray(contentReports.id, reportIds));
+    
+    if (reports.length !== reportIds.length) {
+      return res.status(404).json({ success: false, message: 'Some reports not found' });
+    }
+
+    // Create moderation responses for all reports
+    const moderationValues = reportIds.map((reportId: number) => ({
+      reportId,
+      adminId,
+      response: reason || `Bulk ${action.toLowerCase()}`,
+      action: action.toUpperCase()
+    }));
+
+    await db.insert(moderationResponses).values(moderationValues);
+
+    // Update report statuses
+    const newStatus = action === 'NO_ACTION' ? 'DISMISSED' : 'RESOLVED';
+    await db.update(contentReports).set({
+      status: newStatus,
+      updatedAt: new Date()
+    }).where(inArray(contentReports.id, reportIds));
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_moderation').emit('bulk_content_action', {
+        type: 'bulk_content_action',
+        reportIds,
+        action,
+        reason,
+        moderatedBy: adminId,
+        count: reportIds.length,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Bulk ${action.toLowerCase()} completed for ${reportIds.length} reports` 
+    });
+  } catch (error) {
+    console.error('Bulk moderation action error:', error);
+    res.status(500).json({ success: false, message: 'Failed to complete bulk action' });
+  }
+});
+
+router.post('/moderation/reports/:id/escalate', adminAuth, async (req, res) => {
+  try {
+    const reportId = parseInt(req.params.id);
+    const { reason, priority = 'HIGH' } = req.body;
+    const adminId = req.adminUser.adminId;
+
+    // Update report with escalation
+    await db.update(contentReports).set({
+      status: 'REVIEWED',
+      updatedAt: new Date()
+    }).where(eq(contentReports.id, reportId));
+
+    // Create escalation record
+    await db.insert(moderationResponses).values({
+      reportId,
+      adminId,
+      response: `Escalated: ${reason}`,
+      action: 'ESCALATE'
+    });
+
+    // Emit WebSocket event
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_moderation').emit('report_escalated', {
+        type: 'report_escalated',
+        reportId,
+        priority,
+        escalatedBy: adminId,
+        reason,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ success: true, message: 'Report escalated successfully' });
+  } catch (error) {
+    console.error('Escalate report error:', error);
+    res.status(500).json({ success: false, message: 'Failed to escalate report' });
+  }
+});
+
+router.get('/moderation/stats', adminAuth, async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const thisWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const thisMonth = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalReports,
+      pendingReports,
+      resolvedReports,
+      todayReports,
+      weekReports,
+      monthReports,
+      contentTypeStats,
+      actionStats
+    ] = await Promise.all([
+      db.select({ count: count() }).from(contentReports),
+      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'PENDING')),
+      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'RESOLVED')),
+      db.select({ count: count() }).from(contentReports).where(gte(contentReports.createdAt, today)),
+      db.select({ count: count() }).from(contentReports).where(gte(contentReports.createdAt, thisWeek)),
+      db.select({ count: count() }).from(contentReports).where(gte(contentReports.createdAt, thisMonth)),
+      
+      // Content type breakdown
+      db.select({
+        contentType: contentReports.contentType,
+        count: count()
+      }).from(contentReports).groupBy(contentReports.contentType),
+      
+      // Action type breakdown
+      db.select({
+        action: moderationResponses.action,
+        count: count()
+      }).from(moderationResponses).groupBy(moderationResponses.action)
+    ]);
+
+    const stats = {
+      overview: {
+        total: totalReports[0].count,
+        pending: pendingReports[0].count,
+        resolved: resolvedReports[0].count,
+        dismissalRate: resolvedReports[0].count > 0 ? 
+          Math.round((resolvedReports[0].count / totalReports[0].count) * 100) : 0
+      },
+      activity: {
+        today: todayReports[0].count,
+        thisWeek: weekReports[0].count,
+        thisMonth: monthReports[0].count
+      },
+      contentTypes: contentTypeStats.reduce((acc: any, item: any) => {
+        acc[item.contentType] = item.count;
+        return acc;
+      }, {}),
+      actions: actionStats.reduce((acc: any, item: any) => {
+        acc[item.action] = item.count;
+        return acc;
+      }, {}),
+      performance: {
+        avgResolutionTime: 2.5, // Mock - would calculate from actual data
+        moderatorEfficiency: 85, // Mock - would calculate from actual data
+        userSatisfactionRate: 92 // Mock - would come from user feedback
+      }
+    };
+
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    console.error('Get moderation stats error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get moderation statistics' });
+  }
+});
+
+router.get('/moderation/content/:contentType/:contentId', adminAuth, async (req, res) => {
+  try {
+    const { contentType, contentId } = req.params;
+
+    // Get all reports for this content
+    const reports = await db
+      .select({
+        id: contentReports.id,
         reason: contentReports.reason,
         status: contentReports.status,
         createdAt: contentReports.createdAt,
@@ -1484,41 +1922,60 @@ router.get('/moderation/reports', adminAuth, async (req, res) => {
       })
       .from(contentReports)
       .leftJoin(users, eq(contentReports.reportedBy, users.id))
-      .limit(limit)
-      .offset(offset)
+      .where(and(
+        eq(contentReports.contentType, contentType as any),
+        eq(contentReports.contentId, contentId)
+      ))
       .orderBy(desc(contentReports.createdAt));
 
-    const totalCount = await db.select({ count: count() }).from(contentReports);
+    // Mock content data - in real app, fetch from appropriate tables
+    let contentData = null;
+    switch (contentType.toUpperCase()) {
+      case 'POST':
+        contentData = { 
+          id: contentId,
+          title: 'Sample Post Title',
+          content: 'This is the content of the post that was reported...',
+          author: 'Author Name',
+          createdAt: new Date().toISOString(),
+          likes: 25,
+          comments: 8
+        };
+        break;
+      case 'PRODUCT':
+        contentData = { 
+          id: contentId,
+          name: 'Sample Product',
+          description: 'Product description here...',
+          price: '$99.99',
+          seller: 'Seller Name',
+          category: 'Electronics'
+        };
+        break;
+      case 'USER':
+        contentData = { 
+          id: contentId,
+          username: 'sample_user',
+          email: 'user@example.com',
+          fullName: 'Sample User',
+          joinDate: '2024-01-01',
+          profilePicture: null
+        };
+        break;
+    }
 
     res.json({
       success: true,
       data: {
-        items: reports,
-        total: totalCount[0].count,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount[0].count / limit)
+        content: contentData,
+        reports,
+        reportCount: reports.length,
+        latestReport: reports[0] || null
       }
     });
   } catch (error) {
-    console.error('Get moderation reports error:', error);
-    res.status(500).json({ success: false, message: 'Failed to get moderation reports' });
-  }
-});
-
-router.post('/moderation/reports/:id/resolve', adminAuth, async (req, res) => {
-  try {
-    const reportId = parseInt(req.params.id);
-    const { action, reason } = req.body;
-
-    await db.update(contentReports).set({
-      status: 'RESOLVED'
-    }).where(eq(contentReports.id, reportId));
-
-    res.json({ success: true, message: 'Report resolved successfully' });
-  } catch (error) {
-    console.error('Resolve report error:', error);
-    res.status(500).json({ success: false, message: 'Failed to resolve report' });
+    console.error('Get content details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get content details' });
   }
 });
 

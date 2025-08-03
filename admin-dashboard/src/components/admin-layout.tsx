@@ -20,6 +20,7 @@ export function AdminLayout({ children, currentPage, onPageChange }: AdminLayout
     { name: 'Support & Tickets', page: 'support', icon: 'M18 10c0 3.866-3.582 7-8 7a8.841 8.841 0 01-4.083-.98L2 17l1.338-3.123C2.493 12.767 2 11.434 2 10c0-3.866 3.582-7 8-7s8 3.134 8 7z', badge: '15' },
     { name: 'Platform Analytics', page: 'analytics', icon: 'M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z', badge: null },
     { name: 'Security & Fraud', page: 'security', icon: 'M2.166 4.999A11.954 11.954 0 0110 1.944 11.954 11.954 0 0117.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z', badge: 'pulse' },
+    { name: 'Content Moderation', page: 'moderation', icon: 'M3 5a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm5 4a1 1 0 10-2 0v6a1 1 0 102 0V9zm4 0a1 1 0 10-2 0v6a1 1 0 102 0V9z', badge: null },
   ];
 
   const handleLogout = async () => {
