@@ -1,0 +1,37 @@
+
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AdminProvider } from './lib/admin-auth';
+import { AdminLogin } from './components/admin-login';
+import { AdminDashboard } from './pages/admin-dashboard';
+import { AdminUserManagement } from './pages/admin-user-management';
+import { AdminKYCVerification } from './pages/admin-kyc-verification';
+import { AdminTransactions } from './pages/admin-transactions';
+import { AdminFraud } from './pages/admin-fraud';
+import { AdminSupport } from './pages/admin-support';
+
+const queryClient = new QueryClient();
+
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AdminProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<AdminLogin />} />
+            <Route path="/dashboard" element={<AdminDashboard />} />
+            <Route path="/users" element={<AdminUserManagement />} />
+            <Route path="/kyc" element={<AdminKYCVerification />} />
+            <Route path="/transactions" element={<AdminTransactions />} />
+            <Route path="/fraud" element={<AdminFraud />} />
+            <Route path="/support" element={<AdminSupport />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </AdminProvider>
+    </QueryClientProvider>
+  );
+}
+
+export default App;
