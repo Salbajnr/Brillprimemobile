@@ -327,6 +327,168 @@ export function useWebSocketNotifications() {
 }
 
 /**
+ * Hook for payment status updates using WebSocket
+ * @returns Payment status methods and state
+ */
+export function useWebSocketPayments() {
+  const { connected, sendMessage, lastMessage, connectionError } = useWebSocket();
+  const [paymentUpdates, setPaymentUpdates] = useState<Record<string, any>>({});
+  const [walletBalance, setWalletBalance] = useState<string>('0.00');
+  
+  // Process payment status updates
+  useEffect(() => {
+    if (lastMessage) {
+      if (lastMessage.type === 'payment_status_update') {
+        const { transaction, type } = lastMessage.payload;
+        setPaymentUpdates((prev: Record<string, any>) => ({
+          ...prev,
+          [transaction?.id || Date.now()]: {
+            type,
+            transaction,
+            timestamp: lastMessage.timestamp
+          }
+        }));
+      }
+      
+      if (lastMessage.type === 'wallet_balance_update') {
+        const { balance } = lastMessage.payload;
+        setWalletBalance(balance);
+      }
+    }
+  }, [lastMessage]);
+  
+  // Subscribe to payment updates
+  const subscribeToPaymentUpdates = useCallback((userId: number) => {
+    if (connected) {
+      sendMessage({
+        type: 'subscribe_payment_updates' as any,
+        payload: { userId }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Check payment status
+  const checkPaymentStatus = useCallback((reference: string) => {
+    if (connected) {
+      sendMessage({
+        type: 'payment_status_check' as any,
+        payload: { reference }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  return {
+    connected,
+    paymentUpdates,
+    walletBalance,
+    subscribeToPaymentUpdates,
+    checkPaymentStatus,
+    connectionError
+  };
+}
+
+/**
+ * Hook for live driver tracking using WebSocket
+ * @returns Driver tracking methods and state
+ */
+export function useWebSocketDriverTracking() {
+  const { connected, sendMessage, lastMessage, connectionError } = useWebSocket();
+  const [driverLocations, setDriverLocations] = useState<Record<string, any>>({});
+  const [etaUpdates, setEtaUpdates] = useState<Record<string, any>>({});
+  
+  // Process driver tracking updates
+  useEffect(() => {
+    if (lastMessage) {
+      if (lastMessage.type === 'driver_location_update') {
+        const { orderId, driverLocation, eta, distance } = lastMessage.payload;
+        setDriverLocations((prev: Record<string, any>) => ({
+          ...prev,
+          [orderId]: {
+            location: driverLocation,
+            eta,
+            distance,
+            timestamp: lastMessage.timestamp
+          }
+        }));
+      }
+      
+      if (lastMessage.type === 'delivery_eta_update') {
+        const { orderId, eta, distance } = lastMessage.payload;
+        setEtaUpdates((prev: Record<string, any>) => ({
+          ...prev,
+          [orderId]: {
+            eta,
+            distance,
+            timestamp: lastMessage.timestamp
+          }
+        }));
+      }
+    }
+  }, [lastMessage]);
+  
+  // Subscribe to driver tracking for an order
+  const subscribeToDriverTracking = useCallback((orderId: string) => {
+    if (connected) {
+      sendMessage({
+        type: 'subscribe_driver_tracking' as any,
+        payload: { orderId }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Broadcast driver location (for drivers)
+  const broadcastDriverLocation = useCallback((data: {
+    orderId: string;
+    latitude: number;
+    longitude: number;
+    heading?: number;
+    speed?: number;
+  }) => {
+    if (connected) {
+      sendMessage({
+        type: 'broadcast_driver_location' as any,
+        payload: data
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Calculate ETA
+  const calculateETA = useCallback((data: {
+    orderId: string;
+    driverLocation: { lat: number; lng: number };
+    destination: { lat: number; lng: number };
+  }) => {
+    if (connected) {
+      sendMessage({
+        type: 'calculate_eta' as any,
+        payload: data
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Join live map
+  const joinLiveMap = useCallback(() => {
+    if (connected) {
+      sendMessage({
+        type: 'join_live_map' as any,
+        payload: {}
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  return {
+    connected,
+    driverLocations,
+    etaUpdates,
+    subscribeToDriverTracking,
+    broadcastDriverLocation,
+    calculateETA,
+    joinLiveMap,
+    connectionError
+  };
+}
+
+/**
  * Hook for delivery status updates using WebSocket
  * @returns Delivery status methods and state
  */

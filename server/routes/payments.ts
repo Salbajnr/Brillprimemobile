@@ -144,15 +144,25 @@ export function registerPaymentRoutes(app: Express) {
       const result = await transactionService.verifyPayment(reference);
       
       // Emit real-time update via WebSocket
-      if (result.success && req.app.get('io')) {
-        const io = req.app.get('io');
+      if (result.success && global.io) {
+        const io = global.io;
         const transaction = result.transaction;
         
-        // Notify the user
-        io.to(`user_${transaction.userId}`).emit('payment_update', {
+        // Notify the user about payment success
+        io.to(`user_${transaction.userId}`).emit('payment_status_update', {
           type: 'PAYMENT_SUCCESS',
           transaction: transaction,
-          message: 'Payment completed successfully'
+          message: 'Payment completed successfully',
+          timestamp: Date.now()
+        });
+
+        // Update wallet balance in real-time
+        const wallet = await storage.getUserWallet(transaction.userId);
+        io.to(`user_${transaction.userId}`).emit('wallet_balance_update', {
+          balance: wallet?.balance || '0.00',
+          currency: wallet?.currency || 'NGN',
+          lastTransaction: transaction,
+          timestamp: Date.now()
         });
 
         // Notify other parties if it's an order payment
@@ -160,7 +170,8 @@ export function registerPaymentRoutes(app: Express) {
           io.to(`order_${transaction.orderId}`).emit('payment_update', {
             type: 'ORDER_PAYMENT_RECEIVED',
             transaction: transaction,
-            orderId: transaction.orderId
+            orderId: transaction.orderId,
+            timestamp: Date.now()
           });
         }
       }
@@ -266,21 +277,45 @@ export function registerPaymentRoutes(app: Express) {
       });
 
       // Real-time notifications
-      if (req.app.get('io')) {
-        const io = req.app.get('io');
+      if (global.io) {
+        const io = global.io;
         
-        io.to(`user_${req.session.userId}`).emit('wallet_update', {
+        // Get updated wallet balances
+        const senderWallet = await storage.getUserWallet(req.session.userId);
+        const recipientWallet = await storage.getUserWallet(validatedData.recipientId);
+        
+        // Notify sender
+        io.to(`user_${req.session.userId}`).emit('wallet_balance_update', {
+          balance: senderWallet?.balance || '0.00',
+          currency: senderWallet?.currency || 'NGN',
+          lastTransaction: senderTransaction,
+          timestamp: Date.now()
+        });
+
+        io.to(`user_${req.session.userId}`).emit('payment_status_update', {
           type: 'TRANSFER_SENT',
           amount: validatedData.amount,
           recipient: recipient.fullName,
-          transaction: senderTransaction
+          transaction: senderTransaction,
+          message: `Transfer of ₦${validatedData.amount} sent to ${recipient.fullName}`,
+          timestamp: Date.now()
         });
 
-        io.to(`user_${validatedData.recipientId}`).emit('wallet_update', {
+        // Notify recipient
+        io.to(`user_${validatedData.recipientId}`).emit('wallet_balance_update', {
+          balance: recipientWallet?.balance || '0.00',
+          currency: recipientWallet?.currency || 'NGN',
+          lastTransaction: recipientTransaction,
+          timestamp: Date.now()
+        });
+
+        io.to(`user_${validatedData.recipientId}`).emit('payment_status_update', {
           type: 'TRANSFER_RECEIVED',
           amount: validatedData.amount,
           sender: req.session.user?.fullName,
-          transaction: recipientTransaction
+          transaction: recipientTransaction,
+          message: `You received ₦${validatedData.amount} from ${req.session.user?.fullName}`,
+          timestamp: Date.now()
         });
       }
 
@@ -398,6 +433,87 @@ export function registerPaymentRoutes(app: Express) {
     }
   });
 
+  // Process refund with real-time updates
+  app.post("/api/payments/refund", async (req, res) => {
+    try {
+      if (!req.session?.userId) {
+        return res.status(401).json({ message: "Authentication required" });
+      }
+
+      const { transactionId, reason, amount } = req.body;
+      
+      if (!transactionId || !reason) {
+        return res.status(400).json({ message: "Transaction ID and reason are required" });
+      }
+
+      const transaction = await storage.getTransaction(transactionId);
+      if (!transaction) {
+        return res.status(404).json({ message: "Transaction not found" });
+      }
+
+      // Check if user has permission to request refund
+      if (transaction.userId !== req.session.userId) {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      const refundAmount = amount || parseFloat(transaction.amount);
+
+      // Create refund transaction
+      const refundTransaction = await storage.createTransaction({
+        userId: transaction.userId,
+        type: 'REFUND',
+        status: 'PROCESSING',
+        amount: refundAmount.toString(),
+        fee: "0.00",
+        netAmount: refundAmount.toString(),
+        description: `Refund for transaction ${transactionId}: ${reason}`,
+        metadata: { originalTransactionId: transactionId, refundReason: reason }
+      });
+
+      // Update wallet balance
+      await transactionService.updateWalletBalance(transaction.userId, refundAmount, 'add');
+
+      // Update refund status to SUCCESS
+      await storage.updateTransaction(refundTransaction.id, {
+        status: 'SUCCESS',
+        completedAt: new Date()
+      });
+
+      // Real-time notifications
+      if (global.io) {
+        const io = global.io;
+        const wallet = await storage.getUserWallet(transaction.userId);
+        
+        io.to(`user_${transaction.userId}`).emit('payment_status_update', {
+          type: 'REFUND_PROCESSED',
+          transaction: refundTransaction,
+          originalTransaction: transaction,
+          message: `Refund of ₦${refundAmount} has been processed`,
+          timestamp: Date.now()
+        });
+
+        io.to(`user_${transaction.userId}`).emit('wallet_balance_update', {
+          balance: wallet?.balance || '0.00',
+          currency: wallet?.currency || 'NGN',
+          lastTransaction: refundTransaction,
+          timestamp: Date.now()
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Refund processed successfully",
+        refund: refundTransaction
+      });
+
+    } catch (error: any) {
+      console.error("Refund processing error:", error);
+      res.status(500).json({ 
+        message: error.message || "Refund processing failed" 
+      });
+    }
+  });
+
   // Release escrow funds (admin/automatic)
   app.post("/api/payments/escrow/:escrowId/release", async (req, res) => {
     try {
@@ -438,18 +554,37 @@ export function registerPaymentRoutes(app: Express) {
 async function handleChargeSuccess(data: any, app: any) {
   try {
     const reference = data.reference;
-    await transactionService.verifyPayment(reference);
+    const result = await transactionService.verifyPayment(reference);
+    const transaction = result.transaction;
     
     // Emit real-time update
-    if (app.get('io')) {
-      const io = app.get('io');
-      const transaction = await storage.getTransactionByReference(reference);
+    if (global.io && transaction) {
+      const io = global.io;
       
-      if (transaction) {
-        io.to(`user_${transaction.userId}`).emit('payment_update', {
-          type: 'PAYMENT_SUCCESS',
-          transaction: transaction,
-          message: 'Payment completed successfully'
+      // Payment confirmation notification
+      io.to(`user_${transaction.userId}`).emit('payment_status_update', {
+        type: 'PAYMENT_CONFIRMED',
+        transaction: transaction,
+        message: 'Payment has been confirmed by the payment gateway',
+        timestamp: Date.now()
+      });
+
+      // Update wallet balance
+      const wallet = await storage.getUserWallet(transaction.userId);
+      io.to(`user_${transaction.userId}`).emit('wallet_balance_update', {
+        balance: wallet?.balance || '0.00',
+        currency: wallet?.currency || 'NGN',
+        lastTransaction: transaction,
+        timestamp: Date.now()
+      });
+
+      // If it's an order payment, notify order parties
+      if (transaction.orderId) {
+        io.to(`order_${transaction.orderId}`).emit('order_payment_confirmed', {
+          orderId: transaction.orderId,
+          amount: transaction.amount,
+          status: 'CONFIRMED',
+          timestamp: Date.now()
         });
       }
     }
@@ -471,13 +606,25 @@ async function handleChargeFailed(data: any, app: any) {
       });
 
       // Emit real-time update
-      if (app.get('io')) {
-        const io = app.get('io');
-        io.to(`user_${transaction.userId}`).emit('payment_update', {
+      if (global.io) {
+        const io = global.io;
+        io.to(`user_${transaction.userId}`).emit('payment_status_update', {
           type: 'PAYMENT_FAILED',
           transaction: transaction,
-          message: 'Payment failed. Please try again.'
+          message: 'Payment failed. Please try again.',
+          reason: data.gateway_response || 'Payment was declined',
+          timestamp: Date.now()
         });
+
+        // If it's an order payment, notify order parties
+        if (transaction.orderId) {
+          io.to(`order_${transaction.orderId}`).emit('order_payment_failed', {
+            orderId: transaction.orderId,
+            amount: transaction.amount,
+            reason: data.gateway_response || 'Payment failed',
+            timestamp: Date.now()
+          });
+        }
       }
     }
   } catch (error) {

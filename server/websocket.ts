@@ -1,6 +1,19 @@
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
+// Helper function to calculate distance between two coordinates
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in kilometers
+}
+
 // Define message types for WebSocket communication
 export enum MessageType {
   CONNECTION_ACK = 'CONNECTION_ACK',
@@ -191,16 +204,90 @@ export async function setupWebSocketServer(server: HTTPServer) {
         socket.emit('payment_status_update', {
           reference,
           status: result.transaction?.status,
-          success: result.success
+          success: result.success,
+          timestamp: Date.now()
         });
       } catch (error) {
         socket.emit('payment_status_update', {
           reference,
           status: 'FAILED',
           success: false,
-          error: 'Verification failed'
+          error: 'Verification failed',
+          timestamp: Date.now()
         });
       }
+    });
+
+    // Handle live driver tracking subscription
+    socket.on('subscribe_driver_tracking', (orderId: string) => {
+      socket.join(`tracking_${orderId}`);
+      console.log(`Subscribed to driver tracking for order: ${orderId}`);
+    });
+
+    // Handle driver location broadcast
+    socket.on('broadcast_driver_location', (data: {
+      orderId: string;
+      latitude: number;
+      longitude: number;
+      heading?: number;
+      speed?: number;
+    }) => {
+      // Broadcast to all subscribers of this order's tracking
+      socket.to(`tracking_${data.orderId}`).emit('driver_location_realtime', {
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Handle ETA calculation requests
+    socket.on('calculate_eta', async (data: {
+      orderId: string;
+      driverLocation: { lat: number; lng: number };
+      destination: { lat: number; lng: number };
+    }) => {
+      try {
+        const distance = calculateDistance(
+          data.driverLocation.lat,
+          data.driverLocation.lng,
+          data.destination.lat,
+          data.destination.lng
+        );
+        
+        const avgSpeedKmh = 25; // City average with traffic
+        const etaMinutes = Math.round((distance / avgSpeedKmh) * 60);
+        
+        socket.emit('eta_calculated', {
+          orderId: data.orderId,
+          eta: `${etaMinutes} minutes`,
+          distance: `${distance.toFixed(1)} km`,
+          timestamp: Date.now()
+        });
+
+        // Broadcast to order room
+        io.to(`order_${data.orderId}`).emit('eta_updated', {
+          orderId: data.orderId,
+          eta: `${etaMinutes} minutes`,
+          distance: `${distance.toFixed(1)} km`,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        socket.emit('eta_calculation_error', {
+          orderId: data.orderId,
+          error: 'Failed to calculate ETA'
+        });
+      }
+    });
+
+    // Handle live map subscription
+    socket.on('join_live_map', () => {
+      socket.join('live_map');
+      console.log('Joined live map tracking');
+    });
+
+    // Handle payment confirmation subscription
+    socket.on('subscribe_payment_updates', (userId: number) => {
+      socket.join(`payments_${userId}`);
+      console.log(`Subscribed to payment updates for user: ${userId}`);
     });
 
     // Handle order status updates
