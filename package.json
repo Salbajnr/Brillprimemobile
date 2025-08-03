@@ -81,6 +81,7 @@
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "paystack": "^2.0.1",
+    "pg": "^8.16.3",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
     "react-dom": "^18.3.1",
