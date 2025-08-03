@@ -2,12 +2,11 @@ import React, { useState } from 'react';
 import { AdminProvider, useAdmin } from '../lib/admin-auth';
 import { AdminLogin } from '../components/admin-login';
 import { AdminLayout } from '../components/admin-layout';
-import { AdminProtectedRoute } from '../components/admin-protected-route';
 import { AdminDashboardMain } from '../components/admin-dashboard-main';
 import { AdminUserManagement } from '../components/admin-user-management';
 import { AdminKYCVerification } from '../components/admin-kyc-verification';
 
-type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'merchants' | 'drivers' | 'support' | 'transactions' | 'fraud' | 'monitoring' | 'security' | 'maintenance';
+type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security';
 
 function AdminContent() {
   const { isAuthenticated, isLoading } = useAdmin();
@@ -33,32 +32,28 @@ function AdminContent() {
         return <AdminUserManagement />;
       case 'kyc':
         return <AdminKYCVerification />;
-      case 'merchants':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Merchant Applications</h1><p className="text-gray-600">Coming soon...</p></div>;
-      case 'drivers':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Driver Applications</h1><p className="text-gray-600">Coming soon...</p></div>;
-      case 'support':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Support Tickets</h1><p className="text-gray-600">Coming soon...</p></div>;
+      case 'escrow':
+        return <div className="p-6"><h1 className="text-2xl font-bold">Escrow Management</h1><p className="text-gray-600">Coming soon...</p></div>;
       case 'transactions':
         return <div className="p-6"><h1 className="text-2xl font-bold">Transactions</h1><p className="text-gray-600">Coming soon...</p></div>;
-      case 'fraud':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Fraud Detection</h1><p className="text-gray-600">Coming soon...</p></div>;
-      case 'monitoring':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Real-time Monitoring</h1><p className="text-gray-600">Coming soon...</p></div>;
+      case 'support':
+        return <div className="p-6"><h1 className="text-2xl font-bold">Support & Tickets</h1><p className="text-gray-600">Coming soon...</p></div>;
+      case 'analytics':
+        return <div className="p-6"><h1 className="text-2xl font-bold">Platform Analytics</h1><p className="text-gray-600">Coming soon...</p></div>;
       case 'security':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Security & Compliance</h1><p className="text-gray-600">Coming soon...</p></div>;
-      case 'maintenance':
-        return <div className="p-6"><h1 className="text-2xl font-bold">System Maintenance</h1><p className="text-gray-600">Coming soon...</p></div>;
+        return <div className="p-6"><h1 className="text-2xl font-bold">Security & Fraud</h1><p className="text-gray-600">Coming soon...</p></div>;
       default:
         return <AdminDashboardMain />;
     }
   };
 
+  const handlePageChange = (page: string) => {
+    setCurrentPage(page as AdminPageType);
+  };
+
   return (
-    <AdminLayout currentPage={currentPage} onPageChange={setCurrentPage}>
-      <AdminProtectedRoute>
-        {renderPage()}
-      </AdminProtectedRoute>
+    <AdminLayout currentPage={currentPage} onPageChange={handlePageChange}>
+      {renderPage()}
     </AdminLayout>
   );
 }
