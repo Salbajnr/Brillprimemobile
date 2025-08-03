@@ -36,7 +36,10 @@ interface KycFilters {
   limit: number;
 }
 
-export default function AdminKycVerification() {
+export function AdminKYCVerification() {
+export default AdminKYCVerification;
+
+function AdminKYCVerification() {
   const [documents, setDocuments] = useState<KycDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

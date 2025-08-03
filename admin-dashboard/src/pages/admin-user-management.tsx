@@ -39,7 +39,10 @@ interface PaginationInfo {
   hasPrev: boolean;
 }
 
-export default function AdminUserManagement() {
+export function AdminUserManagement() {
+export default AdminUserManagement;
+
+function AdminUserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<User[]>([]);
   const [isLoading, setIsLoading] = useState(true);

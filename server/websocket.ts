@@ -1,13 +1,82 @@
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
+// Define message types for WebSocket communication
+export enum MessageType {
+  CONNECTION_ACK = 'CONNECTION_ACK',
+  CHAT_MESSAGE = 'CHAT_MESSAGE',
+  LOCATION_UPDATE = 'LOCATION_UPDATE',
+  ORDER_STATUS_UPDATE = 'ORDER_STATUS_UPDATE',
+  NOTIFICATION = 'NOTIFICATION',
+  DELIVERY_STATUS = 'DELIVERY_STATUS',
+  ERROR = 'ERROR',
+  PING = 'PING',
+  PONG = 'PONG'
+}
+
+// Define client roles
+export enum ClientRole {
+  CONSUMER = 'CONSUMER',
+  DRIVER = 'DRIVER',
+  MERCHANT = 'MERCHANT',
+  ADMIN = 'ADMIN'
+}
+
 export function setupWebSocketServer(server: HTTPServer) {
   const io = new SocketIOServer(server, {
     cors: {
       origin: "*",
       methods: ["GET", "POST"]
     },
+    path: '/socket.io'
+  });
+
+  // Add raw WebSocket support for E2E tests
+  const WebSocket = require('ws');
+  const wss = new WebSocket.Server({ 
+    server: server,
     path: '/ws'
+  });
+
+  wss.on('connection', (ws: any) => {
+    console.log('Raw WebSocket connection established');
+    
+    ws.on('message', (message: any) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('Raw WebSocket message:', data);
+        
+        // Echo back test messages
+        if (data.type === 'test') {
+          ws.send(JSON.stringify({
+            type: 'test_response',
+            data: { message: 'Test acknowledged' }
+          }));
+        }
+        
+        // Handle order updates
+        if (data.type === 'order_update') {
+          ws.send(JSON.stringify({
+            type: 'order_update',
+            data: data.data
+          }));
+        }
+        
+        // Handle admin notifications
+        if (data.type === 'admin_notification') {
+          ws.send(JSON.stringify({
+            type: 'admin_notification',
+            data: data.data
+          }));
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    });
+
+    ws.on('close', () => {
+      console.log('Raw WebSocket connection closed');
+    });
   });
 
   // Track online users and admin connections
@@ -16,6 +85,33 @@ export function setupWebSocketServer(server: HTTPServer) {
 
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
+
+    // Handle test messages for E2E testing
+    socket.on('test', (data) => {
+      console.log('Test message received:', data);
+      socket.emit('message', {
+        type: 'test_response',
+        data: { message: 'Test message acknowledged', originalData: data }
+      });
+    });
+
+    // Handle order update test messages
+    socket.on('order_update', (data) => {
+      console.log('Order update test message:', data);
+      socket.emit('message', {
+        type: 'order_update',
+        data: { orderId: data.orderId, status: data.status }
+      });
+    });
+
+    // Handle admin notification test messages
+    socket.on('admin_notification', (data) => {
+      console.log('Admin notification test message:', data);
+      socket.emit('message', {
+        type: 'admin_notification',
+        data: { message: data.message }
+      });
+    });
 
     // Join user to their personal room for notifications
     socket.on('join_user_room', (userId: number) => {
