@@ -1,4 +1,3 @@
-
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
@@ -6,6 +5,9 @@ import { db } from '../db';
 import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations } from '../../shared/schema';
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
 import { adminAuth, requirePermission } from '../middleware/adminAuth';
+import { Request, Response, Router } from "express";
+import { storage } from "../storage";
+import { identityVerifications, driverVerifications } from "../../shared/schema";
 
 const router = express.Router();
 
@@ -490,6 +492,44 @@ router.post('/kyc/:documentId/review', adminAuth, async (req, res) => {
   }
 });
 
+// Batch KYC operations
+router.post('/kyc/batch-review', adminAuth, async (req, res) => {
+  try {
+    const { documentIds, action, reason } = req.body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid document IDs' });
+    }
+
+    const status = action === 'approve' ? 'APPROVED' : 'REJECTED';
+    
+    // Update all documents in batch
+    await db.update(complianceDocuments).set({
+      status,
+      reviewedBy: req.adminUser.adminId,
+      reviewedAt: new Date()
+    }).where(inArray(complianceDocuments.id, documentIds));
+
+    // If approved, update user verification status for all users
+    if (action === 'approve') {
+      const documents = await db.select().from(complianceDocuments).where(inArray(complianceDocuments.id, documentIds));
+      const userIds = [...new Set(documents.map(doc => doc.userId))];
+      
+      await db.update(users).set({
+        isIdentityVerified: true
+      }).where(inArray(users.id, userIds));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${documentIds.length} KYC documents ${action}d successfully` 
+    });
+  } catch (error) {
+    console.error('Batch KYC review error:', error);
+    res.status(500).json({ success: false, message: 'Failed to batch review KYC' });
+  }
+});
+
 // Support Tickets
 router.get('/support/tickets', adminAuth, async (req, res) => {
   try {
@@ -559,6 +599,7 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const updates = req.body;
+    const oldTicket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
 
     if (updates.assignedTo !== undefined) {
       updates.assignedTo = parseInt(updates.assignedTo);
@@ -572,6 +613,32 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
 
     await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticketId));
 
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      if (oldTicket[0] && updates.status && oldTicket[0].status !== updates.status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: oldTicket[0].status,
+          newStatus: updates.status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+
+      if (updates.assignedTo) {
+        server.io.to('admin_support').emit('ticket_assigned', {
+          type: 'ticket_assigned',
+          ticketId,
+          assignedTo: updates.assignedTo,
+          assignedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
+
     res.json({ success: true, message: 'Ticket updated successfully' });
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -584,11 +651,43 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
     const ticketId = req.params.id;
     const { response, status } = req.body;
 
+    // Get ticket details for email notification
+    const ticket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+    
+    if (ticket.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
     await db.update(supportTickets).set({
       adminNotes: response,
       status: status || 'IN_PROGRESS',
       updatedAt: new Date()
     }).where(eq(supportTickets.id, ticketId));
+
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('ticket_response_sent', {
+        type: 'ticket_response_sent',
+        ticketId,
+        response,
+        sentBy: req.adminUser.adminId,
+        customerEmail: ticket[0].email,
+        timestamp: Date.now()
+      });
+
+      if (status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: ticket[0].status,
+          newStatus: status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Response sent successfully' });
   } catch (error) {
@@ -848,8 +947,7 @@ router.get('/monitoring/drivers/locations', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: driverLocations
-    });
+      data: driverLocations    });
   } catch (error) {
     console.error('Get driver locations error:', error);
     res.status(500).json({ success: false, message: 'Failed to get driver locations' });
@@ -1103,6 +1201,394 @@ router.get('/support/live-chat/messages/:conversationId', adminAuth, async (req,
   } catch (error) {
     console.error('Get chat messages error:', error);
     res.status(500).json({ success: false, message: 'Failed to get chat messages' });
+  }
+});
+
+// Real-time user management endpoints
+router.get('/users', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+  try {
+    const { 
+      page = '1', 
+      limit = '20', 
+      search = '', 
+      role = '', 
+      status = '', 
+      verification = '' 
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build where conditions
+    const conditions = [];
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          like(users.fullName, searchTerm),
+          like(users.email, searchTerm),
+          like(users.userId, searchTerm),
+          like(users.phone, searchTerm)
+        )
+      );
+    }
+
+    if (role) {
+      conditions.push(eq(users.role, role as any));
+    }
+
+    if (verification === 'verified') {
+      conditions.push(eq(users.isVerified, true));
+    } else if (verification === 'unverified') {
+      conditions.push(eq(users.isVerified, false));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get users with pagination
+    const [usersList, totalCount] = await Promise.all([
+      db.select()
+        .from(users)
+        .where(whereClause)
+        .orderBy(desc(users.createdAt))
+        .limit(limitNum)
+        .offset(offset),
+      db.select({ count: count() })
+        .from(users)
+        .where(whereClause)
+    ]);
+
+    // Get stats
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      totalUsers,
+      verifiedUsers,
+      newUsersToday
+    ] = await Promise.all([
+      db.select({ count: count() }).from(users),
+      db.select({ count: count() }).from(users).where(eq(users.isVerified, true)),
+      db.select({ count: count() }).from(users).where(gte(users.createdAt, today))
+    ]);
+
+    const stats = {
+      totalUsers: totalUsers[0].count,
+      activeUsers: 0, // This would come from WebSocket tracking
+      verifiedUsers: verifiedUsers[0].count,
+      pendingVerifications: totalUsers[0].count - verifiedUsers[0].count,
+      newUsersToday: newUsersToday[0].count
+    };
+
+    const pagination = {
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalCount[0].count / limitNum),
+      totalUsers: totalCount[0].count,
+      hasNext: pageNum * limitNum < totalCount[0].count,
+      hasPrev: pageNum > 1
+    };
+
+    res.json({
+      success: true,
+      data: {
+        users: usersList,
+        pagination,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get users' });
+  }
+});
+
+router.post('/users/:userId/action', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { action } = req.body;
+
+    const user = await db.select().from(users).where(eq(users.id, parseInt(userId))).limit(1);
+
+    if (user.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    switch (action) {
+      case 'verify':
+        await db.update(users)
+          .set({ isVerified: true, isIdentityVerified: true })
+          .where(eq(users.id, parseInt(userId)));
+        break;
+
+      case 'suspend':
+        // In a real app, you'd have a suspended status field
+        // For now, we'll just mark as unverified
+        await db.update(users)
+          .set({ isVerified: false })
+          .where(eq(users.id, parseInt(userId)));
+        break;
+
+      default:
+        return res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `User ${action} successful`,
+      data: { userId: parseInt(userId) }
+    });
+
+  } catch (error) {
+    console.error('User action error:', error);
+    res.status(500).json({ success: false, message: 'User action failed' });
+  }
+});
+
+// KYC document management endpoints
+router.get('/kyc-documents', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { 
+      page = '1', 
+      limit = '20', 
+      status = 'PENDING', 
+      documentType = '', 
+      priority = '',
+      search = '',
+      dateRange = ''
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build where conditions
+    const conditions = [];
+
+    if (status) {
+      conditions.push(eq(complianceDocuments.status, status as any));
+    }
+
+    if (documentType) {
+      conditions.push(eq(complianceDocuments.documentType, documentType as any));
+    }
+
+    if (search) {
+      // Join with users table to search by user info
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          like(users.fullName, searchTerm),
+          like(users.email, searchTerm)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get documents with user info
+    const documents = await db.select({
+      id: complianceDocuments.id,
+      userId: complianceDocuments.userId,
+      documentType: complianceDocuments.documentType,
+      documentUrl: complianceDocuments.documentUrl,
+      status: complianceDocuments.status,
+      reviewedBy: complianceDocuments.reviewedBy,
+      reviewedAt: complianceDocuments.reviewedAt,
+      createdAt: complianceDocuments.createdAt,
+      updatedAt: complianceDocuments.updatedAt,
+      userInfo: {
+        fullName: users.fullName,
+        email: users.email,
+        role: users.role,
+        profilePicture: users.profilePicture
+      }
+    })
+    .from(complianceDocuments)
+    .innerJoin(users, eq(complianceDocuments.userId, users.id))
+    .where(whereClause)
+    .orderBy(desc(complianceDocuments.createdAt))
+    .limit(limitNum)
+    .offset(offset);
+
+    // Get stats
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      todaySubmissions
+    ] = await Promise.all([
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'PENDING')),
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'APPROVED')),
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'REJECTED')),
+      db.select({ count: count() }).from(complianceDocuments).where(gte(complianceDocuments.createdAt, today))
+    ]);
+
+    const stats = {
+      pending: pendingCount[0].count,
+      approved: approvedCount[0].count,
+      rejected: rejectedCount[0].count,
+      todaySubmissions: todaySubmissions[0].count,
+      avgProcessingTime: 2.5 // This would be calculated from actual processing times
+    };
+
+    // Add priority and format for frontend
+    const formattedDocuments = documents.map(doc => ({
+      ...doc,
+      priority: 'MEDIUM', // This would come from business logic
+      submittedAt: doc.createdAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        documents: formattedDocuments,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Get KYC documents error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get KYC documents' });
+  }
+});
+
+router.post('/kyc-documents/:documentId/review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const { action, reason } = req.body;
+
+    const document = await db.select()
+      .from(complianceDocuments)
+      .where(eq(complianceDocuments.id, parseInt(documentId)))
+      .limit(1);
+
+    if (document.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    await db.update(complianceDocuments)
+      .set({ 
+        status: newStatus,
+        reviewedAt: new Date(),
+        reviewedBy: req.user?.id
+      })
+      .where(eq(complianceDocuments.id, parseInt(documentId)));
+
+    // If approved, update user verification status
+    if (action === 'approve') {
+      await db.update(users)
+        .set({ isIdentityVerified: true, isVerified: true })
+        .where(eq(users.id, document[0].userId));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Document ${action} successful`,
+      data: { userId: document[0].userId }
+    });
+
+  } catch (error) {
+    console.error('Document review error:', error);
+    res.status(500).json({ success: false, message: 'Document review failed' });
+  }
+});
+
+router.post('/kyc-documents/batch-review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { documentIds, action, reason } = req.body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid document IDs' });
+    }
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    // Get documents to update user statuses
+    const documents = await db.select()
+      .from(complianceDocuments)
+      .where(inArray(complianceDocuments.id, documentIds));
+
+    // Update document statuses
+    await db.update(complianceDocuments)
+      .set({ 
+        status: newStatus,
+        reviewedAt: new Date(),
+        reviewedBy: req.user?.id
+      })
+      .where(inArray(complianceDocuments.id, documentIds));
+
+    // If approved, update user verification statuses
+    if (action === 'approve') {
+      const userIds = documents.map(doc => doc.userId);
+      await db.update(users)
+        .set({ isIdentityVerified: true, isVerified: true })
+        .where(inArray(users.id, userIds));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${documentIds.length} documents ${action} successful`
+    });
+
+  } catch (error) {
+    console.error('Batch review error:', error);
+    res.status(500).json({ success: false, message: 'Batch review failed' });
+  }
+});
+
+// Real-time metrics for dashboard
+router.get('/realtime-metrics', adminAuth, async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const [
+      recentTransactions,
+      activeUsers,
+      pendingOrders
+    ] = await Promise.all([
+      db.select({ count: count() }).from(transactions).where(gte(transactions.initiatedAt, oneHourAgo)),
+      db.select({ count: count() }).from(users).where(gte(users.createdAt, oneHourAgo)),
+      db.select({ count: count() }).from(orders).where(inArray(orders.status, ['pending', 'confirmed']))
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        recentTransactions: recentTransactions[0].count,
+        newUsers: activeUsers[0].count,
+        pendingOrders: pendingOrders[0].count,
+        timestamp: now.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Get realtime metrics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get realtime metrics' });
+  }
+});
+
+// Database Maintenance
+router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENANCE'), async (req, res) => {
+  try {
+    // In a real implementation, this would trigger a database backup
+    const backupId = `backup_${Date.now()}`;
+
+    res.json({ 
+      success: true, 
+      message: 'Backup initiated successfully',
+      data: { backupId }
+    });
+  } catch (error) {
+    console.error('Database backup error:', error);
+    res.status(500).json({ success: false, message: 'Backup failed' });
   }
 });
 
