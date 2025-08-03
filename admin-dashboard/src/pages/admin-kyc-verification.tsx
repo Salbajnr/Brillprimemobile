@@ -1,139 +1,268 @@
 
-import React, { useState, useEffect } from 'react';
-import { KYCReviewModal } from '../components/kyc-review-modal';
-import { BatchKYCActions } from '../components/batch-kyc-actions';
+import React, { useState, useEffect, useCallback } from 'react';
+import { FileText, Eye, Check, X, Clock, User, Camera, Download, RefreshCw } from 'lucide-react';
+import { KycReviewModal } from '../components/kyc-review-modal';
+import { BatchKycActions } from '../components/batch-kyc-actions';
+import io, { Socket } from 'socket.io-client';
 
-interface UserWithKYC {
+interface KycDocument {
   id: number;
-  userId: string;
-  fullName: string;
-  email: string;
-  role: 'CONSUMER' | 'MERCHANT' | 'DRIVER';
-  profilePicture?: string;
-  kycDocuments?: KYCDocument[];
-}
-
-interface KYCDocument {
-  id: number;
-  documentType: string;
-  documentUrl: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  reviewedBy?: number;
-  reviewedAt?: string;
-  createdAt: string;
-  user?: {
-    id: number;
-    userId: string;
+  userId: number;
+  userInfo: {
     fullName: string;
     email: string;
     role: string;
+    profilePicture?: string;
   };
+  documentType: 'ID_CARD' | 'DRIVER_LICENSE' | 'BUSINESS_LICENSE' | 'VEHICLE_REGISTRATION';
+  documentUrl: string;
+  faceImageUrl?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: number;
+  rejectionReason?: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  verificationData?: any;
 }
 
-export function AdminKYCVerification() {
-  const [pendingKYC, setPendingKYC] = useState<UserWithKYC[]>([]);
+interface KycFilters {
+  status: string;
+  documentType: string;
+  priority: string;
+  search: string;
+  dateRange: string;
+  page: number;
+  limit: number;
+}
+
+export default function AdminKycVerification() {
+  const [documents, setDocuments] = useState<KycDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [filters, setFilters] = useState({
+  const [error, setError] = useState<string | null>(null);
+  const [selectedDocument, setSelectedDocument] = useState<KycDocument | null>(null);
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<Set<number>>(new Set());
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [socket, setSocket] = useState<Socket | null>(null);
+  
+  const [filters, setFilters] = useState<KycFilters>({
     status: 'PENDING',
     documentType: '',
+    priority: '',
+    search: '',
+    dateRange: '',
     page: 1,
     limit: 20
   });
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalDocuments, setTotalDocuments] = useState(0);
-  const [selectedDocument, setSelectedDocument] = useState<any>(null);
-  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
-  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
-  const [allDocuments, setAllDocuments] = useState<any[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(false);
 
-  useEffect(() => {
-    loadPendingKYC();
-  }, [filters]);
+  const [stats, setStats] = useState({
+    pending: 0,
+    approved: 0,
+    rejected: 0,
+    todaySubmissions: 0,
+    avgProcessingTime: 0
+  });
 
-  // Auto-refresh every 30 seconds when enabled
+  // Initialize WebSocket connection
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (autoRefresh) {
-      interval = setInterval(() => {
-        loadPendingKYC();
-      }, 30000);
-    }
+    const newSocket = io('ws://localhost:5000', {
+      path: '/ws',
+      transports: ['websocket']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('KYC admin connected to WebSocket');
+      newSocket.emit('join_admin_room', 'kyc_verification');
+    });
+
+    newSocket.on('new_kyc_submission', (document: KycDocument) => {
+      setDocuments(prevDocs => [document, ...prevDocs]);
+      setStats(prev => ({ ...prev, pending: prev.pending + 1, todaySubmissions: prev.todaySubmissions + 1 }));
+    });
+
+    newSocket.on('kyc_status_updated', (update: { documentId: number; status: string; reviewedBy: number }) => {
+      setDocuments(prevDocs =>
+        prevDocs.map(doc =>
+          doc.id === update.documentId
+            ? { ...doc, status: update.status as any, reviewedAt: new Date().toISOString(), reviewedBy: update.reviewedBy }
+            : doc
+        )
+      );
+    });
+
+    setSocket(newSocket);
+
     return () => {
-      if (interval) clearInterval(interval);
+      newSocket.disconnect();
     };
-  }, [autoRefresh, filters]);
+  }, []);
 
-  const loadPendingKYC = async () => {
+  // Load KYC documents from backend
+  const loadDocuments = useCallback(async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const token = localStorage.getItem('admin_token');
+
+      const queryParams = new URLSearchParams({
+        page: filters.page.toString(),
+        limit: filters.limit.toString(),
+        ...(filters.status && { status: filters.status }),
+        ...(filters.documentType && { documentType: filters.documentType }),
+        ...(filters.priority && { priority: filters.priority }),
+        ...(filters.search && { search: filters.search }),
+        ...(filters.dateRange && { dateRange: filters.dateRange })
+      });
+
+      const response = await fetch(`/api/admin/kyc-documents?${queryParams}`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to load KYC documents: ${response.status}`);
+      }
+
+      const data = await response.json();
       
-      if (!token) {
-        setError('Authentication token not found');
-        return;
-      }
-
-      const queryParams = new URLSearchParams();
-      Object.entries(filters).forEach(([key, value]) => {
-        if (value !== undefined) queryParams.append(key, value.toString());
-      });
-
-      const response = await fetch(`/api/admin/kyc/pending?${queryParams}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          const items = data.data.items || [];
-          setPendingKYC(items);
-          setAllDocuments(items.flatMap(user => 
-            user.kycDocuments?.map(doc => ({
-              ...doc,
-              user: {
-                id: user.id,
-                userId: user.userId,
-                fullName: user.fullName,
-                email: user.email,
-                role: user.role
-              }
-            })) || []
-          ));
-          setTotalPages(data.data.totalPages || 1);
-          setTotalDocuments(data.data.total || 0);
-        } else {
-          setError(data.message || 'Failed to load KYC data');
-        }
-      } else if (response.status === 401) {
-        setError('Authentication failed. Please login again.');
-        localStorage.removeItem('admin_token');
+      if (data.success) {
+        setDocuments(data.data.documents);
+        setStats(data.data.stats);
       } else {
-        setError('Failed to load KYC data');
+        throw new Error(data.message || 'Failed to load KYC documents');
       }
-    } catch (error) {
-      console.error('Failed to load pending KYC:', error);
-      setError('Network error occurred');
+    } catch (err) {
+      console.error('Error loading KYC documents:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load KYC documents');
     } finally {
       setIsLoading(false);
     }
+  }, [filters]);
+
+  // Load documents on component mount and filter changes
+  useEffect(() => {
+    loadDocuments();
+  }, [loadDocuments]);
+
+  // Auto-refresh functionality
+  useEffect(() => {
+    if (!autoRefresh) return;
+
+    const interval = setInterval(() => {
+      loadDocuments();
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [autoRefresh, loadDocuments]);
+
+  const handleDocumentAction = async (documentId: number, action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch(`/api/admin/kyc-documents/${documentId}/review`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ action, reason })
+      });
+
+      if (!response.ok) {
+        throw new Error('Review action failed');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        // Update local state
+        setDocuments(prevDocs =>
+          prevDocs.map(doc =>
+            doc.id === documentId
+              ? { 
+                  ...doc, 
+                  status: action === 'approve' ? 'APPROVED' : 'REJECTED',
+                  reviewedAt: new Date().toISOString(),
+                  rejectionReason: reason
+                }
+              : doc
+          )
+        );
+
+        // Emit real-time update
+        if (socket) {
+          socket.emit('kyc_review_completed', { 
+            documentId, 
+            action, 
+            userId: result.data.userId,
+            timestamp: Date.now() 
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Document review error:', err);
+      setError(`Failed to ${action} document`);
+    }
   };
 
-  const getDocumentTypeColor = (documentType: string) => {
-    switch (documentType) {
-      case 'ID_CARD': return 'bg-blue-100 text-blue-800';
-      case 'BUSINESS_LICENSE': return 'bg-green-100 text-green-800';
-      case 'TAX_ID': return 'bg-purple-100 text-purple-800';
-      case 'DRIVER_LICENSE': return 'bg-orange-100 text-orange-800';
-      case 'VEHICLE_REGISTRATION': return 'bg-red-100 text-red-800';
-      case 'INSURANCE': return 'bg-yellow-100 text-yellow-800';
-      default: return 'bg-gray-100 text-gray-800';
+  const handleBatchAction = async (documentIds: number[], action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch('/api/admin/kyc-documents/batch-review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ documentIds, action, reason })
+      });
+
+      if (!response.ok) {
+        throw new Error('Batch review failed');
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        // Refresh documents after batch action
+        loadDocuments();
+        setSelectedDocuments(new Set());
+        
+        // Emit real-time update
+        if (socket) {
+          socket.emit('kyc_batch_review_completed', { 
+            documentIds, 
+            action, 
+            count: documentIds.length,
+            timestamp: Date.now() 
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Batch review error:', err);
+      setError(`Failed to ${action} documents`);
     }
+  };
+
+  const openDocumentReview = (document: KycDocument) => {
+    setSelectedDocument(document);
+    setShowReviewModal(true);
+  };
+
+  const toggleDocumentSelection = (documentId: number) => {
+    setSelectedDocuments(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(documentId)) {
+        newSet.delete(documentId);
+      } else {
+        newSet.add(documentId);
+      }
+      return newSet;
+    });
+  };
+
+  const selectAllDocuments = () => {
+    const pendingDocs = documents.filter(doc => doc.status === 'PENDING').map(doc => doc.id);
+    setSelectedDocuments(new Set(pendingDocs));
+  };
+
+  const clearSelection = () => {
+    setSelectedDocuments(new Set());
   };
 
   const getStatusColor = (status: string) => {
@@ -145,156 +274,109 @@ export function AdminKYCVerification() {
     }
   };
 
-  const openReviewModal = (document: any) => {
-    setSelectedDocument(document);
-    setIsReviewModalOpen(true);
-  };
-
-  const closeReviewModal = () => {
-    setSelectedDocument(null);
-    setIsReviewModalOpen(false);
-  };
-
-  const handleReviewComplete = async (documentId: number, action: string, reason: string) => {
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/kyc/${documentId}/review`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ action, reason }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Remove the reviewed document from the list
-          setAllDocuments(prev => prev.filter(doc => doc.id !== documentId));
-          setPendingKYC(prev => 
-            prev.map(user => ({
-              ...user,
-              kycDocuments: user.kycDocuments?.filter(doc => doc.id !== documentId)
-            })).filter(user => user.kycDocuments && user.kycDocuments.length > 0)
-          );
-          
-          // Remove from selection if selected
-          setSelectedDocuments(prev => prev.filter(id => id !== documentId));
-          
-          // Show success message
-          alert(data.message);
-        } else {
-          alert(data.message || 'Review failed');
-        }
-      } else {
-        throw new Error('Review request failed');
-      }
-    } catch (error) {
-      console.error('Review failed:', error);
-      alert('Failed to submit review');
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case 'URGENT': return 'bg-red-100 text-red-800';
+      case 'HIGH': return 'bg-orange-100 text-orange-800';
+      case 'MEDIUM': return 'bg-yellow-100 text-yellow-800';
+      case 'LOW': return 'bg-gray-100 text-gray-800';
+      default: return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const handleBatchAction = async (action: string, reason: string) => {
-    try {
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch('/api/admin/kyc/batch-review', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          documentIds: selectedDocuments, 
-          action, 
-          reason 
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success) {
-          // Remove the processed documents from the list
-          setAllDocuments(prev => prev.filter(doc => !selectedDocuments.includes(doc.id)));
-          setPendingKYC(prev => 
-            prev.map(user => ({
-              ...user,
-              kycDocuments: user.kycDocuments?.filter(doc => !selectedDocuments.includes(doc.id))
-            })).filter(user => user.kycDocuments && user.kycDocuments.length > 0)
-          );
-          
-          alert(data.message);
-        } else {
-          alert(data.message || 'Batch action failed');
-        }
-      } else {
-        throw new Error('Batch action request failed');
-      }
-    } catch (error) {
-      console.error('Batch action failed:', error);
-      alert('Failed to process batch action');
+  const getDocumentTypeIcon = (type: string) => {
+    switch (type) {
+      case 'ID_CARD': return <FileText className="h-4 w-4" />;
+      case 'DRIVER_LICENSE': return <FileText className="h-4 w-4" />;
+      case 'BUSINESS_LICENSE': return <FileText className="h-4 w-4" />;
+      case 'VEHICLE_REGISTRATION': return <FileText className="h-4 w-4" />;
+      default: return <FileText className="h-4 w-4" />;
     }
-  };
-
-  const handleDocumentSelection = (documentId: number, isSelected: boolean) => {
-    if (isSelected) {
-      setSelectedDocuments(prev => [...prev, documentId]);
-    } else {
-      setSelectedDocuments(prev => prev.filter(id => id !== documentId));
-    }
-  };
-
-  const handleSelectAll = () => {
-    const allDocumentIds = allDocuments.map(doc => doc.id);
-    setSelectedDocuments(allDocumentIds);
-  };
-
-  const handleClearSelection = () => {
-    setSelectedDocuments([]);
-  };
-
-  const handleFilterChange = (key: string, value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      page: 1 // Reset to first page when filtering
-    }));
-  };
-
-  const handlePageChange = (newPage: number) => {
-    setFilters(prev => ({
-      ...prev,
-      page: newPage
-    }));
   };
 
   return (
     <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">KYC Verification</h1>
-          <p className="text-gray-600">Review and approve identity documents</p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <label className="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-            />
-            <span className="text-sm text-gray-700">Auto-refresh</span>
-          </label>
+      {/* Header with stats */}
+      <div className="mb-6">
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">KYC Verification</h1>
+            <p className="text-gray-600">Review and verify user identity documents</p>
+          </div>
           
-          <button
-            onClick={loadPendingKYC}
-            disabled={isLoading}
-            className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {isLoading ? 'Loading...' : 'Refresh'}
-          </button>
+          <div className="flex items-center space-x-4">
+            <label className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Auto-refresh</span>
+            </label>
+            
+            <button
+              onClick={loadDocuments}
+              disabled={isLoading}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 flex items-center space-x-2"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              <span>{isLoading ? 'Loading...' : 'Refresh'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-6">
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-yellow-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Pending Review</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.pending}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <Check className="h-8 w-8 text-green-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Approved</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.approved}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <X className="h-8 w-8 text-red-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Rejected</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.rejected}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <FileText className="h-8 w-8 text-blue-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Today's Submissions</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.todaySubmissions}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-4 rounded-lg shadow">
+            <div className="flex items-center">
+              <Clock className="h-8 w-8 text-purple-600" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Avg. Processing</p>
+                <p className="text-2xl font-bold text-gray-900">{stats.avgProcessingTime}h</p>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -305,281 +387,252 @@ export function AdminKYCVerification() {
         </div>
       )}
 
-      {/* Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-2xl font-bold text-blue-600">{totalDocuments}</div>
-          <div className="text-sm text-gray-600">Total Documents</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-2xl font-bold text-yellow-600">
-            {allDocuments.filter(doc => doc.status === 'PENDING').length}
-          </div>
-          <div className="text-sm text-gray-600">Pending Review</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-2xl font-bold text-green-600">
-            {allDocuments.filter(doc => doc.status === 'APPROVED').length}
-          </div>
-          <div className="text-sm text-gray-600">Approved Today</div>
-        </div>
-        <div className="bg-white p-4 rounded-lg shadow border">
-          <div className="text-2xl font-bold text-purple-600">{selectedDocuments.length}</div>
-          <div className="text-sm text-gray-600">Selected</div>
-        </div>
-      </div>
+      {/* Filters and Batch Actions */}
+      <div className="bg-white rounded-lg shadow mb-6">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex flex-col lg:flex-row gap-4 items-start lg:items-center justify-between">
+            <div className="flex flex-col md:flex-row gap-4 flex-1">
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value, page: 1 }))}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Status</option>
+                <option value="PENDING">Pending</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED">Rejected</option>
+              </select>
+              
+              <select
+                value={filters.documentType}
+                onChange={(e) => setFilters(prev => ({ ...prev, documentType: e.target.value, page: 1 }))}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              >
+                <option value="">All Document Types</option>
+                <option value="ID_CARD">ID Card</option>
+                <option value="DRIVER_LICENSE">Driver License</option>
+                <option value="BUSINESS_LICENSE">Business License</option>
+                <option value="VEHICLE_REGISTRATION">Vehicle Registration</option>
+              </select>
 
-      {/* Filters */}
-      <div className="bg-white p-4 rounded-lg shadow border mb-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-            <select
-              value={filters.status}
-              onChange={(e) => handleFilterChange('status', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Status</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Document Type</label>
-            <select
-              value={filters.documentType}
-              onChange={(e) => handleFilterChange('documentType', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">All Types</option>
-              <option value="ID_CARD">ID Card</option>
-              <option value="BUSINESS_LICENSE">Business License</option>
-              <option value="TAX_ID">Tax ID</option>
-              <option value="DRIVER_LICENSE">Driver License</option>
-              <option value="VEHICLE_REGISTRATION">Vehicle Registration</option>
-              <option value="INSURANCE">Insurance</option>
-            </select>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Bulk Actions</label>
-            <div className="flex space-x-2">
-              <button 
-                onClick={handleSelectAll}
-                className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-md text-sm hover:bg-gray-600"
+              <select
+                value={filters.priority}
+                onChange={(e) => setFilters(prev => ({ ...prev, priority: e.target.value, page: 1 }))}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
               >
-                Select All
-              </button>
-              <button 
-                onClick={handleClearSelection}
-                className="flex-1 bg-gray-300 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-400"
-              >
-                Clear
-              </button>
+                <option value="">All Priorities</option>
+                <option value="URGENT">Urgent</option>
+                <option value="HIGH">High</option>
+                <option value="MEDIUM">Medium</option>
+                <option value="LOW">Low</option>
+              </select>
+
+              <input
+                type="text"
+                placeholder="Search by user name or email..."
+                value={filters.search}
+                onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value, page: 1 }))}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 min-w-64"
+              />
             </div>
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Items per page</label>
-            <select
-              value={filters.limit}
-              onChange={(e) => handleFilterChange('limit', e.target.value)}
-              className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="10">10</option>
-              <option value="20">20</option>
-              <option value="50">50</option>
-              <option value="100">100</option>
-            </select>
+
+            {selectedDocuments.size > 0 && (
+              <BatchKycActions
+                selectedCount={selectedDocuments.size}
+                onBatchApprove={() => handleBatchAction(Array.from(selectedDocuments), 'approve')}
+                onBatchReject={(reason) => handleBatchAction(Array.from(selectedDocuments), 'reject', reason)}
+                onSelectAll={selectAllDocuments}
+                onClearSelection={clearSelection}
+              />
+            )}
           </div>
         </div>
       </div>
 
       {/* Documents Table */}
-      <div className="bg-white rounded-lg shadow border overflow-hidden">
-        {isLoading ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="mt-4 text-gray-600">Loading KYC documents...</p>
-          </div>
-        ) : allDocuments.length === 0 ? (
-          <div className="p-8 text-center">
-            <p className="text-gray-500">No KYC documents found</p>
-          </div>
-        ) : (
-          <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      <input
-                        type="checkbox"
-                        checked={selectedDocuments.length === allDocuments.length && allDocuments.length > 0}
-                        onChange={(e) => e.target.checked ? handleSelectAll() : handleClearSelection()}
-                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Document</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Submitted</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+      <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <input
+                    type="checkbox"
+                    checked={selectedDocuments.size > 0 && selectedDocuments.size === documents.filter(d => d.status === 'PENDING').length}
+                    onChange={selectedDocuments.size === documents.filter(d => d.status === 'PENDING').length ? clearSelection : selectAllDocuments}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  User & Document
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type & Priority
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Submitted
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {isLoading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                  <tr key={index} className="animate-pulse">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 w-4 bg-gray-300 rounded"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 bg-gray-300 rounded-full"></div>
+                        <div className="ml-4">
+                          <div className="h-4 bg-gray-300 rounded w-32"></div>
+                          <div className="h-3 bg-gray-300 rounded w-48 mt-1"></div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-6 bg-gray-300 rounded w-24"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-6 bg-gray-300 rounded w-20"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-4 bg-gray-300 rounded w-24"></div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="h-8 bg-gray-300 rounded w-20"></div>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {allDocuments.map((document) => (
-                    <tr key={document.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                ))
+              ) : documents.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    No KYC documents found matching your criteria
+                  </td>
+                </tr>
+              ) : (
+                documents.map((document) => (
+                  <tr key={document.id} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      {document.status === 'PENDING' && (
                         <input
                           type="checkbox"
-                          checked={selectedDocuments.includes(document.id)}
-                          onChange={(e) => handleDocumentSelection(document.id, e.target.checked)}
+                          checked={selectedDocuments.has(document.id)}
+                          onChange={() => toggleDocumentSelection(document.id)}
                           className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center">
-                          <div className="flex-shrink-0 h-10 w-10">
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        <div className="flex-shrink-0 h-10 w-10">
+                          {document.userInfo.profilePicture ? (
+                            <img className="h-10 w-10 rounded-full" src={document.userInfo.profilePicture} alt="" />
+                          ) : (
                             <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-700">
-                                {document.user?.fullName?.charAt(0) || 'U'}
-                              </span>
+                              <User className="h-6 w-6 text-gray-600" />
                             </div>
-                          </div>
-                          <div className="ml-4">
-                            <div className="text-sm font-medium text-gray-900">{document.user?.fullName}</div>
-                            <div className="text-sm text-gray-500">{document.user?.email}</div>
-                            <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                              {document.user?.role}
-                            </span>
-                          </div>
+                          )}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">Document #{document.id}</div>
-                        <div className="text-sm text-gray-500">User ID: {document.user?.userId}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getDocumentTypeColor(document.documentType)}`}>
-                          {document.documentType.replace('_', ' ')}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{document.userInfo.fullName}</div>
+                          <div className="text-sm text-gray-500">{document.userInfo.email}</div>
+                          <div className="text-xs text-gray-400">{document.userInfo.role}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex flex-col space-y-2">
+                        <div className="flex items-center space-x-2">
+                          {getDocumentTypeIcon(document.documentType)}
+                          <span className="text-sm text-gray-900">
+                            {document.documentType.replace(/_/g, ' ')}
+                          </span>
+                        </div>
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getPriorityColor(document.priority)}`}>
+                          {document.priority}
                         </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(document.status)}`}>
-                          {document.status}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(document.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${getStatusColor(document.status)}`}>
+                        {document.status}
+                      </span>
+                      {document.rejectionReason && (
+                        <div className="text-xs text-red-600 mt-1">
+                          {document.rejectionReason}
+                        </div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {new Date(document.submittedAt).toLocaleDateString()}
+                      <div className="text-xs text-gray-400">
+                        {new Date(document.submittedAt).toLocaleTimeString()}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <div className="flex space-x-2">
                         <button
-                          onClick={() => openReviewModal(document)}
-                          className="text-blue-600 hover:text-blue-900 mr-4"
+                          onClick={() => openDocumentReview(document)}
+                          className="text-blue-600 hover:text-blue-900"
+                          title="Review Document"
                         >
-                          Review
+                          <Eye className="h-4 w-4" />
                         </button>
+                        {document.status === 'PENDING' && (
+                          <>
+                            <button
+                              onClick={() => handleDocumentAction(document.id, 'approve')}
+                              className="text-green-600 hover:text-green-900"
+                              title="Approve"
+                            >
+                              <Check className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDocumentAction(document.id, 'reject', 'Manual rejection')}
+                              className="text-red-600 hover:text-red-900"
+                              title="Reject"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          </>
+                        )}
                         <a
                           href={document.documentUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                          download
                           className="text-gray-600 hover:text-gray-900"
+                          title="Download"
                         >
-                          View
+                          <Download className="h-4 w-4" />
                         </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200">
-                <div className="flex-1 flex justify-between sm:hidden">
-                  <button
-                    onClick={() => handlePageChange(filters.page - 1)}
-                    disabled={filters.page <= 1}
-                    className="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Previous
-                  </button>
-                  <button
-                    onClick={() => handlePageChange(filters.page + 1)}
-                    disabled={filters.page >= totalPages}
-                    className="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Next
-                  </button>
-                </div>
-                <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
-                  <div>
-                    <p className="text-sm text-gray-700">
-                      Showing page <span className="font-medium">{filters.page}</span> of{' '}
-                      <span className="font-medium">{totalPages}</span>
-                    </p>
-                  </div>
-                  <div>
-                    <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-                      <button
-                        onClick={() => handlePageChange(filters.page - 1)}
-                        disabled={filters.page <= 1}
-                        className="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Previous
-                      </button>
-                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                        const page = filters.page <= 3 ? i + 1 : filters.page - 2 + i;
-                        if (page > totalPages) return null;
-                        return (
-                          <button
-                            key={page}
-                            onClick={() => handlePageChange(page)}
-                            className={`relative inline-flex items-center px-4 py-2 border text-sm font-medium ${
-                              page === filters.page
-                                ? 'z-10 bg-blue-50 border-blue-500 text-blue-600'
-                                : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
-                            }`}
-                          >
-                            {page}
-                          </button>
-                        );
-                      })}
-                      <button
-                        onClick={() => handlePageChange(filters.page + 1)}
-                        disabled={filters.page >= totalPages}
-                        className="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
-                      >
-                        Next
-                      </button>
-                    </nav>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       {/* KYC Review Modal */}
-      <KYCReviewModal
-        document={selectedDocument}
-        isOpen={isReviewModalOpen}
-        onClose={closeReviewModal}
-        onReview={handleReviewComplete}
-      />
-
-      {/* Batch Actions */}
-      <BatchKYCActions
-        selectedDocuments={selectedDocuments}
-        onBatchAction={handleBatchAction}
-        onClearSelection={handleClearSelection}
-      />
+      {showReviewModal && selectedDocument && (
+        <KycReviewModal
+          document={selectedDocument}
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedDocument(null);
+          }}
+          onReview={handleDocumentAction}
+        />
+      )}
     </div>
   );
 }
