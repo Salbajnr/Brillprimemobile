@@ -490,6 +490,44 @@ router.post('/kyc/:documentId/review', adminAuth, async (req, res) => {
   }
 });
 
+// Batch KYC operations
+router.post('/kyc/batch-review', adminAuth, async (req, res) => {
+  try {
+    const { documentIds, action, reason } = req.body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid document IDs' });
+    }
+
+    const status = action === 'approve' ? 'APPROVED' : 'REJECTED';
+    
+    // Update all documents in batch
+    await db.update(complianceDocuments).set({
+      status,
+      reviewedBy: req.adminUser.adminId,
+      reviewedAt: new Date()
+    }).where(inArray(complianceDocuments.id, documentIds));
+
+    // If approved, update user verification status for all users
+    if (action === 'approve') {
+      const documents = await db.select().from(complianceDocuments).where(inArray(complianceDocuments.id, documentIds));
+      const userIds = [...new Set(documents.map(doc => doc.userId))];
+      
+      await db.update(users).set({
+        isIdentityVerified: true
+      }).where(inArray(users.id, userIds));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${documentIds.length} KYC documents ${action}d successfully` 
+    });
+  } catch (error) {
+    console.error('Batch KYC review error:', error);
+    res.status(500).json({ success: false, message: 'Failed to batch review KYC' });
+  }
+});
+
 // Support Tickets
 router.get('/support/tickets', adminAuth, async (req, res) => {
   try {

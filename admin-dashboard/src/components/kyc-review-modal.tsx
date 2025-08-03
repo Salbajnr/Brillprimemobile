@@ -1,217 +1,217 @@
 
-import React, { useState, useEffect } from 'react';
-
-interface KYCDocument {
-  id: number;
-  documentType: string;
-  documentUrl: string;
-  status: 'PENDING' | 'APPROVED' | 'REJECTED';
-  reviewedBy?: number;
-  reviewedAt?: string;
-  createdAt: string;
-  user: {
-    id: number;
-    userId: string;
-    fullName: string;
-    email: string;
-    role: string;
-  };
-}
+import React, { useState } from 'react';
 
 interface KYCReviewModalProps {
-  document: KYCDocument | null;
+  document: any;
   isOpen: boolean;
   onClose: () => void;
-  onReview: () => void;
+  onReview: (documentId: number, action: string, reason: string) => void;
 }
 
 export function KYCReviewModal({ document, isOpen, onClose, onReview }: KYCReviewModalProps) {
-  const [reviewAction, setReviewAction] = useState<'approve' | 'reject' | null>(null);
+  const [action, setAction] = useState<'approve' | 'reject' | ''>('');
   const [reason, setReason] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imageError, setImageError] = useState(false);
 
-  const submitReview = async () => {
-    if (!document || !reviewAction) return;
+  if (!isOpen || !document) return null;
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!action) return;
+
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-      const token = localStorage.getItem('admin_token');
-      const response = await fetch(`/api/admin/kyc/${document.id}/review`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          action: reviewAction,
-          reason: reason
-        }),
-      });
-
-      if (response.ok) {
-        onReview();
-        onClose();
-        setReviewAction(null);
-        setReason('');
-      }
+      await onReview(document.id, action, reason);
+      setAction('');
+      setReason('');
+      onClose();
     } catch (error) {
-      console.error('Failed to submit review:', error);
+      console.error('Review submission failed:', error);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  if (!isOpen || !document) return null;
+  const handleImageLoad = () => {
+    setImageError(false);
+  };
+
+  const handleImageError = () => {
+    setImageError(true);
+  };
+
+  const getDocumentTypeDisplayName = (type: string) => {
+    const types: { [key: string]: string } = {
+      'ID_CARD': 'ID Card',
+      'BUSINESS_LICENSE': 'Business License',
+      'TAX_ID': 'Tax ID',
+      'DRIVER_LICENSE': 'Driver License',
+      'VEHICLE_REGISTRATION': 'Vehicle Registration',
+      'INSURANCE': 'Insurance Document'
+    };
+    return types[type] || type;
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
-        <div className="flex justify-between items-center p-6 border-b">
-          <h2 className="text-xl font-bold">Review KYC Document</h2>
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-2xl font-bold text-gray-900">Review KYC Document</h2>
           <button
             onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
+            className="text-gray-400 hover:text-gray-600"
+            disabled={isSubmitting}
           >
-            ✕
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
           </button>
         </div>
 
-        <div className="flex h-[calc(90vh-120px)]">
-          {/* Document Viewer */}
-          <div className="flex-1 bg-gray-100 flex items-center justify-center">
-            <img
-              src={document.documentUrl}
-              alt="KYC Document"
-              className="max-w-full max-h-full object-contain"
-              onError={(e) => {
-                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBzdHJva2U9IiM2QjczODAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+Cjwvc3ZnPgo=';
-              }}
-            />
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Document Information */}
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Document Information</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Document Type</label>
+                  <p className="text-gray-900">{getDocumentTypeDisplayName(document.documentType)}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Status</label>
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    document.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                    document.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {document.status}
+                  </span>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Submitted</label>
+                  <p className="text-gray-900">{new Date(document.createdAt).toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* User Information */}
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">User Information</h3>
+              <div className="space-y-2">
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Name</label>
+                  <p className="text-gray-900">{document.user?.fullName || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Email</label>
+                  <p className="text-gray-900">{document.user?.email || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">Role</label>
+                  <p className="text-gray-900">{document.user?.role || 'N/A'}</p>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-gray-500">User ID</label>
+                  <p className="text-gray-900">{document.user?.userId || 'N/A'}</p>
+                </div>
+              </div>
+            </div>
           </div>
 
-          {/* Review Panel */}
-          <div className="w-96 border-l p-6 overflow-y-auto">
-            <div className="space-y-6">
-              {/* Document Info */}
-              <div>
-                <h3 className="font-medium text-gray-900 mb-3">Document Information</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-500">Type:</span>
-                    <span className="ml-2 font-medium">{document.documentType.replace('_', ' ')}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Status:</span>
-                    <span className={`ml-2 px-2 py-1 text-xs rounded-full ${
-                      document.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
-                      document.status === 'REJECTED' ? 'bg-red-100 text-red-800' :
-                      'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {document.status}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Submitted:</span>
-                    <span className="ml-2">{new Date(document.createdAt).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* User Info */}
-              <div>
-                <h3 className="font-medium text-gray-900 mb-3">User Information</h3>
-                <div className="space-y-2 text-sm">
-                  <div>
-                    <span className="text-gray-500">Name:</span>
-                    <span className="ml-2 font-medium">{document.user.fullName}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Email:</span>
-                    <span className="ml-2">{document.user.email}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Role:</span>
-                    <span className="ml-2">{document.user.role}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">User ID:</span>
-                    <span className="ml-2">{document.user.userId}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Review Actions */}
-              {document.status === 'PENDING' && (
-                <div>
-                  <h3 className="font-medium text-gray-900 mb-3">Review Decision</h3>
-                  <div className="space-y-3">
-                    <div className="flex space-x-3">
-                      <button
-                        onClick={() => setReviewAction('approve')}
-                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                          reviewAction === 'approve'
-                            ? 'bg-green-600 text-white'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200'
-                        }`}
+          {/* Document Image */}
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Document Image</h3>
+              <div className="border-2 border-gray-200 rounded-lg overflow-hidden">
+                {!imageError ? (
+                  <img
+                    src={document.documentUrl}
+                    alt="KYC Document"
+                    className="w-full h-64 object-contain bg-white"
+                    onLoad={handleImageLoad}
+                    onError={handleImageError}
+                  />
+                ) : (
+                  <div className="w-full h-64 bg-gray-100 flex items-center justify-center">
+                    <div className="text-center">
+                      <svg className="w-12 h-12 text-gray-400 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                      <p className="text-gray-500">Image could not be loaded</p>
+                      <a 
+                        href={document.documentUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-blue-600 hover:text-blue-800 underline"
                       >
-                        Approve
-                      </button>
-                      <button
-                        onClick={() => setReviewAction('reject')}
-                        className={`flex-1 py-2 px-4 rounded-md text-sm font-medium ${
-                          reviewAction === 'reject'
-                            ? 'bg-red-600 text-white'
-                            : 'bg-red-100 text-red-800 hover:bg-red-200'
-                        }`}
-                      >
-                        Reject
-                      </button>
+                        Open in new tab
+                      </a>
                     </div>
-
-                    {reviewAction && (
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          {reviewAction === 'approve' ? 'Approval Notes (Optional)' : 'Rejection Reason *'}
-                        </label>
-                        <textarea
-                          value={reason}
-                          onChange={(e) => setReason(e.target.value)}
-                          className="w-full border border-gray-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                          rows={3}
-                          placeholder={
-                            reviewAction === 'approve' 
-                              ? 'Additional notes...' 
-                              : 'Please specify the reason for rejection...'
-                          }
-                          required={reviewAction === 'reject'}
-                        />
-                      </div>
-                    )}
-
-                    {reviewAction && (
-                      <button
-                        onClick={submitReview}
-                        disabled={isSubmitting || (reviewAction === 'reject' && !reason.trim())}
-                        className="w-full bg-indigo-600 text-white py-2 px-4 rounded-md text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {isSubmitting ? 'Submitting...' : `Submit ${reviewAction === 'approve' ? 'Approval' : 'Rejection'}`}
-                      </button>
-                    )}
                   </div>
-                </div>
-              )}
-
-              {/* Already Reviewed */}
-              {document.status !== 'PENDING' && document.reviewedAt && (
-                <div className="bg-gray-50 rounded-lg p-4">
-                  <h4 className="font-medium text-gray-900 mb-2">Review History</h4>
-                  <div className="text-sm text-gray-600">
-                    <p>Reviewed on: {new Date(document.reviewedAt).toLocaleDateString()}</p>
-                    <p>Status: {document.status}</p>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
+
+            {/* Review Actions */}
+            <form onSubmit={handleSubmit} className="bg-gray-50 p-4 rounded-lg">
+              <h3 className="font-semibold text-lg mb-3">Review Decision</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Action</label>
+                  <select
+                    value={action}
+                    onChange={(e) => setAction(e.target.value as 'approve' | 'reject' | '')}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required
+                    disabled={isSubmitting}
+                  >
+                    <option value="">Select action</option>
+                    <option value="approve">Approve</option>
+                    <option value="reject">Reject</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    {action === 'reject' ? 'Reason for Rejection *' : 'Review Notes (Optional)'}
+                  </label>
+                  <textarea
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder={action === 'reject' ? 'Please provide a reason for rejection...' : 'Add any additional notes...'}
+                    className="w-full border border-gray-300 rounded-md px-3 py-2 h-24 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    required={action === 'reject'}
+                    disabled={isSubmitting}
+                  />
+                </div>
+
+                <div className="flex space-x-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                    disabled={isSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!action || isSubmitting}
+                    className={`flex-1 px-4 py-2 rounded-md focus:outline-none focus:ring-2 ${
+                      action === 'approve'
+                        ? 'bg-green-600 text-white hover:bg-green-700 focus:ring-green-500'
+                        : action === 'reject'
+                        ? 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                  >
+                    {isSubmitting ? 'Processing...' : action === 'approve' ? 'Approve' : action === 'reject' ? 'Reject' : 'Select Action'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       </div>
