@@ -754,7 +754,58 @@ export const paymentNotifications = pgTable("payment_notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+// Fraud Detection Tables
+export const fraudAlerts = pgTable("fraud_alerts", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  type: text("type", {
+    enum: ["SUSPICIOUS_LOGIN", "UNUSUAL_TRANSACTION", "VELOCITY_CHECK", "DEVICE_MISMATCH", "LOCATION_ANOMALY", "PATTERN_MATCHING"]
+  }).notNull(),
+  severity: text("severity", { enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] }).notNull(),
+  status: text("status", { enum: ["ACTIVE", "INVESTIGATING", "RESOLVED", "FALSE_POSITIVE"] }).default("ACTIVE"),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  riskScore: integer("risk_score").notNull(), // 0-100
+  metadata: json("metadata"), // Store detection details
+  detectedAt: timestamp("detected_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: integer("resolved_by").references(() => adminUsers.id),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
 
+export const suspiciousActivities = pgTable("suspicious_activities", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  activityType: text("activity_type").notNull(),
+  description: text("description").notNull(),
+  riskIndicators: json("risk_indicators").$type<string[]>().notNull(),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  deviceFingerprint: text("device_fingerprint"),
+  location: json("location"), // GPS or IP-based location
+  metadata: json("metadata"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const accountFlags = pgTable("account_flags", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  flagType: text("flag_type", {
+    enum: ["FRAUD_RISK", "SUSPICIOUS_ACTIVITY", "MANUAL_REVIEW", "COMPLIANCE_ISSUE", "SECURITY_BREACH"]
+  }).notNull(),
+  severity: text("severity", { enum: ["LOW", "MEDIUM", "HIGH", "CRITICAL"] }).notNull(),
+  reason: text("reason").notNull(),
+  status: text("status", { enum: ["ACTIVE", "RESOLVED", "EXPIRED"] }).default("ACTIVE"),
+  flaggedBy: integer("flagged_by").notNull().references(() => adminUsers.id),
+  resolvedBy: integer("resolved_by").references(() => adminUsers.id),
+  restrictions: json("restrictions"), // Account restrictions imposed
+  expiresAt: timestamp("expires_at"),
+  flaggedAt: timestamp("flagged_at").defaultNow(),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
 
 // Zod schemas for payment tables
 export const insertWalletSchema = createInsertSchema(wallets);
@@ -763,6 +814,9 @@ export const insertTransactionSchema = createInsertSchema(transactions);
 export const insertEscrowTransactionSchema = createInsertSchema(escrowTransactions);
 export const insertPaymentNotificationSchema = createInsertSchema(paymentNotifications);
 export const insertAdminPaymentActionSchema = createInsertSchema(adminPaymentActions);
+export const insertFraudAlertSchema = createInsertSchema(fraudAlerts);
+export const insertSuspiciousActivitySchema = createInsertSchema(suspiciousActivities);
+export const insertAccountFlagSchema = createInsertSchema(accountFlags);
 
 // Types
 export type Wallet = typeof wallets.$inferSelect;
@@ -777,3 +831,9 @@ export type PaymentNotification = typeof paymentNotifications.$inferSelect;
 export type InsertPaymentNotification = typeof paymentNotifications.$inferInsert;
 export type AdminPaymentAction = typeof adminPaymentActions.$inferSelect;
 export type InsertAdminPaymentAction = typeof adminPaymentActions.$inferInsert;
+export type FraudAlert = typeof fraudAlerts.$inferSelect;
+export type InsertFraudAlert = typeof fraudAlerts.$inferInsert;
+export type SuspiciousActivity = typeof suspiciousActivities.$inferSelect;
+export type InsertSuspiciousActivity = typeof suspiciousActivities.$inferInsert;
+export type AccountFlag = typeof accountFlags.$inferSelect;
+export type InsertAccountFlag = typeof accountFlags.$inferInsert;
