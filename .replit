@@ -64,5 +64,14 @@ mode = "sequential"
 task = "shell.exec"
 args = "cd admin-dashboard && npm run dev"
 
+[[workflows.workflow]]
+name = "Launch Admin Dashboard"
+author = 45940499
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd admin-dashboard && npm run dev"
+
 [agent]
 integrations = ["javascript_log_in_with_replit==1.0.0", "javascript_websocket==1.0.0", "javascript_database==1.0.0"]
