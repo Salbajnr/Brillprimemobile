@@ -85,6 +85,7 @@ export interface IStorage {
   createConversation(conversation: InsertConversation): Promise<Conversation>;
   getMessages(conversationId: string): Promise<any[]>;
   sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
+  getConversationMessages(conversationId: string, limit: number, offset: number): Promise<any[]>;
 
   // Support Ticket operations
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
@@ -695,6 +696,18 @@ export class DatabaseStorage implements IStorage {
       .where(eq(conversations.id, message.conversationId));
 
     return newMessage;
+  }
+
+  async getConversationMessages(conversationId: string, limit: number, offset: number): Promise<any[]> {
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(desc(chatMessages.createdAt))
+      .limit(limit)
+      .offset(offset);
+
+    return messages;
   }
 
   async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {

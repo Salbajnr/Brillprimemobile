@@ -8,6 +8,7 @@ import connectPgSimple from "connect-pg-simple";
 import { db } from "./db";
 import adminRoutes from "./admin/routes";
 
+async function startServer() {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -64,7 +65,7 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 const server = createServer(app);
 
 // Setup WebSocket server
-  const io = setupWebSocketServer(server);
+  const io = await setupWebSocketServer(server);
 
   // Make WebSocket server globally available for route handlers
   global.io = io;
@@ -88,3 +89,8 @@ server.listen(PORT, "0.0.0.0", () => {
 
   console.log(`${formattedTime} [express] serving on port ${PORT}`);
 });
+
+}
+
+// Start the server
+startServer().catch(console.error);

@@ -22,7 +22,7 @@ export enum ClientRole {
   ADMIN = 'ADMIN'
 }
 
-export function setupWebSocketServer(server: HTTPServer) {
+export async function setupWebSocketServer(server: HTTPServer) {
   const io = new SocketIOServer(server, {
     cors: {
       origin: "*",
@@ -524,6 +524,22 @@ export function setupWebSocketServer(server: HTTPServer) {
       adminConnections.delete(socket.id);
     });
   });
+
+  // Initialize services with WebSocket server
+  try {
+    const orderBroadcastingModule = await import('./services/order-broadcasting');
+    const liveChatModule = await import('./services/live-chat');
+    
+    orderBroadcastingModule.orderBroadcastingService.setSocketServer(io);
+    liveChatModule.liveChatService.setSocketServer(io);
+    
+    console.log('Real-time services initialized successfully');
+  } catch (error) {
+    console.error('Failed to initialize real-time services:', error);
+  }
+
+  // Make io globally available for use in route handlers
+  global.io = io;
 
   // Periodic cleanup and health checks
   setInterval(() => {
