@@ -2,7 +2,8 @@ import {
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
   driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
-  identityVerifications, driverVerifications, phoneVerifications,
+  identityVerifications, driverVerifications, phoneVerifications, wallets, paymentMethods,
+  transactions, deliveryConfirmations,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
@@ -117,6 +118,22 @@ export interface IStorage {
 
   // Fuel Station Discovery methods
   getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]>;
+
+  // Payment and Wallet operations
+  getUserWallet(userId: number): Promise<any>;
+  createWallet(userId: number): Promise<any>;
+  getUserPaymentMethods(userId: number): Promise<any[]>;
+  getUserTransactions(userId: number, limit: number, offset: number): Promise<any[]>;
+  addToWishlist(userId: number, productId: string): Promise<any>;
+  getWishlistItems(userId: number): Promise<any[]>;
+  
+  // QR Code operations
+  generateDeliveryQR(orderId: string): Promise<any>;
+  verifyDeliveryQR(qrCode: string): Promise<any>;
+  
+  // Real-time order tracking
+  updateOrderTracking(orderId: string, status: string, location?: any): Promise<any>;
+  getOrderTracking(orderId: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -954,6 +971,134 @@ export class DatabaseStorage implements IStorage {
   async getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]> {
     // Implement fuel station search
     return [];
+  }
+
+  // Payment and Wallet operations
+  async getUserWallet(userId: number): Promise<any> {
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, userId));
+    return wallet || null;
+  }
+
+  async createWallet(userId: number): Promise<any> {
+    const [wallet] = await db
+      .insert(wallets)
+      .values({
+        userId,
+        balance: "0.00",
+        currency: "NGN",
+        isActive: true
+      })
+      .returning();
+    return wallet;
+  }
+
+  async getUserPaymentMethods(userId: number): Promise<any[]> {
+    const methods = await db
+      .select()
+      .from(paymentMethods)
+      .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isActive, true)))
+      .orderBy(desc(paymentMethods.createdAt));
+    return methods;
+  }
+
+  async getUserTransactions(userId: number, limit: number, offset: number): Promise<any[]> {
+    const userTransactions = await db
+      .select()
+      .from(transactions)
+      .where(or(
+        eq(transactions.userId, userId),
+        eq(transactions.recipientId, userId)
+      ))
+      .orderBy(desc(transactions.createdAt))
+      .limit(limit)
+      .offset(offset);
+    return userTransactions;
+  }
+
+  async addToWishlist(userId: number, productId: string): Promise<any> {
+    // Simple wishlist implementation - you may want to create a dedicated wishlist table
+    // For now, we'll use a simple approach
+    return { userId, productId, addedAt: new Date() };
+  }
+
+  async getWishlistItems(userId: number): Promise<any[]> {
+    // Mock implementation - would need a dedicated wishlist table
+    return [];
+  }
+
+  // QR Code operations
+  async generateDeliveryQR(orderId: string): Promise<any> {
+    const qrCode = `DELIVERY_${orderId}_${Date.now()}`;
+    const [confirmation] = await db
+      .insert(deliveryConfirmations)
+      .values({
+        orderId,
+        qrCode,
+        scanned: false
+      })
+      .returning();
+    return confirmation;
+  }
+
+  async verifyDeliveryQR(qrCode: string): Promise<any> {
+    const [confirmation] = await db
+      .select()
+      .from(deliveryConfirmations)
+      .where(and(
+        eq(deliveryConfirmations.qrCode, qrCode),
+        eq(deliveryConfirmations.scanned, false)
+      ));
+
+    if (confirmation) {
+      // Mark as scanned
+      await db
+        .update(deliveryConfirmations)
+        .set({ 
+          scanned: true,
+          scannedAt: new Date()
+        })
+        .where(eq(deliveryConfirmations.id, confirmation.id));
+
+      return { ...confirmation, valid: true };
+    }
+
+    return { valid: false };
+  }
+
+  // Real-time order tracking
+  async updateOrderTracking(orderId: string, status: string, location?: any): Promise<any> {
+    const updateData: any = { 
+      status: status as any,
+      updatedAt: new Date()
+    };
+
+    const [updatedOrder] = await db
+      .update(orders)
+      .set(updateData)
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    return updatedOrder;
+  }
+
+  async getOrderTracking(orderId: string): Promise<any> {
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId));
+
+    if (!order) return null;
+
+    // Get delivery confirmations
+    const confirmations = await db
+      .select()
+      .from(deliveryConfirmations)
+      .where(eq(deliveryConfirmations.orderId, orderId));
+
+    return {
+      ...order,
+      deliveryConfirmations: confirmations
+    };
   }
 }
 
