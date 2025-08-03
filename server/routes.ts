@@ -14,8 +14,8 @@ import "./middleware/auth"; // Import type declarations
 import { Request, Response } from 'express';
 import cors from 'cors';
 import { db } from './db';
-import { users, supportTickets, contentReports } from '../shared/schema';
-import { eq, and, desc, count } from "drizzle-orm";
+import { users, supportTickets, contentReports, wallets, transactions, paymentMethods } from '../shared/schema';
+import { eq, and, desc, count, sql } from "drizzle-orm";
 import jwt from 'jsonwebtoken';
 import { requireAuth, auth, verifyToken } from './middleware/auth';
 import multer from 'multer';
@@ -521,6 +521,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Search API for locations, merchants, and fuel stations
+  app.get("/api/search", async (req, res) => {
+    try {
+      const { q, type, latitude, longitude } = req.query;
+      const searchQuery = q as string;
+      const searchType = type as string || 'all';
+      const lat = latitude ? parseFloat(latitude as string) : null;
+      const lng = longitude ? parseFloat(longitude as string) : null;
+
+      if (!searchQuery) {
+        return res.status(400).json({ message: "Search query required" });
+      }
+
+      const results: any[] = [];
+
+      if (searchType === 'all' || searchType === 'merchants') {
+        // Search merchants
+        const merchants = await db.select({
+          id: users.id,
+          name: users.fullName,
+          type: sql`'merchant'`,
+          address: users.address,
+          city: users.city,
+          state: users.state,
+          profilePicture: users.profilePicture
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.role, 'MERCHANT'),
+            or(
+              like(users.fullName, `%${searchQuery}%`),
+              like(users.address, `%${searchQuery}%`),
+              like(users.city, `%${searchQuery}%`)
+            )
+          )
+        )
+        .limit(10);
+
+        results.push(...merchants.map(merchant => ({
+          id: merchant.id.toString(),
+          name: merchant.name,
+          type: 'merchant',
+          address: `${merchant.address || ''}, ${merchant.city || ''}, ${merchant.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
+          distance: lat && lng ? Math.random() * 10 : null, // TODO: Calculate real distance
+          profilePicture: merchant.profilePicture
+        })));
+      }
+
+      if (searchType === 'all' || searchType === 'areas') {
+        // Search areas/locations based on city/state
+        const locations = await db.select({
+          city: users.city,
+          state: users.state,
+          count: sql<number>`count(*)::int`
+        })
+        .from(users)
+        .where(
+          and(
+            eq(users.role, 'MERCHANT'),
+            or(
+              like(users.city, `%${searchQuery}%`),
+              like(users.state, `%${searchQuery}%`)
+            )
+          )
+        )
+        .groupBy(users.city, users.state)
+        .limit(5);
+
+        results.push(...locations.map(location => ({
+          id: `${location.city}-${location.state}`.toLowerCase().replace(/\s+/g, '-'),
+          name: location.city,
+          type: 'area',
+          address: `${location.city}, ${location.state}, Nigeria`,
+          distance: lat && lng ? Math.random() * 15 : null, // TODO: Calculate real distance
+          merchantCount: location.count
+        })));
+      }
+
+      res.json(results);
+    } catch (error) {
+      console.error("Search error:", error);
+      res.status(500).json({ message: "Search failed" });
+    }
+  });
+
   // Wishlist Routes (placeholder implementations)
   app.post("/api/wishlist", async (req, res) => {
     try {
@@ -812,6 +898,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get merchant analytics error:", error);
       res.status(500).json({ message: "Error fetching analytics" });
+    }
+  });
+
+  // Transactions API
+  app.get("/api/transactions", requireAuth, async (req, res) => {
+    try {
+      const { userId, limit = 10, offset = 0 } = req.query;
+      const userIdNum = userId ? parseInt(userId as string) : req.session!.userId!;
+      
+      const transactionResults = await db.select({
+        id: sql`'txn_' || ${transactions.id}::text`,
+        type: sql`CASE 
+          WHEN ${transactions.type} IN ('DEPOSIT', 'REFUND', 'ESCROW_RELEASE') THEN 'credit'::text
+          ELSE 'debit'::text
+        END`,
+        description: transactions.description,
+        amount: transactions.amount,
+        date: transactions.createdAt,
+        status: transactions.status
+      })
+      .from(transactions)
+      .where(eq(transactions.userId, userIdNum))
+      .orderBy(desc(transactions.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+      res.json({ success: true, transactions: transactionResults });
+    } catch (error) {
+      console.error("Get transactions error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch transactions" });
+    }
+  });
+
+  // Wallet balance API
+  app.get("/api/wallet/balance", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      
+      // Get wallet balance from wallets table or calculate from transactions
+      const walletResult = await db.select({
+        balance: wallets.balance
+      })
+      .from(wallets)
+      .where(eq(wallets.userId, userId))
+      .limit(1);
+
+      const balance = walletResult.length > 0 ? parseFloat(walletResult[0].balance || '0') : 0;
+      
+      res.json({ success: true, balance });
+    } catch (error) {
+      console.error("Get wallet balance error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch wallet balance" });
     }
   });
 

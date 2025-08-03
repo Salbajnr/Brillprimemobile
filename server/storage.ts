@@ -3,7 +3,7 @@ import {
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
   driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
   identityVerifications, driverVerifications, phoneVerifications, wallets, paymentMethods,
-  transactions, deliveryConfirmations, fuelOrders,
+  transactions, deliveryConfirmations,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,

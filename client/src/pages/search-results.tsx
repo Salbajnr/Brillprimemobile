@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Search, Filter, MapPin, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -23,78 +24,29 @@ export default function SearchResults() {
   const [searchQuery, setSearchQuery] = useState("");
   const [results, setResults] = useState<SearchLocation[]>([]);
 
+  // Get search query from URL params
   useEffect(() => {
-    // Get search query from URL params
     const urlParams = new URLSearchParams(window.location.search);
     const query = urlParams.get('q') || '';
     setSearchQuery(query);
-    
-    // Mock search results based on query
-    const mockResults: SearchLocation[] = [
-      {
-        id: "wuse-ii",
-        name: "Wuse II",
-        type: "area",
-        address: "Wuse II, Abuja FCT, Nigeria",
-        distance: 2.3,
-        stationCount: 12,
-        averagePrice: 617
-      },
-      {
-        id: "goldcourt-estate",
-        name: "Goldcourt Estate",
-        type: "area", 
-        address: "Goldcourt Estate, Life Camp, Abuja",
-        distance: 3.8,
-        stationCount: 8,
-        averagePrice: 615
-      },
-      {
-        id: "total-wuse",
-        name: "Total Energies Wuse II",
-        type: "station",
-        address: "Plot 123, Ademola Adetokunbo Crescent, Wuse II",
-        distance: 2.1,
-        isOpen: true,
-        rating: 4.5
-      },
-      {
-        id: "mobil-goldcourt",
-        name: "Mobil Goldcourt",
-        type: "station",
-        address: "Goldcourt Estate, Life Camp",
-        distance: 3.5,
-        isOpen: true,
-        rating: 4.2
-      },
-      {
-        id: "garki-area",
-        name: "Garki Area",
-        type: "area",
-        address: "Garki, Abuja FCT, Nigeria",
-        distance: 4.2,
-        stationCount: 15,
-        averagePrice: 620
-      },
-      {
-        id: "conoil-garki",
-        name: "Conoil Garki",
-        type: "station",
-        address: "Area 3, Garki, Abuja",
-        distance: 4.8,
-        isOpen: false,
-        rating: 4.0
-      }
-    ];
-    
-    // Filter results based on search query
-    const filtered = mockResults.filter(result =>
-      result.name.toLowerCase().includes(query.toLowerCase()) ||
-      result.address.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    setResults(filtered);
   }, []);
+
+  // Fetch search results from API
+  const { data: searchResults = [], isLoading } = useQuery({
+    queryKey: ['/api/search', searchQuery],
+    queryFn: async () => {
+      if (!searchQuery.trim()) return [];
+      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      if (!response.ok) throw new Error('Search failed');
+      return response.json();
+    },
+    enabled: !!searchQuery.trim()
+  });
+
+  // Update results when API data changes
+  useEffect(() => {
+    setResults(searchResults);
+  }, [searchResults]);
 
   const handleLocationSelect = (location: SearchLocation) => {
     if (location.type === "area") {

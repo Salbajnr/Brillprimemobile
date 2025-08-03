@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, Scan, Send, Plus, CreditCard, MapPin, Fuel, Receipt, ShoppingCart, Eye, EyeOff, Clock, Wifi, WifiOff } from "lucide-react";
 import { useWebSocketOrders, useWebSocketNotifications, useWebSocketChat } from "@/hooks/use-websocket";
 import { ClientRole, MessageType } from "../../../server/websocket";
@@ -58,7 +59,18 @@ export default function ConsumerHome() {
   const { user } = useAuth();
   const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [showBalance, setShowBalance] = useState(true);
-  const [walletBalance] = useState(45750.00); // Mock data - will be replaced with API
+
+  // Fetch wallet balance from API
+  const { data: walletData } = useQuery({
+    queryKey: ['/api/wallet/balance'],
+    queryFn: async () => {
+      const response = await fetch('/api/wallet/balance');
+      if (!response.ok) throw new Error('Failed to fetch wallet balance');
+      return response.json();
+    }
+  });
+
+  const walletBalance = walletData?.balance || 0;
 
   // WebSocket integration for real-time features
   const { connected: orderConnected, orderUpdates, connectionError: orderError } = useWebSocketOrders();
@@ -73,41 +85,17 @@ export default function ConsumerHome() {
     error: null
   });
 
-  // Mock transaction data - will be replaced with API
-  const [recentTransactions] = useState<Transaction[]>([
-    {
-      id: "1",
-      type: "debit",
-      description: "Fuel Purchase - Total Energies",
-      amount: 12500,
-      date: "2025-07-19T10:30:00Z",
-      status: "completed"
-    },
-    {
-      id: "2",
-      type: "credit",
-      description: "Wallet Top-up",
-      amount: 50000,
-      date: "2025-07-19T08:15:00Z",
-      status: "completed"
-    },
-    {
-      id: "3",
-      type: "debit",
-      description: "Bill Payment - AEDC",
-      amount: 8750,
-      date: "2025-07-18T16:45:00Z",
-      status: "completed"
-    },
-    {
-      id: "4",
-      type: "debit",
-      description: "Toll Gate - Lagos-Ibadan",
-      amount: 1200,
-      date: "2025-07-18T14:20:00Z",
-      status: "pending"
+  // Fetch recent transactions from API
+  const { data: transactionsData } = useQuery({
+    queryKey: ['/api/transactions'],
+    queryFn: async () => {
+      const response = await fetch(`/api/transactions?limit=5`);
+      if (!response.ok) throw new Error('Failed to fetch transactions');
+      return response.json();
     }
-  ]);
+  });
+
+  const recentTransactions: Transaction[] = transactionsData?.transactions || [];
 
   // Get user's current location
   useEffect(() => {
