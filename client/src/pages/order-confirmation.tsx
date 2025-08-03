@@ -251,3 +251,173 @@ export default function OrderConfirmation() {
     </div>
   );
 }
+import { useEffect, useState } from "react";
+import { useLocation, useParams } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { CheckCircle, Clock, MapPin, Phone } from "lucide-react";
+
+export default function OrderConfirmationPage() {
+  const { orderId } = useParams();
+  const [, setLocation] = useLocation();
+  const [countdown, setCountdown] = useState(30);
+
+  // Mock order data
+  const orderData = {
+    id: orderId,
+    type: "fuel_delivery",
+    status: "confirmed",
+    estimatedTime: "15-25 minutes",
+    totalAmount: 1950,
+    fuelType: "Petrol (PMS)",
+    quantity: "10 liters",
+    station: "Total Energy Station",
+    deliveryAddress: "123 Main Street, Lagos",
+    driverName: "John Adebayo",
+    driverPhone: "+234 809 123 4567",
+    vehicleNumber: "LAG 123 ABC"
+  };
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          setLocation(`/track-order/${orderId}`);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [orderId, setLocation]);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Success Header */}
+      <div className="bg-green-600 text-white px-4 py-6 text-center">
+        <CheckCircle className="h-16 w-16 mx-auto mb-3" />
+        <h1 className="text-2xl font-bold">Order Confirmed!</h1>
+        <p className="text-green-100 mt-1">Order #{orderData.id}</p>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Order Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-blue-600" />
+              Order Status
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-center">
+              <div className="inline-block bg-yellow-100 text-yellow-800 px-3 py-1 rounded-full text-sm font-medium mb-2">
+                Preparing for Delivery
+              </div>
+              <p className="text-gray-600">
+                Estimated delivery time: <span className="font-semibold">{orderData.estimatedTime}</span>
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                Redirecting to tracking in {countdown} seconds...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Order Details */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Order Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-gray-600">Fuel Type:</span>
+                <span className="font-medium">{orderData.fuelType}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Quantity:</span>
+                <span className="font-medium">{orderData.quantity}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600">Station:</span>
+                <span className="font-medium">{orderData.station}</span>
+              </div>
+              <div className="border-t pt-3 flex justify-between">
+                <span className="text-gray-600">Total Amount:</span>
+                <span className="font-bold text-lg">₦{orderData.totalAmount.toLocaleString()}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Delivery Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MapPin className="h-5 w-5 text-green-600" />
+              Delivery Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <div>
+                <p className="text-sm text-gray-600">Delivery Address:</p>
+                <p className="font-medium">{orderData.deliveryAddress}</p>
+              </div>
+              
+              <div className="border-t pt-3">
+                <p className="text-sm text-gray-600 mb-2">Driver Details:</p>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="font-medium">{orderData.driverName}</p>
+                  <p className="text-sm text-gray-600">Vehicle: {orderData.vehicleNumber}</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="mt-2 w-full"
+                    onClick={() => window.open(`tel:${orderData.driverPhone}`)}
+                  >
+                    <Phone className="h-4 w-4 mr-2" />
+                    Call Driver
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="space-y-3">
+          <Button
+            onClick={() => setLocation(`/track-order/${orderId}`)}
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700"
+            size="lg"
+          >
+            Track Order
+          </Button>
+          
+          <Button
+            variant="outline"
+            onClick={() => setLocation("/consumer-home")}
+            className="w-full"
+          >
+            Back to Home
+          </Button>
+        </div>
+
+        {/* Order Tips */}
+        <Card>
+          <CardContent className="pt-4">
+            <h3 className="font-medium mb-2">Order Tips:</h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• Ensure someone is available at the delivery location</li>
+              <li>• Have your payment method ready</li>
+              <li>• Contact the driver if you need to change the location</li>
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}

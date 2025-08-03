@@ -483,3 +483,262 @@ export default function OrderManagement() {
     </div>
   );
 }
+import { useState } from "react";
+import { useLocation } from "wouter";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Clock, CheckCircle, AlertCircle, Package, Phone } from "lucide-react";
+
+interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  items: string[];
+  totalAmount: number;
+  status: "pending" | "confirmed" | "preparing" | "ready" | "delivered" | "cancelled";
+  orderTime: string;
+  estimatedTime?: string;
+  deliveryAddress: string;
+}
+
+export default function OrderManagementPage() {
+  const [, setLocation] = useLocation();
+  const [selectedTab, setSelectedTab] = useState("active");
+
+  const mockOrders: Order[] = [
+    {
+      id: "ORD001",
+      customerName: "Sarah Johnson",
+      customerPhone: "+234 808 123 4567",
+      items: ["10L Petrol", "Engine Oil", "Car Wash"],
+      totalAmount: 2500,
+      status: "pending",
+      orderTime: "2:30 PM",
+      deliveryAddress: "123 Victoria Island, Lagos"
+    },
+    {
+      id: "ORD002",
+      customerName: "Mike Adebayo",
+      customerPhone: "+234 809 987 6543",
+      items: ["20L Diesel"],
+      totalAmount: 5600,
+      status: "preparing",
+      orderTime: "2:15 PM",
+      estimatedTime: "15 mins",
+      deliveryAddress: "456 Ikoyi Road, Lagos"
+    },
+    {
+      id: "ORD003",
+      customerName: "Grace Okafor",
+      customerPhone: "+234 807 456 7890",
+      items: ["5L Kerosene"],
+      totalAmount: 750,
+      status: "ready",
+      orderTime: "1:45 PM",
+      deliveryAddress: "789 Surulere Street, Lagos"
+    }
+  ];
+
+  const getStatusColor = (status: Order["status"]) => {
+    switch (status) {
+      case "pending": return "bg-yellow-100 text-yellow-800";
+      case "confirmed": return "bg-blue-100 text-blue-800";
+      case "preparing": return "bg-orange-100 text-orange-800";
+      case "ready": return "bg-green-100 text-green-800";
+      case "delivered": return "bg-gray-100 text-gray-800";
+      case "cancelled": return "bg-red-100 text-red-800";
+      default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusIcon = (status: Order["status"]) => {
+    switch (status) {
+      case "pending": return <Clock className="h-4 w-4" />;
+      case "ready": return <CheckCircle className="h-4 w-4" />;
+      case "cancelled": return <AlertCircle className="h-4 w-4" />;
+      default: return <Package className="h-4 w-4" />;
+    }
+  };
+
+  const handleStatusUpdate = (orderId: string, newStatus: Order["status"]) => {
+    // In a real app, this would update the backend
+    console.log(`Updating order ${orderId} to ${newStatus}`);
+  };
+
+  const activeOrders = mockOrders.filter(order => 
+    !["delivered", "cancelled"].includes(order.status)
+  );
+  
+  const completedOrders = mockOrders.filter(order => 
+    ["delivered", "cancelled"].includes(order.status)
+  );
+
+  const OrderCard = ({ order }: { order: Order }) => (
+    <Card className="mb-4">
+      <CardHeader>
+        <div className="flex justify-between items-start">
+          <div>
+            <CardTitle className="text-lg">Order #{order.id}</CardTitle>
+            <p className="text-sm text-gray-600">{order.customerName}</p>
+            <p className="text-xs text-gray-500">{order.orderTime}</p>
+          </div>
+          <Badge className={getStatusColor(order.status)}>
+            {getStatusIcon(order.status)}
+            <span className="ml-1 capitalize">{order.status}</span>
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {/* Items */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">Items:</p>
+            <ul className="text-sm text-gray-600">
+              {order.items.map((item, index) => (
+                <li key={index}>• {item}</li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Delivery Address */}
+          <div>
+            <p className="text-sm font-medium text-gray-700 mb-1">Delivery Address:</p>
+            <p className="text-sm text-gray-600">{order.deliveryAddress}</p>
+          </div>
+
+          {/* Total Amount */}
+          <div className="flex justify-between items-center pt-2 border-t">
+            <span className="font-medium">Total Amount:</span>
+            <span className="font-bold text-lg">₦{order.totalAmount.toLocaleString()}</span>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="flex gap-2 mt-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => window.open(`tel:${order.customerPhone}`)}
+            >
+              <Phone className="h-4 w-4 mr-1" />
+              Call Customer
+            </Button>
+            
+            {order.status === "pending" && (
+              <Button
+                size="sm"
+                className="flex-1 bg-green-600 hover:bg-green-700"
+                onClick={() => handleStatusUpdate(order.id, "confirmed")}
+              >
+                Accept Order
+              </Button>
+            )}
+            
+            {order.status === "confirmed" && (
+              <Button
+                size="sm"
+                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                onClick={() => handleStatusUpdate(order.id, "preparing")}
+              >
+                Start Preparing
+              </Button>
+            )}
+            
+            {order.status === "preparing" && (
+              <Button
+                size="sm"
+                className="flex-1 bg-orange-600 hover:bg-orange-700"
+                onClick={() => handleStatusUpdate(order.id, "ready")}
+              >
+                Mark Ready
+              </Button>
+            )}
+            
+            {order.status === "ready" && (
+              <Button
+                size="sm"
+                className="flex-1 bg-purple-600 hover:bg-purple-700"
+                onClick={() => handleStatusUpdate(order.id, "delivered")}
+              >
+                Mark Delivered
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setLocation("/merchant-dashboard")}
+            className="p-2"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <div>
+            <h1 className="text-lg font-semibold">Order Management</h1>
+            <p className="text-sm text-gray-600">Manage your incoming orders</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4">
+        <Tabs value={selectedTab} onValueChange={setSelectedTab}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="active">
+              Active Orders ({activeOrders.length})
+            </TabsTrigger>
+            <TabsTrigger value="completed">
+              Completed ({completedOrders.length})
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="active" className="mt-4">
+            {activeOrders.length > 0 ? (
+              <div>
+                {activeOrders.map((order) => (
+                  <OrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <Package className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600">No active orders at the moment</p>
+                  <p className="text-sm text-gray-500">New orders will appear here</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="completed" className="mt-4">
+            {completedOrders.length > 0 ? (
+              <div>
+                {completedOrders.map((order) => (
+                  <OrderCard key={order.id} order={order} />
+                ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="text-center py-8">
+                  <CheckCircle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-gray-600">No completed orders yet</p>
+                  <p className="text-sm text-gray-500">Completed orders will appear here</p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
