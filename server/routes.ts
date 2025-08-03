@@ -8,11 +8,10 @@ import "./middleware/auth"; // Import type declarations
 import { Request, Response } from 'express';
 import cors from 'cors';
 import { db } from './db';
-import { users, userProfiles, supportTickets, contentReports } from '../shared/schema';
+import { users, supportTickets, contentReports } from '../shared/schema';
 import { eq, and, desc, count } from "drizzle-orm";
 import jwt from 'jsonwebtoken';
-import { auth } from './middleware/auth';
-import { verifyToken } from './middleware/auth';
+import { requireAuth, auth, verifyToken } from './middleware/auth';
 import multer from 'multer';
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -888,7 +887,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticket = await storage.createSupportTicket(ticketData);
 
       // Emit WebSocket event for real-time notification to admin dashboards
-      ```text
       if (global.io) {
         global.io.to('admin_support').emit('new_support_ticket', {
           type: 'new_support_ticket',

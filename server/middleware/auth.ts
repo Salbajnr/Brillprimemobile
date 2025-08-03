@@ -1,4 +1,5 @@
 import { Request, Response, NextFunction } from "express";
+import jwt from 'jsonwebtoken';
 
 // Extend the session interface to include userId and user properties
 declare module 'express-session' {
@@ -51,7 +52,16 @@ export function setupAuth() {
   };
 }
 
-// Middleware to require authentication
+// Middleware to require authentication (alias for consistency)
+export const auth = requireAuth;
+
+// Token verification utility (placeholder - implement as needed)
+export function verifyToken(token: string) {
+  // Implementation depends on your JWT setup
+  return jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+}
+
+// Middleware to require authentication  
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
   if (!req.isAuthenticated()) {
     return res.status(401).json({ message: "Authentication required" });

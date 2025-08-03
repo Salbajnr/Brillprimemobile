@@ -31,53 +31,8 @@ export function setupWebSocketServer(server: HTTPServer) {
     path: '/socket.io'
   });
 
-  // Add raw WebSocket support for E2E tests
-  const WebSocket = require('ws');
-  const wss = new WebSocket.Server({ 
-    server: server,
-    path: '/ws'
-  });
-
-  wss.on('connection', (ws: any) => {
-    console.log('Raw WebSocket connection established');
-    
-    ws.on('message', (message: any) => {
-      try {
-        const data = JSON.parse(message.toString());
-        console.log('Raw WebSocket message:', data);
-        
-        // Echo back test messages
-        if (data.type === 'test') {
-          ws.send(JSON.stringify({
-            type: 'test_response',
-            data: { message: 'Test acknowledged' }
-          }));
-        }
-        
-        // Handle order updates
-        if (data.type === 'order_update') {
-          ws.send(JSON.stringify({
-            type: 'order_update',
-            data: data.data
-          }));
-        }
-        
-        // Handle admin notifications
-        if (data.type === 'admin_notification') {
-          ws.send(JSON.stringify({
-            type: 'admin_notification',
-            data: data.data
-          }));
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('Raw WebSocket connection closed');
-    });
-  });
+  // Note: Raw WebSocket support commented out for ES module compatibility
+  // Consider implementing if needed for E2E tests
 
   // Track online users and admin connections
   const onlineUsers = new Map<number, string>(); // userId -> socketId
