@@ -548,6 +548,19 @@ export const insertUserLocationSchema = createInsertSchema(userLocations);
 export const insertVendorPostSchema = createInsertSchema(vendorPosts);
 export const insertVendorPostLikeSchema = createInsertSchema(vendorPostLikes);
 export const insertVendorPostCommentSchema = createInsertSchema(vendorPostComments);
+
+export type InsertVendorPost = z.infer<typeof insertVendorPostSchema>;
+export type VendorPost = typeof vendorPosts.$inferSelect;
+
+// Enhanced VendorPost type with additional fields from database joins
+export interface ExtendedVendorPost extends VendorPost {
+  vendorName: string;
+  vendorProfilePicture?: string;
+  vendorRole: string;
+  productName?: string;
+  productDescription?: string;
+  likesCount: number;
+}
 export const insertConversationSchema = createInsertSchema(conversations);
 export const insertChatMessageSchema = createInsertSchema(chatMessages);
 export const insertMerchantProfileSchema = createInsertSchema(merchantProfiles);
