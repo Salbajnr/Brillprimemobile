@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { UserDetailModal } from '../components/user-detail-modal';
 
 interface UserWithKYC {
   id: number;
@@ -32,6 +33,8 @@ export function AdminUserManagement() {
   });
   const [totalPages, setTotalPages] = useState(1);
   const [totalUsers, setTotalUsers] = useState(0);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
+  const [isUserModalOpen, setIsUserModalOpen] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -88,6 +91,20 @@ export function AdminUserManagement() {
 
   const getStatusColor = (isVerified: boolean) => {
     return isVerified ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800';
+  };
+
+  const openUserDetail = (userId: number) => {
+    setSelectedUserId(userId);
+    setIsUserModalOpen(true);
+  };
+
+  const closeUserDetail = () => {
+    setSelectedUserId(null);
+    setIsUserModalOpen(false);
+  };
+
+  const handleUserStatusUpdate = () => {
+    loadUsers(); // Refresh the users list
   };
 
   return (
@@ -236,7 +253,10 @@ export function AdminUserManagement() {
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button className="text-indigo-600 hover:text-indigo-900">
+                        <button 
+                          onClick={() => openUserDetail(user.id)}
+                          className="text-indigo-600 hover:text-indigo-900"
+                        >
                           View Details
                         </button>
                         <button className="text-green-600 hover:text-green-900">
@@ -301,6 +321,14 @@ export function AdminUserManagement() {
           </>
         )}
       </div>
+
+      {/* User Detail Modal */}
+      <UserDetailModal
+        userId={selectedUserId}
+        isOpen={isUserModalOpen}
+        onClose={closeUserDetail}
+        onStatusUpdate={handleUserStatusUpdate}
+      />
     </div>
   );
 }

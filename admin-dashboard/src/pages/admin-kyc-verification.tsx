@@ -1,5 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
+import { KYCReviewModal } from '../components/kyc-review-modal';
+import { BatchKYCActions } from '../components/batch-kyc-actions';
 
 interface UserWithKYC {
   id: number;
@@ -32,6 +34,10 @@ export function AdminKYCVerification() {
   });
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocuments, setTotalDocuments] = useState(0);
+  const [selectedDocument, setSelectedDocument] = useState<any>(null);
+  const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
+  const [selectedDocuments, setSelectedDocuments] = useState<number[]>([]);
+  const [allDocuments, setAllDocuments] = useState<any[]>([]);
 
   useEffect(() => {
     loadPendingKYC();
@@ -57,7 +63,20 @@ export function AdminKYCVerification() {
       if (response.ok) {
         const data = await response.json();
         if (data.success) {
-          setPendingKYC(data.data.items || []);
+          const items = data.data.items || [];
+          setPendingKYC(items);
+          setAllDocuments(items.flatMap(user => 
+            user.kycDocuments?.map(doc => ({
+              ...doc,
+              user: {
+                id: user.id,
+                userId: user.userId,
+                fullName: user.fullName,
+                email: user.email,
+                role: user.role
+              }
+            })) || []
+          ));
           setTotalPages(data.data.totalPages || 1);
           setTotalDocuments(data.data.total || 0);
         }
@@ -86,6 +105,68 @@ export function AdminKYCVerification() {
       case 'APPROVED': return 'bg-green-100 text-green-800';
       case 'REJECTED': return 'bg-red-100 text-red-800';
       default: return 'bg-yellow-100 text-yellow-800';
+    }
+  };
+
+  const openReviewModal = (user: any, document: any) => {
+    setSelectedDocument({
+      ...document,
+      user: {
+        id: user.id,
+        userId: user.userId,
+        fullName: user.fullName,
+        email: user.email,
+        role: user.role
+      }
+    });
+    setIsReviewModalOpen(true);
+  };
+
+  const closeReviewModal = () => {
+    setSelectedDocument(null);
+    setIsReviewModalOpen(false);
+  };
+
+  const handleReviewComplete = () => {
+    loadPendingKYC(); // Refresh the data
+  };
+
+  const toggleDocumentSelection = (documentId: number) => {
+    setSelectedDocuments(prev => 
+      prev.includes(documentId) 
+        ? prev.filter(id => id !== documentId)
+        : [...prev, documentId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const allDocumentIds = allDocuments.map(doc => doc.id);
+    setSelectedDocuments(
+      selectedDocuments.length === allDocumentIds.length ? [] : allDocumentIds
+    );
+  };
+
+  const handleBatchAction = async (action: string, reason?: string) => {
+    try {
+      const token = localStorage.getItem('admin_token');
+      
+      // Process each selected document
+      const promises = selectedDocuments.map(documentId => 
+        fetch(`/api/admin/kyc/${documentId}/review`, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ action, reason }),
+        })
+      );
+
+      await Promise.all(promises);
+      setSelectedDocuments([]);
+      loadPendingKYC();
+    } catch (error) {
+      console.error('Batch action failed:', error);
     }
   };
 
@@ -137,10 +218,16 @@ export function AdminKYCVerification() {
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Batch Actions</label>
             <div className="flex space-x-2">
-              <button className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-md text-sm hover:bg-gray-600">
-                Select All
+              <button 
+                onClick={handleSelectAll}
+                className="flex-1 bg-gray-500 text-white px-3 py-2 rounded-md text-sm hover:bg-gray-600"
+              >
+                {selectedDocuments.length === allDocuments.length ? 'Clear All' : 'Select All'}
               </button>
-              <button className="flex-1 bg-gray-300 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-400">
+              <button 
+                onClick={() => setSelectedDocuments([])}
+                className="flex-1 bg-gray-300 text-gray-700 px-3 py-2 rounded-md text-sm hover:bg-gray-400"
+              >
                 Clear
               </button>
             </div>
@@ -170,6 +257,14 @@ export function AdminKYCVerification() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <input
+                        type="checkbox"
+                        checked={selectedDocuments.length === allDocuments.length && allDocuments.length > 0}
+                        onChange={handleSelectAll}
+                        className="rounded border-gray-300"
+                      />
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       User
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -190,6 +285,14 @@ export function AdminKYCVerification() {
                   {pendingKYC.map((user) => 
                     user.kycDocuments?.map((document) => (
                       <tr key={`${user.id}-${document.id}`} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedDocuments.includes(document.id)}
+                            onChange={() => toggleDocumentSelection(document.id)}
+                            className="rounded border-gray-300"
+                          />
+                        </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
                             <div className="h-10 w-10 flex-shrink-0">
@@ -224,7 +327,10 @@ export function AdminKYCVerification() {
                           {new Date(document.createdAt).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button className="text-indigo-600 hover:text-indigo-900">
+                          <button 
+                            onClick={() => openReviewModal(user, document)}
+                            className="text-indigo-600 hover:text-indigo-900"
+                          >
                             Review
                           </button>
                           <a
@@ -292,6 +398,21 @@ export function AdminKYCVerification() {
           </>
         )}
       </div>
+
+      {/* KYC Review Modal */}
+      <KYCReviewModal
+        document={selectedDocument}
+        isOpen={isReviewModalOpen}
+        onClose={closeReviewModal}
+        onReview={handleReviewComplete}
+      />
+
+      {/* Batch Actions */}
+      <BatchKYCActions
+        selectedDocuments={selectedDocuments}
+        onBatchAction={handleBatchAction}
+        onClearSelection={() => setSelectedDocuments([])}
+      />
     </div>
   );
 }
