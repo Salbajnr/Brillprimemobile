@@ -218,3 +218,162 @@ export function KYCReviewModal({ document, isOpen, onClose, onReview }: KYCRevie
     </div>
   );
 }
+import React, { useState } from 'react';
+import { X, Check, Ban, Download, Eye } from 'lucide-react';
+
+interface KycDocument {
+  id: number;
+  userId: number;
+  userInfo: {
+    fullName: string;
+    email: string;
+    role: string;
+    profilePicture?: string;
+  };
+  documentType: 'ID_CARD' | 'DRIVER_LICENSE' | 'BUSINESS_LICENSE' | 'VEHICLE_REGISTRATION';
+  documentUrl: string;
+  faceImageUrl?: string;
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedAt?: string;
+  reviewedBy?: number;
+  rejectionReason?: string;
+  priority: 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
+  verificationData?: any;
+}
+
+interface KycReviewModalProps {
+  document: KycDocument;
+  isOpen: boolean;
+  onClose: () => void;
+  onReview: (documentId: number, action: 'approve' | 'reject', reason?: string) => Promise<void>;
+}
+
+export function KycReviewModal({ document, isOpen, onClose, onReview }: KycReviewModalProps) {
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleApprove = async () => {
+    setIsProcessing(true);
+    try {
+      await onReview(document.id, 'approve');
+      onClose();
+    } catch (error) {
+      console.error('Approval failed:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      await onReview(document.id, 'reject', rejectionReason);
+      onClose();
+    } catch (error) {
+      console.error('Rejection failed:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-4xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-bold">KYC Document Review</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-4">User Information</h3>
+            <div className="space-y-2">
+              <p><strong>Name:</strong> {document.userInfo.fullName}</p>
+              <p><strong>Email:</strong> {document.userInfo.email}</p>
+              <p><strong>Role:</strong> {document.userInfo.role}</p>
+              <p><strong>Document Type:</strong> {document.documentType.replace(/_/g, ' ')}</p>
+              <p><strong>Submitted:</strong> {new Date(document.submittedAt).toLocaleString()}</p>
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-lg font-semibold mb-4">Document</h3>
+            <div className="border rounded-lg p-4">
+              <img 
+                src={document.documentUrl} 
+                alt="KYC Document" 
+                className="w-full h-auto max-h-64 object-contain"
+              />
+              <div className="mt-2 flex space-x-2">
+                <a 
+                  href={document.documentUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+                >
+                  <Eye className="h-4 w-4" />
+                  <span>View Full Size</span>
+                </a>
+                <a 
+                  href={document.documentUrl} 
+                  download
+                  className="flex items-center space-x-1 text-blue-600 hover:text-blue-800"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Download</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {document.status === 'PENDING' && (
+          <div className="mt-6">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Rejection Reason (required for rejection)
+              </label>
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full p-3 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                rows={3}
+                placeholder="Provide a clear reason for rejection..."
+              />
+            </div>
+
+            <div className="flex space-x-4">
+              <button
+                onClick={handleApprove}
+                disabled={isProcessing}
+                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 disabled:opacity-50"
+              >
+                <Check className="h-4 w-4" />
+                <span>{isProcessing ? 'Processing...' : 'Approve'}</span>
+              </button>
+
+              <button
+                onClick={handleReject}
+                disabled={isProcessing || !rejectionReason.trim()}
+                className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 disabled:opacity-50"
+              >
+                <Ban className="h-4 w-4" />
+                <span>{isProcessing ? 'Processing...' : 'Reject'}</span>
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

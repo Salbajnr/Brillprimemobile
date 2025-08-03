@@ -311,3 +311,182 @@ export function UserDetailModal({ userId, isOpen, onClose, onStatusUpdate }: Use
     </div>
   );
 }
+import React, { useState } from 'react';
+import { X, User, Mail, Phone, MapPin, Calendar, Shield, CheckCircle, XCircle } from 'lucide-react';
+
+interface User {
+  id: number;
+  userId: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  role: 'CONSUMER' | 'MERCHANT' | 'DRIVER';
+  isVerified: boolean;
+  isPhoneVerified: boolean;
+  isIdentityVerified: boolean;
+  profilePicture?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  createdAt: string;
+  lastActivity?: string;
+}
+
+interface UserDetailModalProps {
+  user: User;
+  isOpen: boolean;
+  onClose: () => void;
+  onUserUpdate: () => void;
+}
+
+export function UserDetailModal({ user, isOpen, onClose, onUserUpdate }: UserDetailModalProps) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  if (!isOpen) return null;
+
+  const handleUserAction = async (action: string) => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch(`/api/admin/users/${user.id}/action`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify({ action })
+      });
+
+      if (response.ok) {
+        onUserUpdate();
+        onClose();
+      }
+    } catch (error) {
+      console.error('User action failed:', error);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-xl font-bold">User Details</h2>
+          <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
+            <X className="h-6 w-6" />
+          </button>
+        </div>
+
+        <div className="space-y-6">
+          {/* Profile Section */}
+          <div className="flex items-center space-x-4">
+            <div className="flex-shrink-0">
+              {user.profilePicture ? (
+                <img className="h-16 w-16 rounded-full" src={user.profilePicture} alt="" />
+              ) : (
+                <div className="h-16 w-16 rounded-full bg-gray-300 flex items-center justify-center">
+                  <User className="h-8 w-8 text-gray-600" />
+                </div>
+              )}
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold">{user.fullName}</h3>
+              <p className="text-gray-600">{user.email}</p>
+              <p className="text-sm text-gray-500">ID: {user.userId}</p>
+            </div>
+          </div>
+
+          {/* Basic Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <Mail className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Email:</span>
+                <span className="text-sm">{user.email}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Phone className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Phone:</span>
+                <span className="text-sm">{user.phone}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Shield className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Role:</span>
+                <span className="text-sm font-medium">{user.role}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center space-x-2">
+                <MapPin className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Location:</span>
+                <span className="text-sm">{user.city}, {user.state}</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <Calendar className="h-4 w-4 text-gray-400" />
+                <span className="text-sm text-gray-600">Joined:</span>
+                <span className="text-sm">{new Date(user.createdAt).toLocaleDateString()}</span>
+              </div>
+              {user.lastActivity && (
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-4 w-4 text-gray-400" />
+                  <span className="text-sm text-gray-600">Last Active:</span>
+                  <span className="text-sm">{new Date(user.lastActivity).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Verification Status */}
+          <div>
+            <h4 className="text-sm font-medium text-gray-900 mb-3">Verification Status</h4>
+            <div className="space-y-2">
+              <div className="flex items-center space-x-2">
+                {user.isVerified ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-sm">Account Verified</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {user.isPhoneVerified ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-sm">Phone Verified</span>
+              </div>
+              <div className="flex items-center space-x-2">
+                {user.isIdentityVerified ? (
+                  <CheckCircle className="h-4 w-4 text-green-500" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-500" />
+                )}
+                <span className="text-sm">Identity Verified</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex space-x-3 pt-4 border-t">
+            <button
+              onClick={() => handleUserAction('verify')}
+              disabled={isProcessing || user.isVerified}
+              className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:opacity-50"
+            >
+              {isProcessing ? 'Processing...' : 'Verify User'}
+            </button>
+            <button
+              onClick={() => handleUserAction('suspend')}
+              disabled={isProcessing}
+              className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+            >
+              {isProcessing ? 'Processing...' : 'Suspend User'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
