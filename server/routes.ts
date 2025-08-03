@@ -5,9 +5,15 @@ import { registerFuelOrderRoutes } from "./routes/fuel-orders";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import "./middleware/auth"; // Import type declarations
+import { Request, Response } from 'express';
+import cors from 'cors';
 import { db } from './db';
 import { users, userProfiles, supportTickets, contentReports } from '../shared/schema';
 import { eq, and, desc, count } from "drizzle-orm";
+import jwt from 'jsonwebtoken';
+import { auth } from './middleware/auth';
+import { verifyToken } from './middleware/auth';
+import multer from 'multer';
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Sign up endpoint
@@ -882,6 +888,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const ticket = await storage.createSupportTicket(ticketData);
 
       // Emit WebSocket event for real-time notification to admin dashboards
+      ```text
       if (global.io) {
         global.io.to('admin_support').emit('new_support_ticket', {
           type: 'new_support_ticket',
@@ -1196,6 +1203,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Import routes
+  // Import routes
+  // Import routes
+  // Import routes
+  // Import routes
+  // Import routes
+  // Import routes
+  // Import routes
+  const httpServer = createServer(app);
+  return httpServer;
+}
+
+export function setupRoutes(app: any) {
+  const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
+
   // CORS middleware
   app.use(cors({
     origin: process.env.NODE_ENV === 'production' 
@@ -1205,14 +1227,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   // Health check endpoint for E2E tests
-  app.get('/api/health', (req, res) => {
+  app.get('/api/health', (req: Request, res: Response) => {
     res.json({ 
       status: 'ok', 
       websocket: true,
       timestamp: Date.now() 
     });
   });
-
-  const httpServer = createServer(app);
-  return httpServer;
 }

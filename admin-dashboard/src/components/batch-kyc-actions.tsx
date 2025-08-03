@@ -145,3 +145,115 @@ export function BatchKYCActions({ selectedDocuments, onBatchAction, onClearSelec
     </>
   );
 }
+import React, { useState } from 'react';
+import { Check, X, Users } from 'lucide-react';
+
+interface BatchKycActionsProps {
+  selectedCount: number;
+  onBatchApprove: () => void;
+  onBatchReject: (reason: string) => void;
+  onSelectAll: () => void;
+  onClearSelection: () => void;
+}
+
+export function BatchKycActions({ 
+  selectedCount, 
+  onBatchApprove, 
+  onBatchReject, 
+  onSelectAll, 
+  onClearSelection 
+}: BatchKycActionsProps) {
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const handleBatchReject = () => {
+    if (!rejectionReason.trim()) {
+      alert('Please provide a rejection reason');
+      return;
+    }
+    onBatchReject(rejectionReason);
+    setShowRejectModal(false);
+    setRejectionReason('');
+  };
+
+  return (
+    <div className="flex items-center space-x-4 bg-blue-50 p-3 rounded-md">
+      <div className="flex items-center space-x-2">
+        <Users className="h-4 w-4 text-blue-600" />
+        <span className="text-sm font-medium text-blue-900">
+          {selectedCount} selected
+        </span>
+      </div>
+
+      <div className="flex space-x-2">
+        <button
+          onClick={onBatchApprove}
+          className="flex items-center space-x-1 bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+        >
+          <Check className="h-3 w-3" />
+          <span>Approve All</span>
+        </button>
+
+        <button
+          onClick={() => setShowRejectModal(true)}
+          className="flex items-center space-x-1 bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
+        >
+          <X className="h-3 w-3" />
+          <span>Reject All</span>
+        </button>
+
+        <button
+          onClick={onSelectAll}
+          className="text-blue-600 px-3 py-1 text-sm hover:text-blue-800"
+        >
+          Select All
+        </button>
+
+        <button
+          onClick={onClearSelection}
+          className="text-gray-600 px-3 py-1 text-sm hover:text-gray-800"
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Batch Rejection</h3>
+            <p className="text-gray-600 mb-4">
+              You are about to reject {selectedCount} documents. Please provide a reason:
+            </p>
+            <textarea
+              value={rejectionReason}
+              onChange={(e) => setRejectionReason(e.target.value)}
+              className="w-full p-3 border border-gray-300 rounded-md focus:ring-red-500 focus:border-red-500"
+              rows={3}
+              placeholder="Provide a clear reason for rejection..."
+              required
+            />
+            <div className="flex space-x-3 mt-4">
+              <button
+                onClick={handleBatchReject}
+                disabled={!rejectionReason.trim()}
+                className="bg-red-600 text-white px-4 py-2 rounded-md hover:bg-red-700 disabled:opacity-50"
+              >
+                Reject All
+              </button>
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectionReason('');
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded-md hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
