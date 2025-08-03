@@ -1,6 +1,6 @@
 
 import { describe, test, expect, beforeAll, afterAll } from '@jest/globals';
-import WebSocket from 'ws';
+import { WebSocket } from 'ws';
 
 describe('WebSocket Integration E2E Tests', () => {
   const WS_URL = 'ws://0.0.0.0:5000';
