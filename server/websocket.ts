@@ -1,3 +1,4 @@
+
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 
@@ -10,13 +11,95 @@ export function setupWebSocketServer(server: HTTPServer) {
     path: '/ws'
   });
 
+  // Track online users and admin connections
+  const onlineUsers = new Map<number, string>(); // userId -> socketId
+  const adminConnections = new Set<string>(); // socketIds of admin users
+
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
     // Join user to their personal room for notifications
     socket.on('join_user_room', (userId: number) => {
       socket.join(`user_${userId}`);
+      onlineUsers.set(userId, socket.id);
+      
+      // Notify admins of user status change
+      io.to('admin_user_management').emit('user_status_update', {
+        userId,
+        isOnline: true,
+        timestamp: Date.now()
+      });
+      
       console.log(`User ${userId} joined their room`);
+    });
+
+    // Admin room management
+    socket.on('join_admin_room', (roomType: string) => {
+      socket.join(`admin_${roomType}`);
+      adminConnections.add(socket.id);
+      console.log(`Admin joined room: admin_${roomType}`);
+    });
+
+    // Admin user management events
+    socket.on('admin_user_action', (data: { userId: number; action: string; timestamp: number }) => {
+      // Broadcast to all admin dashboards
+      io.to('admin_user_management').emit('admin_action_completed', {
+        ...data,
+        adminSocket: socket.id
+      });
+      
+      // Notify the affected user
+      io.to(`user_${data.userId}`).emit('account_status_update', {
+        action: data.action,
+        timestamp: data.timestamp,
+        message: `Your account has been ${data.action}d by an administrator`
+      });
+    });
+
+    // KYC verification events
+    socket.on('kyc_review_completed', (data: { 
+      documentId: number; 
+      action: string; 
+      userId: number; 
+      timestamp: number 
+    }) => {
+      // Broadcast to all admin KYC dashboards
+      io.to('admin_kyc_verification').emit('kyc_status_updated', {
+        documentId: data.documentId,
+        status: data.action === 'approve' ? 'APPROVED' : 'REJECTED',
+        reviewedBy: socket.id,
+        timestamp: data.timestamp
+      });
+      
+      // Notify the user about verification status
+      io.to(`user_${data.userId}`).emit('verification_status_update', {
+        documentId: data.documentId,
+        status: data.action === 'approve' ? 'APPROVED' : 'REJECTED',
+        timestamp: data.timestamp,
+        message: `Your identity verification has been ${data.action}d`
+      });
+    });
+
+    socket.on('kyc_batch_review_completed', (data: {
+      documentIds: number[];
+      action: string;
+      count: number;
+      timestamp: number;
+    }) => {
+      // Broadcast to all admin KYC dashboards
+      io.to('admin_kyc_verification').emit('kyc_batch_update', data);
+    });
+
+    // New user registration notification
+    socket.on('new_user_registered', (userData: any) => {
+      // Notify all admin user management dashboards
+      io.to('admin_user_management').emit('new_user_registered', userData);
+    });
+
+    // New KYC submission notification
+    socket.on('new_kyc_submission', (kycData: any) => {
+      // Notify all admin KYC dashboards
+      io.to('admin_kyc_verification').emit('new_kyc_submission', kycData);
     });
 
     // Join order rooms for real-time order updates
@@ -198,8 +281,128 @@ export function setupWebSocketServer(server: HTTPServer) {
       });
     });
 
+    // Support ticket management events
+    socket.on('new_support_ticket', (ticketData: any) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('new_support_ticket', {
+        type: 'new_support_ticket',
+        ticket: ticketData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_status_updated', (data: {
+      ticketId: string;
+      oldStatus: string;
+      newStatus: string;
+      updatedBy: number;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_status_updated', {
+        type: 'ticket_status_updated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_assigned', (data: {
+      ticketId: string;
+      assignedTo: number;
+      assignedBy: number;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_assigned', {
+        type: 'ticket_assigned',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('ticket_response_sent', (data: {
+      ticketId: string;
+      response: string;
+      sentBy: number;
+      customerEmail: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_response_sent', {
+        type: 'ticket_response_sent',
+        ...data,
+        timestamp: Date.now()
+      });
+
+      // Send email notification to customer (in real implementation)
+      console.log(`Email notification sent to ${data.customerEmail} for ticket ${data.ticketId}`);
+    });
+
+    socket.on('ticket_escalated', (data: {
+      ticketId: string;
+      oldPriority: string;
+      newPriority: string;
+      escalatedBy: number;
+      reason?: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('ticket_escalated', {
+        type: 'ticket_escalated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('tickets_bulk_assigned', (data: {
+      ticketIds: string[];
+      assignedTo: number;
+      assignedBy: number;
+      priority?: string;
+    }) => {
+      // Notify all admin support dashboards
+      io.to('admin_support').emit('tickets_bulk_assigned', {
+        type: 'tickets_bulk_assigned',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Support ticket real-time notifications for customers
+    socket.on('join_support_room', (ticketId: string) => {
+      socket.join(`support_ticket_${ticketId}`);
+      console.log(`Joined support ticket room: ${ticketId}`);
+    });
+
+    socket.on('customer_ticket_update', (data: {
+      ticketId: string;
+      customerId: number;
+      update: string;
+    }) => {
+      // Notify admin dashboards about customer updates
+      io.to('admin_support').emit('customer_ticket_update', {
+        type: 'customer_ticket_update',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
+      
+      // Remove from online users tracking
+      for (const [userId, socketId] of onlineUsers.entries()) {
+        if (socketId === socket.id) {
+          onlineUsers.delete(userId);
+          
+          // Notify admins of user going offline
+          io.to('admin_user_management').emit('user_status_update', {
+            userId,
+            isOnline: false,
+            timestamp: Date.now()
+          });
+          break;
+        }
+      }
+      
+      // Remove from admin connections
+      adminConnections.delete(socket.id);
     });
   });
 
@@ -207,6 +410,7 @@ export function setupWebSocketServer(server: HTTPServer) {
   setInterval(() => {
     const rooms = io.sockets.adapter.rooms;
     console.log(`Active rooms: ${rooms.size}, Connected clients: ${io.sockets.sockets.size}`);
+    console.log(`Online users: ${onlineUsers.size}, Admin connections: ${adminConnections.size}`);
   }, 60000); // Log every minute
 
   return io;

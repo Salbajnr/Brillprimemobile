@@ -876,10 +876,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const ticketData = insertSupportTicketSchema.parse(req.body);
       
-      // Generate unique ticket number
-      const ticketNumber = `SP-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-      
       const ticket = await storage.createSupportTicket(ticketData);
+      
+      // Emit WebSocket event for real-time notification to admin dashboards
+      if (global.io) {
+        global.io.to('admin_support').emit('new_support_ticket', {
+          type: 'new_support_ticket',
+          ticket: ticket,
+          timestamp: Date.now()
+        });
+      }
       
       res.json({ 
         message: "Support ticket created successfully",

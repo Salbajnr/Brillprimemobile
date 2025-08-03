@@ -50,6 +50,7 @@ import Messages from "@/pages/messages";
 import IdentityVerification from "@/pages/identity-verification-simple";
 import TollPayments from "./pages/toll-payments";
 import FuelDeliveryTracking from "./pages/fuel-delivery-tracking";
+import AdminDashboard from "@/pages/admin-dashboard";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -110,6 +111,8 @@ function Router() {
       <Route path="/support" component={() => <ProtectedRoute component={Support} />} />
       <Route path="/messages" component={() => <ProtectedRoute component={Messages} />} />
       <Route path="/identity-verification" component={() => <ProtectedRoute component={IdentityVerification} />} />
+      <Route path="/admin" component={AdminDashboard} />
+      <Route path="/admin/*" component={AdminDashboard} />
       <Route component={NotFound} />
     </Switch>
   );

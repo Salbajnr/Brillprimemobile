@@ -10,14 +10,14 @@ export default defineConfig({
     port: 5001,
     proxy: {
       '/api': {
-        target: 'http://0.0.0.0:5000',
-        changeOrigin: true,
+        target: 'http://localhost:5000',
+        changeOrigin: true
       }
     }
   },
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
+      '@': path.resolve(__dirname, './src')
+    }
+  }
 })

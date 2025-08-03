@@ -63,8 +63,12 @@ app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
 // Create HTTP server
 const server = createServer(app);
 
-// Setup WebSocket
-setupWebSocketServer(server);
+// Setup WebSocket server
+  const io = setupWebSocketServer(server);
+
+  // Make WebSocket server globally available for route handlers
+  global.io = io;
+  app.set('server', { io });
 
 // Setup Vite or static serving
 if (app.get("env") === "development") {

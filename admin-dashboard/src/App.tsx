@@ -1,40 +1,35 @@
 import React from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Login } from './components/Login';
-import { Layout } from './components/Layout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Dashboard } from './pages/Dashboard';
-import './index.css';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { AdminProvider } from './lib/admin-auth';
+import { AdminLogin } from './components/admin-login';
+import { AdminDashboard } from './pages/admin-dashboard';
+import { AdminUserManagement } from './pages/admin-user-management';
+import { AdminKYCVerification } from './pages/admin-kyc-verification';
+import { AdminTransactions } from './pages/admin-transactions';
+import { AdminFraud } from './pages/admin-fraud';
+import { AdminSupport } from './pages/admin-support';
 
-function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Login />;
-  }
-
-  return (
-    <Layout>
-      <ProtectedRoute>
-        <Dashboard />
-      </ProtectedRoute>
-    </Layout>
-  );
-}
+const queryClient = new QueryClient();
 
 function App() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <QueryClientProvider client={queryClient}>
+      <AdminProvider>
+        <Router>
+          <Routes>
+            <Route path="/login" element={<AdminLogin />} />
+            <Route path="/dashboard" element={<AdminDashboard />} />
+            <Route path="/users" element={<AdminUserManagement />} />
+            <Route path="/kyc" element={<AdminKYCVerification />} />
+            <Route path="/transactions" element={<AdminTransactions />} />
+            <Route path="/fraud" element={<AdminFraud />} />
+            <Route path="/support" element={<AdminSupport />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          </Routes>
+        </Router>
+      </AdminProvider>
+    </QueryClientProvider>
   );
 }
 

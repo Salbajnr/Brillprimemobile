@@ -17,9 +17,11 @@ export const adminUsers = pgTable("admin_users", {
 export const adminPaymentActions = pgTable("admin_payment_actions", {
   id: serial("id").primaryKey(),
   adminId: integer("admin_id").notNull().references(() => adminUsers.id),
-  action: text("action", { enum: ["REFUND", "HOLD", "RELEASE", "DISTRIBUTE"] }).notNull(),
+  action: text("action", { 
+    enum: ["REFUND", "HOLD", "RELEASE", "CANCEL", "REVERSE", "APPROVE", "REJECT"] 
+  }).notNull(),
   paymentId: uuid("payment_id").notNull(),
-  details: json("details"),
+  details: json("details"), // Store action-specific details
   createdAt: timestamp("created_at").defaultNow(),
 });
 
@@ -752,12 +754,15 @@ export const paymentNotifications = pgTable("payment_notifications", {
   createdAt: timestamp("created_at").defaultNow(),
 });
 
+
+
 // Zod schemas for payment tables
 export const insertWalletSchema = createInsertSchema(wallets);
 export const insertPaymentMethodSchema = createInsertSchema(paymentMethods);
 export const insertTransactionSchema = createInsertSchema(transactions);
 export const insertEscrowTransactionSchema = createInsertSchema(escrowTransactions);
 export const insertPaymentNotificationSchema = createInsertSchema(paymentNotifications);
+export const insertAdminPaymentActionSchema = createInsertSchema(adminPaymentActions);
 
 // Types
 export type Wallet = typeof wallets.$inferSelect;
@@ -770,3 +775,5 @@ export type EscrowTransaction = typeof escrowTransactions.$inferSelect;
 export type InsertEscrowTransaction = typeof escrowTransactions.$inferInsert;
 export type PaymentNotification = typeof paymentNotifications.$inferSelect;
 export type InsertPaymentNotification = typeof paymentNotifications.$inferInsert;
+export type AdminPaymentAction = typeof adminPaymentActions.$inferSelect;
+export type InsertAdminPaymentAction = typeof adminPaymentActions.$inferInsert;

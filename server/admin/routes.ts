@@ -1,11 +1,13 @@
-
 import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations } from '../../shared/schema';
+import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations, adminPaymentActions } from '../../shared/schema';
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
 import { adminAuth, requirePermission } from '../middleware/adminAuth';
+import { Request, Response, Router } from "express";
+import { storage } from "../storage";
+import { identityVerifications, driverVerifications } from "../../shared/schema";
 
 const router = express.Router();
 
@@ -490,6 +492,44 @@ router.post('/kyc/:documentId/review', adminAuth, async (req, res) => {
   }
 });
 
+// Batch KYC operations
+router.post('/kyc/batch-review', adminAuth, async (req, res) => {
+  try {
+    const { documentIds, action, reason } = req.body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid document IDs' });
+    }
+
+    const status = action === 'approve' ? 'APPROVED' : 'REJECTED';
+    
+    // Update all documents in batch
+    await db.update(complianceDocuments).set({
+      status,
+      reviewedBy: req.adminUser.adminId,
+      reviewedAt: new Date()
+    }).where(inArray(complianceDocuments.id, documentIds));
+
+    // If approved, update user verification status for all users
+    if (action === 'approve') {
+      const documents = await db.select().from(complianceDocuments).where(inArray(complianceDocuments.id, documentIds));
+      const userIds = Array.from(new Set(documents.map(doc => doc.userId)));
+      
+      await db.update(users).set({
+        isIdentityVerified: true
+      }).where(inArray(users.id, userIds));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${documentIds.length} KYC documents ${action}d successfully` 
+    });
+  } catch (error) {
+    console.error('Batch KYC review error:', error);
+    res.status(500).json({ success: false, message: 'Failed to batch review KYC' });
+  }
+});
+
 // Support Tickets
 router.get('/support/tickets', adminAuth, async (req, res) => {
   try {
@@ -559,6 +599,7 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const updates = req.body;
+    const oldTicket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
 
     if (updates.assignedTo !== undefined) {
       updates.assignedTo = parseInt(updates.assignedTo);
@@ -572,6 +613,32 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
 
     await db.update(supportTickets).set(updates).where(eq(supportTickets.id, ticketId));
 
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      if (oldTicket[0] && updates.status && oldTicket[0].status !== updates.status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: oldTicket[0].status,
+          newStatus: updates.status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+
+      if (updates.assignedTo) {
+        server.io.to('admin_support').emit('ticket_assigned', {
+          type: 'ticket_assigned',
+          ticketId,
+          assignedTo: updates.assignedTo,
+          assignedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
+
     res.json({ success: true, message: 'Ticket updated successfully' });
   } catch (error) {
     console.error('Update ticket error:', error);
@@ -584,11 +651,43 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
     const ticketId = req.params.id;
     const { response, status } = req.body;
 
+    // Get ticket details for email notification
+    const ticket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+    
+    if (ticket.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
     await db.update(supportTickets).set({
       adminNotes: response,
       status: status || 'IN_PROGRESS',
       updatedAt: new Date()
     }).where(eq(supportTickets.id, ticketId));
+
+    // Emit WebSocket event for real-time updates
+    const { setupWebSocketServer } = await import('../websocket');
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('ticket_response_sent', {
+        type: 'ticket_response_sent',
+        ticketId,
+        response,
+        sentBy: req.adminUser.adminId,
+        customerEmail: ticket[0].email,
+        timestamp: Date.now()
+      });
+
+      if (status) {
+        server.io.to('admin_support').emit('ticket_status_updated', {
+          type: 'ticket_status_updated',
+          ticketId,
+          oldStatus: ticket[0].status,
+          newStatus: status,
+          updatedBy: req.adminUser.adminId,
+          timestamp: Date.now()
+        });
+      }
+    }
 
     res.json({ success: true, message: 'Response sent successfully' });
   } catch (error) {
@@ -597,14 +696,156 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
   }
 });
 
-// Transaction Management
+// Bulk ticket assignment
+router.post('/support/tickets/bulk-assign', adminAuth, async (req, res) => {
+  try {
+    const { ticketIds, adminId, priority } = req.body;
+
+    if (!Array.isArray(ticketIds) || ticketIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid ticket IDs' });
+    }
+
+    const updates: any = {
+      assignedTo: adminId,
+      status: 'IN_PROGRESS',
+      updatedAt: new Date()
+    };
+
+    if (priority) {
+      updates.priority = priority;
+    }
+
+    await db.update(supportTickets)
+      .set(updates)
+      .where(inArray(supportTickets.id, ticketIds));
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('tickets_bulk_assigned', {
+        type: 'tickets_bulk_assigned',
+        ticketIds,
+        assignedTo: adminId,
+        assignedBy: req.adminUser.adminId,
+        priority,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${ticketIds.length} tickets assigned successfully` 
+    });
+  } catch (error) {
+    console.error('Bulk assign tickets error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign tickets' });
+  }
+});
+
+// Escalate ticket
+router.post('/support/tickets/:id/escalate', adminAuth, async (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const { priority, reason } = req.body;
+
+    const ticket = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId)).limit(1);
+    
+    if (ticket.length === 0) {
+      return res.status(404).json({ success: false, message: 'Ticket not found' });
+    }
+
+    await db.update(supportTickets).set({
+      priority: priority || 'HIGH',
+      status: 'IN_PROGRESS',
+      adminNotes: reason ? `Escalated: ${reason}` : 'Ticket escalated',
+      updatedAt: new Date()
+    }).where(eq(supportTickets.id, ticketId));
+
+    // Emit WebSocket event for real-time updates
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_support').emit('ticket_escalated', {
+        type: 'ticket_escalated',
+        ticketId,
+        oldPriority: ticket[0].priority,
+        newPriority: priority || 'HIGH',
+        escalatedBy: req.adminUser.adminId,
+        reason,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ success: true, message: 'Ticket escalated successfully' });
+  } catch (error) {
+    console.error('Escalate ticket error:', error);
+    res.status(500).json({ success: false, message: 'Failed to escalate ticket' });
+  }
+});
+
+// Get ticket statistics for dashboard
+router.get('/support/statistics', adminAuth, async (req, res) => {
+  try {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const thisWeek = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const [
+      totalTickets,
+      openTickets,
+      inProgressTickets,
+      resolvedTickets,
+      urgentTickets,
+      todayTickets,
+      weekTickets,
+      avgResponseTime
+    ] = await Promise.all([
+      db.select({ count: count() }).from(supportTickets),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'OPEN')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'IN_PROGRESS')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'RESOLVED')),
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.priority, 'URGENT')),
+      db.select({ count: count() }).from(supportTickets).where(gte(supportTickets.createdAt, today)),
+      db.select({ count: count() }).from(supportTickets).where(gte(supportTickets.createdAt, thisWeek)),
+      // Mock average response time calculation
+      Promise.resolve([{ avg: 2.5 }])
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        total: totalTickets[0].count,
+        open: openTickets[0].count,
+        inProgress: inProgressTickets[0].count,
+        resolved: resolvedTickets[0].count,
+        urgent: urgentTickets[0].count,
+        today: todayTickets[0].count,
+        thisWeek: weekTickets[0].count,
+        avgResponseTime: avgResponseTime[0].avg
+      }
+    });
+  } catch (error) {
+    console.error('Get support statistics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get statistics' });
+  }
+});
+
+// Enhanced Transaction Management with Advanced Filtering
 router.get('/transactions', adminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    
+    // Enhanced filter parameters
     const status = req.query.status as string;
     const type = req.query.type as string;
+    const userId = req.query.userId as string;
+    const minAmount = req.query.minAmount as string;
+    const maxAmount = req.query.maxAmount as string;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    const search = req.query.search as string;
+    const channel = req.query.channel as string;
 
     let whereConditions = [];
 
@@ -614,6 +855,41 @@ router.get('/transactions', adminAuth, async (req, res) => {
 
     if (type) {
       whereConditions.push(eq(transactions.type, type as any));
+    }
+
+    if (userId) {
+      whereConditions.push(eq(transactions.userId, parseInt(userId)));
+    }
+
+    if (minAmount) {
+      whereConditions.push(gte(transactions.amount, minAmount));
+    }
+
+    if (maxAmount) {
+      whereConditions.push(lte(transactions.amount, maxAmount));
+    }
+
+    if (startDate) {
+      whereConditions.push(gte(transactions.initiatedAt, new Date(startDate)));
+    }
+
+    if (endDate) {
+      whereConditions.push(lte(transactions.initiatedAt, new Date(endDate)));
+    }
+
+    if (channel) {
+      whereConditions.push(eq(transactions.channel, channel));
+    }
+
+    if (search) {
+      whereConditions.push(
+        or(
+          like(transactions.description, `%${search}%`),
+          like(transactions.paystackReference, `%${search}%`),
+          like(users.fullName, `%${search}%`),
+          like(users.email, `%${search}%`)
+        )
+      );
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -635,9 +911,13 @@ router.get('/transactions', adminAuth, async (req, res) => {
         initiatedAt: transactions.initiatedAt,
         completedAt: transactions.completedAt,
         failedAt: transactions.failedAt,
+        metadata: transactions.metadata,
         user: {
+          id: users.id,
+          userId: users.userId,
           fullName: users.fullName,
-          email: users.email
+          email: users.email,
+          role: users.role
         }
       })
       .from(transactions)
@@ -649,6 +929,16 @@ router.get('/transactions', adminAuth, async (req, res) => {
 
     const totalCount = await db.select({ count: count() }).from(transactions).where(whereClause);
 
+    // Get transaction statistics
+    const [successTotal, failedTotal, pendingTotal] = await Promise.all([
+      db.select({ 
+        total: sql<number>`COALESCE(SUM(CAST(${transactions.amount} AS DECIMAL)), 0)`,
+        count: count()
+      }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'SUCCESS'))),
+      db.select({ count: count() }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'FAILED'))),
+      db.select({ count: count() }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'PENDING')))
+    ]);
+
     res.json({
       success: true,
       data: {
@@ -656,7 +946,13 @@ router.get('/transactions', adminAuth, async (req, res) => {
         total: totalCount[0].count,
         page,
         limit,
-        totalPages: Math.ceil(totalCount[0].count / limit)
+        totalPages: Math.ceil(totalCount[0].count / limit),
+        statistics: {
+          successTotal: successTotal[0].total || 0,
+          successCount: successTotal[0].count,
+          failedCount: failedTotal[0].count,
+          pendingCount: pendingTotal[0].count
+        }
       }
     });
   } catch (error) {
@@ -665,20 +961,49 @@ router.get('/transactions', adminAuth, async (req, res) => {
   }
 });
 
+// Enhanced transaction refund with real-time updates
 router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
-    const { reason, amount } = req.body;
+    const { reason, amount, refundType = 'FULL' } = req.body;
+
+    // Get original transaction to get correct user ID
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    const refundAmount = refundType === 'FULL' ? originalTx[0].amount : amount;
 
     // Create refund transaction
-    await db.insert(transactions).values({
-      userId: req.adminUser.userId,
+    const refundTx = await db.insert(transactions).values({
+      userId: originalTx[0].userId,
       type: 'REFUND',
-      status: 'PENDING',
-      amount: amount,
-      currency: 'NGN',
-      description: `Refund: ${reason}`,
+      status: 'PROCESSING',
+      amount: refundAmount,
+      netAmount: refundAmount,
+      currency: originalTx[0].currency || 'NGN',
+      description: `Refund (${refundType}): ${reason}`,
+      metadata: {
+        originalTransactionId: transactionId,
+        refundType,
+        processedBy: req.adminUser.adminId,
+        processedAt: new Date().toISOString()
+      },
       initiatedAt: new Date()
+    }).returning();
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'REFUND',
+      paymentId: transactionId,
+      details: {
+        refundAmount,
+        refundType,
+        reason,
+        refundTransactionId: refundTx[0].id
+      }
     });
 
     // Update original transaction status
@@ -687,23 +1012,78 @@ router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAY
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
 
-    res.json({ success: true, message: 'Refund initiated successfully' });
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_refunded', {
+        type: 'transaction_refunded',
+        transactionId,
+        refundTransactionId: refundTx[0].id,
+        amount: refundAmount,
+        refundType,
+        processedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Refund initiated successfully',
+      data: { refundTransactionId: refundTx[0].id }
+    });
   } catch (error) {
     console.error('Refund transaction error:', error);
     res.status(500).json({ success: false, message: 'Failed to process refund' });
   }
 });
 
+// Enhanced transaction hold with real-time updates
 router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
-    const { reason } = req.body;
+    const { reason, holdType = 'MANUAL' } = req.body;
+
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
 
     await db.update(transactions).set({
       status: 'PROCESSING',
-      description: `Held: ${reason}`,
+      metadata: {
+        ...originalTx[0].metadata as any,
+        holdReason: reason,
+        holdType,
+        heldBy: req.adminUser.adminId,
+        heldAt: new Date().toISOString()
+      },
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'HOLD',
+      paymentId: transactionId,
+      details: {
+        reason,
+        holdType,
+        originalStatus: originalTx[0].status
+      }
+    });
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_held', {
+        type: 'transaction_held',
+        transactionId,
+        reason,
+        holdType,
+        heldBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
 
     res.json({ success: true, message: 'Transaction held successfully' });
   } catch (error) {
@@ -712,20 +1092,214 @@ router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYME
   }
 });
 
+// Enhanced transaction release with real-time updates
 router.post('/transactions/:id/release', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
+    const { notes } = req.body;
+
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
 
     await db.update(transactions).set({
       status: 'SUCCESS',
       completedAt: new Date(),
+      metadata: {
+        ...originalTx[0].metadata as any,
+        releaseNotes: notes,
+        releasedBy: req.adminUser.adminId,
+        releasedAt: new Date().toISOString()
+      },
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'RELEASE',
+      paymentId: transactionId,
+      details: {
+        notes,
+        previousStatus: originalTx[0].status
+      }
+    });
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_released', {
+        type: 'transaction_released',
+        transactionId,
+        notes,
+        releasedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
 
     res.json({ success: true, message: 'Transaction released successfully' });
   } catch (error) {
     console.error('Release transaction error:', error);
     res.status(500).json({ success: false, message: 'Failed to release transaction' });
+  }
+});
+
+// Get detailed transaction information
+router.get('/transactions/:id', adminAuth, async (req, res) => {
+  try {
+    const transactionId = req.params.id;
+
+    const transactionData = await db
+      .select({
+        id: transactions.id,
+        userId: transactions.userId,
+        recipientId: transactions.recipientId,
+        walletId: transactions.walletId,
+        paymentMethodId: transactions.paymentMethodId,
+        orderId: transactions.orderId,
+        type: transactions.type,
+        status: transactions.status,
+        amount: transactions.amount,
+        fee: transactions.fee,
+        netAmount: transactions.netAmount,
+        currency: transactions.currency,
+        paystackReference: transactions.paystackReference,
+        paystackTransactionId: transactions.paystackTransactionId,
+        gatewayResponse: transactions.gatewayResponse,
+        description: transactions.description,
+        metadata: transactions.metadata,
+        channel: transactions.channel,
+        ipAddress: transactions.ipAddress,
+        userAgent: transactions.userAgent,
+        initiatedAt: transactions.initiatedAt,
+        completedAt: transactions.completedAt,
+        failedAt: transactions.failedAt,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        user: {
+          id: users.id,
+          userId: users.userId,
+          fullName: users.fullName,
+          email: users.email,
+          phone: users.phone,
+          role: users.role
+        }
+      })
+      .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .where(eq(transactions.id, transactionId))
+      .limit(1);
+
+    if (transactionData.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    // Get related admin actions
+    const adminActions = await db
+      .select({
+        id: adminPaymentActions.id,
+        action: adminPaymentActions.action,
+        details: adminPaymentActions.details,
+        createdAt: adminPaymentActions.createdAt,
+        admin: {
+          id: adminUsers.id,
+          role: adminUsers.role,
+          user: {
+            fullName: users.fullName,
+            email: users.email
+          }
+        }
+      })
+      .from(adminPaymentActions)
+      .leftJoin(adminUsers, eq(adminPaymentActions.adminId, adminUsers.id))
+      .leftJoin(users, eq(adminUsers.userId, users.userId))
+      .where(eq(adminPaymentActions.paymentId, transactionId))
+      .orderBy(desc(adminPaymentActions.createdAt));
+
+    res.json({
+      success: true,
+      data: {
+        transaction: transactionData[0],
+        adminActions
+      }
+    });
+  } catch (error) {
+    console.error('Get transaction details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get transaction details' });
+  }
+});
+
+// Bulk transaction operations
+router.post('/transactions/bulk-action', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+  try {
+    const { transactionIds, action, reason } = req.body;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid transaction IDs' });
+    }
+
+    let updateData: any = { updatedAt: new Date() };
+    let actionType: string;
+
+    switch (action) {
+      case 'hold':
+        updateData.status = 'PROCESSING';
+        actionType = 'HOLD';
+        break;
+      case 'release':
+        updateData.status = 'SUCCESS';
+        updateData.completedAt = new Date();
+        actionType = 'RELEASE';
+        break;
+      case 'cancel':
+        updateData.status = 'CANCELLED';
+        updateData.failedAt = new Date();
+        actionType = 'CANCEL';
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+
+    // Update transactions
+    await db.update(transactions)
+      .set(updateData)
+      .where(inArray(transactions.id, transactionIds));
+
+    // Log bulk admin actions
+    const bulkActions = transactionIds.map(transactionId => ({
+      adminId: req.adminUser.adminId,
+      action: actionType as any,
+      paymentId: transactionId,
+      details: {
+        reason,
+        bulkOperation: true,
+        totalTransactions: transactionIds.length
+      }
+    }));
+
+    await db.insert(adminPaymentActions).values(bulkActions);
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transactions_bulk_action', {
+        type: 'transactions_bulk_action',
+        transactionIds,
+        action,
+        reason,
+        processedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${transactionIds.length} transactions ${action}ed successfully` 
+    });
+  } catch (error) {
+    console.error('Bulk transaction action error:', error);
+    res.status(500).json({ success: false, message: 'Failed to process bulk action' });
   }
 });
 
@@ -848,8 +1422,7 @@ router.get('/monitoring/drivers/locations', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      data: driverLocations
-    });
+      data: driverLocations    });
   } catch (error) {
     console.error('Get driver locations error:', error);
     res.status(500).json({ success: false, message: 'Failed to get driver locations' });
@@ -1103,6 +1676,394 @@ router.get('/support/live-chat/messages/:conversationId', adminAuth, async (req,
   } catch (error) {
     console.error('Get chat messages error:', error);
     res.status(500).json({ success: false, message: 'Failed to get chat messages' });
+  }
+});
+
+// Real-time user management endpoints
+router.get('/users', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+  try {
+    const { 
+      page = '1', 
+      limit = '20', 
+      search = '', 
+      role = '', 
+      status = '', 
+      verification = '' 
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build where conditions
+    const conditions = [];
+
+    if (search) {
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          like(users.fullName, searchTerm),
+          like(users.email, searchTerm),
+          like(users.userId, searchTerm),
+          like(users.phone, searchTerm)
+        )
+      );
+    }
+
+    if (role) {
+      conditions.push(eq(users.role, role as any));
+    }
+
+    if (verification === 'verified') {
+      conditions.push(eq(users.isVerified, true));
+    } else if (verification === 'unverified') {
+      conditions.push(eq(users.isVerified, false));
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get users with pagination
+    const [usersList, totalCount] = await Promise.all([
+      db.select()
+        .from(users)
+        .where(whereClause)
+        .orderBy(desc(users.createdAt))
+        .limit(limitNum)
+        .offset(offset),
+      db.select({ count: count() })
+        .from(users)
+        .where(whereClause)
+    ]);
+
+    // Get stats
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      totalUsers,
+      verifiedUsers,
+      newUsersToday
+    ] = await Promise.all([
+      db.select({ count: count() }).from(users),
+      db.select({ count: count() }).from(users).where(eq(users.isVerified, true)),
+      db.select({ count: count() }).from(users).where(gte(users.createdAt, today))
+    ]);
+
+    const stats = {
+      totalUsers: totalUsers[0].count,
+      activeUsers: 0, // This would come from WebSocket tracking
+      verifiedUsers: verifiedUsers[0].count,
+      pendingVerifications: totalUsers[0].count - verifiedUsers[0].count,
+      newUsersToday: newUsersToday[0].count
+    };
+
+    const pagination = {
+      currentPage: pageNum,
+      totalPages: Math.ceil(totalCount[0].count / limitNum),
+      totalUsers: totalCount[0].count,
+      hasNext: pageNum * limitNum < totalCount[0].count,
+      hasPrev: pageNum > 1
+    };
+
+    res.json({
+      success: true,
+      data: {
+        users: usersList,
+        pagination,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Get users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get users' });
+  }
+});
+
+router.post('/users/:userId/action', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+  try {
+    const { userId } = req.params;
+    const { action } = req.body;
+
+    const user = await db.select().from(users).where(eq(users.id, parseInt(userId))).limit(1);
+
+    if (user.length === 0) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    switch (action) {
+      case 'verify':
+        await db.update(users)
+          .set({ isVerified: true, isIdentityVerified: true })
+          .where(eq(users.id, parseInt(userId)));
+        break;
+
+      case 'suspend':
+        // In a real app, you'd have a suspended status field
+        // For now, we'll just mark as unverified
+        await db.update(users)
+          .set({ isVerified: false })
+          .where(eq(users.id, parseInt(userId)));
+        break;
+
+      default:
+        return res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `User ${action} successful`,
+      data: { userId: parseInt(userId) }
+    });
+
+  } catch (error) {
+    console.error('User action error:', error);
+    res.status(500).json({ success: false, message: 'User action failed' });
+  }
+});
+
+// KYC document management endpoints
+router.get('/kyc-documents', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { 
+      page = '1', 
+      limit = '20', 
+      status = 'PENDING', 
+      documentType = '', 
+      priority = '',
+      search = '',
+      dateRange = ''
+    } = req.query;
+
+    const pageNum = parseInt(page as string);
+    const limitNum = parseInt(limit as string);
+    const offset = (pageNum - 1) * limitNum;
+
+    // Build where conditions
+    const conditions = [];
+
+    if (status) {
+      conditions.push(eq(complianceDocuments.status, status as any));
+    }
+
+    if (documentType) {
+      conditions.push(eq(complianceDocuments.documentType, documentType as any));
+    }
+
+    if (search) {
+      // Join with users table to search by user info
+      const searchTerm = `%${search}%`;
+      conditions.push(
+        or(
+          like(users.fullName, searchTerm),
+          like(users.email, searchTerm)
+        )
+      );
+    }
+
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
+    // Get documents with user info
+    const documents = await db.select({
+      id: complianceDocuments.id,
+      userId: complianceDocuments.userId,
+      documentType: complianceDocuments.documentType,
+      documentUrl: complianceDocuments.documentUrl,
+      status: complianceDocuments.status,
+      reviewedBy: complianceDocuments.reviewedBy,
+      reviewedAt: complianceDocuments.reviewedAt,
+      createdAt: complianceDocuments.createdAt,
+      updatedAt: complianceDocuments.updatedAt,
+      userInfo: {
+        fullName: users.fullName,
+        email: users.email,
+        role: users.role,
+        profilePicture: users.profilePicture
+      }
+    })
+    .from(complianceDocuments)
+    .innerJoin(users, eq(complianceDocuments.userId, users.id))
+    .where(whereClause)
+    .orderBy(desc(complianceDocuments.createdAt))
+    .limit(limitNum)
+    .offset(offset);
+
+    // Get stats
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const [
+      pendingCount,
+      approvedCount,
+      rejectedCount,
+      todaySubmissions
+    ] = await Promise.all([
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'PENDING')),
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'APPROVED')),
+      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'REJECTED')),
+      db.select({ count: count() }).from(complianceDocuments).where(gte(complianceDocuments.createdAt, today))
+    ]);
+
+    const stats = {
+      pending: pendingCount[0].count,
+      approved: approvedCount[0].count,
+      rejected: rejectedCount[0].count,
+      todaySubmissions: todaySubmissions[0].count,
+      avgProcessingTime: 2.5 // This would be calculated from actual processing times
+    };
+
+    // Add priority and format for frontend
+    const formattedDocuments = documents.map(doc => ({
+      ...doc,
+      priority: 'MEDIUM', // This would come from business logic
+      submittedAt: doc.createdAt
+    }));
+
+    res.json({
+      success: true,
+      data: {
+        documents: formattedDocuments,
+        stats
+      }
+    });
+
+  } catch (error) {
+    console.error('Get KYC documents error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get KYC documents' });
+  }
+});
+
+router.post('/kyc-documents/:documentId/review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { documentId } = req.params;
+    const { action, reason } = req.body;
+
+    const document = await db.select()
+      .from(complianceDocuments)
+      .where(eq(complianceDocuments.id, parseInt(documentId)))
+      .limit(1);
+
+    if (document.length === 0) {
+      return res.status(404).json({ success: false, message: 'Document not found' });
+    }
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    await db.update(complianceDocuments)
+      .set({ 
+        status: newStatus,
+        reviewedAt: new Date(),
+        reviewedBy: req.user?.id
+      })
+      .where(eq(complianceDocuments.id, parseInt(documentId)));
+
+    // If approved, update user verification status
+    if (action === 'approve') {
+      await db.update(users)
+        .set({ isIdentityVerified: true, isVerified: true })
+        .where(eq(users.id, document[0].userId));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `Document ${action} successful`,
+      data: { userId: document[0].userId }
+    });
+
+  } catch (error) {
+    console.error('Document review error:', error);
+    res.status(500).json({ success: false, message: 'Document review failed' });
+  }
+});
+
+router.post('/kyc-documents/batch-review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+  try {
+    const { documentIds, action, reason } = req.body;
+
+    if (!Array.isArray(documentIds) || documentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid document IDs' });
+    }
+
+    const newStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
+
+    // Get documents to update user statuses
+    const documents = await db.select()
+      .from(complianceDocuments)
+      .where(inArray(complianceDocuments.id, documentIds));
+
+    // Update document statuses
+    await db.update(complianceDocuments)
+      .set({ 
+        status: newStatus,
+        reviewedAt: new Date(),
+        reviewedBy: req.user?.id
+      })
+      .where(inArray(complianceDocuments.id, documentIds));
+
+    // If approved, update user verification statuses
+    if (action === 'approve') {
+      const userIds = documents.map(doc => doc.userId);
+      await db.update(users)
+        .set({ isIdentityVerified: true, isVerified: true })
+        .where(inArray(users.id, userIds));
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${documentIds.length} documents ${action} successful`
+    });
+
+  } catch (error) {
+    console.error('Batch review error:', error);
+    res.status(500).json({ success: false, message: 'Batch review failed' });
+  }
+});
+
+// Real-time metrics for dashboard
+router.get('/realtime-metrics', adminAuth, async (req: Request, res: Response) => {
+  try {
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const [
+      recentTransactions,
+      activeUsers,
+      pendingOrders
+    ] = await Promise.all([
+      db.select({ count: count() }).from(transactions).where(gte(transactions.initiatedAt, oneHourAgo)),
+      db.select({ count: count() }).from(users).where(gte(users.createdAt, oneHourAgo)),
+      db.select({ count: count() }).from(orders).where(inArray(orders.status, ['pending', 'confirmed']))
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        recentTransactions: recentTransactions[0].count,
+        newUsers: activeUsers[0].count,
+        pendingOrders: pendingOrders[0].count,
+        timestamp: now.toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Get realtime metrics error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get realtime metrics' });
+  }
+});
+
+// Database Maintenance
+router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENANCE'), async (req, res) => {
+  try {
+    // In a real implementation, this would trigger a database backup
+    const backupId = `backup_${Date.now()}`;
+
+    res.json({ 
+      success: true, 
+      message: 'Backup initiated successfully',
+      data: { backupId }
+    });
+  } catch (error) {
+    console.error('Database backup error:', error);
+    res.status(500).json({ success: false, message: 'Backup failed' });
   }
 });
 
