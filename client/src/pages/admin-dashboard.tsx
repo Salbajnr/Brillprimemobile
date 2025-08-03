@@ -1,18 +1,17 @@
 import React, { useState } from 'react';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
-import { Login } from './components/Login';
-import { Layout } from './components/Layout';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import { Dashboard } from './pages/Dashboard';
-import { UserManagement } from './pages/UserManagement';
-import { KYCVerification } from './pages/KYCVerification';
-import './index.css';
+import { AdminProvider, useAdmin } from '../lib/admin-auth';
+import { AdminLogin } from '../components/admin-login';
+import { AdminLayout } from '../components/admin-layout';
+import { AdminProtectedRoute } from '../components/admin-protected-route';
+import { AdminDashboardMain } from '../components/admin-dashboard-main';
+import { AdminUserManagement } from '../components/admin-user-management';
+import { AdminKYCVerification } from '../components/admin-kyc-verification';
 
-type PageType = 'dashboard' | 'users' | 'kyc' | 'merchants' | 'drivers' | 'support' | 'transactions' | 'fraud' | 'monitoring' | 'security' | 'maintenance';
+type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'merchants' | 'drivers' | 'support' | 'transactions' | 'fraud' | 'monitoring' | 'security' | 'maintenance';
 
-function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
-  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
+function AdminContent() {
+  const { isAuthenticated, isLoading } = useAdmin();
+  const [currentPage, setCurrentPage] = useState<AdminPageType>('dashboard');
 
   if (isLoading) {
     return (
@@ -23,17 +22,17 @@ function AppContent() {
   }
 
   if (!isAuthenticated) {
-    return <Login />;
+    return <AdminLogin />;
   }
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard />;
+        return <AdminDashboardMain />;
       case 'users':
-        return <UserManagement />;
+        return <AdminUserManagement />;
       case 'kyc':
-        return <KYCVerification />;
+        return <AdminKYCVerification />;
       case 'merchants':
         return <div className="p-6"><h1 className="text-2xl font-bold">Merchant Applications</h1><p className="text-gray-600">Coming soon...</p></div>;
       case 'drivers':
@@ -51,25 +50,23 @@ function AppContent() {
       case 'maintenance':
         return <div className="p-6"><h1 className="text-2xl font-bold">System Maintenance</h1><p className="text-gray-600">Coming soon...</p></div>;
       default:
-        return <Dashboard />;
+        return <AdminDashboardMain />;
     }
   };
 
   return (
-    <Layout currentPage={currentPage} onPageChange={setCurrentPage}>
-      <ProtectedRoute>
+    <AdminLayout currentPage={currentPage} onPageChange={setCurrentPage}>
+      <AdminProtectedRoute>
         {renderPage()}
-      </ProtectedRoute>
-    </Layout>
+      </AdminProtectedRoute>
+    </AdminLayout>
   );
 }
 
-function App() {
+export default function AdminDashboard() {
   return (
-    <AuthProvider>
-      <AppContent />
-    </AuthProvider>
+    <AdminProvider>
+      <AdminContent />
+    </AdminProvider>
   );
 }
-
-export default App;
