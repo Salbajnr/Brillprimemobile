@@ -1196,14 +1196,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Import routes
-  // Import routes
-  // Import routes
-  // Import routes
-  // Import routes
-  // Import routes
-  // Import routes
-  // Import routes
+  // CORS middleware
+  app.use(cors({
+    origin: process.env.NODE_ENV === 'production' 
+      ? process.env.FRONTEND_URL 
+      : ['http://localhost:3000', 'http://0.0.0.0:3000', 'http://127.0.0.1:3000'],
+    credentials: true
+  }));
+
+  // Health check endpoint for E2E tests
+  app.get('/api/health', (req, res) => {
+    res.json({ 
+      status: 'ok', 
+      websocket: true,
+      timestamp: Date.now() 
+    });
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

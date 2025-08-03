@@ -37,8 +37,9 @@ export function useWebSocket(): UseWebSocketReturn {
   // Determine the WebSocket URL based on the current environment
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    return `${protocol}//${host}`;
+    const hostname = window.location.hostname;
+    // Use port 5000 for WebSocket connection
+    return `${protocol}//${hostname}:5000`;
   }, []);
   
   // Initialize WebSocket connection
