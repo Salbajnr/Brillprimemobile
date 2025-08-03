@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useAdmin } from '../lib/admin-auth';
 
@@ -68,7 +67,7 @@ export function AdminLayout({ children, currentPage, onPageChange }: AdminLayout
           50% { opacity: 0.5; }
         }
       `}</style>
-      
+
       <div className="flex h-screen bg-gray-50 montserrat">
         {/* Mobile sidebar backdrop */}
         {sidebarOpen && (

@@ -383,6 +383,75 @@ export function setupWebSocketServer(server: HTTPServer) {
       });
     });
 
+    // Fraud Detection Events
+    socket.on('new_fraud_alert', (alertData: any) => {
+      // Broadcast to all admin fraud dashboards
+      io.to('admin_fraud').emit('fraud_alert', {
+        type: 'fraud_alert',
+        alert: alertData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('suspicious_activity_detected', (activityData: any) => {
+      // Broadcast to all admin fraud dashboards
+      io.to('admin_fraud').emit('suspicious_activity', {
+        type: 'suspicious_activity',
+        activity: activityData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('fraud_alert_updated', (data: {
+      alertId: string;
+      oldStatus: string;
+      newStatus: string;
+      updatedBy: number;
+    }) => {
+      // Notify all admin fraud dashboards
+      io.to('admin_fraud').emit('fraud_alert_updated', {
+        type: 'fraud_alert_updated',
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Real-time Monitoring Events
+    socket.on('system_metric_update', (metricData: any) => {
+      // Broadcast to all admin monitoring dashboards
+      io.to('admin_monitoring').emit('system_metric_update', {
+        type: 'system_metric_update',
+        metrics: metricData,
+        timestamp: Date.now()
+      });
+    });
+
+    socket.on('driver_location_broadcast', (data: {
+      driverId: number;
+      latitude: number;
+      longitude: number;
+      status: string;
+      orderId?: string;
+    }) => {
+      // Broadcast to admin monitoring dashboards
+      io.to('admin_monitoring').emit('driver_location_update', {
+        type: 'driver_location_update',
+        ...data,
+        timestamp: Date.now()
+      });
+
+      // Also broadcast to specific order room if orderId exists
+      if (data.orderId) {
+        socket.to(`order_${data.orderId}`).emit('driver_location', {
+          driverId: data.driverId,
+          latitude: data.latitude,
+          longitude: data.longitude,
+          status: data.status,
+          timestamp: Date.now()
+        });
+      }
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
       

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AlertTriangle, Shield, Eye, Flag, Clock, TrendingUp, Users, DollarSign, Activity, Search, Filter, RefreshCw, Ban, CheckCircle, X, Play, Pause, MoreHorizontal } from 'lucide-react';
+import io from 'socket.io-client';
 
 interface FraudAlert {
   id: string;
@@ -85,22 +86,36 @@ export function AdminFraud() {
 
   // Real-time updates via WebSocket
   useEffect(() => {
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const wsUrl = `${protocol}//${window.location.host}/ws`;
-    const socket = new WebSocket(wsUrl);
+    const newSocket = io('ws://localhost:5000', {
+      path: '/ws',
+      transports: ['websocket']
+    });
 
-    socket.onmessage = (event) => {
-      const data = JSON.parse(event.data);
+    newSocket.on('connect', () => {
+      console.log('Fraud dashboard connected');
+      newSocket.emit('join_admin_room', 'fraud');
+    });
+
+    newSocket.on('fraud_alert', (data) => {
       if (data.type === 'fraud_alert') {
         setAlerts(prev => [data.alert, ...prev]);
-        // Update stats
         fetchStats();
-      } else if (data.type === 'suspicious_activity') {
+      }
+    });
+
+    newSocket.on('suspicious_activity', (data) => {
+      if (data.type === 'suspicious_activity') {
         setActivities(prev => [data.activity, ...prev.slice(0, 49)]);
       }
-    };
+    });
 
-    return () => socket.close();
+    newSocket.on('fraud_alert_updated', (data) => {
+      if (data.type === 'fraud_alert_updated') {
+        fetchFraudData();
+      }
+    });
+
+    return () => newSocket.disconnect();
   }, []);
 
   // Fetch fraud data

@@ -2067,6 +2067,91 @@ router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENA
   }
 });
 
+// Real-time Monitoring Endpoints
+router.get('/monitoring/drivers', adminAuth, async (req, res) => {
+  try {
+    // Mock driver data - in production this would come from a driver tracking system
+    const drivers = [
+      {
+        driverId: 1,
+        driverName: 'John Doe',
+        latitude: 6.5244,
+        longitude: 3.3792,
+        status: 'ONLINE',
+        lastUpdate: new Date().toISOString(),
+        batteryLevel: 85,
+        signalStrength: 90,
+        orderId: 'ORD123'
+      },
+      {
+        driverId: 2,
+        driverName: 'Jane Smith',
+        latitude: 6.4281,
+        longitude: 3.4106,
+        status: 'BUSY',
+        lastUpdate: new Date().toISOString(),
+        batteryLevel: 65,
+        signalStrength: 75
+      },
+      {
+        driverId: 3,
+        driverName: 'Mike Johnson',
+        latitude: 6.6018,
+        longitude: 3.3515,
+        status: 'IDLE',
+        lastUpdate: new Date().toISOString(),
+        batteryLevel: 45,
+        signalStrength: 60
+      }
+    ];
+
+    res.json({ success: true, data: drivers });
+  } catch (error) {
+    console.error('Error fetching driver locations:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch driver locations' });
+  }
+});
+
+router.get('/monitoring/system-metrics', adminAuth, async (req, res) => {
+  try {
+    // Mock system metrics - in production this would come from system monitoring
+    const metrics = {
+      cpu: Math.floor(Math.random() * 40) + 30, // 30-70%
+      memory: Math.floor(Math.random() * 30) + 40, // 40-70%
+      database: Math.floor(Math.random() * 20) + 20, // 20-40%
+      activeConnections: Math.floor(Math.random() * 100) + 150,
+      requestsPerSecond: Math.floor(Math.random() * 50) + 25,
+      responseTime: Math.floor(Math.random() * 100) + 50,
+      uptime: 86400 * 15 + 3600 * 8, // 15 days 8 hours
+      errors: Math.floor(Math.random() * 5)
+    };
+
+    res.json({ success: true, data: metrics });
+  } catch (error) {
+    console.error('Error fetching system metrics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch system metrics' });
+  }
+});
+
+router.get('/monitoring/live-metrics', adminAuth, async (req, res) => {
+  try {
+    // Mock live metrics - in production this would aggregate real data
+    const liveMetrics = {
+      activeUsers: Math.floor(Math.random() * 500) + 1200,
+      onlineDrivers: Math.floor(Math.random() * 50) + 120,
+      activeOrders: Math.floor(Math.random() * 100) + 45,
+      completedOrdersToday: Math.floor(Math.random() * 200) + 180,
+      totalRevenue: Math.floor(Math.random() * 50000) + 125000,
+      systemHealth: 'HEALTHY' as const
+    };
+
+    res.json({ success: true, data: liveMetrics });
+  } catch (error) {
+    console.error('Error fetching live metrics:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch live metrics' });
+  }
+});
+
 // Fraud Detection Endpoints
 
 // Get fraud alerts with filtering
