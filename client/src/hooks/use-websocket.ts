@@ -543,3 +543,140 @@ export function useWebSocketDeliveryStatus() {
     connectionError
   };
 }
+
+/**
+ * Hook for admin real-time monitoring using WebSocket
+ * @returns Admin monitoring methods and state
+ */
+export function useWebSocketAdminMonitoring() {
+  const { connected, sendMessage, lastMessage, connectionError } = useWebSocket();
+  const [systemMetrics, setSystemMetrics] = useState<any>(null);
+  const [transactionAlerts, setTransactionAlerts] = useState<any[]>([]);
+  const [contentReports, setContentReports] = useState<any[]>([]);
+  const [supportTickets, setSupportTickets] = useState<any[]>([]);
+  
+  // Process admin monitoring messages
+  useEffect(() => {
+    if (lastMessage) {
+      switch (lastMessage.type) {
+        case 'system_metrics_update':
+          setSystemMetrics(lastMessage.payload);
+          break;
+        case 'transaction_created':
+        case 'suspicious_transaction':
+        case 'flagged_transaction':
+          setTransactionAlerts(prev => [lastMessage.payload, ...prev.slice(0, 49)]);
+          break;
+        case 'new_content_report':
+        case 'urgent_content_alert':
+          setContentReports(prev => [lastMessage.payload, ...prev.slice(0, 49)]);
+          break;
+        case 'new_support_ticket':
+        case 'ticket_status_updated':
+          setSupportTickets(prev => [lastMessage.payload, ...prev.slice(0, 49)]);
+          break;
+      }
+    }
+  }, [lastMessage]);
+  
+  // Subscribe to admin monitoring
+  const subscribeToAdminMonitoring = useCallback(() => {
+    if (connected) {
+      sendMessage({
+        type: 'join_admin_room' as any,
+        payload: { roomType: 'monitoring' }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Subscribe to transaction monitoring
+  const subscribeToTransactionMonitoring = useCallback(() => {
+    if (connected) {
+      sendMessage({
+        type: 'subscribe_transaction_monitoring' as any,
+        payload: {}
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  return {
+    connected,
+    systemMetrics,
+    transactionAlerts,
+    contentReports,
+    supportTickets,
+    subscribeToAdminMonitoring,
+    subscribeToTransactionMonitoring,
+    connectionError
+  };
+}
+
+/**
+ * Hook for support ticket real-time updates using WebSocket
+ * @returns Support ticket methods and state
+ */
+export function useWebSocketSupport() {
+  const { connected, sendMessage, lastMessage, connectionError } = useWebSocket();
+  const [ticketUpdates, setTicketUpdates] = useState<Record<string, any>>({});
+  const [supportMessages, setSupportMessages] = useState<Record<string, any[]>>({});
+  const [typingIndicators, setTypingIndicators] = useState<Record<string, boolean>>({});
+  
+  // Process support-related messages
+  useEffect(() => {
+    if (lastMessage) {
+      switch (lastMessage.type) {
+        case 'support_ticket_status_update':
+          const { ticketId, status } = lastMessage.payload;
+          setTicketUpdates(prev => ({
+            ...prev,
+            [ticketId]: { ...lastMessage.payload, timestamp: lastMessage.timestamp }
+          }));
+          break;
+        case 'new_support_message':
+          const { ticketId: msgTicketId } = lastMessage.payload;
+          setSupportMessages(prev => ({
+            ...prev,
+            [msgTicketId]: [...(prev[msgTicketId] || []), lastMessage.payload]
+          }));
+          break;
+        case 'agent_typing_indicator':
+          const { agentName, isTyping } = lastMessage.payload;
+          setTypingIndicators(prev => ({
+            ...prev,
+            [agentName]: isTyping
+          }));
+          break;
+      }
+    }
+  }, [lastMessage]);
+  
+  // Join support ticket room
+  const joinSupportTicket = useCallback((ticketId: string) => {
+    if (connected) {
+      sendMessage({
+        type: 'join_support_room' as any,
+        payload: { ticketId }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  // Send support message
+  const sendSupportMessage = useCallback((ticketId: string, message: string, attachments?: string[]) => {
+    if (connected) {
+      sendMessage({
+        type: 'support_ticket_message' as any,
+        payload: { ticketId, message, attachments }
+      });
+    }
+  }, [connected, sendMessage]);
+  
+  return {
+    connected,
+    ticketUpdates,
+    supportMessages,
+    typingIndicators,
+    joinSupportTicket,
+    sendSupportMessage,
+    connectionError
+  };
+}
