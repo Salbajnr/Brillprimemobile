@@ -5,6 +5,9 @@ import { registerFuelOrderRoutes } from "./routes/fuel-orders";
 import { registerQRPaymentRoutes } from "./routes/qr-payments";
 import { registerRealTimeTrackingRoutes } from "./routes/real-time-tracking";
 import { registerDriverMerchantCoordinationRoutes } from "./routes/driver-merchant-coordination";
+import { registerLiveChatRoutes } from "./routes/live-chat";
+import { registerOrderStatusRoutes } from "./routes/order-status";
+import { registerTestRealtimeRoutes } from "./routes/test-realtime";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
 import bcrypt from "bcrypt";
 import "./middleware/auth"; // Import type declarations
@@ -1071,6 +1074,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register driver-merchant coordination routes
   registerDriverMerchantCoordinationRoutes(app);
+
+  // Register live chat routes
+  registerLiveChatRoutes(app);
+
+  // Register order status broadcasting routes
+  registerOrderStatusRoutes(app);
+
+  // Register test routes for real-time features
+  registerTestRealtimeRoutes(app);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {
