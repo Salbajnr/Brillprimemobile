@@ -3,7 +3,7 @@ import {
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
   driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
   identityVerifications, driverVerifications, phoneVerifications, wallets, paymentMethods,
-  transactions, deliveryConfirmations,
+  transactions, deliveryConfirmations, fuelOrders,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
@@ -885,8 +885,7 @@ export class DatabaseStorage implements IStorage {
     return method;
   }
 
-  async getUserTransactions(```tool_code
-userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
+  async getUserTransactions(userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
     const transactions = await import("@shared/schema").then(m => m.transactions);
     const userTransactions = await db
       .select()
@@ -926,34 +925,116 @@ userId: number, limit: number = 50, offset: number = 0): Promise<any[]> {
     return transaction || null;
   }
 
-  // Fuel order operations (placeholder implementations)
-  async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any> {
-    // Mock implementation - replace with real fuel station data
-    return [
+  // Fuel order operations
+  async getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any[]> {
+    // Real implementation would query actual fuel stations database
+    const mockStations = [
       {
         id: 'station-1',
-        name: 'Shell Station Lagos',
+        name: 'Total Energies Wuse II',
+        brand: 'Total Energies',
+        address: 'Plot 123, Ademola Adetokunbo Crescent, Wuse II',
         latitude: latitude + 0.01,
         longitude: longitude + 0.01,
+        distance: 2.3,
+        rating: 4.5,
+        reviewCount: 128,
+        prices: { PMS: 617, AGO: 620, DPK: 615 },
         fuelTypes: ['PMS', 'AGO', 'DPK'],
-        prices: { PMS: 617, AGO: 650, DPK: 800 }
+        isOpen: true,
+        deliveryTime: '15-25 mins',
+        phone: '+234 803 123 4567'
+      },
+      {
+        id: 'station-2', 
+        name: 'Shell Victoria Island',
+        brand: 'Shell',
+        address: 'Plot 56, Adeola Odeku Street, Victoria Island',
+        latitude: latitude + 0.02,
+        longitude: longitude - 0.01,
+        distance: 3.1,
+        rating: 4.3,
+        reviewCount: 95,
+        prices: { PMS: 615, AGO: 618, DPK: 612 },
+        fuelTypes: ['PMS', 'AGO', 'DPK'],
+        isOpen: true,
+        deliveryTime: '20-30 mins',
+        phone: '+234 801 987 6543'
       }
     ];
+
+    return mockStations.filter(station => {
+      const distance = this.calculateDistance(latitude, longitude, station.latitude, station.longitude);
+      return distance <= (radius / 1000); // Convert radius from meters to km
+    });
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
   }
 
   async createFuelOrder(data: any): Promise<any> {
-    // Implement fuel order creation
-    return { id: `fuel-${Date.now()}`, ...data, status: 'PENDING' };
+    const orderId = `FO-${Date.now()}`;
+    const [fuelOrder] = await db
+      .insert(fuelOrders)
+      .values({
+        orderId,
+        customerId: data.customerId,
+        stationId: data.stationId,
+        fuelType: data.fuelType,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice.toString(),
+        totalAmount: data.totalAmount.toString(),
+        deliveryAddress: data.deliveryAddress,
+        deliveryLatitude: data.deliveryLatitude,
+        deliveryLongitude: data.deliveryLongitude,
+        scheduledDeliveryTime: data.scheduledDeliveryTime ? new Date(data.scheduledDeliveryTime) : null,
+        status: data.status || 'PENDING',
+        notes: data.notes
+      })
+      .returning();
+    
+    return { ...fuelOrder, id: fuelOrder.orderId };
   }
 
-  async getFuelOrders(userId: number): Promise<any> {
-    // Implement fuel orders retrieval
-    return [];
+  async getFuelOrders(userId: number): Promise<any[]> {
+    const orders = await db
+      .select()
+      .from(fuelOrders)
+      .where(eq(fuelOrders.customerId, userId))
+      .orderBy(desc(fuelOrders.createdAt));
+    
+    return orders.map(order => ({ ...order, id: order.orderId }));
   }
 
   async updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any> {
-    // Implement fuel order status update
-    return { id: orderId, status, driverId };
+    const updateData: any = { 
+      status,
+      updatedAt: new Date()
+    };
+    
+    if (driverId) {
+      updateData.driverId = driverId;
+    }
+    
+    if (status === 'DELIVERED') {
+      updateData.actualDeliveryTime = new Date();
+    }
+
+    const [updatedOrder] = await db
+      .update(fuelOrders)
+      .set(updateData)
+      .where(eq(fuelOrders.orderId, orderId))
+      .returning();
+
+    return { ...updatedOrder, id: updatedOrder.orderId };
   }
 
   async getAvailableFuelOrders(): Promise<any[]> {
