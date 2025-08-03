@@ -14,8 +14,8 @@ import "./middleware/auth"; // Import type declarations
 import { Request, Response } from 'express';
 import cors from 'cors';
 import { db } from './db';
-import { users, supportTickets, contentReports, wallets, transactions, paymentMethods } from '../shared/schema';
-import { eq, and, desc, count, sql } from "drizzle-orm";
+import { users, supportTickets, contentReports, wallets, transactions, paymentMethods, vendorPosts, vendorPostLikes, products, orders } from '../shared/schema';
+import { eq, and, desc, count, sql, or, like } from "drizzle-orm";
 import jwt from 'jsonwebtoken';
 import { requireAuth, auth, verifyToken } from './middleware/auth';
 import multer from 'multer';
@@ -462,17 +462,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Vendor Feed Routes
 
-  // Get vendor posts
+  // Enhanced vendor posts with real database integration
   app.get("/api/vendor-posts", async (req, res) => {
     try {
-      const { limit = 20, offset = 0, vendorId, postType } = req.query;
+      const { limit = 20, offset = 0, vendorId } = req.query;
 
-      const posts = await storage.getVendorPosts({
-        limit: parseInt(limit as string),
-        offset: parseInt(offset as string),
-        vendorId: vendorId ? parseInt(vendorId as string) : undefined,
-        postType: postType as string
-      });
+      const posts = await db.select({
+        id: vendorPosts.id,
+        vendorId: vendorPosts.vendorId,
+        productId: vendorPosts.productId,
+        content: vendorPosts.content,
+        imageUrl: vendorPosts.imageUrl,
+        price: vendorPosts.price,
+        location: vendorPosts.location,
+        isAvailable: vendorPosts.isAvailable,
+        createdAt: vendorPosts.createdAt,
+        // Vendor details
+        vendorName: users.fullName,
+        vendorProfilePicture: users.profilePicture,
+        vendorRole: users.role,
+        // Product details
+        productName: products.name,
+        productDescription: products.description,
+        // Like count
+        likesCount: sql<number>`(
+          SELECT COUNT(*)::int FROM ${vendorPostLikes} 
+          WHERE ${vendorPostLikes.postId} = ${vendorPosts.id}
+        )`
+      })
+      .from(vendorPosts)
+      .leftJoin(users, eq(vendorPosts.vendorId, users.id))
+      .leftJoin(products, eq(vendorPosts.productId, products.id))
+      .where(vendorId ? eq(vendorPosts.vendorId, parseInt(vendorId as string)) : undefined)
+      .orderBy(desc(vendorPosts.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
 
       res.json(posts);
     } catch (error) {
@@ -950,6 +974,105 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get wallet balance error:", error);
       res.status(500).json({ success: false, message: "Failed to fetch wallet balance" });
+    }
+  });
+
+  // Payment Methods API
+  app.get("/api/payment-methods", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      
+      const methods = await db.select({
+        id: paymentMethods.id,
+        type: paymentMethods.type,
+        cardLast4: paymentMethods.cardLast4,
+        cardType: paymentMethods.cardType,
+        cardBank: paymentMethods.cardBank,
+        bankName: paymentMethods.bankName,
+        accountName: paymentMethods.accountName,
+        isDefault: paymentMethods.isDefault,
+        isActive: paymentMethods.isActive,
+        createdAt: paymentMethods.createdAt
+      })
+      .from(paymentMethods)
+      .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isActive, true)))
+      .orderBy(desc(paymentMethods.isDefault), desc(paymentMethods.createdAt));
+
+      res.json({ success: true, paymentMethods: methods });
+    } catch (error) {
+      console.error("Get payment methods error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch payment methods" });
+    }
+  });
+
+  // Create payment method
+  app.post("/api/payment-methods", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const { type, cardLast4, cardType, cardBank, bankName, accountName, isDefault } = req.body;
+
+      // If setting as default, unset other defaults first
+      if (isDefault) {
+        await db.update(paymentMethods)
+          .set({ isDefault: false })
+          .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isDefault, true)));
+      }
+
+      const newMethod = await db.insert(paymentMethods).values({
+        userId,
+        type,
+        provider: 'paystack', // Default to paystack
+        cardLast4: cardLast4 || null,
+        cardType: cardType || null,
+        cardBank: cardBank || null,
+        bankName: bankName || null,
+        accountName: accountName || null,
+        isDefault: isDefault || false,
+        isActive: true
+      }).returning();
+
+      res.json({ success: true, paymentMethod: newMethod[0] });
+    } catch (error) {
+      console.error("Create payment method error:", error);
+      res.status(500).json({ success: false, message: "Failed to create payment method" });
+    }
+  });
+
+  // Orders API for real order history integration
+  app.get("/api/orders", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const { status, limit = 20, offset = 0 } = req.query;
+
+      let whereCondition = eq(orders.userId, userId);
+      if (status) {
+        whereCondition = and(eq(orders.userId, userId), eq(orders.status, status as string));
+      }
+
+      const userOrders = await db.select({
+        id: orders.id,
+        userId: orders.userId,
+        merchantId: orders.merchantId,
+        totalAmount: orders.totalAmount,
+        status: orders.status,
+        deliveryAddress: orders.deliveryAddress,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        // Merchant details
+        merchantName: users.fullName,
+        merchantProfilePicture: users.profilePicture
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.merchantId, users.id))
+      .where(whereCondition)
+      .orderBy(desc(orders.createdAt))
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+      res.json({ success: true, orders: userOrders });
+    } catch (error) {
+      console.error("Get orders error:", error);
+      res.status(500).json({ success: false, message: "Failed to fetch orders" });
     }
   });
 

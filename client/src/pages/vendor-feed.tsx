@@ -91,13 +91,19 @@ export default function VendorFeed() {
     }
   });
 
-  // Fetch vendor posts
+  // Fetch vendor posts with real database integration and like counts
   const { data: posts = [], isLoading } = useQuery<ExtendedVendorPost[]>({
     queryKey: ['/api/vendor-posts', selectedFilter],
     queryFn: async () => {
-      const response = await apiRequest('GET', '/api/vendor-posts' + (selectedFilter !== 'ALL' ? `?postType=${selectedFilter}` : ''));
+      const params = new URLSearchParams();
+      if (selectedFilter !== 'ALL') {
+        params.append('postType', selectedFilter);
+      }
+      const response = await fetch(`/api/vendor-posts?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch vendor posts');
       return response.json();
-    }
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes for fresh data
   });
 
   // Add to cart mutation
