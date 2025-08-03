@@ -4,7 +4,7 @@ import { setupVite, serveStatic } from "./vite";
 import { createServer } from "http";
 import { setupWebSocketServer } from "./websocket";
 import session from "express-session";
-import connectPgSimple from "connect-pgSimple";
+import connectPgSimple from "connect-pg-simple";
 import { db } from "./db";
 import adminRoutes from "./admin/routes";
 

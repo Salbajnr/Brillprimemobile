@@ -2,7 +2,7 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations } from '../../shared/schema';
+import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations, adminPaymentActions } from '../../shared/schema';
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
 import { adminAuth, requirePermission } from '../middleware/adminAuth';
 import { Request, Response, Router } from "express";
@@ -513,7 +513,7 @@ router.post('/kyc/batch-review', adminAuth, async (req, res) => {
     // If approved, update user verification status for all users
     if (action === 'approve') {
       const documents = await db.select().from(complianceDocuments).where(inArray(complianceDocuments.id, documentIds));
-      const userIds = [...new Set(documents.map(doc => doc.userId))];
+      const userIds = Array.from(new Set(documents.map(doc => doc.userId)));
       
       await db.update(users).set({
         isIdentityVerified: true
@@ -829,14 +829,23 @@ router.get('/support/statistics', adminAuth, async (req, res) => {
   }
 });
 
-// Transaction Management
+// Enhanced Transaction Management with Advanced Filtering
 router.get('/transactions', adminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
     const offset = (page - 1) * limit;
+    
+    // Enhanced filter parameters
     const status = req.query.status as string;
     const type = req.query.type as string;
+    const userId = req.query.userId as string;
+    const minAmount = req.query.minAmount as string;
+    const maxAmount = req.query.maxAmount as string;
+    const startDate = req.query.startDate as string;
+    const endDate = req.query.endDate as string;
+    const search = req.query.search as string;
+    const channel = req.query.channel as string;
 
     let whereConditions = [];
 
@@ -846,6 +855,41 @@ router.get('/transactions', adminAuth, async (req, res) => {
 
     if (type) {
       whereConditions.push(eq(transactions.type, type as any));
+    }
+
+    if (userId) {
+      whereConditions.push(eq(transactions.userId, parseInt(userId)));
+    }
+
+    if (minAmount) {
+      whereConditions.push(gte(transactions.amount, minAmount));
+    }
+
+    if (maxAmount) {
+      whereConditions.push(lte(transactions.amount, maxAmount));
+    }
+
+    if (startDate) {
+      whereConditions.push(gte(transactions.initiatedAt, new Date(startDate)));
+    }
+
+    if (endDate) {
+      whereConditions.push(lte(transactions.initiatedAt, new Date(endDate)));
+    }
+
+    if (channel) {
+      whereConditions.push(eq(transactions.channel, channel));
+    }
+
+    if (search) {
+      whereConditions.push(
+        or(
+          like(transactions.description, `%${search}%`),
+          like(transactions.paystackReference, `%${search}%`),
+          like(users.fullName, `%${search}%`),
+          like(users.email, `%${search}%`)
+        )
+      );
     }
 
     const whereClause = whereConditions.length > 0 ? and(...whereConditions) : undefined;
@@ -867,9 +911,13 @@ router.get('/transactions', adminAuth, async (req, res) => {
         initiatedAt: transactions.initiatedAt,
         completedAt: transactions.completedAt,
         failedAt: transactions.failedAt,
+        metadata: transactions.metadata,
         user: {
+          id: users.id,
+          userId: users.userId,
           fullName: users.fullName,
-          email: users.email
+          email: users.email,
+          role: users.role
         }
       })
       .from(transactions)
@@ -881,6 +929,16 @@ router.get('/transactions', adminAuth, async (req, res) => {
 
     const totalCount = await db.select({ count: count() }).from(transactions).where(whereClause);
 
+    // Get transaction statistics
+    const [successTotal, failedTotal, pendingTotal] = await Promise.all([
+      db.select({ 
+        total: sql<number>`COALESCE(SUM(CAST(${transactions.amount} AS DECIMAL)), 0)`,
+        count: count()
+      }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'SUCCESS'))),
+      db.select({ count: count() }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'FAILED'))),
+      db.select({ count: count() }).from(transactions).where(and(whereClause || sql`1=1`, eq(transactions.status, 'PENDING')))
+    ]);
+
     res.json({
       success: true,
       data: {
@@ -888,7 +946,13 @@ router.get('/transactions', adminAuth, async (req, res) => {
         total: totalCount[0].count,
         page,
         limit,
-        totalPages: Math.ceil(totalCount[0].count / limit)
+        totalPages: Math.ceil(totalCount[0].count / limit),
+        statistics: {
+          successTotal: successTotal[0].total || 0,
+          successCount: successTotal[0].count,
+          failedCount: failedTotal[0].count,
+          pendingCount: pendingTotal[0].count
+        }
       }
     });
   } catch (error) {
@@ -897,20 +961,49 @@ router.get('/transactions', adminAuth, async (req, res) => {
   }
 });
 
+// Enhanced transaction refund with real-time updates
 router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
-    const { reason, amount } = req.body;
+    const { reason, amount, refundType = 'FULL' } = req.body;
+
+    // Get original transaction to get correct user ID
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    const refundAmount = refundType === 'FULL' ? originalTx[0].amount : amount;
 
     // Create refund transaction
-    await db.insert(transactions).values({
-      userId: req.adminUser.userId,
+    const refundTx = await db.insert(transactions).values({
+      userId: originalTx[0].userId,
       type: 'REFUND',
-      status: 'PENDING',
-      amount: amount,
-      currency: 'NGN',
-      description: `Refund: ${reason}`,
+      status: 'PROCESSING',
+      amount: refundAmount,
+      netAmount: refundAmount,
+      currency: originalTx[0].currency || 'NGN',
+      description: `Refund (${refundType}): ${reason}`,
+      metadata: {
+        originalTransactionId: transactionId,
+        refundType,
+        processedBy: req.adminUser.adminId,
+        processedAt: new Date().toISOString()
+      },
       initiatedAt: new Date()
+    }).returning();
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'REFUND',
+      paymentId: transactionId,
+      details: {
+        refundAmount,
+        refundType,
+        reason,
+        refundTransactionId: refundTx[0].id
+      }
     });
 
     // Update original transaction status
@@ -919,23 +1012,78 @@ router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAY
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
 
-    res.json({ success: true, message: 'Refund initiated successfully' });
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_refunded', {
+        type: 'transaction_refunded',
+        transactionId,
+        refundTransactionId: refundTx[0].id,
+        amount: refundAmount,
+        refundType,
+        processedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: 'Refund initiated successfully',
+      data: { refundTransactionId: refundTx[0].id }
+    });
   } catch (error) {
     console.error('Refund transaction error:', error);
     res.status(500).json({ success: false, message: 'Failed to process refund' });
   }
 });
 
+// Enhanced transaction hold with real-time updates
 router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
-    const { reason } = req.body;
+    const { reason, holdType = 'MANUAL' } = req.body;
+
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
 
     await db.update(transactions).set({
       status: 'PROCESSING',
-      description: `Held: ${reason}`,
+      metadata: {
+        ...originalTx[0].metadata as any,
+        holdReason: reason,
+        holdType,
+        heldBy: req.adminUser.adminId,
+        heldAt: new Date().toISOString()
+      },
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'HOLD',
+      paymentId: transactionId,
+      details: {
+        reason,
+        holdType,
+        originalStatus: originalTx[0].status
+      }
+    });
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_held', {
+        type: 'transaction_held',
+        transactionId,
+        reason,
+        holdType,
+        heldBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
 
     res.json({ success: true, message: 'Transaction held successfully' });
   } catch (error) {
@@ -944,20 +1092,214 @@ router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYME
   }
 });
 
+// Enhanced transaction release with real-time updates
 router.post('/transactions/:id/release', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
   try {
     const transactionId = req.params.id;
+    const { notes } = req.body;
+
+    const originalTx = await db.select().from(transactions).where(eq(transactions.id, transactionId)).limit(1);
+    if (originalTx.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
 
     await db.update(transactions).set({
       status: 'SUCCESS',
       completedAt: new Date(),
+      metadata: {
+        ...originalTx[0].metadata as any,
+        releaseNotes: notes,
+        releasedBy: req.adminUser.adminId,
+        releasedAt: new Date().toISOString()
+      },
       updatedAt: new Date()
     }).where(eq(transactions.id, transactionId));
+
+    // Log admin action
+    await db.insert(adminPaymentActions).values({
+      adminId: req.adminUser.adminId,
+      action: 'RELEASE',
+      paymentId: transactionId,
+      details: {
+        notes,
+        previousStatus: originalTx[0].status
+      }
+    });
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transaction_released', {
+        type: 'transaction_released',
+        transactionId,
+        notes,
+        releasedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
 
     res.json({ success: true, message: 'Transaction released successfully' });
   } catch (error) {
     console.error('Release transaction error:', error);
     res.status(500).json({ success: false, message: 'Failed to release transaction' });
+  }
+});
+
+// Get detailed transaction information
+router.get('/transactions/:id', adminAuth, async (req, res) => {
+  try {
+    const transactionId = req.params.id;
+
+    const transactionData = await db
+      .select({
+        id: transactions.id,
+        userId: transactions.userId,
+        recipientId: transactions.recipientId,
+        walletId: transactions.walletId,
+        paymentMethodId: transactions.paymentMethodId,
+        orderId: transactions.orderId,
+        type: transactions.type,
+        status: transactions.status,
+        amount: transactions.amount,
+        fee: transactions.fee,
+        netAmount: transactions.netAmount,
+        currency: transactions.currency,
+        paystackReference: transactions.paystackReference,
+        paystackTransactionId: transactions.paystackTransactionId,
+        gatewayResponse: transactions.gatewayResponse,
+        description: transactions.description,
+        metadata: transactions.metadata,
+        channel: transactions.channel,
+        ipAddress: transactions.ipAddress,
+        userAgent: transactions.userAgent,
+        initiatedAt: transactions.initiatedAt,
+        completedAt: transactions.completedAt,
+        failedAt: transactions.failedAt,
+        createdAt: transactions.createdAt,
+        updatedAt: transactions.updatedAt,
+        user: {
+          id: users.id,
+          userId: users.userId,
+          fullName: users.fullName,
+          email: users.email,
+          phone: users.phone,
+          role: users.role
+        }
+      })
+      .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .where(eq(transactions.id, transactionId))
+      .limit(1);
+
+    if (transactionData.length === 0) {
+      return res.status(404).json({ success: false, message: 'Transaction not found' });
+    }
+
+    // Get related admin actions
+    const adminActions = await db
+      .select({
+        id: adminPaymentActions.id,
+        action: adminPaymentActions.action,
+        details: adminPaymentActions.details,
+        createdAt: adminPaymentActions.createdAt,
+        admin: {
+          id: adminUsers.id,
+          role: adminUsers.role,
+          user: {
+            fullName: users.fullName,
+            email: users.email
+          }
+        }
+      })
+      .from(adminPaymentActions)
+      .leftJoin(adminUsers, eq(adminPaymentActions.adminId, adminUsers.id))
+      .leftJoin(users, eq(adminUsers.userId, users.userId))
+      .where(eq(adminPaymentActions.paymentId, transactionId))
+      .orderBy(desc(adminPaymentActions.createdAt));
+
+    res.json({
+      success: true,
+      data: {
+        transaction: transactionData[0],
+        adminActions
+      }
+    });
+  } catch (error) {
+    console.error('Get transaction details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get transaction details' });
+  }
+});
+
+// Bulk transaction operations
+router.post('/transactions/bulk-action', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+  try {
+    const { transactionIds, action, reason } = req.body;
+
+    if (!Array.isArray(transactionIds) || transactionIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'Invalid transaction IDs' });
+    }
+
+    let updateData: any = { updatedAt: new Date() };
+    let actionType: string;
+
+    switch (action) {
+      case 'hold':
+        updateData.status = 'PROCESSING';
+        actionType = 'HOLD';
+        break;
+      case 'release':
+        updateData.status = 'SUCCESS';
+        updateData.completedAt = new Date();
+        actionType = 'RELEASE';
+        break;
+      case 'cancel':
+        updateData.status = 'CANCELLED';
+        updateData.failedAt = new Date();
+        actionType = 'CANCEL';
+        break;
+      default:
+        return res.status(400).json({ success: false, message: 'Invalid action' });
+    }
+
+    // Update transactions
+    await db.update(transactions)
+      .set(updateData)
+      .where(inArray(transactions.id, transactionIds));
+
+    // Log bulk admin actions
+    const bulkActions = transactionIds.map(transactionId => ({
+      adminId: req.adminUser.adminId,
+      action: actionType as any,
+      paymentId: transactionId,
+      details: {
+        reason,
+        bulkOperation: true,
+        totalTransactions: transactionIds.length
+      }
+    }));
+
+    await db.insert(adminPaymentActions).values(bulkActions);
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to('admin_transactions').emit('transactions_bulk_action', {
+        type: 'transactions_bulk_action',
+        transactionIds,
+        action,
+        reason,
+        processedBy: req.adminUser.adminId,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      message: `${transactionIds.length} transactions ${action}ed successfully` 
+    });
+  } catch (error) {
+    console.error('Bulk transaction action error:', error);
+    res.status(500).json({ success: false, message: 'Failed to process bulk action' });
   }
 });
 
