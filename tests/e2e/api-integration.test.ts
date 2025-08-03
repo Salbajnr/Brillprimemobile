@@ -3,12 +3,13 @@ import { describe, test, expect, beforeAll } from '@jest/globals';
 import fetch from 'node-fetch';
 
 describe('API Integration E2E Tests', () => {
-  const API_URL = 'http://0.0.0.0:5000';
+  const API_URL = process.env.API_URL || 'http://0.0.0.0:5000';
   let authToken: string;
 
   beforeAll(async () => {
-    // Setup test data if needed
     console.log('Setting up API integration tests...');
+    // Wait for server to be ready
+    await new Promise(resolve => setTimeout(resolve, 2000));
   });
 
   describe('Authentication API', () => {
