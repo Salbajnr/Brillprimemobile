@@ -1,5 +1,5 @@
 
-const API_BASE_URL = '/api/admin';
+const API_BASE_URL = 'http://0.0.0.0:5000/api/admin';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -15,22 +15,11 @@ class AdminApiClient {
     this.token = localStorage.getItem('admin_token');
   }
 
-  setToken(token: string) {
-    this.token = token;
-    localStorage.setItem('admin_token', token);
-  }
-
-  clearToken() {
-    this.token = null;
-    localStorage.removeItem('admin_token');
-  }
-
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${API_BASE_URL}${endpoint}`;
-    
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -44,199 +33,280 @@ class AdminApiClient {
       const response = await fetch(url, {
         ...options,
         headers,
-        credentials: 'include',
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || 'API request failed');
+        throw new Error(data.message || 'Request failed');
       }
 
       return data;
     } catch (error) {
-      console.error('API Error:', error);
+      console.error('API request failed:', error);
       throw error;
     }
   }
 
   // Authentication
-  async login(credentials: { username: string; password: string }) {
-    return this.request<{ token: string; user: any }>('/auth/login', {
+  async login(email: string, password: string): Promise<any> {
+    const response = await this.request<any>('/auth/login', {
       method: 'POST',
-      body: JSON.stringify(credentials),
+      body: JSON.stringify({ email, password }),
     });
+
+    if (response.data?.token) {
+      this.token = response.data.token;
+      localStorage.setItem('admin_token', this.token);
+    }
+
+    return response;
   }
 
-  async logout() {
-    const result = await this.request('/auth/logout', { method: 'POST' });
-    this.clearToken();
-    return result;
+  async logout(): Promise<void> {
+    this.token = null;
+    localStorage.removeItem('admin_token');
+    await this.request('/auth/logout', { method: 'POST' });
+  }
+
+  async getProfile(): Promise<any> {
+    return this.request('/auth/profile');
   }
 
   // Dashboard metrics
-  async getDashboardMetrics() {
-    return this.request<any>('/metrics');
-  }
-
-  async getEnhancedMetrics() {
-    return this.request<any>('/enhanced-metrics');
+  async getDashboardMetrics(): Promise<any> {
+    return this.request('/dashboard/metrics');
   }
 
   // User management
-  async getUsers(filters?: any) {
-    const params = new URLSearchParams(filters);
-    return this.request<any[]>(`/users?${params}`);
+  async getUsers(params?: {
+    page?: number;
+    limit?: number;
+    role?: string;
+    status?: string;
+    search?: string;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/users?${queryParams}`);
   }
 
-  async getUserById(id: string) {
-    return this.request<any>(`/users/${id}`);
+  async getUserById(id: number): Promise<any> {
+    return this.request(`/users/${id}`);
   }
 
-  async updateUserStatus(id: string, status: string) {
+  async updateUserStatus(id: number, status: string): Promise<any> {
     return this.request(`/users/${id}/status`, {
-      method: 'PUT',
+      method: 'PATCH',
       body: JSON.stringify({ status }),
     });
   }
 
-  async suspendUser(id: string, reason: string) {
-    return this.request(`/users/${id}/suspend`, {
+  async flagUser(id: number, reason: string): Promise<any> {
+    return this.request(`/users/${id}/flag`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
   }
 
-  // KYC and verification
-  async getPendingVerifications() {
-    return this.request<any[]>('/verifications/pending');
+  // KYC Management
+  async getPendingKYC(params?: { page?: number; limit?: number }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/kyc/pending?${queryParams}`);
   }
 
-  async approveVerification(id: string) {
-    return this.request(`/verifications/${id}/approve`, { method: 'POST' });
+  async reviewKYC(documentId: number, action: 'approve' | 'reject', reason?: string): Promise<any> {
+    return this.request(`/kyc/${documentId}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason }),
+    });
   }
 
-  async rejectVerification(id: string, reason: string) {
-    return this.request(`/verifications/${id}/reject`, {
+  // Merchant Applications
+  async getMerchantApplications(params?: { page?: number; limit?: number; status?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/merchants/applications?${queryParams}`);
+  }
+
+  async reviewMerchantApplication(id: number, action: 'approve' | 'reject', reason?: string): Promise<any> {
+    return this.request(`/merchants/applications/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason }),
+    });
+  }
+
+  // Driver Applications
+  async getDriverApplications(params?: { page?: number; limit?: number; status?: string }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/drivers/applications?${queryParams}`);
+  }
+
+  async reviewDriverApplication(id: number, action: 'approve' | 'reject', reason?: string): Promise<any> {
+    return this.request(`/drivers/applications/${id}/review`, {
+      method: 'POST',
+      body: JSON.stringify({ action, reason }),
+    });
+  }
+
+  // Support Tickets
+  async getSupportTickets(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    priority?: string;
+    assignedTo?: number;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/support/tickets?${queryParams}`);
+  }
+
+  async getTicketById(id: string): Promise<any> {
+    return this.request(`/support/tickets/${id}`);
+  }
+
+  async updateTicket(id: string, updates: {
+    status?: string;
+    priority?: string;
+    assignedTo?: number;
+    adminNotes?: string;
+    resolution?: string;
+  }): Promise<any> {
+    return this.request(`/support/tickets/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
+    });
+  }
+
+  // Transactions
+  async getTransactions(params?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    type?: string;
+    userId?: number;
+    dateFrom?: string;
+    dateTo?: string;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/transactions?${queryParams}`);
+  }
+
+  async refundTransaction(id: string, reason: string): Promise<any> {
+    return this.request(`/transactions/${id}/refund`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
   }
 
-  // Support tickets
-  async getSupportTickets(filters?: any) {
-    const params = new URLSearchParams(filters);
-    return this.request<any[]>(`/support-tickets?${params}`);
-  }
-
-  async getTicketById(id: string) {
-    return this.request<any>(`/support-tickets/${id}`);
-  }
-
-  async updateTicketStatus(id: string, status: string) {
-    return this.request(`/support-tickets/${id}/status`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
-  }
-
-  async respondToTicket(id: string, response: string) {
-    return this.request(`/support-tickets/${id}/respond`, {
-      method: 'POST',
-      body: JSON.stringify({ response }),
-    });
-  }
-
-  // Transactions and refunds
-  async getTransactions(filters?: any) {
-    const params = new URLSearchParams(filters);
-    return this.request<any[]>(`/transactions?${params}`);
-  }
-
-  async processRefund(transactionId: string, amount?: number) {
-    return this.request(`/transactions/${transactionId}/refund`, {
-      method: 'POST',
-      body: JSON.stringify({ amount }),
-    });
-  }
-
-  async getRefundRequests() {
-    return this.request<any[]>('/refunds');
-  }
-
-  async approveRefund(id: string) {
-    return this.request(`/refunds/${id}/approve`, { method: 'POST' });
-  }
-
-  async rejectRefund(id: string, reason: string) {
-    return this.request(`/refunds/${id}/reject`, {
+  async holdTransaction(id: string, reason: string): Promise<any> {
+    return this.request(`/transactions/${id}/hold`, {
       method: 'POST',
       body: JSON.stringify({ reason }),
     });
   }
 
-  // Fraud detection
-  async getSuspiciousActivities() {
-    return this.request<any[]>('/suspicious-activities');
-  }
-
-  async flagActivity(activityId: string, severity: string) {
-    return this.request(`/suspicious-activities/${activityId}/flag`, {
+  async releaseTransaction(id: string): Promise<any> {
+    return this.request(`/transactions/${id}/release`, {
       method: 'POST',
-      body: JSON.stringify({ severity }),
     });
   }
 
-  async resolveActivity(activityId: string, resolution: string) {
-    return this.request(`/suspicious-activities/${activityId}/resolve`, {
+  // Fraud Detection
+  async getFraudAlerts(params?: {
+    page?: number;
+    limit?: number;
+    severity?: string;
+    status?: string;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/fraud/alerts?${queryParams}`);
+  }
+
+  async updateFraudAlert(id: number, status: string, notes?: string): Promise<any> {
+    return this.request(`/fraud/alerts/${id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status, notes }),
+    });
+  }
+
+  // Real-time monitoring
+  async getDriverLocations(): Promise<any> {
+    return this.request('/monitoring/drivers/locations');
+  }
+
+  async getSystemHealth(): Promise<any> {
+    return this.request('/monitoring/system/health');
+  }
+
+  // Database maintenance
+  async triggerBackup(): Promise<any> {
+    return this.request('/maintenance/backup', {
       method: 'POST',
-      body: JSON.stringify({ resolution }),
     });
   }
 
-  // Driver monitoring
-  async getDriverLocations() {
-    return this.request<any[]>('/driver-locations');
+  async getBackupHistory(): Promise<any> {
+    return this.request('/maintenance/backups');
   }
 
-  // System maintenance
-  async triggerBackup() {
-    return this.request('/system/backup', { method: 'POST' });
-  }
-
-  async getDatabaseStatus() {
-    return this.request('/system/status');
-  }
-
-  async runMaintenance(type: string) {
-    return this.request('/system/maintenance', {
+  async cleanupLogs(): Promise<any> {
+    return this.request('/maintenance/cleanup-logs', {
       method: 'POST',
-      body: JSON.stringify({ type }),
     });
   }
 
-  // Content moderation
-  async getContentReports() {
-    return this.request<any[]>('/content-reports');
+  // Security & Compliance
+  async getSecurityEvents(params?: {
+    page?: number;
+    limit?: number;
+    severity?: string;
+    type?: string;
+  }): Promise<any> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) queryParams.append(key, value.toString());
+      });
+    }
+    return this.request(`/security/events?${queryParams}`);
   }
 
-  async respondToContentReport(reportId: string, response: string, action: string) {
-    return this.request(`/content-reports/${reportId}/respond`, {
-      method: 'POST',
-      body: JSON.stringify({ response, action }),
-    });
-  }
-
-  // Compliance
-  async getComplianceDocuments() {
-    return this.request<any[]>('/compliance/documents');
-  }
-
-  async updateComplianceStatus(documentId: string, status: string) {
-    return this.request(`/compliance/documents/${documentId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ status }),
-    });
+  async getComplianceReport(type: string, dateFrom: string, dateTo: string): Promise<any> {
+    return this.request(`/compliance/reports/${type}?from=${dateFrom}&to=${dateTo}`);
   }
 }
 
