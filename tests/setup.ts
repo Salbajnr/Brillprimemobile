@@ -1,50 +1,16 @@
 import '@testing-library/jest-dom';
 
-// Mock window.matchMedia
-Object.defineProperty(window, 'matchMedia', {
+// Mock WebAuthn API
+Object.defineProperty(global, 'navigator', {
+  value: {
+    credentials: {
+      create: jest.fn(),
+      get: jest.fn(),
+    },
+    userAgent: 'test-agent',
+  },
   writable: true,
-  value: jest.fn().mockImplementation(query => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: jest.fn(), // deprecated
-    removeListener: jest.fn(), // deprecated
-    addEventListener: jest.fn(),
-    removeEventListener: jest.fn(),
-    dispatchEvent: jest.fn(),
-  })),
 });
-
-// Mock IntersectionObserver
-global.IntersectionObserver = class IntersectionObserver {
-  constructor() {}
-  observe() {
-    return null;
-  }
-  disconnect() {
-    return null;
-  }
-  unobserve() {
-    return null;
-  }
-};
-
-// Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
-  constructor() {}
-  observe() {
-    return null;
-  }
-  disconnect() {
-    return null;
-  }
-  unobserve() {
-    return null;
-  }
-};
-
-// Mock fetch
-global.fetch = jest.fn();
 
 // Mock localStorage
 const localStorageMock = {
@@ -53,12 +19,31 @@ const localStorageMock = {
   removeItem: jest.fn(),
   clear: jest.fn(),
 };
-global.localStorage = localStorageMock;
+Object.defineProperty(global, 'localStorage', {
+  value: localStorageMock,
+});
 
-// Mock WebAuthn API for biometric tests
-global.navigator.credentials = {
-  create: jest.fn(),
-  get: jest.fn(),
-  preventSilentAccess: jest.fn(),
-  store: jest.fn(),
+// Mock fetch
+global.fetch = jest.fn();
+
+// Mock WebSocket
+global.WebSocket = jest.fn().mockImplementation(() => ({
+  readyState: 1,
+  send: jest.fn(),
+  close: jest.fn(),
+  addEventListener: jest.fn(),
+  removeEventListener: jest.fn(),
+}));
+
+// Set test environment variables
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+
+// Suppress console warnings in tests
+const originalConsoleWarn = console.warn;
+console.warn = (...args: any[]) => {
+  if (args[0]?.includes?.('Warning:')) {
+    return;
+  }
+  originalConsoleWarn.apply(console, args);
 };

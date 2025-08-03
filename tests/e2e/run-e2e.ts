@@ -1,6 +1,4 @@
 
-#!/usr/bin/env node
-
 import { spawn } from 'child_process';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -49,7 +47,7 @@ class E2ETestRunner {
     
     const checks = [
       { name: 'Main App Server', url: 'http://0.0.0.0:3000' },
-      { name: 'API Server', url: 'http://0.0.0.0:5000' },
+      { name: 'API Server', url: 'http://0.0.0.0:5000/api/health' },
       { name: 'Admin Dashboard', url: 'http://0.0.0.0:5173' }
     ];
 
@@ -70,9 +68,13 @@ class E2ETestRunner {
       console.log(`🧪 Running ${suiteName}...`);
       const startTime = Date.now();
       
-      const testProcess = spawn('npx', ['jest', `tests/e2e/${suiteName}`, '--verbose'], {
+      const testProcess = spawn('npx', ['jest', `tests/e2e/${suiteName}`, '--config', 'jest.e2e.config.js'], {
         stdio: 'pipe',
-        env: { ...process.env, NODE_ENV: 'test' }
+        env: { 
+          ...process.env, 
+          NODE_ENV: 'test',
+          JEST_TIMEOUT: '30000'
+        }
       });
 
       let output = '';

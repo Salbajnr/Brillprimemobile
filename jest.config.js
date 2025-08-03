@@ -1,6 +1,6 @@
 export default {
   preset: 'ts-jest',
-  testEnvironment: 'jsdom',
+  testEnvironment: 'node',
   roots: ['<rootDir>/tests'],
   testMatch: [
     '**/__tests__/**/*.ts?(x)',
@@ -23,5 +23,15 @@ export default {
     '!**/node_modules/**'
   ],
   coverageReporters: ['text', 'lcov', 'html'],
-  testTimeout: 10000
+  testTimeout: 30000,
+  globals: {
+    'ts-jest': {
+      useESM: true
+    }
+  },
+  extensionsToTreatAsEsm: ['.ts'],
+  moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
+  testEnvironmentOptions: {
+    url: 'http://localhost:3000'
+  }
 };
