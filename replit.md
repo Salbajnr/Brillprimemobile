@@ -9,12 +9,13 @@ User roles: Updated to CONSUMER, MERCHANT, DRIVER (instead of DRIVER, VENDOR)
 Backend: User has existing backend API - frontend connects to external API endpoints
 
 ## System Architecture
-The application is built as a monorepo with distinct client, server, and shared components.
+The application is built as a monorepo with distinct client, server, shared components, and admin dashboard.
 
 **Core Technologies:**
 - **Frontend**: React SPA with TypeScript, Vite, Tailwind CSS, and shadcn/ui.
 - **Backend**: Express.js REST API server (connects to external API).
-- **Database**: PostgreSQL with Drizzle ORM (managed by external backend).
+- **Database**: PostgreSQL with Drizzle ORM.
+- **Admin Dashboard**: Separate admin interface with backend API for admin operations.
 - **Shared**: Common schemas and types.
 
 **Frontend Architecture:**
@@ -30,8 +31,9 @@ The application is built as a monorepo with distinct client, server, and shared 
 **Backend Architecture:**
 - **External API Integration**: The frontend primarily interacts with an existing external REST API for core functionalities like authentication, user management, and transactions.
 - **Authentication**: API handles bcrypt password hashing, OTP-based email verification.
-- **Data Layer**: External backend manages the PostgreSQL database.
+- **Data Layer**: PostgreSQL database with Drizzle ORM for local data management.
 - **Server Role**: The current server implementation primarily serves the frontend client and routes API requests.
+- **Admin Backend**: Dedicated Express.js server for admin operations with MongoDB models for admin-specific data management.
 
 **Key Features & Flows:**
 - **Authentication System**: Splash screen, 3-screen onboarding, role selection (CONSUMER/MERCHANT/DRIVER), social login (Google, Apple, Facebook), email/password sign-up/sign-in, 5-digit OTP verification, forgot/reset password flow, biometric authentication (fingerprint/Face ID).

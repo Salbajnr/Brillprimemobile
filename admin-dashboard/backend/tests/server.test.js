@@ -95,29 +95,6 @@ describe('Admin Panel API', () => {
         expect(res.body.success).toBe(true);
     });
 
-    it('POST /api/delivery-confirmation/:paymentId/generate should generate QR', async () => {
-        const res = await request(app)
-            .post('/api/delivery-confirmation/testpayment/generate');
-        expect(res.statusCode).toBe(200);
-        expect(res.body).toHaveProperty('qrCode');
-    });
-
-    it('POST /api/delivery-confirmation/:id/scan should confirm delivery', async () => {
-        const res = await request(app)
-            .post('/api/delivery-confirmation/testid/scan')
-            .send({ adminId });
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-    });
-
-    it('POST /api/payment-distribution should distribute payment', async () => {
-        const res = await request(app)
-            .post('/api/payment-distribution')
-            .send({ paymentId: 'testpayment', recipientId: 'recipient1', amount: 100, adminId });
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
-    });
-
     it('POST /api/payments/:id/refund should refund payment', async () => {
         const res = await request(app)
             .post('/api/payments/testid/refund')
@@ -145,14 +122,6 @@ describe('Admin Panel API', () => {
         const res = await request(app).get('/api/vendor-violations');
         expect(res.statusCode).toBe(200);
         expect(Array.isArray(res.body)).toBe(true);
-    });
-
-    it('POST /api/vendor-violations/:id/respond should respond to vendor violation', async () => {
-        const res = await request(app)
-            .post('/api/vendor-violations/testid/respond')
-            .send({ response: 'Violation response', adminId });
-        expect(res.statusCode).toBe(200);
-        expect(res.body.success).toBe(true);
     });
 
     // Location & Service
@@ -189,14 +158,11 @@ describe('Admin Panel API', () => {
         expect(Array.isArray(res.body)).toBe(true);
     });
 
-    it('POST /api/compliance-documents/:id/status should update compliance status', async () => {
+    it('POST /api/compliance-documents/:id/review should update compliance status', async () => {
         const res = await request(app)
-            .post('/api/compliance-documents/testid/status')
+            .post('/api/compliance-documents/testid/review')
             .send({ status: 'approved' });
         expect(res.statusCode).toBe(200);
         expect(res.body.success).toBe(true);
     });
-
-    // All major endpoint tests are included above.
-    // To continue, add more specific tests for edge cases, error handling, and authentication when implemented.
 });

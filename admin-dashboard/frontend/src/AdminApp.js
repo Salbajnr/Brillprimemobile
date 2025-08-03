@@ -13,7 +13,7 @@ function useApi(endpoint) {
     return data;
 }
 
-function App() {
+function AdminApp() {
     const users = useApi('/api/users');
     const tickets = useApi('/api/support-tickets');
     const payments = useApi('/api/payments');
@@ -128,4 +128,4 @@ function App() {
     );
 }
 
-export default App;
+export default AdminApp;

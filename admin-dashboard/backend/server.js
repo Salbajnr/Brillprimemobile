@@ -124,90 +124,39 @@ app.post('/api/payments/:id/status', async (req, res) => {
     // Log admin action
     await AdminPaymentAction.create({
         adminId: req.body.adminId,
-        action: 'update_payment_status',
+        action: status,
         paymentId: req.params.id,
-        details: { status }
+        details: req.body.details || {}
     });
     res.json({ success: true });
 });
 
-// --- QR Code Delivery Confirmation ---
-
-// Generate QR code for delivery confirmation (stub, actual QR generation not shown)
-app.post('/api/delivery-confirmation/:paymentId/generate', async (req, res) => {
-    const qrCode = `QR-${req.params.paymentId}-${Date.now()}`; // Placeholder
-    const confirmation = await DeliveryConfirmation.create({
-        paymentId: req.params.paymentId,
-        qrCode
-    });
-    res.json(confirmation);
-});
-
-// Scan/confirm delivery QR code
-app.post('/api/delivery-confirmation/:id/scan', async (req, res) => {
-    const confirmation = await DeliveryConfirmation.findByIdAndUpdate(
-        req.params.id,
-        { scanned: true, scannedAt: new Date() },
-        { new: true }
-    );
-    if (confirmation && confirmation.paymentId) {
-        await LivePayment.findByIdAndUpdate(confirmation.paymentId, { status: 'completed' });
-        // Optionally, log admin action for automatic confirmation
-        await AdminPaymentAction.create({
-            adminId: req.body.adminId || 'system',
-            action: 'auto_confirm_delivery',
-            paymentId: confirmation.paymentId,
-            details: { confirmationId: confirmation._id }
-        });
-    }
-    res.json({ success: true });
-});
-
-// --- Payment Distribution ---
-
-// Distribute payment to recipient
-app.post('/api/payment-distribution', async (req, res) => {
-    const { paymentId, recipientId, amount, adminId } = req.body;
-    await PaymentDistribution.create({
-        paymentId,
-        recipientId,
-        amount,
-        distributedAt: new Date()
-    });
-    // Update escrow balance
-    await EscrowAccount.updateOne({}, { $inc: { balance: -amount }, lastUpdated: new Date() });
-    // Log admin action
-    await AdminPaymentAction.create({
-        adminId,
-        action: 'distribute_payment',
-        paymentId,
-        details: { recipientId, amount }
-    });
-    res.json({ success: true });
-});
-
-// --- Refund Handling ---
-
+// Refund payment
 app.post('/api/payments/:id/refund', async (req, res) => {
-    const { adminId } = req.body;
+    const { adminId, reason } = req.body;
     await LivePayment.findByIdAndUpdate(req.params.id, { status: 'refunded' });
-    // Log admin action
     await AdminPaymentAction.create({
         adminId,
-        action: 'refund_payment',
+        action: 'refund',
         paymentId: req.params.id,
-        details: {}
+        details: { reason }
     });
     res.json({ success: true });
 });
 
-// --- Marketplace & Content Moderation ---
-const { ContentReport, VendorViolation } = require('./models/moderationModels'); // To be implemented
+// --- Moderation Management ---
+const { ContentReport, VendorViolation } = require('./models/moderationModels');
 
 // Get all content reports
 app.get('/api/content-reports', async (req, res) => {
     const reports = await ContentReport.find();
     res.json(reports);
+});
+
+// Get all vendor violations
+app.get('/api/vendor-violations', async (req, res) => {
+    const violations = await VendorViolation.find();
+    res.json(violations);
 });
 
 // Respond to content report
@@ -220,24 +169,8 @@ app.post('/api/content-reports/:id/respond', async (req, res) => {
     res.json({ success: true });
 });
 
-// Get all vendor violations
-app.get('/api/vendor-violations', async (req, res) => {
-    const violations = await VendorViolation.find();
-    res.json(violations);
-});
-
-// Respond to vendor violation
-app.post('/api/vendor-violations/:id/respond', async (req, res) => {
-    const { response, adminId } = req.body;
-    await VendorViolation.findByIdAndUpdate(
-        req.params.id,
-        { $push: { responses: { adminId, response, respondedAt: new Date() } } }
-    );
-    res.json({ success: true });
-});
-
 // --- Location & Service Management ---
-const { DriverLocation, FuelDelivery } = require('./models/locationModels'); // To be implemented
+const { DriverLocation, FuelDelivery } = require('./models/locationModels');
 
 // Get all driver locations
 app.get('/api/driver-locations', async (req, res) => {
@@ -251,8 +184,19 @@ app.get('/api/fuel-deliveries', async (req, res) => {
     res.json(deliveries);
 });
 
-// --- Fraud Detection & Suspicious Transactions ---
-const { SuspiciousTransaction } = require('./models/fraudModels'); // To be implemented
+// Update delivery status
+app.post('/api/fuel-deliveries/:id/status', async (req, res) => {
+    const { status } = req.body;
+    const updateData = { status };
+    if (status === 'completed') {
+        updateData.completedAt = new Date();
+    }
+    await FuelDelivery.findByIdAndUpdate(req.params.id, updateData);
+    res.json({ success: true });
+});
+
+// --- Fraud Detection ---
+const { SuspiciousTransaction } = require('./models/fraudModels');
 
 // Get all suspicious transactions
 app.get('/api/suspicious-transactions', async (req, res) => {
@@ -260,67 +204,46 @@ app.get('/api/suspicious-transactions', async (req, res) => {
     res.json(transactions);
 });
 
-// Flag a transaction as suspicious
+// Flag/unflag transaction
 app.post('/api/suspicious-transactions/:id/flag', async (req, res) => {
-    await SuspiciousTransaction.findByIdAndUpdate(req.params.id, { flagged: true });
+    const { flagged } = req.body;
+    await SuspiciousTransaction.findByIdAndUpdate(req.params.id, { flagged });
     res.json({ success: true });
 });
 
-// --- Regulatory Compliance ---
-const { ComplianceDocument } = require('./models/complianceModels'); // To be implemented
+// --- Compliance Management ---
+const { ComplianceDocument } = require('./models/complianceModels');
 
 // Get all compliance documents
 app.get('/api/compliance-documents', async (req, res) => {
-    const docs = await ComplianceDocument.find();
-    res.json(docs);
+    const documents = await ComplianceDocument.find();
+    res.json(documents);
 });
 
-// Update compliance document status
-app.post('/api/compliance-documents/:id/status', async (req, res) => {
+// Approve/reject compliance document
+app.post('/api/compliance-documents/:id/review', async (req, res) => {
     const { status } = req.body;
-    await ComplianceDocument.findByIdAndUpdate(req.params.id, { status });
+    await ComplianceDocument.findByIdAndUpdate(
+        req.params.id,
+        { status, reviewedAt: new Date() }
+    );
     res.json({ success: true });
 });
 
-// --- Live Chat System ---
+// --- Real-time Communication ---
 io.on('connection', (socket) => {
-    console.log('Admin chat user connected:', socket.id);
-
+    console.log('Admin connected');
+    
     socket.on('chat message', (msg) => {
-        // Broadcast to all connected admins
         io.emit('chat message', msg);
     });
-
+    
     socket.on('disconnect', () => {
-        console.log('Admin chat user disconnected:', socket.id);
+        console.log('Admin disconnected');
     });
 });
 
-// --- Unit Testing Setup ---
-// To be implemented in /workspaces/Brillprimemobile/admin-panel/backend/tests/
-// Example: Use Jest and Supertest for endpoint testing
-
-// All endpoints use async/await and run each step sequentially.
-// For multi-step endpoints (e.g., scan/confirm delivery), each DB operation finishes before the next starts.
-
-// All backend features you requested so far are implemented:
-// - User management & verification (approve/reject, switch type)
-// - Support ticket management (view, update, respond)
-// - User reports management (view, respond)
-// - Real-time metrics
-// - Payment management (view, update status, refund, distribution)
-// - QR code delivery confirmation (auto-complete payment on scan)
-// - Admin action audit trail for payments
-// - Sequential execution for multi-step endpoints
-
-// Features not yet implemented (let me know if you want these next):
-// - Marketplace/content moderation endpoints
-// - Location/service management (driver/fuel delivery monitoring)
-// - Fraud detection/suspicious transaction endpoints
-// - Regulatory compliance endpoints
-// - Live chat system
-// - Frontend dashboard UI
-
-http.listen(4000, () => {
-    console.log('Admin backend running on port 4000');
+const PORT = process.env.PORT || 4000;
+http.listen(PORT, () => {
+    console.log(`Admin Panel Backend running on port ${PORT}`);
 });
