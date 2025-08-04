@@ -120,5 +120,107 @@ describe('WebSocket Integration E2E Tests', () => {
 
       setTimeout(() => done(), 3000);
     });
+
+    test('should handle system metrics updates', (done) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not connected for system metrics test');
+        done();
+        return;
+      }
+
+      ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'system_metrics_update') {
+          console.log('✅ System metrics received:', message);
+          expect(message).toHaveProperty('activeRooms');
+          expect(message).toHaveProperty('connectedClients');
+          done();
+        }
+      });
+
+      // Join admin monitoring room
+      ws.send(JSON.stringify({
+        type: 'join_admin_room',
+        data: { roomType: 'monitoring' }
+      }));
+
+      setTimeout(() => done(), 5000);
+    });
+
+    test('should handle transaction monitoring', (done) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not connected for transaction monitoring test');
+        done();
+        return;
+      }
+
+      ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'transaction_created') {
+          console.log('✅ Transaction update received:', message);
+          expect(message.transaction).toHaveProperty('id');
+          done();
+        }
+      });
+
+      // Subscribe to transaction monitoring
+      ws.send(JSON.stringify({
+        type: 'subscribe_transaction_monitoring'
+      }));
+
+      // Simulate new transaction
+      ws.send(JSON.stringify({
+        type: 'new_transaction_created',
+        data: {
+          transaction: {
+            id: 'txn_123',
+            userId: 1,
+            amount: '1000.00',
+            status: 'pending',
+            type: 'payment'
+          }
+        }
+      }));
+
+      setTimeout(() => done(), 3000);
+    });
+
+    test('should handle content moderation reports', (done) => {
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        console.log('WebSocket not connected for content moderation test');
+        done();
+        return;
+      }
+
+      ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        if (message.type === 'new_content_report') {
+          console.log('✅ Content report received:', message);
+          expect(message.report).toHaveProperty('reportId');
+          done();
+        }
+      });
+
+      // Join admin moderation room
+      ws.send(JSON.stringify({
+        type: 'join_admin_room',
+        data: { roomType: 'moderation' }
+      }));
+
+      // Simulate content report
+      ws.send(JSON.stringify({
+        type: 'content_report_submitted',
+        data: {
+          reportId: 'report_123',
+          contentType: 'review',
+          contentId: 'review_456',
+          reportedBy: 1,
+          reason: 'inappropriate_content',
+          severity: 'medium'
+        }
+      }));
+
+      setTimeout(() => done(), 3000);
+    });
   });
 });

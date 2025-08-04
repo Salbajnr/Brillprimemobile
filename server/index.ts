@@ -7,6 +7,7 @@ import session from "express-session";
 import connectPgSimple from "connect-pg-simple";
 import { db } from "./db";
 import adminRoutes from "./admin/routes";
+import { emailService } from "./services/email";
 
 async function startServer() {
 const app = express();

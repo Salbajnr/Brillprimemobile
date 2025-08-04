@@ -57,6 +57,8 @@ export default function SignInPage() {
           setLocation("/merchant-dashboard");
         } else if (data.user.role === "DRIVER") {
           console.log("Navigating DRIVER to /driver-dashboard");
+          // Store a flag to prompt KYC verification on dashboard
+          sessionStorage.setItem('promptKYCVerification', 'true');
           setLocation("/driver-dashboard");
         } else {
           // Fallback to dashboard for unknown roles

@@ -60,11 +60,19 @@ export default function SignupPage() {
       setLocation("/otp-verification");
     },
     onError: (error: Error) => {
+      // If registration fails, show error and allow user to try again or go back to role selection
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message,
+        description: error.message + " Please try again or select a different role.",
       });
+
+      // For critical errors, redirect back to role selection after delay
+      if (error.message.includes("role") || error.message.includes("invalid")) {
+        setTimeout(() => {
+          setLocation("/role-selection");
+        }, 3000);
+      }
     },
   });
 
@@ -81,7 +89,7 @@ export default function SignupPage() {
 
     // Get driver tier information if available
     const driverTier = selectedRole === "DRIVER" ? sessionStorage.getItem('selectedDriverTier') : null;
-    
+
     const signupData = {
       fullName: data.fullName,
       email: data.email,
@@ -108,14 +116,14 @@ export default function SignupPage() {
 
     try {
       const { socialAuth } = await import("@/lib/social-auth");
-      
+
       const profile = await socialAuth.signInWithGoogle();
       const result = await socialAuth.authenticateWithBackend(profile);
-      
+
       // Update auth state
       setUser(result.user);
       localStorage.setItem("auth", JSON.stringify(result.user));
-      
+
       setLocation("/dashboard");
     } catch (error: any) {
       setErrorMessage(error.message || "Google sign-up failed. Please try again.");
@@ -392,7 +400,7 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div className="text-center">
+        <div className="text-center space-y-2">
           <p className="text-[var(--brill-text-light)] text-sm">
             Already have an account?{" "}
             <Button
@@ -401,6 +409,16 @@ export default function SignupPage() {
               onClick={() => setLocation("/signin")}
             >
               Sign In
+            </Button>
+          </p>
+          <p className="text-[var(--brill-text-light)] text-xs">
+            Want to change your role?{" "}
+            <Button
+              variant="link"
+              className="text-[var(--brill-secondary)] font-medium p-0 h-auto text-xs"
+              onClick={() => setLocation("/role-selection")}
+            >
+              Go Back to Role Selection
             </Button>
           </p>
         </div>

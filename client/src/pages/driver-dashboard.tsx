@@ -138,6 +138,23 @@ function DriverDashboardContent() {
     }
   }, [wsNotifications, addNotification]);
 
+  // Check for KYC verification prompt for new drivers
+  useEffect(() => {
+    const shouldPromptKYC = sessionStorage.getItem('promptKYCVerification');
+    if (shouldPromptKYC === 'true') {
+      // Clear the flag
+      sessionStorage.removeItem('promptKYCVerification');
+      
+      // Show KYC verification notification
+      addNotification({
+        type: 'info',
+        title: 'Complete Identity Verification',
+        message: 'Complete your KYC verification to start accepting orders and earning.',
+        duration: 8000
+      });
+    }
+  }, [addNotification]);
+
   // Send location updates periodically when driver is online
   useEffect(() => {
     let intervalId: NodeJS.Timeout;

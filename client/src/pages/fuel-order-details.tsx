@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/hooks/use-auth";
-import { useWebSocketOrders } from "@/hooks/use-websocket";
+import { useWebSocketOrders, useWebSocketFuelOrders } from "@/hooks/use-websocket";
 import LiveMap from "@/components/ui/live-map";
 
 interface FuelStation {
@@ -35,6 +35,11 @@ export default function FuelOrderDetails() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { connected, sendMessage } = useWebSocketOrders();
+  const { 
+    connected: fuelOrderConnected, 
+    orderUpdates, 
+    joinOrderRoom 
+  } = useWebSocketFuelOrders();
 
   const [station, setStation] = useState<FuelStation | null>(null);
   const [selectedFuelType, setSelectedFuelType] = useState<"PMS" | "AGO" | "DPK">("PMS");
@@ -155,6 +160,7 @@ export default function FuelOrderDetails() {
       const result = await response.json();
 
       if (result.success) {
+        // Real-time WebSocket notifications
         if (connected) {
           sendMessage({
             type: 'ORDER_CREATED',
@@ -167,6 +173,11 @@ export default function FuelOrderDetails() {
               location: userLocation
             }
           });
+        }
+
+        // Join order room for real-time updates
+        if (fuelOrderConnected) {
+          joinOrderRoom(result.order.id);
         }
 
         setLocation(`/order-confirmation/${result.order.id}`);

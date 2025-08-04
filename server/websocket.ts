@@ -632,9 +632,22 @@ export async function setupWebSocketServer(server: HTTPServer) {
   // Periodic cleanup and health checks
   setInterval(() => {
     const rooms = io.sockets.adapter.rooms;
+    const systemMetrics = {
+      activeRooms: rooms.size,
+      connectedClients: io.sockets.sockets.size,
+      onlineUsers: onlineUsers.size,
+      adminConnections: adminConnections.size,
+      memoryUsage: process.memoryUsage(),
+      uptime: process.uptime(),
+      timestamp: Date.now()
+    };
+
     console.log(`Active rooms: ${rooms.size}, Connected clients: ${io.sockets.sockets.size}`);
     console.log(`Online users: ${onlineUsers.size}, Admin connections: ${adminConnections.size}`);
-  }, 60000); // Log every minute
+
+    // Broadcast system metrics to admin monitoring dashboards
+    io.to('admin_monitoring').emit('system_metrics_update', systemMetrics);
+  }, 30000); // Every 30 seconds for real-time monitoring
 
   return io;
 }
