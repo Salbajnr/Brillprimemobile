@@ -1591,4 +1591,18 @@ export function setupRoutes(app: any) {
       }
     }
   });
+  // Fuel Orders Routes
+import { 
+  createFuelOrder, 
+  getFuelOrders, 
+  acceptFuelOrder, 
+  updateFuelOrderStatus, 
+  getFuelOrderById 
+} from './routes/fuel-orders';
+
+app.post('/api/fuel-orders', requireAuth, createFuelOrder);
+app.get('/api/fuel-orders', requireAuth, getFuelOrders);
+app.get('/api/fuel-orders/:orderId', requireAuth, getFuelOrderById);
+app.post('/api/fuel-orders/:orderId/accept', requireAuth, acceptFuelOrder);
+app.put('/api/fuel-orders/:orderId/status', requireAuth, updateFuelOrderStatus);
 }

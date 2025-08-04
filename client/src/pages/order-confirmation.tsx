@@ -31,6 +31,7 @@ export default function OrderConfirmation() {
   const { user } = useAuth();
   const { connected, orderUpdates } = useWebSocketOrders();
   const { paymentUpdates } = useWebSocketPayments();
+  const location = useLocation();
 
   const [order, setOrder] = useState<Order | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -164,6 +165,36 @@ export default function OrderConfirmation() {
       </div>
     );
   }
+
+    // Get order details from URL params or state
+  const getOrderData = () => {
+    // Try to get from location state first
+    const state = (location as any)[1]?.state;
+    if (state) {
+      return {
+        id: state.orderId || "ORD-2024-001234",
+        type: state.orderType || "COMMODITY",
+        amount: state.amount || 86500,
+        items: state.orderType === "FUEL" 
+          ? `${state.fuelType || 'PMS'} Fuel Delivery (${state.quantity || 20}L)`
+          : "Rice (50kg) x2 bags",
+        deliveryAddress: "No 15, Ahmadu Bello Way, Jos",
+        estimatedDelivery: state.orderType === "FUEL" ? "45-60 minutes" : "30-45 minutes"
+      };
+    }
+
+    // Fallback to default data
+    return {
+      id: "ORD-2024-001234",
+      type: "COMMODITY",
+      amount: 86500,
+      items: "Rice (50kg) x2 bags",
+      deliveryAddress: "No 15, Ahmadu Bello Way, Jos",
+      estimatedDelivery: "30-45 minutes"
+    };
+  };
+
+  const orderData = getOrderData();
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-md mx-auto">
