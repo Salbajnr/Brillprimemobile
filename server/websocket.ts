@@ -626,7 +626,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
       console.log('User disconnected:', socket.id);
 
       // Remove from online users tracking
-      for (const [userId, socketId] of onlineUsers.entries()) {
+      for (const [userId, socketId] of Array.from(onlineUsers.entries())) {
         if (socketId === socket.id) {
           onlineUsers.delete(userId);
 
@@ -659,7 +659,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
   }
 
   // Make io globally available for use in route handlers
-  global.io = io;
+  (global as any).io = io;
 
   // Periodic cleanup and health checks
   setInterval(async () => {

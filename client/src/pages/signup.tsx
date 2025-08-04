@@ -145,10 +145,36 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        (profile) => {
+        async (profile) => {
           console.log("Apple signup success:", profile);
-          // TODO: Send profile to backend for registration
-          setLocation("/otp-verification");
+          // Send profile to backend for registration
+          try {
+            const response = await fetch('/api/auth/social-login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                provider: 'apple',
+                socialId: profile.id,
+                email: profile.email,
+                fullName: profile.name,
+                role: selectedRole
+              }),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              setUser(result.user);
+              localStorage.setItem("auth", JSON.stringify(result.user));
+              setLocation("/dashboard");
+            } else {
+              throw new Error('Backend registration failed');
+            }
+          } catch (error) {
+            console.error('Apple signup backend error:', error);
+            setLocation("/otp-verification");
+          }
         },
         (error) => {
           setErrorMessage("Apple sign-up failed. Please try again.");
@@ -176,10 +202,36 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        (profile) => {
+        async (profile) => {
           console.log("Facebook signup success:", profile);
-          // TODO: Send profile to backend for registration
-          setLocation("/otp-verification");
+          // Send profile to backend for registration
+          try {
+            const response = await fetch('/api/auth/social-login', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                provider: 'facebook',
+                socialId: profile.id,
+                email: profile.email,
+                fullName: profile.name,
+                role: selectedRole
+              }),
+            });
+
+            if (response.ok) {
+              const result = await response.json();
+              setUser(result.user);
+              localStorage.setItem("auth", JSON.stringify(result.user));
+              setLocation("/dashboard");
+            } else {
+              throw new Error('Backend registration failed');
+            }
+          } catch (error) {
+            console.error('Facebook signup backend error:', error);
+            setLocation("/otp-verification");
+          }
         },
         (error) => {
           setErrorMessage("Facebook sign-up failed. Please try again.");

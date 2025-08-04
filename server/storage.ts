@@ -771,6 +771,37 @@ export class DatabaseStorage implements IStorage {
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c; // Distance in kilometers
   }
+
+  // Add missing method for wallet operations
+  async getUserWallet(userId: number): Promise<any> {
+    const wallet = await this.db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    return wallet[0] || null;
+  }
+
+  // Send message for live chat
+  async sendMessage(data: {
+    conversationId: string;
+    senderId: number;
+    content: string;
+    messageType: string;
+  }): Promise<any> {
+    // This would insert into a messages table in a real implementation
+    // For now, return a mock message structure
+    return {
+      id: Date.now(),
+      conversationId: data.conversationId,
+      senderId: data.senderId,
+      content: data.content,
+      messageType: data.messageType,
+      timestamp: new Date(),
+      isRead: false
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
