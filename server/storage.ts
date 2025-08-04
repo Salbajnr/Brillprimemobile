@@ -654,8 +654,7 @@ export class DatabaseStorage implements IStorage {
         latitude: latitude.toString(),
         longitude: longitude.toString(),
         isActive: true
-      })
-;
+      });
   }
 
   // Real-time Analytics Operations
@@ -807,7 +806,7 @@ export class DatabaseStorage implements IStorage {
   async getTransactionById(id: string) {
     const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
     return transaction;
-  },
+  }
 
   async addLocationHistory(userId: number, locationData: {
     latitude: number;
@@ -818,7 +817,7 @@ export class DatabaseStorage implements IStorage {
     // This would be implemented with a location_history table in production
     console.log(`Location history for user ${userId}:`, locationData);
     return true;
-  },
+  }
 
   async addSupportMessage(messageData: {
     ticketId: string;
@@ -835,36 +834,7 @@ export class DatabaseStorage implements IStorage {
     };
     console.log('Support message added:', message);
     return message;
-  },
-
-  async getTransactionMetrics(timeframe: string) {
-    // This would implement real transaction metrics from the database
-    // For now, return mock data that matches expected structure
-    return {
-      totalTransactions: Math.floor(Math.random() * 100) + 50,
-      totalVolume: (Math.random() * 1000000).toFixed(2),
-      successRate: (Math.random() * 10 + 90).toFixed(1),
-      averageAmount: (Math.random() * 50000).toFixed(2)
-    };
-  },
-
-  async getUserActivityMetrics(timeframe: string) {
-    return {
-      newUsers: Math.floor(Math.random() * 20) + 5,
-      activeUsers: Math.floor(Math.random() * 100) + 50,
-      totalSessions: Math.floor(Math.random() * 200) + 100
-    };
-  },
-
-  async getSystemMetrics() {
-    return {
-      totalUsers: Math.floor(Math.random() * 10000) + 5000,
-      totalOrders: Math.floor(Math.random() * 5000) + 2500,
-      completedOrders: Math.floor(Math.random() * 4000) + 2000,
-      totalRevenue: (Math.random() * 10000000).toFixed(2),
-      onlineDrivers: Math.floor(Math.random() * 50) + 25
-    };
-  },
+  }
 }
 
 export const storage = new DatabaseStorage();
