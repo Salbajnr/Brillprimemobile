@@ -53,7 +53,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd admin-dashboard && npm run dev"
+args = "cd admin-dashboard && npm run dev -- --port 3001"
 
 [[workflows.workflow]]
 name = "Start Admin Dashboard"

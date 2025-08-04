@@ -38,8 +38,12 @@ export function useWebSocket(): UseWebSocketReturn {
   const getWebSocketUrl = useCallback(() => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const hostname = window.location.hostname;
-    // Use port 5000 for WebSocket connection
-    return `${protocol}//${hostname}:5000`;
+    
+    // In development, use port 5000, in production use default ports
+    if (hostname === 'localhost' || hostname.includes('replit')) {
+      return `${protocol}//${hostname}:5000/socket.io/`;
+    }
+    return `${protocol}//${hostname}/socket.io/`;
   }, []);
 
   // Initialize WebSocket connection

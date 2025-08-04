@@ -190,10 +190,18 @@ export function registerRealTimeTrackingRoutes(app: Express) {
       const data = updateDriverLocationSchema.parse(req.body);
       const userId = req.session!.userId!;
 
-      // Update driver location
+      // Update driver location in database
       await storage.updateDriverLocation(userId, {
         latitude: data.latitude.toString(),
         longitude: data.longitude.toString()
+      });
+
+      // Store location update in tracking history
+      await storage.addLocationHistory(userId, {
+        latitude: data.latitude,
+        longitude: data.longitude,
+        timestamp: new Date(),
+        orderId: data.orderId
       });
 
       // Calculate ETA if orderId is provided

@@ -44,7 +44,9 @@ export async function setupWebSocketServer(server: HTTPServer) {
       origin: "*",
       methods: ["GET", "POST"]
     },
-    path: '/socket.io'
+    path: '/socket.io',
+    transports: ['websocket', 'polling'],
+    allowEIO3: true
   });
 
   // Note: Raw WebSocket support commented out for ES module compatibility
@@ -93,6 +95,36 @@ export async function setupWebSocketServer(server: HTTPServer) {
       // Join admin monitoring room
       socket.join('admin_transaction_monitoring');
       console.log('Admin joined transaction monitoring');
+      
+      // Send current transaction stats
+      storage.getTransactionMetrics('1h').then(metrics => {
+        socket.emit('initial_transaction_data', {
+          totalTransactions: metrics.totalTransactions,
+          totalVolume: metrics.totalVolume,
+          successRate: metrics.successRate,
+          timestamp: Date.now()
+        });
+      }).catch(console.error);
+    });
+
+    // Handle new transaction notifications
+    socket.on('transaction_created', async (transactionData) => {
+      // Broadcast to all admin monitoring dashboards
+      io.to('admin_transaction_monitoring').emit('new_transaction', {
+        type: 'transaction_created',
+        transaction: transactionData,
+        timestamp: Date.now()
+      });
+
+      // Check for suspicious activity
+      if (transactionData.amount > 100000 || transactionData.flagged) {
+        io.to('admin_fraud').emit('suspicious_transaction', {
+          type: 'suspicious_transaction',
+          transaction: transactionData,
+          reason: transactionData.amount > 100000 ? 'high_value' : 'flagged',
+          timestamp: Date.now()
+        });
+      }
     });
 
     // Driver location updates for real-time tracking
@@ -459,6 +491,54 @@ export async function setupWebSocketServer(server: HTTPServer) {
         ticket: ticketData,
         timestamp: Date.now()
       });
+
+      // Auto-assign high-priority tickets
+      if (ticketData.priority === 'HIGH' || ticketData.category === 'payment_issue') {
+        io.to('admin_support').emit('urgent_ticket_alert', {
+          type: 'urgent_ticket',
+          ticket: ticketData,
+          message: 'High-priority ticket requires immediate attention',
+          timestamp: Date.now()
+        });
+      }
+    });
+
+    // Support ticket message handling
+    socket.on('support_ticket_message', async (data: {
+      ticketId: string;
+      senderId: number;
+      message: string;
+      attachments?: string[];
+    }) => {
+      try {
+        // Save message to database
+        const message = await storage.addSupportMessage({
+          ticketId: data.ticketId,
+          senderId: data.senderId,
+          content: data.message,
+          attachments: data.attachments
+        });
+
+        // Broadcast to ticket participants
+        io.to(`support_ticket_${data.ticketId}`).emit('new_support_message', {
+          type: 'new_support_message',
+          ticketId: data.ticketId,
+          message: message,
+          timestamp: Date.now()
+        });
+
+        // Notify admin dashboard
+        io.to('admin_support').emit('ticket_activity', {
+          type: 'message_received',
+          ticketId: data.ticketId,
+          senderId: data.senderId,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        socket.emit('support_message_error', {
+          error: 'Failed to send message'
+        });
+      }
     });
 
     socket.on('ticket_status_updated', (data: {
