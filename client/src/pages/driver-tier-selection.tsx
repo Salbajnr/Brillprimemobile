@@ -8,7 +8,7 @@ import { useAuth } from "@/hooks/use-auth";
 
 export default function DriverTierSelectionPage() {
   const [selectedTier, setSelectedTier] = useState<"RESTRICTED" | "OPEN" | null>(null);
-  const [, navigate] = useLocation();
+  const [, setLocation] = useLocation();
   const { user } = useAuth();
 
   const handleContinue = () => {
@@ -16,7 +16,7 @@ export default function DriverTierSelectionPage() {
       // Store selected tier in session storage for registration process
       sessionStorage.setItem('selectedDriverTier', selectedTier);
       // Navigate to signup page, not driver registration
-      navigate('/signup');
+      setLocation('/signup');
     }
   };
 
