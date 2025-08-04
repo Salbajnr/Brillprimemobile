@@ -573,6 +573,10 @@ export const insertVendorPostSchema = createInsertSchema(vendorPosts);
 export const insertVendorPostLikeSchema = createInsertSchema(vendorPostLikes);
 export const insertVendorPostCommentSchema = createInsertSchema(vendorPostComments);
 
+// VendorPost types
+export type VendorPost = typeof vendorPosts.$inferSelect;
+export type InsertVendorPost = z.infer<typeof insertVendorPostSchema>;
+
 // Enhanced VendorPost type with additional fields from database joins
 export interface ExtendedVendorPost extends VendorPost {
   vendorName: string;
@@ -588,8 +592,9 @@ export const insertChatMessageSchema = createInsertSchema(chatMessages);
 export const insertMerchantProfileSchema = createInsertSchema(merchantProfiles);
 export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytics);
 export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
-export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
-export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
+// Tables that are referenced but may not exist yet - commenting out for now
+// export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
+// export const insertMerchantNotificationSchema = createInsertSchema(merchantNotifications);
 export const insertSupportTicketSchema = z.object({
   subject: z.string().min(1, "Subject is required"),
   description: z.string().min(1, "Description is required"),
@@ -602,20 +607,7 @@ export const insertSupportTicketSchema = z.object({
 
 
 
-export constinsertFuelOrderSchema = z.object({
-  stationId: z.string(),
-  fuelType: z.enum(["PMS", "AGO", "DPK"]),
-  quantity: z.number().positive(),
-  unitPrice: z.number().positive(),
-  totalAmount: z.number().positive(),
-  deliveryAddress: z.string().min(1),
-  deliveryLatitude: z.number(),
-  deliveryLongitude: z.number(),
-  scheduledDeliveryTime: z.string().optional(),
-  notes: z.string().optional()
-});
-
-export type FuelOrder = z.infer<typeof insertFuelOrderSchema>;
+// Fuel Order schema will be defined after the table
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
@@ -646,10 +638,10 @@ export type MerchantAnalytics = typeof merchantAnalytics.$inferSelect;
 export type InsertMerchantAnalytics = z.infer<typeof insertMerchantAnalyticsSchema>;
 export type DriverProfile = typeof driverProfiles.$inferSelect;
 export type InsertDriverProfile = z.infer<typeof insertDriverProfileSchema>;
-export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
-export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
-export type MerchantNotification = typeof merchantNotifications.$inferSelect;
-export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;
+// export type DeliveryRequest = typeof deliveryRequests.$inferSelect;
+// export type InsertDeliveryRequest = z.infer<typeof insertDeliveryRequestSchema>;
+// export type MerchantNotification = typeof merchantNotifications.$inferSelect;  
+// export type InsertMerchantNotification = z.infer<typeof insertMerchantNotificationSchema>;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type InsertSupportTicket = z.infer<typeof insertSupportTicketSchema>;
 export type SocialProfile = typeof socialProfiles.$inferSelect;

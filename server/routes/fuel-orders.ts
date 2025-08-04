@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { fuelOrders, users, driverProfiles } from '@shared/schema';
 import { eq, and, desc, isNull, ne } from 'drizzle-orm';
-import { broadcastOrderUpdate } from '../services/order-broadcasting';
+// import { broadcastOrderUpdate } from '../services/order-broadcasting'; // Temporarily disabled
 
 const createFuelOrderSchema = z.object({
   stationId: z.string(),

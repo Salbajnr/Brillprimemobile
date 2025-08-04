@@ -49,6 +49,9 @@ export const adminAuth = (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+// Export alias for compatibility
+export const requireAdmin = adminAuth;
+
 export const requirePermission = (permission: string) => {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.adminUser) {

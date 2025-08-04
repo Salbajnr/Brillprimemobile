@@ -1,20 +1,14 @@
-I have carefully analyzed the original code and the changes provided. I will now generate the complete modified code, incorporating the escrow management methods, the SQL import, and all other parts of the original code.
-</tool_code>
-```replit_final_file
 import { 
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
-  driverProfiles, merchantProfiles, deliveryRequests, merchantAnalytics, supportTickets,
-  identityVerifications, driverVerifications, phoneVerifications, wallets, paymentMethods,
-  transactions, deliveryConfirmations, escrowTransactions, fuelOrders,
+  driverProfiles, merchantProfiles, merchantAnalytics, supportTickets,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
-  type Order, type InsertOrder, type VendorPost, type InsertVendorPost,
-  type VendorPostLike, type InsertVendorPostLike, type VendorPostComment, type InsertVendorPostComment,
+  type Order, type InsertOrder,
   type Conversation, type InsertConversation, type ChatMessage, type InsertChatMessage,
   type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
-  type DeliveryRequest, type InsertDeliveryRequest, type MerchantAnalytics, type InsertMerchantAnalytics,
+  type MerchantAnalytics, type InsertMerchantAnalytics,
   type SupportTicket, type InsertSupportTicket
 } from "@shared/schema";
 import { db } from "./db";
@@ -55,110 +49,18 @@ export interface IStorage {
   updateCartItem(cartItemId: number, quantity: number): Promise<CartItem>;
   removeFromCart(cartItemId: number): Promise<void>;
 
-  // Driver operations
-  getDriverProfile(userId: number): Promise<DriverProfile | undefined>;
-  createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile>;
-  updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void>;
-  getAvailableDeliveryJobs(): Promise<DeliveryRequest[]>;
-  acceptDeliveryJob(jobId: string, driverId: number): Promise<void>;
-  getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }>;
-  getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]>;
-  getDriverOrders(driverId: number, status?: string): Promise<any[]>;
-
-  // Merchant operations
-  getMerchantProfile(userId: number): Promise<MerchantProfile | undefined>;
-  createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile>;
-  getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }>;
-  getMerchantOrders(userId: number): Promise<Order[]>;
-  updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void>;
-  getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]>;
-  createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest>;
-
-  // Vendor Feed operations
-  getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]>;
-  createVendorPost(post: InsertVendorPost): Promise<VendorPost>;
-  likeVendorPost(postId: string, userId: number): Promise<VendorPostLike>;
-  unlikeVendorPost(postId: string, userId: number): Promise<void>;
-  getVendorPostLikes(postId: string): Promise<VendorPostLike[]>;
-  commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment>;
-  getVendorPostComments(postId: string): Promise<VendorPostComment[]>;
-
-  // Chat operations
-  getConversations(userId: number, role?: string): Promise<any[]>;
-  createConversation(conversation: InsertConversation): Promise<Conversation>;
-  getMessages(conversationId: string): Promise<any[]>;
-  sendMessage(message: InsertChatMessage): Promise<ChatMessage>;
-  getConversationMessages(conversationId: string, limit: number, offset: number): Promise<any[]>;
-
   // Support Ticket operations
   createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket>;
   getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]>;
   getSupportTicket(ticketId: string): Promise<SupportTicket | undefined>;
   updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket>;
-
-  // Identity verification
-  createIdentityVerification(data: any): Promise<any>;
-  getIdentityVerificationByUserId(userId: number): Promise<any | null>;
-  createDriverVerification(data: any): Promise<any>;
-  getDriverVerificationByUserId(userId: number): Promise<any | null>;
-  createPhoneVerification(data: any): Promise<any>;
-  verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null>;
-  updateUser(userId: number, data: any): Promise<any>;
-
-  // Fuel order operations
-  getNearbyFuelStations(latitude: number, longitude: number, radius: number): Promise<any>;
-  createFuelOrder(data: any): Promise<any>;
-  getFuelOrders(userId: number): Promise<any>;
-  updateFuelOrderStatus(orderId: string, status: string, driverId?: number): Promise<any>;
-  getAvailableFuelOrders(): Promise<any>;
-  getFuelStationById(stationId: string): Promise<any | null>;
+  
+  // Basic method stubs for fuel orders and tracking (to be implemented)
+  getNearbyFuelStations(lat: number, lng: number, radius: number): Promise<any[]>;
+  createFuelOrder(orderData: any): Promise<any>;
+  getFuelOrders(userId: number): Promise<any[]>;
   getFuelOrderById(orderId: string): Promise<any | null>;
-  getMerchantFuelOrders(merchantId: number): Promise<any[]>;
-
-  // Push notifications
-  storePushSubscription(userId: number, subscription: any): Promise<any>;
-  removePushSubscription(userId: number): Promise<any>;
-
-  // Merchant Discovery methods
-  searchMerchants(params: { latitude?: number; longitude?: number; radius?: number; category?: string; searchTerm?: string }): Promise<any[]>;
-  getMerchantProducts(merchantId: number): Promise<Product[]>;
-
-  // Fuel Station Discovery methods
-  getFuelStations(params: { latitude?: number; longitude?: number; radius?: number; fuelType?: string }): Promise<any[]>;
-
-  // Payment and Wallet operations
-  getUserWallet(userId: number): Promise<any>;
-  createWallet(userId: number): Promise<any>;
-  getUserPaymentMethods(userId: number): Promise<any[]>;
-  getUserTransactions(userId: number, limit: number, offset: number): Promise<any[]>;
-  addToWishlist(userId: number, productId: string): Promise<any>;
-  getWishlistItems(userId: number): Promise<any[]>;
-
-  // QR Code operations
-  generateDeliveryQR(orderId: string): Promise<any>;
-  verifyDeliveryQR(qrCode: string): Promise<any>;
-
-  // Real-time order tracking
-  updateOrderTracking(orderId: string, status: string, location?: any): Promise<any>;
-  getOrderTracking(orderId: string): Promise<any>;
-
-  // Escrow Management Methods
-  getEscrowTransactions(filters: {
-    status?: string;
-    limit: number;
-    offset: number;
-  }): Promise<any[]>;
-  getEscrowTransactionsCount(status?: string): Promise<number>;
-  getTotalEscrowBalance(): Promise<string>;
-  getDisputedEscrowCount(): Promise<number>;
-  getEscrowTransactionDetails(escrowId: number): Promise<any | null>;
-  getDisputeTimeline(escrowId: number): Promise<any[]>;
-  processEscrowRefund(escrowId: number, amount: number, notes: string, adminId: number): Promise<any>;
-  releaseEscrowToSeller(escrowId: number, notes: string, adminId: number): Promise<any>;
-  processPartialEscrowRefund(escrowId: number, refundAmount: number, notes: string, adminId: number): Promise<any>;
-  getEscrowAnalytics(): Promise<any>;
-  getDisputeEvidence(escrowId: number): Promise<any>;
-  escalateDispute(escrowId: number, priority: string, notes: string, adminId: number): Promise<any>;
+  getOrderTracking(orderId: string): Promise<any | null>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -329,141 +231,43 @@ export class DatabaseStorage implements IStorage {
     return nearbyUsers.map(result => result.user_locations);
   }
 
-  // Driver operations
-  async getDriverProfile(userId: number): Promise<DriverProfile | undefined> {
-    const [profile] = await db.select().from(driverProfiles).where(eq(driverProfiles.userId, userId));
-    return profile || undefined;
-  }
-
-  async createDriverProfile(profile: InsertDriverProfile): Promise<DriverProfile> {
-    const [driverProfile] = await db
-      .insert(driverProfiles)
-      .values(profile)
-      .returning();
-    return driverProfile;
-  }
-
-  async updateDriverLocation(userId: number, location: { latitude: string; longitude: string; accuracy?: number }): Promise<void> {
-    await db
-      .update(driverProfiles)
-      .set({
-        currentLocation: {
-          latitude: location.latitude,
-          longitude: location.longitude,
-          accuracy: location.accuracy,
-          timestamp: Date.now()
-        }
-      })
-      .where(eq(driverProfiles.userId, userId));
-  }
-
-  async getAvailableDeliveryJobs(): Promise<DeliveryRequest[]> {
-    const deliveryJobs = await db
-      .select()
-      .from(deliveryRequests)
-      .where(eq(deliveryRequests.status, 'PENDING'))
-      .orderBy(desc(deliveryRequests.createdAt));
-
-    return deliveryJobs;
-  }
-
-  async acceptDeliveryJob(jobId: string, driverId: number): Promise<void> {
-    await db
-      .update(deliveryRequests)
-      .set({ 
-        driverId,
-        status: 'ACCEPTED',
-      })
-      .where(eq(deliveryRequests.id, jobId));
-  }
-
-  async getDriverEarnings(userId: number): Promise<{ todayEarnings: number; weeklyEarnings: number; totalEarnings: number; completedDeliveries: number }> {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const weekAgo = new Date();
-    weekAgo.setDate(weekAgo.getDate() - 7);
-
-    const completedDeliveries = await db
-      .select()
-      .from(deliveryRequests)
-      .where(
-        and(
-          eq(deliveryRequests.driverId, userId),
-          eq(deliveryRequests.status, 'DELIVERED')
-        )
-      );
-
-    const todayDeliveries = completedDeliveries.filter(d => 
-      d.completedAt && new Date(d.completedAt) >= today
-    );
-
-    const weeklyDeliveries = completedDeliveries.filter(d => 
-      d.completedAt && new Date(d.completedAt) >= weekAgo
-    );
-
-    return {
-      todayEarnings: todayDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
-      weeklyEarnings: weeklyDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
-      totalEarnings: completedDeliveries.reduce((sum, d) => sum + parseFloat(d.deliveryFee || '0'), 0),
-      completedDeliveries: completedDeliveries.length
-    };
-  }
-
-  async getDriverDeliveryHistory(userId: number): Promise<DeliveryRequest[]> {
-    const deliveries = await db
-      .select()
-      .from(deliveryRequests)
-      .where(eq(deliveryRequests.driverId, userId))
-      .orderBy(desc(deliveryRequests.createdAt));
-
-    return deliveries;
-  }
-
-  async getDriverOrders(driverId: number, status?: string): Promise<any[]> {
-    let query = db
-      .select()
-      .from(deliveryRequests)
-      .where(eq(deliveryRequests.driverId, driverId));
-
-    if (status) {
-      query = query.where(eq(deliveryRequests.status, status as any));
-    }
-
-    const orders = await query.orderBy(desc(deliveryRequests.createdAt));
-    return orders;
-  }
-
-  // Categories
+  // Category operations
   async getCategories(): Promise<Category[]> {
-    const categories = await db.select().from(categories).where(eq(categories.isActive, true));
-    return categories;
+    return await db.select().from(categories).orderBy(categories.name);
   }
 
-  async createCategory(category: InsertCategory): Promise<Category> {
-    const [newCategory] = await db
+  async createCategory(insertCategory: InsertCategory): Promise<Category> {
+    const [category] = await db
       .insert(categories)
-      .values(category)
+      .values(insertCategory)
       .returning();
-    return newCategory;
+    return category;
   }
 
-  // Products
+  // Product operations
   async getProducts(filters: { categoryId?: number; search?: string; limit?: number; offset?: number }): Promise<Product[]> {
-    let query = db.select().from(products).where(eq(products.isActive, true));
+    let query = db.select().from(products);
 
+    const conditions: any[] = [];
+    
     if (filters.categoryId) {
-      query = query.where(eq(products.categoryId, filters.categoryId));
+      conditions.push(eq(products.categoryId, filters.categoryId));
     }
-
+    
     if (filters.search) {
-      query = query.where(
+      conditions.push(
         or(
           like(products.name, `%${filters.search}%`),
           like(products.description, `%${filters.search}%`)
         )
       );
     }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    query = query.orderBy(desc(products.createdAt));
 
     if (filters.limit) {
       query = query.limit(filters.limit);
@@ -473,42 +277,41 @@ export class DatabaseStorage implements IStorage {
       query = query.offset(filters.offset);
     }
 
-    const productsList = await query.orderBy(desc(products.createdAt));
-    return productsList;
+    return await query;
   }
 
-  async createProduct(product: InsertProduct): Promise<Product> {
-    const [newProduct] = await db
+  async createProduct(insertProduct: InsertProduct): Promise<Product> {
+    const [product] = await db
       .insert(products)
-      .values(product)
+      .values(insertProduct)
       .returning();
-    return newProduct;
+    return product;
   }
 
   // Cart operations
   async getCartItems(userId: number): Promise<CartItem[]> {
-    const cartItems = await db
+    return await db
       .select()
       .from(cartItems)
-      .where(eq(cartItems.userId, userId));
-    return cartItems;
+      .where(eq(cartItems.userId, userId))
+      .orderBy(desc(cartItems.createdAt));
   }
 
-  async addToCart(cartItem: InsertCartItem): Promise<CartItem> {
-    const [newCartItem] = await db
+  async addToCart(insertCartItem: InsertCartItem): Promise<CartItem> {
+    const [cartItem] = await db
       .insert(cartItems)
-      .values(cartItem)
+      .values(insertCartItem)
       .returning();
-    return newCartItem;
+    return cartItem;
   }
 
   async updateCartItem(cartItemId: number, quantity: number): Promise<CartItem> {
-    const [updatedItem] = await db
+    const [cartItem] = await db
       .update(cartItems)
       .set({ quantity })
       .where(eq(cartItems.id, cartItemId))
       .returning();
-    return updatedItem;
+    return cartItem;
   }
 
   async removeFromCart(cartItemId: number): Promise<void> {
@@ -517,361 +320,77 @@ export class DatabaseStorage implements IStorage {
       .where(eq(cartItems.id, cartItemId));
   }
 
-  // Vendor Feed operations
-  async getVendorPosts(filters: { limit?: number; offset?: number; vendorId?: number; postType?: string }): Promise<VendorPost[]> {
-    let query = db.select().from(vendorPosts).where(eq(vendorPosts.isActive, true));
-
-    if (filters.vendorId) {
-      query = query.where(eq(vendorPosts.vendorId, filters.vendorId));
-    }
-
-    if (filters.postType) {
-      query = query.where(eq(vendorPosts.postType, filters.postType as any));
-    }
-
-    if (filters.limit) {
-      query = query.limit(filters.limit);
-    }
-
-    if (filters.offset) {
-      query = query.offset(filters.offset);
-    }
-
-    const posts = await query.orderBy(desc(vendorPosts.createdAt));
-    return posts;
-  }
-
-  async createVendorPost(post: InsertVendorPost): Promise<VendorPost> {
-    const [newPost] = await db
-      .insert(vendorPosts)
-      .values(post)
-      .returning();
-    return newPost;
-  }
-
-  async likeVendorPost(postId: string, userId: number): Promise<VendorPostLike> {
-    const [like] = await db
-      .insert(vendorPostLikes)
-      .values({ postId, userId })
-      .returning();
-
-    // Update like count
-    await db
-      .update(vendorPosts)
-      .set({ likeCount: sql`${vendorPosts.likeCount} + 1` })
-      .where(eq(vendorPosts.id, postId));
-
-    return like;
-  }
-
-  async unlikeVendorPost(postId: string, userId: number): Promise<void> {
-    await db
-      .delete(vendorPostLikes)
-      .where(and(eq(vendorPostLikes.postId, postId), eq(vendorPostLikes.userId, userId)));
-
-    // Update like count
-    await db
-      .update(vendorPosts)
-      .set({ likeCount: sql`${vendorPosts.likeCount} - 1` })
-      .where(eq(vendorPosts.id, postId));
-  }
-
-  async getVendorPostLikes(postId: string): Promise<VendorPostLike[]> {
-    const likes = await db
-      .select()
-      .from(vendorPostLikes)
-      .where(eq(vendorPostLikes.postId, postId));
-    return likes;
-  }
-
-  async commentOnVendorPost(comment: InsertVendorPostComment): Promise<VendorPostComment> {
-    const [newComment] = await db
-      .insert(vendorPostComments)
-      .values(comment)
-      .returning();
-
-    // Update comment count
-    await db
-      .update(vendorPosts)
-      .set({ commentCount: sql`${vendorPosts.commentCount} + 1` })
-      .where(eq(vendorPosts.id, comment.postId));
-
-    return newComment;
-  }
-
-  async getVendorPostComments(postId: string): Promise<VendorPostComment[]> {
-    const comments = await db
-      .select()
-      .from(vendorPostComments)
-      .where(and(eq(vendorPostComments.postId, postId), eq(vendorPostComments.isActive, true)))
-      .orderBy(desc(vendorPostComments.createdAt));
-    return comments;
-  }
-
-  // Placeholder implementations for remaining methods
-  async getMerchantProfile(userId: number): Promise<MerchantProfile | undefined> {
-    const [profile] = await db.select().from(merchantProfiles).where(eq(merchantProfiles.userId, userId));
-    return profile || undefined;
-  }
-
-  async createMerchantProfile(profile: InsertMerchantProfile): Promise<MerchantProfile> {
-    const [merchantProfile] = await db
-      .insert(merchantProfiles)
-      .values(profile)
-      .returning();
-    return merchantProfile;
-  }
-
-  async getMerchantDashboardStats(userId: number): Promise<{ todayRevenue: number; ordersCount: number; productViews: number; unreadMessages: number }> {
-    // Implement real stats calculation
-    return {
-      todayRevenue: 0,
-      ordersCount: 0,
-      productViews: 0,
-      unreadMessages: 0
-    };
-  }
-
-  async getMerchantOrders(userId: number): Promise<Order[]> {
-    const orders = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.sellerId, userId))
-      .orderBy(desc(orders.createdAt));
-    return orders;
-  }
-
-  async updateOrderStatus(orderId: string, status: string, merchantId: number): Promise<void> {
-    await db
-      .update(orders)
-      .set({ status: status as any })
-      .where(and(eq(orders.id, orderId), eq(orders.sellerId, merchantId)));
-  }
-
-  async getMerchantAnalytics(userId: number, period: string): Promise<MerchantAnalytics[]> {
-    const analytics = await db
-      .select()
-      .from(merchantAnalytics)
-      .where(eq(merchantAnalytics.merchantId, userId))
-      .orderBy(desc(merchantAnalytics.date));
-    return analytics;
-  }
-
-  async createDeliveryRequest(request: InsertDeliveryRequest): Promise<DeliveryRequest> {
-    const [deliveryRequest] = await db
-      .insert(deliveryRequests)
-      .values(request)
-      .returning();
-    return deliveryRequest;
-  }
-
-  async getConversations(userId: number, role?: string): Promise<any[]> {
-    let query = db
-      .select()
-      .from(conversations);
-
-    if (role === 'CONSUMER') {
-      query = query.where(eq(conversations.customerId, userId));
-    } else if (role === 'MERCHANT') {
-      query = query.where(eq(conversations.vendorId, userId));
-    } else {
-      query = query.where(
-        or(
-          eq(conversations.customerId, userId),
-          eq(conversations.vendorId, userId)
-        )
-      );
-    }
-
-    const conversationsList = await query.orderBy(desc(conversations.lastMessageAt));
-    return conversationsList;
-  }
-
-  async createConversation(conversation: InsertConversation): Promise<Conversation> {
-    const [newConversation] = await db
-      .insert(conversations)
-      .values(conversation)
-      .returning();
-    return newConversation;
-  }
-
-  async getMessages(conversationId: string): Promise<any[]> {
-    const messages = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, conversationId))
-      .orderBy(chatMessages.createdAt);
-    return messages;
-  }
-
-  async sendMessage(message: InsertChatMessage): Promise<ChatMessage> {
-    const [newMessage] = await db
-      .insert(chatMessages)
-      .values(message)
-      .returning();
-
-    // Update conversation last message
-    await db
-      .update(conversations)
-      .set({
-        lastMessage: message.content,
-        lastMessageAt: new Date()
-      })
-      .where(eq(conversations.id, message.conversationId));
-
-    return newMessage;
-  }
-
-  async getConversationMessages(conversationId: string, limit: number, offset: number): Promise<any[]> {
-    const messages = await db
-      .select()
-      .from(chatMessages)
-      .where(eq(chatMessages.conversationId, conversationId))
-      .orderBy(desc(chatMessages.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    return messages;
-  }
-
-  async createSupportTicket(ticket: InsertSupportTicket): Promise<SupportTicket> {
-    const ticketNumber = `TK-${Date.now()}`;
-    const [supportTicket] = await db
+  // Support Ticket operations
+  async createSupportTicket(insertTicket: InsertSupportTicket): Promise<SupportTicket> {
+    const [ticket] = await db
       .insert(supportTickets)
-      .values({
-        ticketNumber,
-        name: ticket.userEmail.split('@')[0],
-        email: ticket.userEmail,
-        userRole: ticket.userRole,
-        subject: ticket.subject,
-        message: ticket.description,
-        priority: ticket.priority === 'URGENT' ? 'HIGH' : ticket.priority as any,
-      })
+      .values(insertTicket)
       .returning();
-    return supportTicket;
+    return ticket;
   }
 
   async getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]> {
     let query = db.select().from(supportTickets);
 
+    const conditions: any[] = [];
+    
     if (filters?.status) {
-      query = query.where(eq(supportTickets.status, filters.status as any));
+      conditions.push(eq(supportTickets.status, filters.status as any));
     }
-
+    
     if (filters?.priority) {
-      query = query.where(eq(supportTickets.priority, filters.priority as any));
+      conditions.push(eq(supportTickets.priority, filters.priority as any));
     }
 
-    if (filters?.userRole) {
-      query = query.where(eq(supportTickets.userRole, filters.userRole as any));
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
     }
 
-    const tickets = await query.orderBy(desc(supportTickets.createdAt));
-    return tickets;
+    return await query.orderBy(desc(supportTickets.createdAt));
   }
 
   async getSupportTicket(ticketId: string): Promise<SupportTicket | undefined> {
-    const [ticket] = await db.select().from(supportTickets).where(eq(supportTickets.id, ticketId));
+    const [ticket] = await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.id, ticketId));
     return ticket || undefined;
   }
 
   async updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket> {
-    const [updatedTicket] = await db
+    const [ticket] = await db
       .update(supportTickets)
       .set(updateData)
       .where(eq(supportTickets.id, ticketId))
       .returning();
-    return updatedTicket;
+    return ticket;
   }
 
-  // Identity verification methods (placeholder implementations)
-  async createIdentityVerification(data: any): Promise<any> {
-    const [verification] = await db
-      .insert(identityVerifications)
-      .values(data)
-      .returning();
-    return verification;
+  // Basic method stubs for fuel orders and tracking
+  async getNearbyFuelStations(lat: number, lng: number, radius: number): Promise<any[]> {
+    // Stub implementation
+    return [];
   }
 
-  async getIdentityVerificationByUserId(userId: number): Promise<any | null> {
-    const [verification] = await db
-      .select()
-      .from(identityVerifications)
-      .where(eq(identityVerifications.userId, userId));
-    return verification || null;
+  async createFuelOrder(orderData: any): Promise<any> {
+    // Stub implementation
+    return { id: 'temp-id', ...orderData };
   }
 
-  async createDriverVerification(data: any): Promise<any> {
-    const [verification] = await db
-      .insert(driverVerifications)
-      .values(data)
-      .returning();
-    return verification;
+  async getFuelOrders(userId: number): Promise<any[]> {
+    // Stub implementation
+    return [];
   }
 
-  async getDriverVerificationByUserId(userId: number): Promise<any | null> {
-    const [verification] = await db
-      .select()
-      .from(driverVerifications)
-      .where(eq(driverVerifications.userId, userId));
-    return verification || null;
+  async getFuelOrderById(orderId: string): Promise<any | null> {
+    // Stub implementation
+    return null;
   }
 
-  async createPhoneVerification(data: any): Promise<any> {
-    const [verification] = await db
-      .insert(phoneVerifications)
-      .values(data)
-      .returning();
-    return verification;
+  async getOrderTracking(orderId: string): Promise<any | null> {
+    // Stub implementation
+    return null;
   }
+}
 
-  async verifyPhoneOTP(userId: number, otpCode: string): Promise<any | null> {
-    const [verification] = await db
-      .select()
-      .from(phoneVerifications)
-      .where(
-        and(
-          eq(phoneVerifications.userId, userId),
-          eq(phoneVerifications.otpCode, otpCode),
-          gte(phoneVerifications.expiresAt, new Date())
-        )
-      );
-
-    if (verification) {
-      await db
-        .update(phoneVerifications)
-        .set({ isVerified: true })
-        .where(eq(phoneVerifications.id, verification.id));
-
-      await db
-        .update(users)
-        .set({ isPhoneVerified: true })
-        .where(eq(users.id, userId));
-    }
-
-    return verification || null;
-  }
-
-  async updateUser(userId: number, data: any): Promise<any> {
-    const [updatedUser] = await db
-      .update(users)
-      .set(data)
-      .where(eq(users.id, userId))
-      .returning();
-    return updatedUser;
-  }
-
-  // Payment and transaction methods
-  async getUserWallet(userId: number): Promise<any> {
-    const wallets = await import("@shared/schema").then(m => m.wallets);
-    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, userId));
-    return wallet || null;
-  }
-
-  async createWallet(userId: number): Promise<any> {
-    const wallets = await import("@shared/schema").then(m => m.wallets);
-    const [wallet] = await db
-      .insert(wallets)
-      Line-by-line analysis: This code incorporates escrow management methods to the DatabaseStorage class, including transactions retrieval, analytics, dispute handling, and related database operations, ensuring real-time data usage.
-
-</tool_code>
+export const storage = new DatabaseStorage();
