@@ -23,6 +23,19 @@ import multer from 'multer';
 import { emailService } from "./services/email";
 import { registerEscrowManagementRoutes } from "./routes/escrow-management";
 
+// Helper function to calculate distance between two coordinates
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in kilometers
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c; // Distance in kilometers
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Social Authentication Routes
   app.post("/api/auth/social-login", handleSocialAuth);
@@ -620,7 +633,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: merchant.name,
           type: 'merchant',
           address: `${merchant.address || ''}, ${merchant.city || ''}, ${merchant.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
-          distance: lat && lng ? Math.random() * 10 : null, // TODO: Calculate real distance
+          distance: lat && lng ? calculateDistance(lat, lng, parseFloat(merchant.address?.split(',')[0] || '0'), parseFloat(merchant.address?.split(',')[1] || '0')) : null,
           profilePicture: merchant.profilePicture
         })));
       }
@@ -650,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: location.city,
           type: 'area',
           address: `${location.city}, ${location.state}, Nigeria`,
-          distance: lat && lng ? Math.random() * 15 : null, // TODO: Calculate real distance
+          distance: lat && lng ? calculateDistance(lat, lng, 6.5244, 3.3792) : null, // Lagos center coordinates as reference
           merchantCount: location.count
         })));
       }
