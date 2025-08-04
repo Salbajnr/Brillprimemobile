@@ -1,4 +1,3 @@
-
 import nodemailer from 'nodemailer';
 import validator from 'validator';
 
@@ -18,7 +17,7 @@ class EmailService {
   constructor() {
     // For development, we'll use a mock email service
     // In production, configure with your actual email provider (Gmail, SendGrid, etc.)
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
       port: parseInt(process.env.EMAIL_PORT || '587'),
       secure: false,
@@ -37,7 +36,7 @@ class EmailService {
   private async createTestAccount() {
     try {
       const testAccount = await nodemailer.createTestAccount();
-      this.transporter = nodemailer.createTransporter({
+      this.transporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
         port: 587,
         secure: false,
@@ -70,7 +69,7 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      
+
       // Log the preview URL for development
       if (process.env.NODE_ENV === 'development') {
         console.log('Message sent: %s', info.messageId);
@@ -91,7 +90,7 @@ class EmailService {
       }
 
       const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
-      
+
       const mailOptions = {
         from: process.env.EMAIL_FROM || 'BrillPrime <noreply@brillprime.com>',
         to: email,
@@ -100,7 +99,7 @@ class EmailService {
       };
 
       const info = await this.transporter.sendMail(mailOptions);
-      
+
       if (process.env.NODE_ENV === 'development') {
         console.log('Password reset email sent: %s', info.messageId);
         console.log('Preview URL: %s', nodemailer.getTestMessageUrl(info));
@@ -150,19 +149,19 @@ class EmailService {
             <div class="logo">🚀 BrillPrime</div>
             <h2>Email Verification</h2>
           </div>
-          
+
           <p>Hello ${userName || 'there'},</p>
-          
+
           <p>Thank you for signing up with BrillPrime! To complete your registration, please enter the verification code below:</p>
-          
+
           <div class="otp-box">
             <p>Your verification code is:</p>
             <div class="otp-code">${otpCode}</div>
             <p><small>This code will expire in 10 minutes</small></p>
           </div>
-          
+
           <p>If you didn't request this verification code, please ignore this email.</p>
-          
+
           <div class="footer">
             <p>© 2024 BrillPrime. All rights reserved.</p>
             <p>This is an automated message, please do not reply to this email.</p>
@@ -204,22 +203,22 @@ class EmailService {
             <div class="logo">🚀 BrillPrime</div>
             <h2>Password Reset Request</h2>
           </div>
-          
+
           <p>Hello ${userName || 'there'},</p>
-          
+
           <p>We received a request to reset your BrillPrime account password. Click the button below to reset your password:</p>
-          
+
           <div style="text-align: center;">
             <a href="${resetUrl}" class="button">Reset Password</a>
           </div>
-          
+
           <p>If the button doesn't work, copy and paste this link into your browser:</p>
           <p style="word-break: break-all; color: #8B5CF6;">${resetUrl}</p>
-          
+
           <p>This link will expire in 1 hour for security reasons.</p>
-          
+
           <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
-          
+
           <div class="footer">
             <p>© 2024 BrillPrime. All rights reserved.</p>
             <p>This is an automated message, please do not reply to this email.</p>

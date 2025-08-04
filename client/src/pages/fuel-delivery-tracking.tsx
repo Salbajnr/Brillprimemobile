@@ -29,6 +29,13 @@ export default function FuelDeliveryTracking() {
     walletBalance
   } = useWebSocketPayments();
 
+  const {
+    connected: deliveryConnected,
+    deliveryUpdates,
+    driverLocationUpdates,
+    subscribeToDeliveryTracking
+  } = useWebSocketFuelDelivery();
+
   // Get tracking data from navigation state or initialize default
   const [tracking, setTracking] = useState(() => {
     return location.state?.tracking || {
@@ -59,6 +66,60 @@ export default function FuelDeliveryTracking() {
       setConnectionStatus('disconnected');
     }
   }, [trackingConnected, orderId, subscribeToDriverTracking]);
+
+  // Subscribe to fuel delivery tracking
+  useEffect(() => {
+    if (deliveryConnected && orderId) {
+      subscribeToDeliveryTracking(orderId);
+    }
+  }, [deliveryConnected, orderId, subscribeToDeliveryTracking]);
+
+  // Process real-time delivery updates
+  useEffect(() => {
+    if (deliveryUpdates[orderId || '']) {
+      const deliveryData = deliveryUpdates[orderId || ''];
+      
+      if (deliveryData.type === 'DELIVERY_STARTED') {
+        setTracking(prev => ({
+          ...prev,
+          status: 'in_transit',
+          driverName: deliveryData.driverName || prev.driverName,
+          estimatedTime: deliveryData.estimatedDeliveryTime || prev.estimatedTime
+        }));
+
+        toast({
+          title: "Delivery Started",
+          description: "Your fuel is now on the way!",
+          duration: 5000,
+        });
+      }
+    }
+  }, [deliveryUpdates, orderId, toast]);
+
+  // Process driver location updates from fuel delivery
+  useEffect(() => {
+    if (driverLocationUpdates[orderId || '']) {
+      const locationData = driverLocationUpdates[orderId || ''];
+      
+      setRealTimeLocation(locationData.location);
+      if (locationData.eta) {
+        setRealTimeETA(locationData.eta);
+        setTracking(prev => ({
+          ...prev,
+          estimatedTime: locationData.eta,
+          currentLocation: locationData.distance ? 
+            `${locationData.distance} away` : prev.currentLocation
+        }));
+      }
+
+      toast({
+        title: "Location Updated",
+        description: locationData.eta ? 
+          `ETA: ${locationData.eta}` : "Driver location updated",
+        duration: 3000,
+      });
+    }
+  }, [driverLocationUpdates, orderId, toast]);
 
   // Process real-time driver location updates
   useEffect(() => {
