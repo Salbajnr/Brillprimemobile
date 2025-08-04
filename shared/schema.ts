@@ -602,7 +602,7 @@ export const insertSupportTicketSchema = z.object({
 
 
 
-export const insertFuelOrderSchema = z.object({
+export constinsertFuelOrderSchema = z.object({
   stationId: z.string(),
   fuelType: z.enum(["PMS", "AGO", "DPK"]),
   quantity: z.number().positive(),

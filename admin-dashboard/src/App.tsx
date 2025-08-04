@@ -11,6 +11,7 @@ import { AdminFraud } from './pages/admin-fraud';
 import { AdminModeration } from './pages/admin-moderation';
 import { AdminMonitoring } from './pages/admin-monitoring';
 import { AdminSupport } from './pages/admin-support';
+import AdminEscrowManagement from './pages/admin-escrow-management';
 
 const queryClient = new QueryClient();
 
@@ -29,6 +30,9 @@ function App() {
             <Route path="/moderation" element={<AdminModeration />} />
             <Route path="/monitoring" element={<AdminMonitoring />} />
             <Route path="/support" element={<AdminSupport />} />
+            <Route path="/admin/monitoring" element={<AdminMonitoring />} />
+            <Route path="/admin/fraud" element={<AdminFraud />} />
+            <Route path="/admin/escrow-management" element={<AdminEscrowManagement />} />
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
           </Routes>
         </Router>

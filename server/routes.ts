@@ -21,6 +21,7 @@ import { requireAuth, auth, verifyToken } from './middleware/auth';
 import { handleSocialAuth, linkSocialAccount, getLinkedSocialAccounts, unlinkSocialAccount } from './auth/social-auth';
 import multer from 'multer';
 import { emailService } from "./services/email";
+import { registerEscrowManagementRoutes } from "./routes/escrow-management";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Social Authentication Routes
@@ -1374,6 +1375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Register test routes for real-time features
   registerTestRealtimeRoutes(app);
+  registerEscrowManagementRoutes(app);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {
