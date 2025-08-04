@@ -104,10 +104,13 @@ export default function OtpVerificationPage() {
           <div className="flex items-center justify-center space-x-2 mb-4">
             <Mail className="h-4 w-4 text-[var(--brill-secondary)]" />
             <p className="text-[var(--brill-text-light)] font-light text-sm">
-              A verification code has been sent to
+              A 5-digit verification code has been sent to
             </p>
           </div>
           <p className="text-[var(--brill-secondary)] font-medium text-sm">{verificationEmail}</p>
+          <p className="text-[var(--brill-text-light)] text-xs mt-2 text-center">
+            Please check your inbox and spam folder
+          </p>
         </div>
 
         <div className="mb-8">

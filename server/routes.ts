@@ -9,7 +9,7 @@ import { registerLiveChatRoutes } from "./routes/live-chat";
 import { registerOrderStatusRoutes } from "./routes/order-status";
 import { registerTestRealtimeRoutes } from "./routes/test-realtime";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
-import bcrypt from "bcrypt";
+import bcrypt from "bcryptjs";
 import "./middleware/auth"; // Import type declarations
 import { Request, Response } from 'express';
 import cors from 'cors';
@@ -20,6 +20,7 @@ import jwt from 'jsonwebtoken';
 import { requireAuth, auth, verifyToken } from './middleware/auth';
 import { handleSocialAuth, linkSocialAccount, getLinkedSocialAccounts, unlinkSocialAccount } from './auth/social-auth';
 import multer from 'multer';
+import { emailService } from "./services/email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Enhanced Social Authentication Routes
@@ -32,6 +33,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/signup", async (req, res) => {
     try {
       const userData = insertUserSchema.parse(req.body);
+
+      // Validate email format
+      if (!emailService.isValidEmail(userData.email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
 
       // Check if user already exists
       const existingUser = await storage.getUserByEmail(userData.email);
@@ -58,12 +64,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt
       });
 
+      // Send OTP via email service
+      const emailSent = await emailService.sendOTP(user.email, otpCode, user.fullName);
+
+      if (!emailSent) {
+        // If email fails, still allow registration but log the error
+        console.error(`Failed to send OTP email to ${user.email}`);
+      }
+
       // In a real app, send OTP via email service
       console.log(`OTP for ${user.email}: ${otpCode}`);
 
       res.json({ 
         message: "User registered successfully. Please verify your email.",
-        userId: user.id 
+        userId: user.id,
+        emailSent
       });
     } catch (error) {
       console.error("Signup error:", error);
@@ -289,10 +304,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         expiresAt
       });
 
+      // Send OTP via email service
+      const emailSent = await emailService.sendOTP(user.email, otpCode, user.fullName);
+
+      if (!emailSent) {
+        // If email fails, still allow registration but log the error
+        console.error(`Failed to send OTP email to ${user.email}`);
+      }
+
       // In a real app, send OTP via email service
       console.log(`New OTP for ${user.email}: ${otpCode}`);
 
-      res.json({ message: "OTP sent successfully" });
+      res.json({ message: "OTP sent successfully", emailSent });
     } catch (error) {
       console.error("Resend OTP error:", error);
       res.status(500).json({ message: "Failed to send OTP" });
@@ -937,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId, limit = 10, offset = 0 } = req.query;
       const userIdNum = userId ? parseInt(userId as string) : req.session!.userId!;
-      
+
       const transactionResults = await db.select({
         id: sql`'txn_' || ${transactions.id}::text`,
         type: sql`CASE 
@@ -966,7 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/wallet/balance", requireAuth, async (req, res) => {
     try {
       const userId = req.session!.userId!;
-      
+
       // Get wallet balance from wallets table or calculate from transactions
       const walletResult = await db.select({
         balance: wallets.balance
@@ -976,7 +999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       .limit(1);
 
       const balance = walletResult.length > 0 ? parseFloat(walletResult[0].balance || '0') : 0;
-      
+
       res.json({ success: true, balance });
     } catch (error) {
       console.error("Get wallet balance error:", error);
@@ -988,7 +1011,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/payment-methods", requireAuth, async (req, res) => {
     try {
       const userId = req.session!.userId!;
-      
+
       const methods = await db.select({
         id: paymentMethods.id,
         type: paymentMethods.type,
@@ -1523,5 +1546,49 @@ export function setupRoutes(app: any) {
       websocket: true,
       timestamp: Date.now() 
     });
+  });
+
+  // Password reset endpoint
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      // Validate email format
+      if (!emailService.isValidEmail(email)) {
+        return res.status(400).json({ message: "Invalid email address format" });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        // Don't reveal if email exists or not for security
+        return res.json({ message: "If an account with this email exists, a reset link has been sent." });
+      }
+
+      // Generate reset token
+      const resetToken = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+      const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+      // Send password reset email
+      const emailSent = await emailService.sendPasswordResetEmail(user.email, resetToken, user.fullName);
+
+      // Store reset token (you'd need to add this to your schema)
+      console.log(`Password reset token for ${email}: ${resetToken}`);
+
+      if (!emailSent) {
+        console.error(`Failed to send password reset email to ${email}`);
+      }
+
+      res.json({ 
+        message: "If an account with this email exists, a reset link has been sent.",
+        emailSent: emailSent
+      });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      if (error.message?.includes("Invalid email")) {
+        res.status(400).json({ message: "Invalid email address format" });
+      } else {
+        res.status(500).json({ message: "Failed to process password reset request" });
+      }
+    }
   });
 }

@@ -66,7 +66,7 @@ export default function SignupPage() {
         title: "Registration Failed",
         description: error.message + " Please try again or select a different role.",
       });
-      
+
       // For critical errors, redirect back to role selection after delay
       if (error.message.includes("role") || error.message.includes("invalid")) {
         setTimeout(() => {
@@ -89,7 +89,7 @@ export default function SignupPage() {
 
     // Get driver tier information if available
     const driverTier = selectedRole === "DRIVER" ? sessionStorage.getItem('selectedDriverTier') : null;
-    
+
     const signupData = {
       fullName: data.fullName,
       email: data.email,
@@ -116,14 +116,14 @@ export default function SignupPage() {
 
     try {
       const { socialAuth } = await import("@/lib/social-auth");
-      
+
       const profile = await socialAuth.signInWithGoogle();
       const result = await socialAuth.authenticateWithBackend(profile);
-      
+
       // Update auth state
       setUser(result.user);
       localStorage.setItem("auth", JSON.stringify(result.user));
-      
+
       setLocation("/dashboard");
     } catch (error: any) {
       setErrorMessage(error.message || "Google sign-up failed. Please try again.");
