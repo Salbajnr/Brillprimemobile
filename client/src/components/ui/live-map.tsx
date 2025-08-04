@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState } from 'react';
 import { MapPin, Navigation, Truck, Home } from 'lucide-react';
 
@@ -54,7 +53,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
           };
           setUserLocation(newLocation);
           setLocationError(null);
-          
+
           // Notify parent component of location updates
           if (onLocationUpdate) {
             onLocationUpdate(newLocation);
@@ -108,6 +107,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
 
     // Load Google Maps API if not already loaded
     if (!window.google) {
+      console.error('Google Maps JavaScript API not loaded. Please ensure GOOGLE_MAPS_API_KEY is configured.');
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&libraries=geometry,places`;
       script.async = true;
@@ -148,7 +148,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
     // Add custom markers
     markers.forEach(marker => {
       let icon: google.maps.Icon | google.maps.Symbol;
-      
+
       switch (marker.type) {
         case 'driver':
           icon = {
@@ -275,7 +275,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
     <div className={`relative ${className}`}>
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full rounded-lg" />
-      
+
       {/* Loading State */}
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">

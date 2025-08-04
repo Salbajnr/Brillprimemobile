@@ -663,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: location.city,
           type: 'area',
           address: `${location.city}, ${location.state}, Nigeria`,
-          distance: lat && lng ? calculateDistance(lat, lng, 6.5244, 3.3792) : null, // Lagos center coordinates as reference
+          distance: lat && lng ? Math.round(calculateDistance(lat, lng, 6.5244, 3.3792) * 100) / 100 : null, // Distance in km from Lagos center
           merchantCount: location.count
         })));
       }

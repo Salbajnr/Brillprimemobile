@@ -86,12 +86,28 @@ export function registerQRPaymentRoutes(app: Express) {
       }
 
       // Extract payment details from QR code
-      // In a real implementation, you'd fetch this from your QR payments table
+      // Validate QR code format: PAY_timestamp_payeeId_amount (optional)
       const qrParts = data.qrCode.split('_');
-      if (qrParts.length < 3) {
+      if (qrParts.length < 3 || qrParts.length > 4) {
         return res.status(400).json({
           success: false,
-          message: "Invalid QR code format"
+          message: "Invalid QR code format. Expected PAY_timestamp_payeeId format."
+        });
+      }
+
+      // Validate timestamp is numeric
+      if (!/^\d+$/.test(qrParts[1])) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid QR code format. Invalid timestamp."
+        });
+      }
+
+      // Validate payeeId is numeric
+      if (!/^\d+$/.test(qrParts[2])) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid QR code format. Invalid payee ID."
         });
       }
 

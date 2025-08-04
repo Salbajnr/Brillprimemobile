@@ -108,6 +108,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Angwan Rukuba',
         distance: '15km',
         status: 'COMPLETED',
+        statusColor: 'text-green-600 bg-green-50',
         date: 'Friday, 13th November 2024',
         time: '11:30am'
       },
@@ -122,6 +123,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Plateau University',
         distance: '7km',
         status: 'IN_PROGRESS',
+        statusColor: 'text-blue-600 bg-blue-50',
         date: 'Friday, 13th November 2024',
         time: '01:15pm'
       },
@@ -137,6 +139,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Rayfield Estate',
         distance: '9km',
         status: 'CANCELLED',
+        statusColor: 'text-red-600 bg-red-50',
         date: 'Thursday, 12th November 2024',
         time: '04:20pm'
       }

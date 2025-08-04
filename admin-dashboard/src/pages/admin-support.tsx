@@ -409,7 +409,7 @@ export function AdminSupport() {
                       <div className="flex items-center justify-between">
                         <p className="text-xs text-gray-500">
                           <Clock className="h-3 w-3 inline mr-1" />
-                          {getTicketAge(ticket.createdAt)}
+                          {getTicketAge(ticket.createdAt)} ago
                         </p>
                         {ticket.status === 'OPEN' && (
                           <button
