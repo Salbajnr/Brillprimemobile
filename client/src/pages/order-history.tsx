@@ -108,6 +108,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Angwan Rukuba',
         distance: '15km',
         status: 'COMPLETED',
+        statusColor: 'text-green-600 bg-green-50',
         date: 'Friday, 13th November 2024',
         time: '11:30am'
       },
@@ -122,6 +123,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Plateau University',
         distance: '7km',
         status: 'IN_PROGRESS',
+        statusColor: 'text-blue-600 bg-blue-50',
         date: 'Friday, 13th November 2024',
         time: '01:15pm'
       },
@@ -137,6 +139,7 @@ const getSampleOrderHistory = (userRole: string): OrderHistoryItem[] => {
         deliveryLocation: 'Rayfield Estate',
         distance: '9km',
         status: 'CANCELLED',
+        statusColor: 'text-red-600 bg-red-50',
         date: 'Thursday, 12th November 2024',
         time: '04:20pm'
       }
@@ -260,19 +263,19 @@ const getReturnPath = (userRole: string) => {
 export default function OrderHistory() {
   const { user } = useAuth();
   const [, setLocation] = useLocation();
-  
+
   const userRole = user?.role || 'CONSUMER';
   const [orderHistory, setOrderHistory] = useState(getSampleOrderHistory(userRole));
   const pageTitle = getPageTitle(userRole);
   const returnPath = getReturnPath(userRole);
-  
+
   // Initialize WebSocket hooks
   const { 
     connected: ordersConnected, 
     orderUpdates, 
     connectionError: ordersError 
   } = useWebSocketOrders();
-  
+
   const { 
     connected: notificationsConnected, 
     notifications, 
@@ -282,7 +285,7 @@ export default function OrderHistory() {
   const handleBackNavigation = () => {
     setLocation(returnPath);
   };
-  
+
   // Process real-time order updates
   useEffect(() => {
     if (Object.keys(orderUpdates).length > 0) {
@@ -302,7 +305,7 @@ export default function OrderHistory() {
       });
     }
   }, [orderUpdates]);
-  
+
   // Process notifications related to orders
   useEffect(() => {
     if (notifications.length > 0) {
@@ -310,7 +313,7 @@ export default function OrderHistory() {
       const orderNotifications = notifications.filter(
         notification => notification.payload.type === 'ORDER_UPDATE'
       );
-      
+
       if (orderNotifications.length > 0) {
         // Process order notifications if needed
         console.log('Received order notifications:', orderNotifications);
@@ -382,7 +385,7 @@ export default function OrderHistory() {
         ) : (
           orderHistory.map((order) => {
             const statusConfig = getStatusColor(order.status);
-            
+
             return (
               <Card 
                 key={order.id}
@@ -410,7 +413,7 @@ export default function OrderHistory() {
                         </p>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <span className="text-lg font-semibold" style={{ color: COLORS.SECONDARY }}>
                         ₦{order.price.toLocaleString()}
@@ -426,7 +429,7 @@ export default function OrderHistory() {
                         {order.productName}
                       </h3>
                     </div>
-                    
+
                     <Badge 
                       variant="outline"
                       className="px-3 py-1 rounded-lg border text-xs font-medium"
@@ -510,7 +513,7 @@ export default function OrderHistory() {
                     >
                       {statusConfig.label}
                     </Badge>
-                    
+
                     <div className="text-right">
                       <p className="text-xs font-light" style={{ color: COLORS.ACTIVE }}>
                         {order.date}

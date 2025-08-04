@@ -119,7 +119,7 @@ export default function WalletFund() {
                 </Button>
               ))}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="custom-amount" className="text-sm font-medium">
                 Or enter custom amount
@@ -174,7 +174,7 @@ export default function WalletFund() {
                   </div>
                 </div>
               ))}
-              
+
               <Button
                 variant="outline"
                 className="w-full h-16 border-dashed border-[#4682b4] text-[#4682b4] hover:bg-[#4682b4]/10"

@@ -1,3 +1,6 @@
+The change adds an error state variable to the component, which is relevant to the overall intention of fixing issues and implementing functionalities.
+```
+```replit_final_file
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Search, Plus, MessageCircle, User, Clock } from "lucide-react";
@@ -110,9 +113,9 @@ export default function Messages() {
     const matchesSearch = conv.participantName.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          conv.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()) ||
                          (conv.productName && conv.productName.toLowerCase().includes(searchQuery.toLowerCase()));
-    
+
     if (!matchesSearch) return false;
-    
+
     switch (selectedFilter) {
       case 'UNREAD':
         return conv.unreadCount > 0;
@@ -154,6 +157,14 @@ export default function Messages() {
         return '#6b7280';
     }
   };
+
+  const { socket, isConnected } = useWebSocket(true);
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}

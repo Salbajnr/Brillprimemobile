@@ -54,19 +54,19 @@ export interface IStorage {
   getSupportTickets(filters?: { status?: string; priority?: string; userRole?: string }): Promise<SupportTicket[]>;
   getSupportTicket(ticketId: string): Promise<SupportTicket | undefined>;
   updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket>;
-  
+
   // Fuel Orders and Tracking operations
   getNearbyFuelStations(lat: number, lng: number, radius: number): Promise<any[]>;
   createFuelOrder(orderData: any): Promise<any>;
   getFuelOrders(userId: number): Promise<any[]>;
   getFuelOrderById(orderId: string): Promise<any | null>;
   getOrderTracking(orderId: string): Promise<any | null>;
-  
+
   // Driver Management operations
   getAvailableDrivers(lat: number, lng: number, radius?: number): Promise<any[]>;
   assignDriverToOrder(orderId: string, driverId: number): Promise<any>;
   updateDriverLocation(driverId: number, latitude: number, longitude: number): Promise<void>;
-  
+
   // Real-time Analytics operations
   getSystemMetrics(): Promise<any>;
   getUserActivityMetrics(timeframe?: string): Promise<any>;
@@ -75,7 +75,7 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   private db = db;
-  
+
   // User operations
   async getUser(id: number): Promise<User | undefined> {
     const [user] = await this.db.select().from(users).where(eq(users.id, id));
@@ -261,11 +261,11 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(products);
 
     const conditions: any[] = [];
-    
+
     if (filters.categoryId) {
       conditions.push(eq(products.categoryId, filters.categoryId));
     }
-    
+
     if (filters.search) {
       conditions.push(
         or(
@@ -345,11 +345,11 @@ export class DatabaseStorage implements IStorage {
     let query = db.select().from(supportTickets);
 
     const conditions: any[] = [];
-    
+
     if (filters?.status) {
       conditions.push(eq(supportTickets.status, filters.status as any));
     }
-    
+
     if (filters?.priority) {
       conditions.push(eq(supportTickets.priority, filters.priority as any));
     }
@@ -579,7 +579,7 @@ export class DatabaseStorage implements IStorage {
         const driverLat = driver.currentLocation.latitude;
         const driverLng = driver.currentLocation.longitude;
         if (!driverLat || !driverLng) return false;
-        
+
         const distance = this.calculateDistance(lat, lng, driverLat, driverLng);
         return distance <= radius;
       })
@@ -654,8 +654,7 @@ export class DatabaseStorage implements IStorage {
         latitude: latitude.toString(),
         longitude: longitude.toString(),
         isActive: true
-      })
-;
+      });
   }
 
   // Real-time Analytics Operations
@@ -691,13 +690,13 @@ export class DatabaseStorage implements IStorage {
 
   async getUserActivityMetrics(timeframe: string = '24h'): Promise<any> {
     const timeAgo = this.getTimeAgo(timeframe);
-    
+
     const [newUsers, activeUsers] = await Promise.all([
       this.db
         .select({ count: count() })
         .from(users)
         .where(sql`${users.createdAt} >= ${timeAgo}`),
-      
+
       this.db
         .select({ count: count() })
         .from(userLocations)
@@ -714,7 +713,7 @@ export class DatabaseStorage implements IStorage {
 
   async getTransactionMetrics(timeframe: string = '24h'): Promise<any> {
     const timeAgo = this.getTimeAgo(timeframe);
-    
+
     const [recentOrders, recentFuelOrders] = await Promise.all([
       this.db
         .select({ 
@@ -723,7 +722,7 @@ export class DatabaseStorage implements IStorage {
         })
         .from(orders)
         .where(sql`${orders.createdAt} >= ${timeAgo}`),
-      
+
       this.db
         .select({ 
           count: count(),
@@ -779,7 +778,7 @@ export class DatabaseStorage implements IStorage {
       .from(users)
       .where(eq(users.id, userId))
       .limit(1);
-    
+
     return wallet[0] || null;
   }
 
@@ -801,6 +800,40 @@ export class DatabaseStorage implements IStorage {
       timestamp: new Date(),
       isRead: false
     };
+  }
+
+  // Transaction methods
+  async getTransactionById(id: string) {
+    const [transaction] = await db.select().from(transactions).where(eq(transactions.id, id));
+    return transaction;
+  }
+
+  async addLocationHistory(userId: number, locationData: {
+    latitude: number;
+    longitude: number;
+    timestamp: Date;
+    orderId?: string;
+  }) {
+    // This would be implemented with a location_history table in production
+    console.log(`Location history for user ${userId}:`, locationData);
+    return true;
+  }
+
+  async addSupportMessage(messageData: {
+    ticketId: string;
+    senderId: number;
+    content: string;
+    attachments?: string[];
+  }) {
+    // This would be implemented with a support_messages table in production
+    const message = {
+      id: Date.now().toString(),
+      ...messageData,
+      timestamp: new Date(),
+      isRead: false
+    };
+    console.log('Support message added:', message);
+    return message;
   }
 }
 

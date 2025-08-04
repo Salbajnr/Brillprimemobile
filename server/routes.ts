@@ -663,7 +663,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           name: location.city,
           type: 'area',
           address: `${location.city}, ${location.state}, Nigeria`,
-          distance: lat && lng ? calculateDistance(lat, lng, 6.5244, 3.3792) : null, // Lagos center coordinates as reference
+          distance: lat && lng ? Math.round(calculateDistance(lat, lng, 6.5244, 3.3792) * 100) / 100 : null, // Distance in km from Lagos center
           merchantCount: location.count
         })));
       }
@@ -1018,6 +1018,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Get wallet balance error:", error);
       res.status(500).json({ success: false, message: "Failed to fetch wallet balance" });
+    }
+  });
+
+  // User settings update endpoint
+  app.put("/api/user/update-settings", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const { notifications, biometric, twoFactor, darkMode, language } = req.body;
+
+      // Update user settings in database
+      await storage.updateUserSettings(userId, {
+        notifications: notifications || false,
+        biometricEnabled: biometric || false,
+        twoFactorEnabled: twoFactor || false,
+        darkMode: darkMode || false,
+        language: language || 'en'
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Settings updated successfully" 
+      });
+    } catch (error) {
+      console.error("Update settings error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to update settings" 
+      });
     }
   });
 

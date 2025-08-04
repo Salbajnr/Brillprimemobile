@@ -85,4 +85,26 @@ export default function FuelOrdering() {
       setLocation('/fuel-order-details', { state: orderData });
     }, 500);
   };
+
+  // Create fuel order
+      const response = await fetch('/api/fuel-orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          stationId: selectedStation?.id || 'station_1',
+          fuelType: orderData.fuelType,
+          quantity: parseFloat(orderData.quantity),
+          deliveryAddress: orderData.deliveryAddress,
+          totalAmount: parseFloat(orderData.totalAmount),
+          userId: user?.id,
+          paymentMethod: orderData.paymentMethod || 'wallet',
+          coordinates: {
+            latitude: orderData.coordinates?.latitude || 6.5244,
+            longitude: orderData.coordinates?.longitude || 3.3792
+          }
+        }),
+        credentials: 'include'
+      });
 }

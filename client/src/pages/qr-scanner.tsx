@@ -47,44 +47,26 @@ export default function QRScanner() {
 
   const startCamera = async () => {
     try {
-      const constraints = {
-        video: {
-          facingMode: facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        }
-      };
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: "environment",
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          } 
+        });
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      streamRef.current = stream;
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
-      
-      setIsScanning(true);
-      setHasPermission(true);
-      
-      // Enable flashlight if available and requested
-      if (flashlightOn) {
-        const track = stream.getVideoTracks()[0];
-        if (track.getCapabilities && track.getCapabilities().torch) {
-          await track.applyConstraints({
-            advanced: [{ torch: true } as any]
-          });
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.onloadedmetadata = () => {
+            videoRef.current?.play();
+            setIsScanning(true);
+          };
         }
+      } catch (error) {
+        console.error('Error accessing camera:', error);
+        setError('Unable to access camera. Please check permissions.');
+        alert('Unable to access camera. Please check permissions.');
       }
-    } catch (error) {
-      console.error("Camera access error:", error);
-      setHasPermission(false);
-      setModalData({
-        isOpen: true,
-        type: "error",
-        title: "Camera Access Denied",
-        message: "Please allow camera access to scan QR codes. Check your browser settings and try again."
-      });
-    }
   };
 
   const stopCamera = () => {

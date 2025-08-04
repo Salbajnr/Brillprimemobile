@@ -1,5 +1,4 @@
-
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { MapPin, Navigation, Truck, Home } from 'lucide-react';
 
 interface MapMarker {
@@ -23,6 +22,7 @@ interface LiveMapProps {
   markers?: MapMarker[];
   showRoute?: RouteInfo;
   onLocationUpdate?: (location: { lat: number; lng: number }) => void;
+  orderId?: string;
 }
 
 const LiveMap: React.FC<LiveMapProps> = ({
@@ -33,15 +33,120 @@ const LiveMap: React.FC<LiveMapProps> = ({
   center,
   markers = [],
   showRoute,
-  onLocationUpdate
+  onLocationUpdate,
+  orderId
 }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [driverLocation, setDriverLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [mapLoaded, setMapLoaded] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const mapInstanceRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.Marker[]>([]);
   const routeRendererRef = useRef<google.maps.DirectionsRenderer | null>(null);
+  const [socket, setSocket] = useState<WebSocket | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [driverLocations, setDriverLocations] = useState<{ [orderId: string]: any }>({});
+  const [etaUpdates, setEtaUpdates] = useState<{ [orderId: string]: any }>({});
+  const [eta, setEta] = useState<string | null>(null);
+
+  // WebSocket connection
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:8080'); // Replace with your WebSocket server URL
+
+    ws.onopen = () => {
+      console.log('WebSocket connected');
+      setConnected(true);
+      setSocket(ws);
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'driver_location') {
+          setDriverLocations((prevLocations) => ({
+            ...prevLocations,
+            [data.orderId]: data.payload,
+          }));
+        } else if (data.type === 'eta_update') {
+          setEtaUpdates((prevEtas) => ({
+            ...prevEtas,
+            [data.orderId]: data.payload,
+          }));
+        } else {
+          console.log('Received message:', data);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onclose = () => {
+      console.log('WebSocket disconnected');
+      setConnected(false);
+      setSocket(null);
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    return () => {
+      console.log('Cleaning up WebSocket');
+      ws.close();
+    };
+  }, []);
+
+  const subscribeToDriverTracking = useCallback(
+    (orderId: string) => {
+      if (socket && connected) {
+        socket.send(JSON.stringify({ type: 'subscribe_driver', orderId: orderId }));
+        console.log(`Subscribed to driver tracking for order ${orderId}`);
+      }
+    },
+    [socket, connected]
+  );
+
+  const joinLiveMap = useCallback(() => {
+    if (socket && connected) {
+      socket.send(JSON.stringify({ type: 'join_live_map' }));
+      console.log('Joined live map');
+    }
+  }, [socket, connected]);
+
+  useEffect(() => {
+    if (connected && orderId) {
+      subscribeToDriverTracking(orderId);
+      joinLiveMap();
+    }
+  }, [connected, orderId, subscribeToDriverTracking, joinLiveMap]);
+
+  // Process real-time location updates
+  useEffect(() => {
+    if (driverLocations[orderId || 'default']) {
+      const locationData = driverLocations[orderId || 'default'];
+      setDriverLocation({
+        lat: locationData.location.latitude || locationData.location.lat,
+        lng: locationData.location.longitude || locationData.location.lng
+      });
+
+      if (locationData.eta) {
+        setEta(locationData.eta);
+      }
+
+      console.log('Updated driver location:', locationData);
+    }
+  }, [driverLocations, orderId]);
+
+  // Process ETA updates
+  useEffect(() => {
+    if (etaUpdates[orderId || 'default']) {
+      const etaData = etaUpdates[orderId || 'default'];
+      setEta(etaData.eta);
+      console.log('Updated ETA:', etaData);
+    }
+  }, [etaUpdates, orderId]);
 
   // Get user's current location
   useEffect(() => {
@@ -54,7 +159,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
           };
           setUserLocation(newLocation);
           setLocationError(null);
-          
+
           // Notify parent component of location updates
           if (onLocationUpdate) {
             onLocationUpdate(newLocation);
@@ -108,6 +213,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
 
     // Load Google Maps API if not already loaded
     if (!window.google) {
+      console.error('Google Maps JavaScript API not loaded. Please ensure GOOGLE_MAPS_API_KEY is configured.');
       const script = document.createElement('script');
       script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.GOOGLE_MAPS_API_KEY || 'YOUR_API_KEY'}&libraries=geometry,places`;
       script.async = true;
@@ -145,10 +251,28 @@ const LiveMap: React.FC<LiveMapProps> = ({
       markersRef.current.push(userMarker);
     }
 
+    // Add driver location marker
+    if (driverLocation) {
+      const driverMarker = new google.maps.Marker({
+        position: driverLocation,
+        map: mapInstanceRef.current,
+        title: 'Driver Location',
+        icon: {
+          path: google.maps.SymbolPath.FORWARD_CLOSED_ARROW,
+          scale: 6,
+          fillColor: '#FF6B35',
+          fillOpacity: 1,
+          strokeColor: '#ffffff',
+          strokeWeight: 2
+        }
+      });
+      markersRef.current.push(driverMarker);
+    }
+
     // Add custom markers
     markers.forEach(marker => {
       let icon: google.maps.Icon | google.maps.Symbol;
-      
+
       switch (marker.type) {
         case 'driver':
           icon = {
@@ -219,7 +343,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
 
       markersRef.current.push(mapMarker);
     });
-  }, [mapLoaded, userLocation, showUserLocation, markers]);
+  }, [mapLoaded, userLocation, showUserLocation, markers, driverLocation]);
 
   // Show route if provided
   useEffect(() => {
@@ -275,7 +399,7 @@ const LiveMap: React.FC<LiveMapProps> = ({
     <div className={`relative ${className}`}>
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full rounded-lg" />
-      
+
       {/* Loading State */}
       {!mapLoaded && (
         <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
@@ -323,6 +447,14 @@ const LiveMap: React.FC<LiveMapProps> = ({
               {userLocation ? 'GPS Active' : 'GPS Searching...'}
             </span>
           </div>
+        </div>
+      )}
+       {/* ETA Display */}
+       {eta && (
+        <div className="absolute bottom-2 right-2 bg-white rounded-lg shadow-md p-2">
+          <span className="text-xs text-gray-600">
+            ETA: {eta}
+          </span>
         </div>
       )}
     </div>

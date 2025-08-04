@@ -20,6 +20,9 @@ export default function DashboardPage() {
     } else if (user?.role === "DRIVER") {
       console.log("Redirecting DRIVER to /driver-dashboard");
       setLocation("/driver-dashboard");
+    } else if (user?.role === "ADMIN") {
+      console.log("Redirecting ADMIN to /admin-dashboard");
+      setLocation("/admin-dashboard");
     }
   }, [user, setLocation]);
 

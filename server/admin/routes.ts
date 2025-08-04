@@ -579,6 +579,21 @@ router.get('/support/tickets', adminAuth, async (req, res) => {
 
     const totalCount = await db.select({ count: count() }).from(supportTickets).where(whereClause);
 
+    // Validate pagination parameters
+    if (page < 1) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid page number. Must be 1 or greater.' 
+      });
+    }
+
+    if (limit < 1 || limit > 100) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Invalid limit. Must be between 1 and 100.' 
+      });
+    }
+
     res.json({
       success: true,
       data: {
