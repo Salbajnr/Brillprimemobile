@@ -149,7 +149,7 @@ export default function DriverRegistration() {
                     <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
                     Vehicle Information
                   </h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -230,7 +230,7 @@ export default function DriverRegistration() {
                     <div className="w-2 h-2 bg-blue-600 rounded-full mr-3" />
                     Driver Information
                   </h3>
-                  
+
                   <FormField
                     control={form.control}
                     name="driverLicense"
@@ -253,7 +253,7 @@ export default function DriverRegistration() {
                       <Lock className="w-5 h-5 text-blue-600 mr-2" />
                       Premium Specializations
                     </h3>
-                    
+
                     <FormField
                       control={form.control}
                       name="specializations"
@@ -330,7 +330,7 @@ export default function DriverRegistration() {
                     <Upload className="w-5 h-5 text-blue-600 mr-2" />
                     Required Documents
                   </h3>
-                  
+
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                     <input
                       type="file"

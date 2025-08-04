@@ -1021,6 +1021,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // User settings update endpoint
+  app.put("/api/user/update-settings", requireAuth, async (req, res) => {
+    try {
+      const userId = req.session!.userId!;
+      const { notifications, biometric, twoFactor, darkMode, language } = req.body;
+
+      // Update user settings in database
+      await storage.updateUserSettings(userId, {
+        notifications: notifications || false,
+        biometricEnabled: biometric || false,
+        twoFactorEnabled: twoFactor || false,
+        darkMode: darkMode || false,
+        language: language || 'en'
+      });
+
+      res.json({ 
+        success: true, 
+        message: "Settings updated successfully" 
+      });
+    } catch (error) {
+      console.error("Update settings error:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to update settings" 
+      });
+    }
+  });
+
   // Payment Methods API
   app.get("/api/payment-methods", requireAuth, async (req, res) => {
     try {

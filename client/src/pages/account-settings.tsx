@@ -101,7 +101,7 @@ export default function AccountSettingsPage() {
 
   const handlePasswordChange = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (newPassword !== confirmPassword) {
       setErrorMessage("New passwords do not match");
       setShowErrorModal(true);
@@ -197,7 +197,7 @@ export default function AccountSettingsPage() {
         {activeTab === "security" && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-[var(--brill-text)]">Change Password</h2>
-            
+
             <form onSubmit={handlePasswordChange} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="currentPassword" className="text-[var(--brill-text)] font-medium">
@@ -331,7 +331,7 @@ export default function AccountSettingsPage() {
         {activeTab === "notifications" && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-[var(--brill-text)]">Notification Preferences</h2>
-            
+
             <div className="space-y-4">
               {Object.entries(notifications).map(([key, value]) => (
                 <div key={key} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
@@ -365,7 +365,7 @@ export default function AccountSettingsPage() {
         {activeTab === "privacy" && (
           <div className="space-y-6">
             <h2 className="text-lg font-bold text-[var(--brill-text)]">Privacy Controls</h2>
-            
+
             <div className="space-y-4">
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div>
