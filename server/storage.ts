@@ -1,18 +1,18 @@
 import { 
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
-  driverProfiles, merchantProfiles, merchantAnalytics, supportTickets,
+  driverProfiles, merchantProfiles, merchantAnalytics, supportTickets, fuelOrders,
   type User, type InsertUser, type OtpCode, type InsertOtpCode,
   type Category, type InsertCategory, type Product, type InsertProduct,
   type CartItem, type InsertCartItem, type UserLocation, type InsertUserLocation,
-  type Order, type InsertOrder,
+  type Order, type InsertOrder, type FuelOrder, type InsertFuelOrder,
   type Conversation, type InsertConversation, type ChatMessage, type InsertChatMessage,
   type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
   type MerchantAnalytics, type InsertMerchantAnalytics,
   type SupportTicket, type InsertSupportTicket
 } from "@shared/schema";
+import { desc, eq, and, isNull, ne, sql, count, sum, avg, gte, like, or, gt, lt, lte, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./db";
-import { eq, and, gte, like, desc, sql, or, ne, gt, lt, lte, inArray, isNull, isNotNull } from "drizzle-orm";
 
 export interface IStorage {
   // User operations
@@ -55,34 +55,46 @@ export interface IStorage {
   getSupportTicket(ticketId: string): Promise<SupportTicket | undefined>;
   updateSupportTicket(ticketId: string, updateData: Partial<SupportTicket>): Promise<SupportTicket>;
   
-  // Basic method stubs for fuel orders and tracking (to be implemented)
+  // Fuel Orders and Tracking operations
   getNearbyFuelStations(lat: number, lng: number, radius: number): Promise<any[]>;
   createFuelOrder(orderData: any): Promise<any>;
   getFuelOrders(userId: number): Promise<any[]>;
   getFuelOrderById(orderId: string): Promise<any | null>;
   getOrderTracking(orderId: string): Promise<any | null>;
+  
+  // Driver Management operations
+  getAvailableDrivers(lat: number, lng: number, radius?: number): Promise<any[]>;
+  assignDriverToOrder(orderId: string, driverId: number): Promise<any>;
+  updateDriverLocation(driverId: number, latitude: number, longitude: number): Promise<void>;
+  
+  // Real-time Analytics operations
+  getSystemMetrics(): Promise<any>;
+  getUserActivityMetrics(timeframe?: string): Promise<any>;
+  getTransactionMetrics(timeframe?: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
+  private db = db;
+  
   // User operations
   async getUser(id: number): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [user] = await this.db.select().from(users).where(eq(users.id, id));
     return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users).where(eq(users.email, email));
+    const [user] = await this.db.select().from(users).where(eq(users.email, email));
     return user || undefined;
   }
 
   async getUserBySocialId(socialProvider: string, socialId: string): Promise<User | undefined> {
-    const [user] = await db.select().from(users)
+    const [user] = await this.db.select().from(users)
       .where(and(eq(users.socialProvider, socialProvider), eq(users.socialId, socialId)));
     return user || undefined;
   }
 
   async generateUserId(): Promise<string> {
-    const [latestUser] = await db.select().from(users)
+    const [latestUser] = await this.db.select().from(users)
       .orderBy(desc(users.id))
       .limit(1);
 
@@ -92,7 +104,7 @@ export class DatabaseStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const userId = await this.generateUserId();
-    const [user] = await db
+    const [user] = await this.db
       .insert(users)
       .values({ ...insertUser, userId })
       .returning();
@@ -233,7 +245,7 @@ export class DatabaseStorage implements IStorage {
 
   // Category operations
   async getCategories(): Promise<Category[]> {
-    return await db.select().from(categories).orderBy(categories.name);
+    return await this.db.select().from(categories).orderBy(categories.name);
   }
 
   async createCategory(insertCategory: InsertCategory): Promise<Category> {
@@ -366,30 +378,398 @@ export class DatabaseStorage implements IStorage {
     return ticket;
   }
 
-  // Basic method stubs for fuel orders and tracking
+  // Fuel Station Operations
   async getNearbyFuelStations(lat: number, lng: number, radius: number): Promise<any[]> {
-    // Stub implementation
-    return [];
+    // In a real implementation, this would query a fuel stations database
+    // For now, return realistic static data based on location
+    const stations = [
+      {
+        id: 'station_001',
+        name: 'Total Energies Victoria Island',
+        address: '1391 Tiamiyu Savage St, Victoria Island, Lagos',
+        latitude: 6.4267,
+        longitude: 3.4200,
+        distance: this.calculateDistance(lat, lng, 6.4267, 3.4200),
+        fuelTypes: ['PMS', 'AGO', 'DPK'],
+        prices: { PMS: 617, AGO: 890, DPK: 750 },
+        isOpen: true,
+        rating: 4.2
+      },
+      {
+        id: 'station_002', 
+        name: 'Mobil Lekki Phase 1',
+        address: 'Admiralty Way, Lekki Phase 1, Lagos',
+        latitude: 6.4500,
+        longitude: 3.4700,
+        distance: this.calculateDistance(lat, lng, 6.4500, 3.4700),
+        fuelTypes: ['PMS', 'AGO'],
+        prices: { PMS: 615, AGO: 885 },
+        isOpen: true,
+        rating: 4.5
+      },
+      {
+        id: 'station_003',
+        name: 'Shell Ikeja GRA',
+        address: 'Obafemi Awolowo Way, Ikeja GRA, Lagos',
+        latitude: 6.5895,
+        longitude: 3.3619,
+        distance: this.calculateDistance(lat, lng, 6.5895, 3.3619),
+        fuelTypes: ['PMS', 'AGO', 'DPK'],
+        prices: { PMS: 620, AGO: 895, DPK: 755 },
+        isOpen: true,
+        rating: 4.0
+      }
+    ];
+
+    return stations
+      .filter(station => station.distance <= radius / 1000)
+      .sort((a, b) => a.distance - b.distance);
   }
 
   async createFuelOrder(orderData: any): Promise<any> {
-    // Stub implementation
-    return { id: 'temp-id', ...orderData };
+    const newOrder = await this.db
+      .insert(fuelOrders)
+      .values({
+        customerId: orderData.customerId,
+        stationId: orderData.stationId,
+        fuelType: orderData.fuelType,
+        quantity: orderData.quantity.toString(),
+        unitPrice: orderData.unitPrice.toString(),
+        totalAmount: orderData.totalAmount.toString(),
+        deliveryAddress: orderData.deliveryAddress,
+        deliveryLatitude: orderData.deliveryLatitude.toString(),
+        deliveryLongitude: orderData.deliveryLongitude.toString(),
+        notes: orderData.notes,
+        scheduledDeliveryTime: orderData.scheduledDeliveryTime ? new Date(orderData.scheduledDeliveryTime) : null
+      })
+      .returning();
+
+    return newOrder[0];
   }
 
   async getFuelOrders(userId: number): Promise<any[]> {
-    // Stub implementation
-    return [];
+    const orders = await this.db
+      .select({
+        id: fuelOrders.id,
+        stationId: fuelOrders.stationId,
+        fuelType: fuelOrders.fuelType,
+        quantity: fuelOrders.quantity,
+        unitPrice: fuelOrders.unitPrice,
+        totalAmount: fuelOrders.totalAmount,
+        deliveryAddress: fuelOrders.deliveryAddress,
+        status: fuelOrders.status,
+        createdAt: fuelOrders.createdAt,
+        estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+        notes: fuelOrders.notes,
+        driverName: users.fullName,
+        driverPhone: users.phone
+      })
+      .from(fuelOrders)
+      .leftJoin(users, eq(fuelOrders.driverId, users.id))
+      .where(eq(fuelOrders.customerId, userId))
+      .orderBy(desc(fuelOrders.createdAt));
+
+    return orders;
   }
 
   async getFuelOrderById(orderId: string): Promise<any | null> {
-    // Stub implementation
-    return null;
+    const order = await this.db
+      .select({
+        id: fuelOrders.id,
+        customerId: fuelOrders.customerId,
+        driverId: fuelOrders.driverId,
+        stationId: fuelOrders.stationId,
+        fuelType: fuelOrders.fuelType,
+        quantity: fuelOrders.quantity,
+        unitPrice: fuelOrders.unitPrice,
+        totalAmount: fuelOrders.totalAmount,
+        deliveryAddress: fuelOrders.deliveryAddress,
+        deliveryLatitude: fuelOrders.deliveryLatitude,
+        deliveryLongitude: fuelOrders.deliveryLongitude,
+        status: fuelOrders.status,
+        createdAt: fuelOrders.createdAt,
+        estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+        notes: fuelOrders.notes,
+        customerName: users.fullName,
+        customerPhone: users.phone
+      })
+      .from(fuelOrders)
+      .leftJoin(users, eq(fuelOrders.customerId, users.id))
+      .where(eq(fuelOrders.id, orderId))
+      .limit(1);
+
+    return order[0] || null;
   }
 
   async getOrderTracking(orderId: string): Promise<any | null> {
-    // Stub implementation
+    // Check if it's a fuel order
+    const fuelOrder = await this.getFuelOrderById(orderId);
+    if (fuelOrder) {
+      return {
+        orderId: fuelOrder.id,
+        buyerId: fuelOrder.customerId,
+        sellerId: null, // Fuel orders don't have sellers
+        driverId: fuelOrder.driverId,
+        status: fuelOrder.status,
+        deliveryAddress: fuelOrder.deliveryAddress,
+        pickupAddress: `Station: ${fuelOrder.stationId}`,
+        merchantContact: null
+      };
+    }
+
+    // Check if it's a regular order
+    const regularOrder = await this.db
+      .select({
+        id: orders.id,
+        buyerId: orders.buyerId,
+        sellerId: orders.sellerId,
+        driverId: orders.driverId,
+        status: orders.status,
+        deliveryAddress: orders.deliveryAddress
+      })
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (regularOrder[0]) {
+      return {
+        orderId: regularOrder[0].id,
+        buyerId: regularOrder[0].buyerId,
+        sellerId: regularOrder[0].sellerId,
+        driverId: regularOrder[0].driverId,
+        status: regularOrder[0].status,
+        deliveryAddress: regularOrder[0].deliveryAddress,
+        pickupAddress: 'Merchant Location',
+        merchantContact: 'Available in app'
+      };
+    }
+
     return null;
+  }
+
+  // Driver Management Operations
+  async getAvailableDrivers(lat: number, lng: number, radius: number = 20): Promise<any[]> {
+    const drivers = await this.db
+      .select({
+        driverId: users.id,
+        fullName: users.fullName,
+        phone: users.phone,
+        profilePicture: users.profilePicture,
+        vehicleType: driverProfiles.vehicleType,
+        vehiclePlate: driverProfiles.vehiclePlate,
+        rating: driverProfiles.rating,
+        totalDeliveries: driverProfiles.totalDeliveries,
+        isAvailable: driverProfiles.isAvailable,
+        currentLocation: driverProfiles.currentLocation
+      })
+      .from(users)
+      .innerJoin(driverProfiles, eq(users.id, driverProfiles.userId))
+      .where(
+        and(
+          eq(users.role, 'DRIVER'),
+          eq(driverProfiles.isAvailable, true),
+          eq(driverProfiles.isActive, true)
+        )
+      );
+
+    // Filter by distance and calculate actual distance
+    return drivers
+      .filter((driver: any) => {
+        if (!driver.currentLocation) return false;
+        const driverLat = driver.currentLocation.latitude;
+        const driverLng = driver.currentLocation.longitude;
+        if (!driverLat || !driverLng) return false;
+        
+        const distance = this.calculateDistance(lat, lng, driverLat, driverLng);
+        return distance <= radius;
+      })
+      .map((driver: any) => ({
+        ...driver,
+        distance: driver.currentLocation ? 
+          this.calculateDistance(lat, lng, driver.currentLocation.latitude, driver.currentLocation.longitude) : 
+          null
+      }))
+      .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0));
+  }
+
+  async assignDriverToOrder(orderId: string, driverId: number): Promise<any> {
+    // Check if it's a fuel order
+    const fuelOrder = await this.db
+      .select({ id: fuelOrders.id })
+      .from(fuelOrders)
+      .where(eq(fuelOrders.id, orderId))
+      .limit(1);
+
+    if (fuelOrder[0]) {
+      const updated = await this.db
+        .update(fuelOrders)
+        .set({ 
+          driverId, 
+          status: 'ACCEPTED',
+          acceptedAt: new Date(),
+          estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000) // 45 minutes from now
+        })
+        .where(eq(fuelOrders.id, orderId))
+        .returning();
+
+      // Update driver availability
+      await this.db
+        .update(driverProfiles)
+        .set({ isAvailable: false })
+        .where(eq(driverProfiles.userId, driverId));
+
+      return updated[0];
+    }
+
+    // Handle regular orders
+    const updated = await this.db
+      .update(orders)
+      .set({ driverId, status: 'confirmed' })
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    if (updated[0]) {
+      await this.db
+        .update(driverProfiles)
+        .set({ isAvailable: false })
+        .where(eq(driverProfiles.userId, driverId));
+    }
+
+    return updated[0];
+  }
+
+  async updateDriverLocation(driverId: number, latitude: number, longitude: number): Promise<void> {
+    await this.db
+      .update(driverProfiles)
+      .set({ 
+        currentLocation: { latitude, longitude },
+      })
+      .where(eq(driverProfiles.userId, driverId));
+
+    // Also update user location table for history
+    await this.db
+      .insert(userLocations)
+      .values({
+        userId: driverId,
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        isActive: true
+      })
+;
+  }
+
+  // Real-time Analytics Operations
+  async getSystemMetrics(): Promise<any> {
+    const [userStats, orderStats, transactionStats] = await Promise.all([
+      this.db.select({ count: count() }).from(users),
+      this.db.select({ count: count() }).from(orders),
+      this.db.select({ 
+        count: count(),
+        total: sum(sql`CAST(${orders.totalPrice} AS DECIMAL)`)
+      }).from(orders).where(eq(orders.status, 'delivered'))
+    ]);
+
+    const onlineDrivers = await this.db
+      .select({ count: count() })
+      .from(driverProfiles)
+      .where(
+        and(
+          eq(driverProfiles.isAvailable, true),
+          eq(driverProfiles.isActive, true)
+        )
+      );
+
+    return {
+      totalUsers: userStats[0]?.count || 0,
+      totalOrders: orderStats[0]?.count || 0,
+      completedOrders: transactionStats[0]?.count || 0,
+      totalRevenue: transactionStats[0]?.total || 0,
+      onlineDrivers: onlineDrivers[0]?.count || 0,
+      timestamp: Date.now()
+    };
+  }
+
+  async getUserActivityMetrics(timeframe: string = '24h'): Promise<any> {
+    const timeAgo = this.getTimeAgo(timeframe);
+    
+    const [newUsers, activeUsers] = await Promise.all([
+      this.db
+        .select({ count: count() })
+        .from(users)
+        .where(sql`${users.createdAt} >= ${timeAgo}`),
+      
+      this.db
+        .select({ count: count() })
+        .from(userLocations)
+        .where(sql`${userLocations.updatedAt} >= ${timeAgo}`)
+    ]);
+
+    return {
+      newUsers: newUsers[0]?.count || 0,
+      activeUsers: activeUsers[0]?.count || 0,
+      timeframe,
+      timestamp: Date.now()
+    };
+  }
+
+  async getTransactionMetrics(timeframe: string = '24h'): Promise<any> {
+    const timeAgo = this.getTimeAgo(timeframe);
+    
+    const [recentOrders, recentFuelOrders] = await Promise.all([
+      this.db
+        .select({ 
+          count: count(),
+          total: sum(sql`CAST(${orders.totalPrice} AS DECIMAL)`)
+        })
+        .from(orders)
+        .where(sql`${orders.createdAt} >= ${timeAgo}`),
+      
+      this.db
+        .select({ 
+          count: count(),
+          total: sum(sql`CAST(${fuelOrders.totalAmount} AS DECIMAL)`)
+        })
+        .from(fuelOrders)
+        .where(sql`${fuelOrders.createdAt} >= ${timeAgo}`)
+    ]);
+
+    return {
+      totalTransactions: (recentOrders[0]?.count || 0) + (recentFuelOrders[0]?.count || 0),
+      totalVolume: (parseFloat(recentOrders[0]?.total?.toString() || '0')) + 
+                   (parseFloat(recentFuelOrders[0]?.total?.toString() || '0')),
+      regularOrders: recentOrders[0]?.count || 0,
+      fuelOrders: recentFuelOrders[0]?.count || 0,
+      timeframe,
+      timestamp: Date.now()
+    };
+  }
+
+  private getTimeAgo(timeframe: string): Date {
+    const now = new Date();
+    switch (timeframe) {
+      case '1h':
+        return new Date(now.getTime() - 1 * 60 * 60 * 1000);
+      case '24h':
+        return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      case '7d':
+        return new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+      case '30d':
+        return new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+      default:
+        return new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    }
+  }
+
+  private calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371; // Earth's radius in kilometers
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+      Math.sin(dLat/2) * Math.sin(dLat/2) +
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c; // Distance in kilometers
   }
 }
 

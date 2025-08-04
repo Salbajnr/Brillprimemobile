@@ -18,11 +18,14 @@ class PaystackService {
     };
 
     if (!this.config.secretKey) {
-      console.warn('Paystack secret key not configured');
-      return;
+      console.warn('⚠️  Paystack secret key not configured - payment processing will fail');
+      console.log('Please set PAYSTACK_SECRET_KEY and PAYSTACK_PUBLIC_KEY environment variables');
+      // Don't return - allow initialization to complete but warn about missing keys
     }
 
-    this.paystack = Paystack(this.config.secretKey);
+    if (this.config.secretKey) {
+      this.paystack = Paystack(this.config.secretKey);
+    }
   }
 
   // Initialize transaction
@@ -38,6 +41,10 @@ class PaystackService {
     transaction_charge?: number;
     bearer?: 'account' | 'subaccount';
   }) {
+    if (!this.paystack) {
+      throw new Error('Paystack not initialized - check your secret key configuration');
+    }
+    
     try {
       const response = await this.paystack.transaction.initialize({
         email: params.email,

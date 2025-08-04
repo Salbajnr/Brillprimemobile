@@ -395,4 +395,5 @@ class OrderBroadcastingService {
   }
 }
 
-export const orderBroadcastingService = new OrderBroadcastingService();
+const orderBroadcastingService = new OrderBroadcastingService();
+export { orderBroadcastingService };
