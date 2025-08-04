@@ -144,7 +144,7 @@ function DriverDashboardContent() {
     if (shouldPromptKYC === 'true') {
       // Clear the flag
       sessionStorage.removeItem('promptKYCVerification');
-      
+
       // Show KYC verification notification
       addNotification({
         type: 'info',

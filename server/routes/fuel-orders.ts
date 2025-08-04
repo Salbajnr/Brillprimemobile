@@ -1,14 +1,39 @@
-
 import type { Express } from "express";
 import { storage } from "../storage";
 import { insertFuelOrderSchema } from "../../shared/schema";
+import { Request, Response } from 'express';
+import { z } from 'zod';
+import { db } from '../db';
+import { fuelOrders, users, driverProfiles } from '@shared/schema';
+import { eq, and, desc, isNull, ne } from 'drizzle-orm';
+import { broadcastOrderUpdate } from '../services/order-broadcasting';
+
+const createFuelOrderSchema = z.object({
+  stationId: z.string(),
+  fuelType: z.enum(['PMS', 'AGO', 'DPK']),
+  quantity: z.number().positive(),
+  unitPrice: z.number().positive(),
+  totalAmount: z.number().positive(),
+  deliveryAddress: z.string().min(1),
+  deliveryLatitude: z.number(),
+  deliveryLongitude: z.number(),
+  scheduledDeliveryTime: z.string().optional(),
+  notes: z.string().optional()
+});
+
+const updateOrderStatusSchema = z.object({
+  status: z.enum(['PENDING', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
+  driverId: z.number().optional(),
+  estimatedDeliveryTime: z.string().optional(),
+  notes: z.string().optional()
+});
 
 export function registerFuelOrderRoutes(app: Express) {
   // Get fuel stations near location
   app.get("/api/fuel/stations", async (req, res) => {
     try {
       const { lat, lng, radius = 10000 } = req.query;
-      
+
       if (!lat || !lng) {
         return res.status(400).json({ message: "Latitude and longitude required" });
       }
@@ -18,7 +43,7 @@ export function registerFuelOrderRoutes(app: Express) {
         parseFloat(lng as string),
         parseFloat(radius as string)
       );
-      
+
       res.json({ success: true, stations });
     } catch (error) {
       console.error("Get fuel stations error:", error);
@@ -27,195 +52,202 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Create fuel order
-  app.post("/api/fuel/orders", async (req, res) => {
+  app.post("/api/fuel/orders", async (req: any, res: any) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
+      const userId = req.session?.userId;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'User not authenticated' });
       }
 
-      const orderData = insertFuelOrderSchema.parse(req.body);
-      const order = await storage.createFuelOrder({
-        ...orderData,
-        customerId: req.session.userId,
+      const validatedData = createFuelOrderSchema.parse(req.body);
+
+      const [newOrder] = await db.insert(fuelOrders).values({
+        ...validatedData,
+        customerId: userId,
+        status: 'PENDING'
+      }).returning();
+
+      // Broadcast to available drivers
+      broadcastOrderUpdate(newOrder.id, {
+        type: 'NEW_FUEL_ORDER',
+        order: newOrder,
         status: 'PENDING'
       });
 
-      // Real-time WebSocket notifications
-      if (global.io) {
-        // Notify customer
-        global.io.to(`user_${req.session.userId}`).emit('order_created', {
-          type: 'FUEL_ORDER_CREATED',
-          orderId: order.id,
-          status: 'PENDING',
-          fuelType: order.fuelType,
-          quantity: order.quantity,
-          totalAmount: order.totalAmount,
-          deliveryAddress: order.deliveryAddress,
-          timestamp: Date.now()
-        });
-
-        // Notify available drivers about new order
-        global.io.to('drivers').emit('new_fuel_order_available', {
-          orderId: order.id,
-          fuelType: order.fuelType,
-          quantity: order.quantity,
-          deliveryAddress: order.deliveryAddress,
-          estimatedEarnings: (parseFloat(order.totalAmount) * 0.15).toFixed(2), // 15% commission
-          distance: '2.3 km', // Calculate actual distance
-          timestamp: Date.now()
-        });
-
-        // Notify fuel station/merchant
-        global.io.to(`station_${order.stationId}`).emit('new_fuel_order', {
-          orderId: order.id,
-          customerName: req.session.user?.fullName || 'Customer',
-          fuelType: order.fuelType,
-          quantity: order.quantity,
-          totalAmount: order.totalAmount,
-          deliveryAddress: order.deliveryAddress,
-          timestamp: Date.now()
-        });
-
-        // Notify admin dashboard
-        global.io.to('admin_orders').emit('new_fuel_order', {
-          orderId: order.id,
-          customerId: req.session.userId,
-          stationId: order.stationId,
-          totalAmount: order.totalAmount,
-          timestamp: Date.now()
-        });
-      }
-      
-      res.json({ 
-        success: true,
-        message: "Fuel order created successfully",
-        order 
-      });
+      res.json({ success: true, order: newOrder });
     } catch (error) {
-      console.error("Create fuel order error:", error);
-      res.status(400).json({ message: "Failed to create fuel order" });
+      console.error('Error creating fuel order:', error);
+      res.status(500).json({ success: false, error: 'Failed to create fuel order' });
     }
   });
 
   // Get fuel orders for user
-  app.get("/api/fuel/orders", async (req, res) => {
+  app.get("/api/fuel/orders", async (req: any, res: any) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
+      const userId = req.session?.userId;
+      const userRole = req.session?.user?.role;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'User not authenticated' });
       }
 
-      const orders = await storage.getFuelOrders(req.session.userId);
+      let orders;
+
+      if (userRole === 'CONSUMER') {
+        orders = await db
+          .select({
+            id: fuelOrders.id,
+            stationId: fuelOrders.stationId,
+            fuelType: fuelOrders.fuelType,
+            quantity: fuelOrders.quantity,
+            unitPrice: fuelOrders.unitPrice,
+            totalAmount: fuelOrders.totalAmount,
+            deliveryAddress: fuelOrders.deliveryAddress,
+            status: fuelOrders.status,
+            createdAt: fuelOrders.createdAt,
+            estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+            notes: fuelOrders.notes,
+            driverName: users.fullName,
+            driverPhone: users.phone
+          })
+          .from(fuelOrders)
+          .leftJoin(users, eq(fuelOrders.driverId, users.id))
+          .where(eq(fuelOrders.customerId, userId))
+          .orderBy(desc(fuelOrders.createdAt));
+      } else if (userRole === 'DRIVER') {
+        // Show assigned orders and available orders
+        const assignedOrders = await db
+          .select({
+            id: fuelOrders.id,
+            stationId: fuelOrders.stationId,
+            fuelType: fuelOrders.fuelType,
+            quantity: fuelOrders.quantity,
+            unitPrice: fuelOrders.unitPrice,
+            totalAmount: fuelOrders.totalAmount,
+            deliveryAddress: fuelOrders.deliveryAddress,
+            status: fuelOrders.status,
+            createdAt: fuelOrders.createdAt,
+            estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+            notes: fuelOrders.notes,
+            customerName: users.fullName,
+            customerPhone: users.phone
+          })
+          .from(fuelOrders)
+          .leftJoin(users, eq(fuelOrders.customerId, users.id))
+          .where(eq(fuelOrders.driverId, userId))
+          .orderBy(desc(fuelOrders.createdAt));
+
+        const availableOrders = await db
+          .select({
+            id: fuelOrders.id,
+            stationId: fuelOrders.stationId,
+            fuelType: fuelOrders.fuelType,
+            quantity: fuelOrders.quantity,
+            unitPrice: fuelOrders.unitPrice,
+            totalAmount: fuelOrders.totalAmount,
+            deliveryAddress: fuelOrders.deliveryAddress,
+            status: fuelOrders.status,
+            createdAt: fuelOrders.createdAt,
+            estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+            notes: fuelOrders.notes,
+            customerName: users.fullName,
+            customerPhone: users.phone
+          })
+          .from(fuelOrders)
+          .leftJoin(users, eq(fuelOrders.customerId, users.id))
+          .where(and(
+            isNull(fuelOrders.driverId),
+            eq(fuelOrders.status, 'PENDING')
+          ))
+          .orderBy(desc(fuelOrders.createdAt));
+
+        orders = { assigned: assignedOrders, available: availableOrders };
+      } else {
+        orders = await db
+          .select()
+          .from(fuelOrders)
+          .orderBy(desc(fuelOrders.createdAt));
+      }
+
       res.json({ success: true, orders });
     } catch (error) {
-      console.error("Get fuel orders error:", error);
-      res.status(500).json({ message: "Failed to fetch fuel orders" });
+      console.error('Error fetching fuel orders:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch fuel orders' });
     }
   });
 
   // Update fuel order status (for drivers/merchants)
-  app.put("/api/fuel/orders/:orderId/status", async (req, res) => {
+  app.put("/api/fuel/orders/:orderId/status", async (req: any, res: any) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
       const { orderId } = req.params;
-      const { status, driverId, location, estimatedTime } = req.body;
+      const userId = req.session?.userId;
+      const userRole = req.session?.user?.role;
 
-      const order = await storage.updateFuelOrderStatus(orderId, status, driverId);
-
-      // Real-time WebSocket notifications for status updates
-      if (global.io) {
-        const statusUpdate = {
-          orderId,
-          status,
-          previousStatus: order.status,
-          driverId,
-          location,
-          estimatedTime,
-          timestamp: Date.now(),
-          updatedBy: req.session.userId
-        };
-
-        // Notify customer
-        global.io.to(`user_${order.customerId}`).emit('fuel_order_status_update', {
-          ...statusUpdate,
-          message: getFuelOrderStatusMessage(status, 'customer'),
-          notificationTitle: 'Fuel Order Update'
-        });
-
-        // Notify driver if assigned
-        if (driverId) {
-          global.io.to(`user_${driverId}`).emit('fuel_delivery_status_update', {
-            ...statusUpdate,
-            message: getFuelOrderStatusMessage(status, 'driver'),
-            notificationTitle: 'Delivery Update'
-          });
-        }
-
-        // Notify fuel station
-        global.io.to(`station_${order.stationId}`).emit('fuel_order_status_update', {
-          ...statusUpdate,
-          message: getFuelOrderStatusMessage(status, 'merchant'),
-          notificationTitle: 'Order Status Update'
-        });
-
-        // Broadcast to order room
-        global.io.to(`order_${orderId}`).emit('order_status_update', statusUpdate);
-
-        // Notify admin dashboard
-        global.io.to('admin_orders').emit('fuel_order_status_update', {
-          ...statusUpdate,
-          orderDetails: {
-            customerId: order.customerId,
-            stationId: order.stationId,
-            totalAmount: order.totalAmount
-          }
-        });
-
-        // Special handling for specific statuses
-        if (status === 'CONFIRMED') {
-          global.io.to('drivers').emit('fuel_delivery_opportunity', {
-            orderId,
-            pickupAddress: order.stationAddress,
-            deliveryAddress: order.deliveryAddress,
-            fuelType: order.fuelType,
-            quantity: order.quantity,
-            estimatedEarnings: (parseFloat(order.totalAmount) * 0.15).toFixed(2),
-            distance: calculateDeliveryDistance(order),
-            timestamp: Date.now()
-          });
-        }
-
-        if (status === 'PICKED_UP' && driverId) {
-          global.io.to(`user_${order.customerId}`).emit('fuel_delivery_started', {
-            orderId,
-            driverId,
-            driverName: 'Driver', // Get from database
-            estimatedDeliveryTime: estimatedTime || '20-30 minutes',
-            trackingUrl: `/fuel-delivery-tracking/${orderId}`,
-            timestamp: Date.now()
-          });
-        }
-
-        if (status === 'DELIVERED') {
-          global.io.to(`user_${order.customerId}`).emit('fuel_delivery_completed', {
-            orderId,
-            deliveryTime: Date.now(),
-            ratingUrl: `/rate-delivery/${orderId}`,
-            timestamp: Date.now()
-          });
-        }
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'User not authenticated' });
       }
-      
-      res.json({ 
-        success: true,
-        message: "Order status updated",
-        order 
+
+      const validatedData = updateOrderStatusSchema.parse(req.body);
+
+      // Check permissions
+      const order = await db
+        .select()
+        .from(fuelOrders)
+        .where(eq(fuelOrders.id, orderId))
+        .limit(1);
+
+      if (!order.length) {
+        return res.status(404).json({ success: false, error: 'Order not found' });
+      }
+
+      const currentOrder = order[0];
+
+      // Only driver assigned to order or customer can update
+      if (userRole === 'DRIVER' && currentOrder.driverId !== userId) {
+        return res.status(403).json({ success: false, error: 'Not authorized to update this order' });
+      }
+
+      if (userRole === 'CONSUMER' && currentOrder.customerId !== userId) {
+        return res.status(403).json({ success: false, error: 'Not authorized to update this order' });
+      }
+
+      const updateData: any = {
+        status: validatedData.status,
+        updatedAt: new Date()
+      };
+
+      if (validatedData.status === 'PICKED_UP') {
+        updateData.pickedUpAt = new Date();
+      } else if (validatedData.status === 'DELIVERED') {
+        updateData.deliveredAt = new Date();
+      }
+
+      if (validatedData.estimatedDeliveryTime) {
+        updateData.estimatedDeliveryTime = validatedData.estimatedDeliveryTime;
+      }
+
+      if (validatedData.notes) {
+        updateData.notes = validatedData.notes;
+      }
+
+      const [updatedOrder] = await db
+        .update(fuelOrders)
+        .set(updateData)
+        .where(eq(fuelOrders.id, orderId))
+        .returning();
+
+      // Broadcast update to all parties
+      broadcastOrderUpdate(orderId, {
+        type: 'ORDER_STATUS_UPDATED',
+        order: updatedOrder,
+        status: validatedData.status,
+        updatedBy: userRole
       });
+
+      res.json({ success: true, order: updatedOrder });
     } catch (error) {
-      console.error("Update fuel order status error:", error);
-      res.status(400).json({ message: "Failed to update order status" });
+      console.error('Error updating fuel order status:', error);
+      res.status(500).json({ success: false, error: 'Failed to update order status' });
     }
   });
 
@@ -259,7 +291,7 @@ export function registerFuelOrderRoutes(app: Express) {
   }
 
   // Get available fuel orders for drivers
-  app.get("/api/fuel/orders/available", async (req, res) => {
+  app.get("/api/fuel/orders/available", async (req: any, res: any) => {
     try {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -279,16 +311,16 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Get specific fuel station by ID
-  app.get("/api/fuel/stations/:stationId", async (req, res) => {
+  app.get("/api/fuel/stations/:stationId", async (req: any, res: any) => {
     try {
       const { stationId } = req.params;
-      
+
       const station = await storage.getFuelStationById(stationId);
-      
+
       if (!station) {
         return res.status(404).json({ message: "Fuel station not found" });
       }
-      
+
       res.json({ success: true, station });
     } catch (error) {
       console.error("Get fuel station error:", error);
@@ -297,38 +329,82 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Get specific fuel order by ID
-  app.get("/api/fuel/orders/:orderId", async (req, res) => {
+  app.get("/api/fuel/orders/:orderId", async (req: any, res: any) => {
     try {
-      if (!req.session?.userId) {
-        return res.status(401).json({ message: "Authentication required" });
-      }
-
       const { orderId } = req.params;
-      const order = await storage.getFuelOrderById(orderId);
-      
-      if (!order) {
-        return res.status(404).json({ message: "Order not found" });
+      const userId = req.session?.userId;
+
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'User not authenticated' });
       }
 
-      // Check if user has permission to view this order
-      const hasPermission = 
-        order.customerId === req.session.userId || 
-        order.sellerId === req.session.userId ||
-        order.driverId === req.session.userId;
+      const order = await db
+        .select({
+          id: fuelOrders.id,
+          stationId: fuelOrders.stationId,
+          fuelType: fuelOrders.fuelType,
+          quantity: fuelOrders.quantity,
+          unitPrice: fuelOrders.unitPrice,
+          totalAmount: fuelOrders.totalAmount,
+          deliveryAddress: fuelOrders.deliveryAddress,
+          deliveryLatitude: fuelOrders.deliveryLatitude,
+          deliveryLongitude: fuelOrders.deliveryLongitude,
+          status: fuelOrders.status,
+          createdAt: fuelOrders.createdAt,
+          acceptedAt: fuelOrders.acceptedAt,
+          pickedUpAt: fuelOrders.pickedUpAt,
+          deliveredAt: fuelOrders.deliveredAt,
+          estimatedDeliveryTime: fuelOrders.estimatedDeliveryTime,
+          notes: fuelOrders.notes,
+          customerId: fuelOrders.customerId,
+          driverId: fuelOrders.driverId,
+          customerName: users.fullName,
+          customerPhone: users.phone
+        })
+        .from(fuelOrders)
+        .leftJoin(users, eq(fuelOrders.customerId, users.id))
+        .where(eq(fuelOrders.id, orderId))
+        .limit(1);
 
-      if (!hasPermission) {
-        return res.status(403).json({ message: "Access denied" });
+      if (!order.length) {
+        return res.status(404).json({ success: false, error: 'Order not found' });
       }
-      
-      res.json({ success: true, order });
+
+      const orderData = order[0];
+
+      // Check if user has access to this order
+      if (orderData.customerId !== userId && orderData.driverId !== userId && req.session?.user?.role !== 'ADMIN') {
+        return res.status(403).json({ success: false, error: 'Access denied' });
+      }
+
+      // Get driver details if assigned
+      if (orderData.driverId) {
+        const driver = await db
+          .select({
+            name: users.fullName,
+            phone: users.phone,
+            profilePicture: users.profilePicture
+          })
+          .from(users)
+          .where(eq(users.id, orderData.driverId))
+          .limit(1);
+
+        if (driver.length) {
+          (orderData as any).driverName = driver[0].name;
+          (orderData as any).driverPhone = driver[0].phone;
+          (orderData as any).driverProfilePicture = driver[0].profilePicture;
+        }
+      }
+
+      res.json({ success: true, order: orderData });
     } catch (error) {
-      console.error("Get fuel order error:", error);
-      res.status(500).json({ message: "Failed to fetch fuel order" });
+      console.error('Error fetching fuel order:', error);
+      res.status(500).json({ success: false, error: 'Failed to fetch order' });
     }
   });
 
   // Get fuel orders for merchant
-  app.get("/api/fuel/orders/merchant", async (req, res) => {
+  app.get("/api/fuel/orders/merchant", async (req: any, res: any) => {
     try {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -347,8 +423,63 @@ export function registerFuelOrderRoutes(app: Express) {
     }
   });
 
+   // Accept fuel order for driver
+   app.post("/api/fuel/orders/:orderId/accept", async (req: any, res: any) => {
+    try {
+      const { orderId } = req.params;
+      const driverId = req.session?.userId;
+
+      if (!driverId || req.session?.user?.role !== 'DRIVER') {
+        return res.status(403).json({ success: false, error: 'Only drivers can accept orders' });
+      }
+  
+      // Check if driver is available
+      const driverProfile = await db
+        .select()
+        .from(driverProfiles)
+        .where(eq(driverProfiles.userId, driverId))
+        .limit(1);
+  
+      if (!driverProfile.length || !driverProfile[0].isAvailable) {
+        return res.status(400).json({ success: false, error: 'Driver not available' });
+      }
+
+      const [updatedOrder] = await db
+        .update(fuelOrders)
+        .set({
+          driverId,
+          status: 'ACCEPTED',
+          acceptedAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(fuelOrders.id, orderId),
+          eq(fuelOrders.status, 'PENDING'),
+          isNull(fuelOrders.driverId)
+        ))
+        .returning();
+
+      if (!updatedOrder) {
+        return res.status(400).json({ success: false, error: 'Order not available or already accepted' });
+      }
+
+      // Broadcast update to customer
+      broadcastOrderUpdate(orderId, {
+        type: 'ORDER_ACCEPTED',
+        order: updatedOrder,
+        status: 'ACCEPTED',
+        driverId
+      });
+
+      res.json({ success: true, order: updatedOrder });
+    } catch (error) {
+      console.error('Error accepting fuel order:', error);
+      res.status(500).json({ success: false, error: 'Failed to accept order' });
+    }
+  });
+
   // Request delivery for order
-  app.post("/api/delivery/request", async (req, res) => {
+  app.post("/api/delivery/request", async (req: any, res: any) => {
     try {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -356,7 +487,7 @@ export function registerFuelOrderRoutes(app: Express) {
 
       const { orderId } = req.body;
       const order = await storage.getFuelOrderById(orderId);
-      
+
       if (!order) {
         return res.status(404).json({ message: "Order not found" });
       }
@@ -389,7 +520,7 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Get driver location
-  app.get("/api/tracking/driver/:driverId/location", async (req, res) => {
+  app.get("/api/tracking/driver/:driverId/location", async (req: any, res: any) => {
     try {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -397,7 +528,7 @@ export function registerFuelOrderRoutes(app: Express) {
 
       const { driverId } = req.params;
       const driverProfile = await storage.getDriverProfile(parseInt(driverId));
-      
+
       if (!driverProfile) {
         return res.status(404).json({ message: "Driver not found" });
       }
@@ -413,7 +544,7 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Real-time driver location updates for fuel delivery
-  app.post("/api/fuel/delivery/location-update", async (req, res) => {
+  app.post("/api/fuel/delivery/location-update", async (req: any, res: any) => {
     try {
       if (!req.session?.userId) {
         return res.status(401).json({ message: "Authentication required" });
@@ -487,5 +618,58 @@ export function registerFuelOrderRoutes(app: Express) {
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c;
+  }
+}
+export async function acceptFuelOrder(req: Request, res: Response) {
+  try {
+    const { orderId } = req.params;
+    const driverId = req.user?.id;
+
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ success: false, error: 'Only drivers can accept orders' });
+    }
+
+    // Check if driver is available
+    const driverProfile = await db
+      .select()
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+
+    if (!driverProfile.length || !driverProfile[0].isAvailable) {
+      return res.status(400).json({ success: false, error: 'Driver not available' });
+    }
+
+    const [updatedOrder] = await db
+      .update(fuelOrders)
+      .set({
+        driverId,
+        status: 'ACCEPTED',
+        acceptedAt: new Date(),
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(fuelOrders.id, orderId),
+        eq(fuelOrders.status, 'PENDING'),
+        isNull(fuelOrders.driverId)
+      ))
+      .returning();
+
+    if (!updatedOrder) {
+      return res.status(400).json({ success: false, error: 'Order not available or already accepted' });
+    }
+
+    // Broadcast update to customer
+    broadcastOrderUpdate(orderId, {
+      type: 'ORDER_ACCEPTED',
+      order: updatedOrder,
+      status: 'ACCEPTED',
+      driverId
+    });
+
+    res.json({ success: true, order: updatedOrder });
+  } catch (error) {
+    console.error('Error accepting fuel order:', error);
+    res.status(500).json({ success: false, error: 'Failed to accept order' });
   }
 }

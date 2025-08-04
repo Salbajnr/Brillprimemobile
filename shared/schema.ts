@@ -873,3 +873,39 @@ export type SuspiciousActivity = typeof suspiciousActivities.$inferSelect;
 export type InsertSuspiciousActivity = typeof suspiciousActivities.$inferInsert;
 export type AccountFlag = typeof accountFlags.$inferSelect;
 export type InsertAccountFlag = typeof accountFlags.$inferInsert;
+
+// Fuel Orders table
+export const fuelOrders = pgTable("fuel_orders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  customerId: integer("customer_id").notNull().references(() => users.id),
+  driverId: integer("driver_id").references(() => users.id),
+  stationId: text("station_id").notNull(),
+  fuelType: text("fuel_type", { enum: ["PMS", "AGO", "DPK"] }).notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(),
+  deliveryAddress: text("delivery_address").notNull(),
+  deliveryLatitude: decimal("delivery_latitude", { precision: 10, scale: 8 }).notNull(),
+  deliveryLongitude: decimal("delivery_longitude", { precision: 11, scale: 8 }).notNull(),
+  status: text("status", { 
+    enum: ["PENDING", "ACCEPTED", "PICKED_UP", "IN_TRANSIT", "DELIVERED", "CANCELLED"] 
+  }).default("PENDING"),
+  scheduledDeliveryTime: timestamp("scheduled_delivery_time"),
+  estimatedDeliveryTime: timestamp("estimated_delivery_time"),
+  acceptedAt: timestamp("accepted_at"),
+  pickedUpAt: timestamp("picked_up_at"),
+  deliveredAt: timestamp("delivered_at"),
+  notes: text("notes"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Fuel Orders relations
+export const fuelOrdersRelations = relations(fuelOrders, ({ one }) => ({
+  customer: one(users, { fields: [fuelOrders.customerId], references: [users.id] }),
+  driver: one(users, { fields: [fuelOrders.driverId], references: [users.id] }),
+}));
+
+export const insertFuelOrderSchema = createInsertSchema(fuelOrders);
+export type FuelOrder = typeof fuelOrders.$inferSelect;
+export type InsertFuelOrder = typeof fuelOrders.$inferInsert;
