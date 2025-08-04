@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { db } from '../db';
 import { fuelOrders, users, driverProfiles } from '@shared/schema';
 import { eq, and, desc, isNull, ne } from 'drizzle-orm';
-// import { broadcastOrderUpdate } from '../services/order-broadcasting'; // Temporarily disabled
+import { orderBroadcastingService } from '../services/order-broadcasting';
 
 const createFuelOrderSchema = z.object({
   stationId: z.string(),
@@ -237,11 +237,17 @@ export function registerFuelOrderRoutes(app: Express) {
         .returning();
 
       // Broadcast update to all parties
-      broadcastOrderUpdate(orderId, {
-        type: 'ORDER_STATUS_UPDATED',
-        order: updatedOrder,
+      orderBroadcastingService.broadcastOrderUpdate({
+        orderId: orderId,
+        buyerId: currentOrder.customerId,
+        sellerId: null,
+        driverId: currentOrder.driverId,
         status: validatedData.status,
-        updatedBy: userRole
+        location: {
+          address: currentOrder.deliveryAddress,
+          latitude: parseFloat(currentOrder.deliveryLatitude),
+          longitude: parseFloat(currentOrder.deliveryLongitude)
+        }
       });
 
       res.json({ success: true, order: updatedOrder });

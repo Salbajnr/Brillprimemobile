@@ -39,16 +39,29 @@ export function AdminDashboardMain() {
     } catch (error) {
       console.error('Failed to load dashboard data:', error);
       // Use fallback data for demo purposes
-      setMetrics({
-        totalUsers: 24847,
-        totalTransactions: 156800000,
-        totalRevenue: 12400000,
-        activeOrders: 2847,
-        pendingKYC: 23,
-        flaggedAccounts: 7,
-        supportTickets: 48,
-        fraudAlerts: 3
-      });
+      // Fetch real metrics from API instead of using mock data
+      try {
+        const response = await fetch('/api/admin/dashboard/metrics');
+        if (response.ok) {
+          const realMetrics = await response.json();
+          setMetrics(realMetrics);
+        } else {
+          throw new Error('Failed to fetch metrics');
+        }
+      } catch (error) {
+        console.error('Failed to fetch admin metrics:', error);
+        // Only show error state instead of fallback data
+        setMetrics({
+          totalUsers: 0,
+          totalTransactions: 0,
+          totalRevenue: 0,
+          activeOrders: 0,
+          pendingKYC: 0,
+          flaggedAccounts: 0,
+          supportTickets: 0,
+          fraudAlerts: 0
+        });
+      }
     } finally {
       setIsLoading(false);
     }

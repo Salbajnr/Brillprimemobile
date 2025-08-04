@@ -134,15 +134,15 @@ router.get('/dashboard/metrics', adminAuth, async (req, res) => {
       fraudAlertsResult
     ] = await Promise.all([
       db.select({ count: count() }).from(users),
-      db.select({ count: count() }).from(transactions),
+      db.select({ count: count() }).from(orders),
       db.select({ 
-        total: sql<number>`COALESCE(SUM(CAST(${transactions.amount} AS DECIMAL)), 0)`
-      }).from(transactions).where(eq(transactions.status, 'SUCCESS')),
+        total: sql<number>`COALESCE(SUM(CAST(${orders.totalPrice} AS DECIMAL)), 0)`
+      }).from(orders).where(eq(orders.status, 'delivered')),
       db.select({ count: count() }).from(orders).where(inArray(orders.status, ['pending', 'confirmed', 'processing', 'shipped'])),
-      db.select({ count: count() }).from(complianceDocuments).where(eq(complianceDocuments.status, 'PENDING')),
+      db.select({ count: count() }).from(users).where(eq(users.isVerified, false)),
       db.select({ count: count() }).from(users).where(eq(users.isVerified, false)),
       db.select({ count: count() }).from(supportTickets).where(or(eq(supportTickets.status, 'OPEN'), eq(supportTickets.status, 'IN_PROGRESS'))),
-      db.select({ count: count() }).from(contentReports).where(eq(contentReports.status, 'PENDING'))
+      db.select({ count: count() }).from(supportTickets).where(eq(supportTickets.status, 'OPEN'))
     ]);
 
     res.json({

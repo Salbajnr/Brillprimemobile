@@ -1,5 +1,7 @@
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
+import { storage } from './storage';
+import { orderBroadcastingService } from './services/order-broadcasting';
 
 // Helper function to calculate distance between two coordinates
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -55,31 +57,61 @@ export async function setupWebSocketServer(server: HTTPServer) {
   io.on('connection', (socket) => {
     console.log('User connected:', socket.id);
 
-    // Handle test messages for E2E testing
-    socket.on('test', (data) => {
-      console.log('Test message received:', data);
-      socket.emit('message', {
-        type: 'test_response',
-        data: { message: 'Test message acknowledged', originalData: data }
-      });
+    // Production WebSocket handlers for real-time features
+    
+    // Real-time order status updates
+    socket.on('order_status_update', async (data: { orderId: string; status: string; location?: any }) => {
+      try {
+        const orderTracking = await storage.getOrderTracking(data.orderId);
+        if (orderTracking) {
+          // Broadcast to all parties involved in the order
+          io.to(`order_${data.orderId}`).emit('order_update', {
+            orderId: data.orderId,
+            status: data.status,
+            location: data.location,
+            timestamp: Date.now()
+          });
+          
+          // Send specific notifications to buyer, seller, and driver
+          if (orderTracking.buyerId) {
+            io.to(`user_${orderTracking.buyerId}`).emit('notification', {
+              type: 'order_update',
+              title: 'Order Status Update',
+              message: `Your order status changed to ${data.status}`,
+              orderId: data.orderId
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Order status update error:', error);
+        socket.emit('error', { message: 'Failed to update order status' });
+      }
     });
 
-    // Handle order update test messages
-    socket.on('order_update', (data) => {
-      console.log('Order update test message:', data);
-      socket.emit('message', {
-        type: 'order_update',
-        data: { orderId: data.orderId, status: data.status }
-      });
+    // Real-time transaction monitoring for admin
+    socket.on('admin_transaction_monitor', (data) => {
+      // Join admin monitoring room
+      socket.join('admin_transaction_monitoring');
+      console.log('Admin joined transaction monitoring');
     });
 
-    // Handle admin notification test messages
-    socket.on('admin_notification', (data) => {
-      console.log('Admin notification test message:', data);
-      socket.emit('message', {
-        type: 'admin_notification',
-        data: { message: data.message }
-      });
+    // Driver location updates for real-time tracking
+    socket.on('driver_location_update', async (data: { driverId: number; latitude: number; longitude: number }) => {
+      try {
+        await storage.updateDriverLocation(data.driverId, data.latitude, data.longitude);
+        
+        // Broadcast location to all active orders for this driver
+        socket.broadcast.emit('driver_location', {
+          driverId: data.driverId,
+          location: {
+            latitude: data.latitude,
+            longitude: data.longitude
+          },
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        console.error('Driver location update error:', error);
+      }
     });
 
     // Join user to their personal room for notifications
@@ -630,23 +662,56 @@ export async function setupWebSocketServer(server: HTTPServer) {
   global.io = io;
 
   // Periodic cleanup and health checks
-  setInterval(() => {
-    const rooms = io.sockets.adapter.rooms;
-    const systemMetrics = {
-      activeRooms: rooms.size,
-      connectedClients: io.sockets.sockets.size,
-      onlineUsers: onlineUsers.size,
-      adminConnections: adminConnections.size,
-      memoryUsage: process.memoryUsage(),
-      uptime: process.uptime(),
-      timestamp: Date.now()
-    };
+  setInterval(async () => {
+    try {
+      const rooms = io.sockets.adapter.rooms;
+      
+      // Get live system metrics from database
+      const [systemMetrics, userActivity, transactionMetrics] = await Promise.all([
+        storage.getSystemMetrics(),
+        storage.getUserActivityMetrics('1h'),
+        storage.getTransactionMetrics('1h')
+      ]);
 
-    console.log(`Active rooms: ${rooms.size}, Connected clients: ${io.sockets.sockets.size}`);
-    console.log(`Online users: ${onlineUsers.size}, Admin connections: ${adminConnections.size}`);
+      const enhancedMetrics = {
+        // Socket.io metrics
+        activeRooms: rooms.size,
+        connectedClients: io.sockets.sockets.size,
+        onlineUsers: onlineUsers.size,
+        adminConnections: adminConnections.size,
+        
+        // Database metrics
+        totalUsers: systemMetrics.totalUsers,
+        totalOrders: systemMetrics.totalOrders,
+        completedOrders: systemMetrics.completedOrders,
+        totalRevenue: systemMetrics.totalRevenue,
+        onlineDrivers: systemMetrics.onlineDrivers,
+        
+        // Real-time activity
+        newUsersLastHour: userActivity.newUsers,
+        activeUsersLastHour: userActivity.activeUsers,
+        transactionsLastHour: transactionMetrics.totalTransactions,
+        revenueLastHour: transactionMetrics.totalVolume,
+        
+        // System health
+        memoryUsage: process.memoryUsage(),
+        uptime: process.uptime(),
+        timestamp: Date.now()
+      };
 
-    // Broadcast system metrics to admin monitoring dashboards
-    io.to('admin_monitoring').emit('system_metrics_update', systemMetrics);
+      console.log(`Active rooms: ${rooms.size}, Connected clients: ${io.sockets.sockets.size}`);
+      console.log(`Online users: ${onlineUsers.size}, Admin connections: ${adminConnections.size}`);
+
+      // Broadcast enhanced system metrics to admin monitoring dashboards
+      io.to('admin_monitoring').emit('system_metrics_update', enhancedMetrics);
+      io.to('admin_transaction_monitoring').emit('transaction_metrics_update', {
+        transactions: transactionMetrics.totalTransactions,
+        volume: transactionMetrics.totalVolume,
+        timestamp: Date.now()
+      });
+    } catch (error) {
+      console.error('System metrics update error:', error);
+    }
   }, 30000); // Every 30 seconds for real-time monitoring
 
   return io;
