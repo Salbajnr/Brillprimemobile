@@ -86,7 +86,9 @@ export default function FuelOrdering() {
     }, 500);
   };
 
-  // Create fuel order
+  const handleCreateFuelOrder = async (orderData: any) => {
+    try {
+      // Create fuel order
       const response = await fetch('/api/fuel-orders', {
         method: 'POST',
         headers: {
@@ -107,4 +109,15 @@ export default function FuelOrdering() {
         }),
         credentials: 'include'
       });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success) {
+          setLocation(`/fuel-delivery-tracking?orderId=${result.order.id}`);
+        }
+      }
+    } catch (error) {
+      console.error('Error creating fuel order:', error);
+    }
+  };
 }

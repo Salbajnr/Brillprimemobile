@@ -108,11 +108,9 @@ function Router() {
       <Route path="/order-history-detail" component={() => <ProtectedRoute component={OrderHistoryDetail} />} />
       <Route path="/notifications" component={() => <ProtectedRoute component={NotificationsPage} />} />
       <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
-      <Route path="/support" component={() => <ProtectedRoute component={Support} />} />
-      <Route path="/messages" component={() => <ProtectedRoute component={Messages} />} />
-      <Route path="/identity-verification" component={() => <ProtectedRoute component={IdentityVerification} />} />
-      <Route path="/admin" component={AdminDashboard} />
-      <Route path="/admin/*" component={AdminDashboard} />
+      <Route path="/support" component={Support} />
+      <Route path="/account-settings" component={AccountSettingsPage} />
+      <Route path="/toll-payment-success" component={() => import("./pages/toll-payment-success")} />
       <Route component={NotFound} />
     </Switch>
   );

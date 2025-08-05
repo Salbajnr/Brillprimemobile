@@ -8,6 +8,9 @@ import { registerDriverMerchantCoordinationRoutes } from "./routes/driver-mercha
 import { registerLiveChatRoutes } from "./routes/live-chat";
 import { registerOrderStatusRoutes } from "./routes/order-status";
 import { registerTestRealtimeRoutes } from "./routes/test-realtime";
+import { registerRatingsReviewsRoutes } from "./routes/ratings-reviews";
+import { registerLocationRecommendationsRoutes } from "./routes/location-recommendations";
+import { registerTollPaymentRoutes } from "./routes/toll-payments";
 import { insertUserSchema, signInSchema, otpVerificationSchema, insertCategorySchema, insertProductSchema, insertUserLocationSchema, insertCartItemSchema, insertVendorPostSchema, insertSupportTicketSchema } from "@shared/schema";
 import bcrypt from "bcryptjs";
 import "./middleware/auth"; // Import type declarations
@@ -1067,7 +1070,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdAt: paymentMethods.createdAt
       })
       .from(paymentMethods)
-      .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isActive, true)))
+      .where(and(eq(paymentMethods.userId, userId), eq(paymentMethods.isDefault, true)))
       .orderBy(desc(paymentMethods.isDefault), desc(paymentMethods.createdAt));
 
       res.json({ success: true, paymentMethods: methods });
@@ -1417,6 +1420,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register test routes for real-time features
   registerTestRealtimeRoutes(app);
   registerEscrowManagementRoutes(app);
+  registerRatingsReviewsRoutes(app);
+  registerLocationRecommendationsRoutes(app);
+  registerTollPaymentRoutes(app);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {
@@ -1566,7 +1572,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Import routes
   // Import routes
   // Import routes
-  // Import routes
   const httpServer = createServer(app);
   return httpServer;
 }
@@ -1644,6 +1649,9 @@ export function setupRoutes(app: any) {
   registerOrderStatusRoutes(app);
   registerTestRealtimeRoutes(app);
   registerEscrowManagementRoutes(app);
+  registerRatingsReviewsRoutes(app);
+  registerLocationRecommendationsRoutes(app);
+  registerTollPaymentRoutes(app);
 
   const server = createServer(app);
   return server;

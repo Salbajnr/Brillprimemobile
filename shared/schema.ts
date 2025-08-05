@@ -901,3 +901,56 @@ export const fuelOrdersRelations = relations(fuelOrders, ({ one }) => ({
 export const insertFuelOrderSchema = createInsertSchema(fuelOrders);
 export type FuelOrder = typeof fuelOrders.$inferSelect;
 export type InsertFuelOrder = typeof fuelOrders.$inferInsert;
+// Reviews and Ratings tables
+export const reviews = pgTable("reviews", {
+  id: serial("id").primaryKey(),
+  reviewerId: integer("reviewer_id").notNull().references(() => users.id),
+  revieweeId: integer("reviewee_id").notNull().references(() => users.id),
+  revieweeType: text("reviewee_type", { enum: ["MERCHANT", "DRIVER"] }).notNull(),
+  orderId: uuid("order_id").references(() => fuelOrders.id),
+  rating: integer("rating").notNull().default(1), // 1-5 stars
+  comment: text("comment"),
+  isVerified: boolean("is_verified").default(false),
+  isPublic: boolean("is_public").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const merchantProfiles = pgTable("merchant_profiles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  businessName: text("business_name").notNull(),
+  businessType: text("business_type").notNull(),
+  address: text("address").notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  phone: text("phone"),
+  email: text("email"),
+  description: text("description"),
+  profilePicture: text("profile_picture"),
+  coverPhoto: text("cover_photo"),
+  businessHours: jsonb("business_hours").$type<{
+    [key: string]: { open: string; close: string; isOpen: boolean }
+  }>(),
+  deliveryRadius: decimal("delivery_radius", { precision: 10, scale: 2 }).default("5"),
+  averageRating: decimal("average_rating", { precision: 3, scale: 2 }).default("0"),
+  totalReviews: integer("total_reviews").default(0),
+  totalOrders: integer("total_orders").default(0),
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const locationRecommendations = pgTable("location_recommendations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  merchantId: integer("merchant_id").notNull().references(() => users.id),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  distance: decimal("distance", { precision: 10, scale: 3 }), // in kilometers
+  relevanceScore: decimal("relevance_score", { precision: 5, scale: 3 }),
+  lastRecommended: timestamp("last_recommended").defaultNow(),
+  clickCount: integer("click_count").default(0),
+  conversionCount: integer("conversion_count").default(0),
+});

@@ -60,7 +60,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
     console.log('User connected:', socket.id);
 
     // Production WebSocket handlers for real-time features
-    
+
     // Real-time order status updates
     socket.on('order_status_update', async (data: { orderId: string; status: string; location?: any }) => {
       try {
@@ -73,7 +73,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
             location: data.location,
             timestamp: Date.now()
           });
-          
+
           // Send specific notifications to buyer, seller, and driver
           if (orderTracking.buyerId) {
             io.to(`user_${orderTracking.buyerId}`).emit('notification', {
@@ -95,7 +95,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
       // Join admin monitoring room
       socket.join('admin_transaction_monitoring');
       console.log('Admin joined transaction monitoring');
-      
+
       // Send current transaction stats
       storage.getTransactionMetrics('1h').then(metrics => {
         socket.emit('initial_transaction_data', {
@@ -131,7 +131,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
     socket.on('driver_location_update', async (data: { driverId: number; latitude: number; longitude: number }) => {
       try {
         await storage.updateDriverLocation(data.driverId, data.latitude, data.longitude);
-        
+
         // Broadcast location to all active orders for this driver
         socket.broadcast.emit('driver_location', {
           driverId: data.driverId,
@@ -702,6 +702,60 @@ export async function setupWebSocketServer(server: HTTPServer) {
       }
     });
 
+    // Handle rating submissions
+    socket.on('submit_rating', (data) => {
+      console.log('Rating submitted:', data);
+
+      // Broadcast to the rated user
+      if (data.revieweeId) {
+        io.to(`user_${data.revieweeId}`).emit('new_rating_received', {
+          type: 'NEW_RATING',
+          rating: data.rating,
+          reviewerName: data.reviewerName,
+          comment: data.comment,
+          timestamp: Date.now()
+        });
+      }
+
+      // Broadcast to admin monitoring
+      io.to('admin_monitoring').emit('rating_activity', {
+        type: 'RATING_SUBMITTED',
+        reviewerId: data.reviewerId,
+        revieweeId: data.revieweeId,
+        rating: data.rating,
+        timestamp: Date.now()
+      });
+    });
+
+    // Handle recommendation interactions
+    socket.on('recommendation_interaction', (data) => {
+      console.log('Recommendation interaction:', data);
+
+      // Track interaction for analytics
+      io.to('admin_monitoring').emit('recommendation_analytics', {
+        type: 'INTERACTION_TRACKED',
+        userId: data.userId,
+        merchantId: data.merchantId,
+        interactionType: data.interactionType,
+        timestamp: Date.now()
+      });
+    });
+
+    // Handle toll payment updates
+    socket.on('toll_payment_update', (data) => {
+      console.log('Toll payment update:', data);
+
+      // Broadcast to admin monitoring
+      io.to('admin_monitoring').emit('toll_payment_activity', {
+        type: 'TOLL_PAYMENT_UPDATE',
+        userId: data.userId,
+        amount: data.amount,
+        tollGateId: data.tollGateId,
+        status: data.status,
+        timestamp: Date.now()
+      });
+    });
+
     socket.on('disconnect', () => {
       console.log('User disconnected:', socket.id);
 
@@ -745,7 +799,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
   setInterval(async () => {
     try {
       const rooms = io.sockets.adapter.rooms;
-      
+
       // Get live system metrics from database
       const [systemMetrics, userActivity, transactionMetrics] = await Promise.all([
         storage.getSystemMetrics(),
@@ -759,20 +813,20 @@ export async function setupWebSocketServer(server: HTTPServer) {
         connectedClients: io.sockets.sockets.size,
         onlineUsers: onlineUsers.size,
         adminConnections: adminConnections.size,
-        
+
         // Database metrics
         totalUsers: systemMetrics.totalUsers,
         totalOrders: systemMetrics.totalOrders,
         completedOrders: systemMetrics.completedOrders,
         totalRevenue: systemMetrics.totalRevenue,
         onlineDrivers: systemMetrics.onlineDrivers,
-        
+
         // Real-time activity
         newUsersLastHour: userActivity.newUsers,
         activeUsersLastHour: userActivity.activeUsers,
         transactionsLastHour: transactionMetrics.totalTransactions,
         revenueLastHour: transactionMetrics.totalVolume,
-        
+
         // System health
         memoryUsage: process.memoryUsage(),
         uptime: process.uptime(),

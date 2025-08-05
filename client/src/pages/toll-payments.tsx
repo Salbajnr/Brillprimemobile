@@ -43,6 +43,28 @@ interface TollTransaction {
   timestamp: string;
   status: 'pending' | 'completed' | 'failed';
   qrCode: string;
+  paymentMethod?: string;
+  reference?: string;
+}
+
+interface TollGate {
+  id: string;
+  name: string;
+  location: string;
+  highway: string;
+  distance: number;
+  pricePerVehicle: {
+    car: number;
+    suv: number;
+    truck: number;
+    motorcycle: number;
+  };
+  operatingHours: string;
+  isOpen: boolean;
+  estimatedTime: string;
+  paymentMethods: string[];
+  trafficStatus: 'light' | 'moderate' | 'heavy';
+  queueTime: string;
 }
 
 export default function TollPayments() {
@@ -86,6 +108,68 @@ export default function TollPayments() {
       name: "Truck",
       icon: "🚛",
       description: "Heavy vehicles & trailers"
+    }
+  ];
+
+  const tollGates: TollGate[] = [
+    {
+      id: "lagos-ibadan-1",
+      name: "Lagos-Ibadan Expressway Toll",
+      location: "Berger, Lagos",
+      highway: "Lagos-Ibadan Expressway",
+      distance: 2.5,
+      pricePerVehicle: {
+        motorcycle: 200,
+        car: 600,
+        suv: 1000,
+        truck: 1500
+      },
+      operatingHours: "24/7",
+      isOpen: true,
+      estimatedTime: "3 mins",
+      paymentMethods: ["wallet", "card", "qr"],
+      trafficStatus: "moderate",
+      queueTime: "5-8 minutes"
+    },
+    {
+      id: "lekki-toll",
+      name: "Lekki Toll Gate",
+      location: "Lekki Peninsula, Lagos",
+      highway: "Lekki-Epe Expressway",
+      distance: 15.2,
+      pricePerVehicle: {
+        motorcycle: 120,
+        car: 400,
+        suv: 800,
+        truck: 1200
+      },
+      operatingHours: "24/7",
+      isOpen: true,
+      estimatedTime: "2 mins",
+      paymentMethods: ["wallet", "card", "qr"],
+      trafficStatus: "light",
+      queueTime: "2-3 minutes"
+    },
+    {
+      id: "abuja-kaduna-1",
+      name: "Abuja-Kaduna Expressway Toll",
+      location: "Zuba, Abuja",
+      highway: "Abuja-Kaduna Expressway",
+      distance: 45.8,
+      pricePerVehicle: {
+        motorcycle: 150,
+        car: 500,
+        suv: 900,
+        truck: 1400
+      },
+      operatingHours: "6:00 AM - 10:00 PM",
+      isOpen: true,
+      estimatedTime: "4 mins",
+      paymentMethods: ["wallet", "card"],
+      trafficStatus: "heavy",
+      queueTime: "10-15 minutes"
+    }
+  ];rs"
     }
   ];
 
@@ -186,24 +270,70 @@ export default function TollPayments() {
     setSelectedTollGate(tollGate.id);
   };
 
-  const handlePurchase = () => {
+  const handlePurchase = async () => {
     if (selectedTollGate) {
       const selectedGate = tollGates.find(g => g.id === selectedTollGate);
       const amount = selectedGate?.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']];
       
-      // Create new transaction
-      const newTransaction: TollTransaction = {
-        id: `TP-${Date.now()}`,
-        tollGateId: selectedTollGate,
-        vehicleType: selectedVehicle,
-        amount: amount || 0,
-        timestamp: new Date().toISOString(),
-        status: 'pending',
-        qrCode: `QR${Math.random().toString(36).substr(2, 9).toUpperCase()}`
-      };
-      
-      setActiveTransactions(prev => [...prev, newTransaction]);
-      setLocation(`/payment/confirm?type=toll&gate=${selectedTollGate}&vehicle=${selectedVehicle}&amount=${amount}`);
+      try {
+        // Create toll payment transaction
+        const response = await fetch('/api/toll/payment', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            tollGateId: selectedTollGate,
+            vehicleType: selectedVehicle,
+            amount: amount,
+            paymentMethod: 'wallet'
+          }),
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success) {
+            // Create new transaction
+            const newTransaction: TollTransaction = {
+              id: result.transaction.id,
+              tollGateId: selectedTollGate,
+              vehicleType: selectedVehicle,
+              amount: amount || 0,
+              timestamp: new Date().toISOString(),
+              status: 'completed',
+              qrCode: result.qrCode,
+              paymentMethod: 'wallet',
+              reference: result.transaction.reference
+            };
+            
+            setActiveTransactions(prev => [...prev, newTransaction]);
+            setLocation(`/toll-payment-success?transactionId=${result.transaction.id}&qrCode=${result.qrCode}`);
+          }
+        } else {
+          console.error('Failed to process toll payment');
+        }
+      } catch (error) {
+        console.error('Error processing toll payment:', error);
+      }
+    }
+  };
+
+  const getTrafficStatusColor = (status: string) => {
+    switch (status) {
+      case 'light': return 'text-green-600';
+      case 'moderate': return 'text-yellow-600';
+      case 'heavy': return 'text-red-600';
+      default: return 'text-gray-600';
+    }
+  };
+
+  const getTrafficStatusIcon = (status: string) => {
+    switch (status) {
+      case 'light': return '🟢';
+      case 'moderate': return '🟡';
+      case 'heavy': return '🔴';
+      default: return '⚪';
     }
   };
 
