@@ -110,7 +110,7 @@ function Router() {
       <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
       <Route path="/support" component={Support} />
       <Route path="/account-settings" component={AccountSettingsPage} />
-      <Route path="/toll-payment-success" component={() => import("./pages/toll-payment-success")} />
+      <Route path="/toll-payment-success" component={lazy(() => import("./pages/toll-payment-success"))} />
       <Route component={NotFound} />
     </Switch>
   );

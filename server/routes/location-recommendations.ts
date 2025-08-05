@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { z } from "zod";
 import { db } from "../db";
@@ -133,7 +132,7 @@ export function registerLocationRecommendationsRoutes(app: Express) {
           const now = new Date();
           const currentDay = now.toLocaleLowerCase();
           const currentHour = now.getHours();
-          
+
           if (merchant.businessHours && typeof merchant.businessHours === 'object') {
             const todayHours = (merchant.businessHours as any)[currentDay];
             if (todayHours && todayHours.isOpen) {
@@ -250,7 +249,7 @@ export function registerLocationRecommendationsRoutes(app: Express) {
       if (recommendation) {
         // Update interaction counts
         const updates: any = {};
-        
+
         if (validatedData.interactionType === 'click') {
           updates.clickCount = recommendation.clickCount + 1;
         } else if (validatedData.interactionType === 'order') {
@@ -340,17 +339,17 @@ export function registerLocationRecommendationsRoutes(app: Express) {
 // Helper functions
 function checkIfOpenNow(businessHours: any): boolean {
   if (!businessHours || typeof businessHours !== 'object') return false;
-  
+
   const now = new Date();
   const currentDay = now.toLocaleLowerCase();
   const currentTime = now.getHours() * 100 + now.getMinutes();
-  
+
   const todayHours = businessHours[currentDay];
   if (!todayHours || !todayHours.isOpen) return false;
-  
+
   const openTime = parseInt(todayHours.open.replace(':', ''));
   const closeTime = parseInt(todayHours.close.replace(':', ''));
-  
+
   return currentTime >= openTime && currentTime < closeTime;
 }
 
@@ -358,7 +357,7 @@ function calculateEstimatedDeliveryTime(distance: number): string {
   // Assume average speed of 25 km/h for delivery
   const timeInHours = distance / 25;
   const timeInMinutes = Math.round(timeInHours * 60);
-  
+
   if (timeInMinutes < 60) {
     return `${timeInMinutes} min`;
   } else {
@@ -370,13 +369,13 @@ function calculateEstimatedDeliveryTime(distance: number): string {
 
 function getTopCategories(history: any[]): Array<{category: string, count: number}> {
   const categoryCounts: Record<string, number> = {};
-  
+
   history.forEach(item => {
     if (item.clickCount > 0 && item.businessType) {
       categoryCounts[item.businessType] = (categoryCounts[item.businessType] || 0) + item.clickCount;
     }
   });
-  
+
   return Object.entries(categoryCounts)
     .map(([category, count]) => ({ category, count }))
     .sort((a, b) => b.count - a.count)
