@@ -130,7 +130,7 @@ export function registerLocationRecommendationsRoutes(app: Express) {
 
           // Business hours factor (open now = bonus)
           const now = new Date();
-          const currentDay = now.toLocaleLowerCase();
+          const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
           const currentHour = now.getHours();
 
           if (merchant.businessHours && typeof merchant.businessHours === 'object') {
