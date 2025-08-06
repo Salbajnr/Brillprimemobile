@@ -1,17 +1,3 @@
-# Exported from Render on 2025-08-06T20:32:45Z
-databases:
-- name: brill-prime-mobile
-  databaseName: brillprimedb
-  user: brill_prime
-  plan: free
-  region: oregon
-  ipAllowList:
-  - source: 0.0.0.0/0
-    description: everywhere
-  postgresMajorVersion: "16"
-version: "1"
-
-
 services:
   # Web Service for the main application
   - type: web
@@ -25,7 +11,7 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: brillprime-db
+          name: brill-prime-mobile
           property: connectionString
       - key: PAYSTACK_SECRET_KEY
         sync: false
@@ -61,35 +47,20 @@ services:
         value: production
       - key: DATABASE_URL
         fromDatabase:
-          name: brillprime-db
+          name: brill-prime-mobile
           property: connectionString
       - key: VITE_API_BASE_URL
         value: https://brillprime-app.onrender.com
     healthCheckPath: /
 
 databases:
-  # PostgreSQL Database
-  - name: brillprime-db
-    databaseName: brillprime
-    user: brillprime_user
-    plan: starter
-
-# Background Jobs (if needed)
-# - type: worker
-#   name: brillprime-worker
-#   runtime: node
-#   buildCommand: npm install
-#   startCommand: npm run worker
-#   envVars:
-#     - key: NODE_ENV
-#       value: production
-#     - key: DATABASE_URL
-#       fromDatabase:
-#         name: brillprime-db
-#         property: connectionString
-
-# Redis (if needed for caching/sessions)
-# - type: redis
-#   name: brillprime-redis
-#   plan: starter
-#   maxmemoryPolicy: allkeys-lru
+  # PostgreSQL Database - Using your existing database
+  - name: brill-prime-mobile
+    databaseName: brillprimedb
+    user: brill_prime
+    plan: free
+    region: oregon
+    ipAllowList:
+      - source: 0.0.0.0/0
+        description: everywhere
+    postgresMajorVersion: "16"
