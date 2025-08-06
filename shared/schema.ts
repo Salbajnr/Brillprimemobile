@@ -1,4 +1,4 @@
-import { pgTable, varchar, text, timestamp, boolean, integer, decimal, uuid, serial, json, index } from 'drizzle-orm/pg-core';
+import { pgTable, varchar, text, timestamp, boolean, integer, decimal, uuid, serial, json, jsonb, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
@@ -258,33 +258,7 @@ export const chatMessages = pgTable("chat_messages", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
-// Merchant Business Profiles
-export const merchantProfiles = pgTable("merchant_profiles", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").notNull().references(() => users.id),
-  businessName: text("business_name").notNull(),
-  businessType: text("business_type", { 
-    enum: ["APPAREL", "ART_ENTERTAINMENT", "BEAUTY_COSMETICS", "EDUCATION", "EVENT_PLANNING", 
-           "FINANCE", "SUPERMARKET", "HOTEL", "MEDICAL_HEALTH", "NON_PROFIT", "OIL_GAS", 
-           "RESTAURANT", "SHOPPING_RETAIL", "TICKET", "TOLL_GATE", "VEHICLE_SERVICE", "OTHER"] 
-  }).notNull(),
-  businessDescription: text("business_description"),
-  businessAddress: text("business_address"),
-  businessPhone: text("business_phone"),
-  businessEmail: text("business_email"),
-  businessLogo: text("business_logo"),
-  businessHours: json("business_hours"), // Store opening hours
-  isVerified: boolean("is_verified").default(false),
-  subscriptionTier: text("subscription_tier", { enum: ["BASIC", "PREMIUM", "ENTERPRISE"] }).default("BASIC"),
-  subscriptionExpiry: timestamp("subscription_expiry"),
-  totalSales: decimal("total_sales", { precision: 12, scale: 2 }).default("0"),
-  totalOrders: integer("total_orders").default(0),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default("0"),
-  reviewCount: integer("review_count").default(0),
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow(),
-});
+
 
 // Merchant Analytics
 export const merchantAnalytics = pgTable("merchant_analytics", {
@@ -510,11 +484,7 @@ export const vendorPostCommentsRelations = relations(vendorPostComments, ({ one,
   replies: many(vendorPostComments),
 }));
 
-export const merchantProfilesRelations = relations(merchantProfiles, ({ one, many }) => ({
-  user: one(users, { fields: [merchantProfiles.userId], references: [users.id] }),
-  analytics: many(merchantAnalytics),
-  notifications: many(merchantNotifications),
-}));
+
 
 export const merchantAnalyticsRelations = relations(merchantAnalytics, ({ one }) => ({
   merchant: one(users, { fields: [merchantAnalytics.merchantId], references: [users.id] }),
@@ -589,8 +559,8 @@ export interface ExtendedVendorPost extends VendorPost {
 
 export const insertConversationSchema = createInsertSchema(conversations);
 export const insertChatMessageSchema = createInsertSchema(chatMessages);
-export const insertMerchantProfileSchema = createInsertSchema(merchantProfiles);
-export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytics);
+
+
 export const insertDriverProfileSchema = createInsertSchema(driverProfiles);
 // Tables that are referenced but may not exist yet - commenting out for now
 // export const insertDeliveryRequestSchema = createInsertSchema(deliveryRequests);
@@ -920,7 +890,11 @@ export const merchantProfiles = pgTable("merchant_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").notNull().references(() => users.id),
   businessName: text("business_name").notNull(),
-  businessType: text("business_type").notNull(),
+  businessType: text("business_type", { 
+    enum: ["APPAREL", "ART_ENTERTAINMENT", "BEAUTY_COSMETICS", "EDUCATION", "EVENT_PLANNING", 
+           "FINANCE", "SUPERMARKET", "HOTEL", "MEDICAL_HEALTH", "NON_PROFIT", "OIL_GAS", 
+           "RESTAURANT", "SHOPPING_RETAIL", "TICKET", "TOLL_GATE", "VEHICLE_SERVICE", "OTHER"] 
+  }).notNull(),
   address: text("address").notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 8 }),
   longitude: decimal("longitude", { precision: 11, scale: 8 }),
@@ -954,3 +928,12 @@ export const locationRecommendations = pgTable("location_recommendations", {
   clickCount: integer("click_count").default(0),
   conversionCount: integer("conversion_count").default(0),
 });
+
+// Merchant profile schemas and relations
+export const insertMerchantProfileSchema = createInsertSchema(merchantProfiles);
+export const merchantProfilesRelations = relations(merchantProfiles, ({ one, many }) => ({
+  user: one(users, { fields: [merchantProfiles.userId], references: [users.id] }),
+  analytics: many(merchantAnalytics),
+}));
+
+export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytics);

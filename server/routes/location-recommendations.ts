@@ -55,13 +55,12 @@ export function registerLocationRecommendationsRoutes(app: Express) {
           totalOrders: merchantProfiles.totalOrders,
           isVerified: merchantProfiles.isVerified,
           isActive: merchantProfiles.isActive,
-          // Calculate distance using Haversine formula
+          // Calculate distance using simpler formula
           distance: sql<number>`
-            ${earthRadius} * acos(
-              cos(radians(${validatedData.latitude})) * cos(radians(${merchantProfiles.latitude})) *
-              cos(radians(${merchantProfiles.longitude}) - radians(${validatedData.longitude})) +
-              sin(radians(${validatedData.latitude})) * sin(radians(${merchantProfiles.latitude}))
-            )
+            SQRT(
+              POWER(${merchantProfiles.latitude} - ${validatedData.latitude}, 2) + 
+              POWER(${merchantProfiles.longitude} - ${validatedData.longitude}, 2)
+            ) * 111.0
           `.as('distance')
         })
         .from(merchantProfiles)
@@ -71,13 +70,10 @@ export function registerLocationRecommendationsRoutes(app: Express) {
             ? gt(merchantProfiles.averageRating, validatedData.minRating.toString())
             : sql`1=1`,
           validatedData.category 
-            ? eq(merchantProfiles.businessType, validatedData.category)
+            ? sql`${merchantProfiles.businessType} = ${validatedData.category}`
             : sql`1=1`,
           // Distance filter using bounding box for performance
-          sql`
-            abs(${merchantProfiles.latitude} - ${validatedData.latitude}) <= ${validatedData.radius / 111.0} AND
-            abs(${merchantProfiles.longitude} - ${validatedData.longitude}) <= ${validatedData.radius / (111.0 * cos(radians(${validatedData.latitude})))}
-          `
+          sql`abs(${merchantProfiles.latitude} - ${validatedData.latitude}) <= ${validatedData.radius / 111.0}`
         ))
         .having(lt(sql`distance`, validatedData.radius))
         .orderBy(
@@ -124,8 +120,8 @@ export function registerLocationRecommendationsRoutes(app: Express) {
           // Previous interaction bonus
           const interaction = interactions[0];
           if (interaction) {
-            relevanceScore += Math.min(5, interaction.clickCount * 0.5);
-            relevanceScore += Math.min(10, interaction.conversionCount * 2);
+            relevanceScore += Math.min(5, (interaction.clickCount || 0) * 0.5);
+            relevanceScore += Math.min(10, (interaction.conversionCount || 0) * 2);
           }
 
           // Business hours factor (open now = bonus)
@@ -182,8 +178,8 @@ export function registerLocationRecommendationsRoutes(app: Express) {
       }
 
       // Real-time notification to admin about recommendation activity
-      if (global.io) {
-        global.io.to('admin_monitoring').emit('recommendation_activity', {
+      if ((global as any).io) {
+        (global as any).io.to('admin_monitoring').emit('recommendation_activity', {
           type: 'MERCHANT_RECOMMENDATIONS_REQUESTED',
           userId,
           location: { latitude: validatedData.latitude, longitude: validatedData.longitude },
@@ -251,9 +247,9 @@ export function registerLocationRecommendationsRoutes(app: Express) {
         const updates: any = {};
 
         if (validatedData.interactionType === 'click') {
-          updates.clickCount = recommendation.clickCount + 1;
+          updates.clickCount = (recommendation.clickCount || 0) + 1;
         } else if (validatedData.interactionType === 'order') {
-          updates.conversionCount = recommendation.conversionCount + 1;
+          updates.conversionCount = (recommendation.conversionCount || 0) + 1;
         }
 
         updates.lastRecommended = new Date();
@@ -265,8 +261,8 @@ export function registerLocationRecommendationsRoutes(app: Express) {
       }
 
       // Real-time analytics update
-      if (global.io) {
-        global.io.to('admin_monitoring').emit('recommendation_interaction', {
+      if ((global as any).io) {
+        (global as any).io.to('admin_monitoring').emit('recommendation_interaction', {
           type: 'RECOMMENDATION_INTERACTION',
           userId,
           merchantId: validatedData.merchantId,
@@ -318,12 +314,12 @@ export function registerLocationRecommendationsRoutes(app: Express) {
       // Calculate analytics
       const analytics = {
         totalRecommendations: recommendationHistory.length,
-        totalClicks: recommendationHistory.reduce((sum, item) => sum + item.clickCount, 0),
-        totalConversions: recommendationHistory.reduce((sum, item) => sum + item.conversionCount, 0),
+        totalClicks: recommendationHistory.reduce((sum, item) => sum + (item.clickCount || 0), 0),
+        totalConversions: recommendationHistory.reduce((sum, item) => sum + (item.conversionCount || 0), 0),
         averageRatingOfInteracted: recommendationHistory
-          .filter(item => item.clickCount > 0)
+          .filter(item => (item.clickCount || 0) > 0)
           .reduce((sum, item) => sum + parseFloat(item.averageRating || '0'), 0) / 
-          recommendationHistory.filter(item => item.clickCount > 0).length || 0,
+          recommendationHistory.filter(item => (item.clickCount || 0) > 0).length || 0,
         mostInteractedCategories: getTopCategories(recommendationHistory),
         recentRecommendations: recommendationHistory.slice(0, 10)
       };
@@ -341,7 +337,7 @@ function checkIfOpenNow(businessHours: any): boolean {
   if (!businessHours || typeof businessHours !== 'object') return false;
 
   const now = new Date();
-  const currentDay = now.toLocaleLowerCase();
+  const currentDay = now.toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase();
   const currentTime = now.getHours() * 100 + now.getMinutes();
 
   const todayHours = businessHours[currentDay];
@@ -371,8 +367,8 @@ function getTopCategories(history: any[]): Array<{category: string, count: numbe
   const categoryCounts: Record<string, number> = {};
 
   history.forEach(item => {
-    if (item.clickCount > 0 && item.businessType) {
-      categoryCounts[item.businessType] = (categoryCounts[item.businessType] || 0) + item.clickCount;
+    if ((item.clickCount || 0) > 0 && item.businessType) {
+      categoryCounts[item.businessType] = (categoryCounts[item.businessType] || 0) + (item.clickCount || 0);
     }
   });
 
