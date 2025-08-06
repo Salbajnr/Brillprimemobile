@@ -1,3 +1,17 @@
+# Exported from Render on 2025-08-06T20:32:45Z
+databases:
+- name: brill-prime-mobile
+  databaseName: brillprimedb
+  user: brill_prime
+  plan: free
+  region: oregon
+  ipAllowList:
+  - source: 0.0.0.0/0
+    description: everywhere
+  postgresMajorVersion: "16"
+version: "1"
+
+
 services:
   # Web Service for the main application
   - type: web
