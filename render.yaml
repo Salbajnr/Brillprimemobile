@@ -1,0 +1,81 @@
+services:
+  # Web Service for the main application
+  - type: web
+    name: brillprime-app
+    runtime: node
+    plan: starter
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brillprime-db
+          property: connectionString
+      - key: PAYSTACK_SECRET_KEY
+        sync: false
+      - key: PAYSTACK_PUBLIC_KEY
+        sync: false
+      - key: VITE_GOOGLE_MAPS_API_KEY
+        sync: false
+      - key: VITE_GOOGLE_CLIENT_ID
+        sync: false
+      - key: VITE_APPLE_CLIENT_ID
+        sync: false
+      - key: VITE_FACEBOOK_APP_ID
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: JWT_SECRET
+        generateValue: true
+    healthCheckPath: /health
+    disk:
+      name: brillprime-disk
+      mountPath: /opt/render/project/uploads
+      sizeGB: 1
+
+  # Admin Dashboard (if needed separately)
+  - type: web
+    name: brillprime-admin
+    runtime: node
+    plan: starter
+    buildCommand: cd admin-dashboard && npm install && npm run build
+    startCommand: cd admin-dashboard && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        fromDatabase:
+          name: brillprime-db
+          property: connectionString
+      - key: VITE_API_BASE_URL
+        value: https://brillprime-app.onrender.com
+    healthCheckPath: /
+
+databases:
+  # PostgreSQL Database
+  - name: brillprime-db
+    databaseName: brillprime
+    user: brillprime_user
+    plan: starter
+
+# Background Jobs (if needed)
+# - type: worker
+#   name: brillprime-worker
+#   runtime: node
+#   buildCommand: npm install
+#   startCommand: npm run worker
+#   envVars:
+#     - key: NODE_ENV
+#       value: production
+#     - key: DATABASE_URL
+#       fromDatabase:
+#         name: brillprime-db
+#         property: connectionString
+
+# Redis (if needed for caching/sessions)
+# - type: redis
+#   name: brillprime-redis
+#   plan: starter
+#   maxmemoryPolicy: allkeys-lru
