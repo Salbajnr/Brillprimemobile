@@ -25,6 +25,8 @@ import { handleSocialAuth, linkSocialAccount, getLinkedSocialAccounts, unlinkSoc
 import multer from 'multer';
 import { emailService } from "./services/email";
 import { registerEscrowManagementRoutes } from "./routes/escrow-management";
+import { registerVendorFeedRoutes } from "./routes/vendor-feed";
+import { registerProductRoutes } from "./routes/products";
 
 // Helper function to calculate distance between two coordinates
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -1423,6 +1425,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   registerRatingsReviewsRoutes(app);
   registerLocationRecommendationsRoutes(app);
   registerTollPaymentRoutes(app);
+  
+  // Register vendor feed and product routes
+  registerVendorFeedRoutes(app);
+  registerProductRoutes(app);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {

@@ -823,17 +823,383 @@ export class DatabaseStorage implements IStorage {
     ticketId: string;
     senderId: number;
     content: string;
-    attachments?: string[];
+    messageType?: string;
   }) {
-    // This would be implemented with a support_messages table in production
-    const message = {
-      id: Date.now().toString(),
+    // This would be implemented with support_messages table in production
+    console.log(`Support message for ticket ${messageData.ticketId}:`, messageData);
+    return {
+      id: Date.now(),
       ...messageData,
-      timestamp: new Date(),
-      isRead: false
+      timestamp: new Date()
     };
-    console.log('Support message added:', message);
-    return message;
+  }
+
+  // Vendor Posts Management
+  async createVendorPost(postData: any): Promise<any> {
+    const [post] = await db
+      .insert(vendorPosts)
+      .values(postData)
+      .returning();
+    
+    return post;
+  }
+
+  async getVendorPosts(filters: {
+    vendorId?: number;
+    postType?: string;
+    page: number;
+    limit: number;
+    sortBy: string;
+  }): Promise<{ posts: any[]; pagination: any }> {
+    let query = db
+      .select({
+        id: vendorPosts.id,
+        vendorId: vendorPosts.vendorId,
+        title: vendorPosts.title,
+        content: vendorPosts.content,
+        postType: vendorPosts.postType,
+        productId: vendorPosts.productId,
+        images: vendorPosts.images,
+        tags: vendorPosts.tags,
+        originalPrice: vendorPosts.originalPrice,
+        discountPrice: vendorPosts.discountPrice,
+        discountPercentage: vendorPosts.discountPercentage,
+        validUntil: vendorPosts.validUntil,
+        isActive: vendorPosts.isActive,
+        viewCount: vendorPosts.viewCount,
+        likeCount: vendorPosts.likeCount,
+        commentCount: vendorPosts.commentCount,
+        createdAt: vendorPosts.createdAt,
+        updatedAt: vendorPosts.updatedAt,
+        vendorName: users.fullName,
+        vendorProfilePicture: users.profilePicture
+      })
+      .from(vendorPosts)
+      .leftJoin(users, eq(vendorPosts.vendorId, users.id));
+
+    if (filters.vendorId) {
+      query = query.where(eq(vendorPosts.vendorId, filters.vendorId));
+    }
+
+    if (filters.postType) {
+      query = query.where(eq(vendorPosts.postType, filters.postType));
+    }
+
+    const offset = (filters.page - 1) * filters.limit;
+    const posts = await query
+      .orderBy(desc(vendorPosts.createdAt))
+      .limit(filters.limit)
+      .offset(offset);
+
+    return {
+      posts,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: posts.length // In production, this would be a separate count query
+      }
+    };
+  }
+
+  async getVendorPostById(postId: string): Promise<any | null> {
+    const [post] = await db
+      .select({
+        id: vendorPosts.id,
+        vendorId: vendorPosts.vendorId,
+        title: vendorPosts.title,
+        content: vendorPosts.content,
+        postType: vendorPosts.postType,
+        productId: vendorPosts.productId,
+        images: vendorPosts.images,
+        tags: vendorPosts.tags,
+        originalPrice: vendorPosts.originalPrice,
+        discountPrice: vendorPosts.discountPrice,
+        discountPercentage: vendorPosts.discountPercentage,
+        validUntil: vendorPosts.validUntil,
+        isActive: vendorPosts.isActive,
+        viewCount: vendorPosts.viewCount,
+        likeCount: vendorPosts.likeCount,
+        commentCount: vendorPosts.commentCount,
+        createdAt: vendorPosts.createdAt,
+        updatedAt: vendorPosts.updatedAt,
+        vendorName: users.fullName,
+        vendorProfilePicture: users.profilePicture
+      })
+      .from(vendorPosts)
+      .leftJoin(users, eq(vendorPosts.vendorId, users.id))
+      .where(eq(vendorPosts.id, postId))
+      .limit(1);
+
+    return post || null;
+  }
+
+  async updateVendorPost(postId: string, updateData: any): Promise<any> {
+    const [updatedPost] = await db
+      .update(vendorPosts)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(vendorPosts.id, postId))
+      .returning();
+
+    return updatedPost;
+  }
+
+  async deleteVendorPost(postId: string): Promise<void> {
+    await db
+      .update(vendorPosts)
+      .set({ isActive: false })
+      .where(eq(vendorPosts.id, postId));
+  }
+
+  async incrementPostViewCount(postId: string): Promise<void> {
+    await db
+      .update(vendorPosts)
+      .set({ 
+        viewCount: sql`${vendorPosts.viewCount} + 1` 
+      })
+      .where(eq(vendorPosts.id, postId));
+  }
+
+  async togglePostLike(postId: string, userId: number): Promise<{ liked: boolean; likeCount: number }> {
+    // Check if user already liked the post
+    const [existingLike] = await db
+      .select()
+      .from(vendorPostLikes)
+      .where(and(
+        eq(vendorPostLikes.postId, postId),
+        eq(vendorPostLikes.userId, userId)
+      ))
+      .limit(1);
+
+    if (existingLike) {
+      // Unlike the post
+      await db
+        .delete(vendorPostLikes)
+        .where(and(
+          eq(vendorPostLikes.postId, postId),
+          eq(vendorPostLikes.userId, userId)
+        ));
+
+      await db
+        .update(vendorPosts)
+        .set({ likeCount: sql`${vendorPosts.likeCount} - 1` })
+        .where(eq(vendorPosts.id, postId));
+
+      return { liked: false, likeCount: 0 };
+    } else {
+      // Like the post
+      await db
+        .insert(vendorPostLikes)
+        .values({ postId, userId });
+
+      await db
+        .update(vendorPosts)
+        .set({ likeCount: sql`${vendorPosts.likeCount} + 1` })
+        .where(eq(vendorPosts.id, postId));
+
+      return { liked: true, likeCount: 1 };
+    }
+  }
+
+  async addPostComment(commentData: { postId: string; userId: number; content: string; parentCommentId?: number }): Promise<any> {
+    // This would be implemented with vendorPostComments table
+    const comment = {
+      id: Date.now(),
+      ...commentData,
+      createdAt: new Date(),
+      isActive: true
+    };
+
+    // Update comment count
+    await db
+      .update(vendorPosts)
+      .set({ commentCount: sql`${vendorPosts.commentCount} + 1` })
+      .where(eq(vendorPosts.id, commentData.postId));
+
+    return comment;
+  }
+
+  async getPostComments(postId: string, pagination: { page: number; limit: number }): Promise<{ comments: any[]; pagination: any }> {
+    // This would be implemented with actual vendorPostComments table joins
+    return {
+      comments: [],
+      pagination: {
+        page: pagination.page,
+        limit: pagination.limit,
+        total: 0
+      }
+    };
+  }
+
+  async getVendorPostAnalytics(vendorId: number): Promise<any> {
+    const [analytics] = await db
+      .select({
+        totalPosts: count(),
+        totalViews: sql`SUM(${vendorPosts.viewCount})`,
+        totalLikes: sql`SUM(${vendorPosts.likeCount})`,
+        totalComments: sql`SUM(${vendorPosts.commentCount})`
+      })
+      .from(vendorPosts)
+      .where(and(
+        eq(vendorPosts.vendorId, vendorId),
+        eq(vendorPosts.isActive, true)
+      ));
+
+    return analytics || {
+      totalPosts: 0,
+      totalViews: 0,
+      totalLikes: 0,
+      totalComments: 0
+    };
+  }
+
+  // Product Management
+  async createProduct(productData: any): Promise<any> {
+    const [product] = await db
+      .insert(products)
+      .values(productData)
+      .returning();
+    
+    return product;
+  }
+
+  async getProducts(filters: {
+    categoryId?: number;
+    sellerId?: number;
+    minPrice?: number;
+    maxPrice?: number;
+    inStock?: boolean;
+    search?: string;
+    page: number;
+    limit: number;
+    sortBy: string;
+  }): Promise<{ products: any[]; pagination: any }> {
+    let query = db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        unit: products.unit,
+        categoryId: products.categoryId,
+        sellerId: products.sellerId,
+        image: products.image,
+        rating: products.rating,
+        reviewCount: products.reviewCount,
+        inStock: products.inStock,
+        minimumOrder: products.minimumOrder,
+        isActive: products.isActive,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        sellerName: users.fullName
+      })
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(eq(products.isActive, true));
+
+    if (filters.sellerId) {
+      query = query.where(eq(products.sellerId, filters.sellerId));
+    }
+
+    if (filters.categoryId) {
+      query = query.where(eq(products.categoryId, filters.categoryId));
+    }
+
+    if (filters.inStock !== undefined) {
+      query = query.where(eq(products.inStock, filters.inStock));
+    }
+
+    if (filters.search) {
+      query = query.where(
+        or(
+          like(products.name, `%${filters.search}%`),
+          like(products.description, `%${filters.search}%`)
+        )
+      );
+    }
+
+    const offset = (filters.page - 1) * filters.limit;
+    const productList = await query
+      .orderBy(desc(products.createdAt))
+      .limit(filters.limit)
+      .offset(offset);
+
+    return {
+      products: productList,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: productList.length
+      }
+    };
+  }
+
+  async getProductById(productId: string): Promise<any | null> {
+    const [product] = await db
+      .select({
+        id: products.id,
+        name: products.name,
+        description: products.description,
+        price: products.price,
+        unit: products.unit,
+        categoryId: products.categoryId,
+        sellerId: products.sellerId,
+        image: products.image,
+        rating: products.rating,
+        reviewCount: products.reviewCount,
+        inStock: products.inStock,
+        minimumOrder: products.minimumOrder,
+        isActive: products.isActive,
+        createdAt: products.createdAt,
+        updatedAt: products.updatedAt,
+        sellerName: users.fullName,
+        sellerProfilePicture: users.profilePicture
+      })
+      .from(products)
+      .leftJoin(users, eq(products.sellerId, users.id))
+      .where(eq(products.id, productId))
+      .limit(1);
+
+    return product || null;
+  }
+
+  async updateProduct(productId: string, updateData: any): Promise<any> {
+    const [updatedProduct] = await db
+      .update(products)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(products.id, productId))
+      .returning();
+
+    return updatedProduct;
+  }
+
+  async deleteProduct(productId: string): Promise<void> {
+    await db
+      .update(products)
+      .set({ isActive: false })
+      .where(eq(products.id, productId));
+  }
+
+  async getProductAnalytics(sellerId: number): Promise<any> {
+    const [analytics] = await db
+      .select({
+        totalProducts: count(),
+        totalOrders: sql`SUM(CASE WHEN ${orders.sellerId} = ${sellerId} THEN 1 ELSE 0 END)`,
+        totalRevenue: sql`SUM(CASE WHEN ${orders.sellerId} = ${sellerId} THEN CAST(${orders.totalPrice} AS DECIMAL) ELSE 0 END)`,
+        averageRating: sql`AVG(CAST(${products.rating} AS DECIMAL))`
+      })
+      .from(products)
+      .leftJoin(orders, eq(products.id, orders.productId))
+      .where(and(
+        eq(products.sellerId, sellerId),
+        eq(products.isActive, true)
+      ));
+
+    return analytics || {
+      totalProducts: 0,
+      totalOrders: 0,
+      totalRevenue: 0,
+      averageRating: 0
+    };
   }
 }
 
