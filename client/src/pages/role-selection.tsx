@@ -13,12 +13,9 @@ export default function RoleSelectionPage() {
   const handleContinue = () => {
     if (selectedRole) {
       setAuthRole(selectedRole);
-      if (selectedRole === "DRIVER") {
-        // Drivers need tier selection before continuing to signup
-        setLocation("/driver-tier-selection");
-      } else {
-        setLocation("/signup");
-      }
+      // All users go to signup regardless of role
+      // Driver tier selection happens after OTP verification
+      setLocation("/signup");
     }
   };
 

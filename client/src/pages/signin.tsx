@@ -57,9 +57,16 @@ export default function SignInPage() {
           setLocation("/merchant-dashboard");
         } else if (data.user.role === "DRIVER") {
           console.log("Navigating DRIVER to /driver-dashboard");
-          // Store a flag to prompt KYC verification on dashboard
-          sessionStorage.setItem('promptKYCVerification', 'true');
-          setLocation("/driver-dashboard");
+          // Check if driver has selected a tier (for existing users)
+          const selectedTier = sessionStorage.getItem('selectedDriverTier');
+          if (!selectedTier) {
+            // No tier selected, go to tier selection first
+            setLocation("/driver-tier-selection");
+          } else {
+            // Tier already selected, go to dashboard and prompt KYC
+            sessionStorage.setItem('promptKYCVerification', 'true');
+            setLocation("/driver-dashboard");
+          }
         } else {
           // Fallback to dashboard for unknown roles
           setLocation("/dashboard");
@@ -127,7 +134,14 @@ export default function SignInPage() {
             } else if (data.user.role === "MERCHANT") {
               setLocation("/merchant-dashboard");
             } else if (data.user.role === "DRIVER") {
-              setLocation("/driver-dashboard");
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
               setLocation("/dashboard");
             }
@@ -201,7 +215,14 @@ export default function SignInPage() {
             } else if (data.user.role === "MERCHANT") {
               setLocation("/merchant-dashboard");
             } else if (data.user.role === "DRIVER") {
-              setLocation("/driver-dashboard");
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
               setLocation("/dashboard");
             }
@@ -275,7 +296,14 @@ export default function SignInPage() {
             } else if (data.user.role === "MERCHANT") {
               setLocation("/merchant-dashboard");
             } else if (data.user.role === "DRIVER") {
-              setLocation("/driver-dashboard");
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
               setLocation("/dashboard");
             }
