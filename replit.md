@@ -55,6 +55,13 @@ Backend: User has existing backend API - frontend connects to external API endpo
 - Integrated session management and JWT authentication for social users
 - Successfully deployed database schema changes with social login support
 
+**✓ Fixed Driver Role Flow (January 2025)**
+- Permanently fixed driver registration and authentication flow
+- Corrected flow: role selection → signup/signin → OTP verification → driver tier selection → driver dashboard
+- Added proper KYC verification prompting for new drivers accessing dashboard
+- Updated both new signup and existing signin paths for consistent driver experience
+- Implemented session storage for driver tier tracking across authentication flow
+
 **✓ Enhanced Order Tracking for All Delivery Types**
 - Expanded order tracking system beyond fuel delivery to support all order types
 - Created unified order tracking interface handling both fuel orders and regular product orders

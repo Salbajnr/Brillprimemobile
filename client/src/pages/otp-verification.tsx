@@ -170,7 +170,16 @@ export default function OtpVerificationPage() {
             } else if (userData.role === "MERCHANT") {
               setLocation("/merchant-dashboard");
             } else if (userData.role === "DRIVER") {
-              setLocation("/driver-dashboard");
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                // No tier selected, go to tier selection
+                setLocation("/driver-tier-selection");
+              } else {
+                // Tier already selected, go to dashboard and prompt KYC
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
               setLocation("/dashboard");
             }

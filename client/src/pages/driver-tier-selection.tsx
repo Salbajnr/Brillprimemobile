@@ -13,10 +13,12 @@ export default function DriverTierSelectionPage() {
 
   const handleContinue = () => {
     if (selectedTier) {
-      // Store selected tier in session storage for registration process
+      // Store selected tier in session storage
       sessionStorage.setItem('selectedDriverTier', selectedTier);
-      // Navigate to signup page, not driver registration
-      setLocation('/signup');
+      // Set flag to prompt KYC verification on dashboard
+      sessionStorage.setItem('promptKYCVerification', 'true');
+      // Navigate directly to driver dashboard
+      setLocation('/driver-dashboard');
     }
   };
 
