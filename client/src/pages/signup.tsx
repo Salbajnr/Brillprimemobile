@@ -40,7 +40,7 @@ export default function SignupPage() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { selectedRole } = useAuth();
+  const { selectedRole, setUser } = useAuth();
 
   const form = useForm<SignupFormData>({
     resolver: zodResolver(signupSchema),
@@ -116,17 +116,70 @@ export default function SignupPage() {
 
     try {
       const { socialAuth } = await import("@/lib/social-auth");
+      socialAuth.setCallbacks(
+        async (profile: any) => {
+          try {
+            console.log("Google signup success:", profile);
 
-      const profile = await socialAuth.signInWithGoogle();
-      const result = await socialAuth.authenticateWithBackend(profile);
+            // Send profile to backend for registration
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json"
+              },
+              credentials: "include",
+              body: JSON.stringify({
+                provider: profile.provider,
+                socialId: profile.id,
+                email: profile.email,
+                name: profile.name,
+                picture: profile.picture,
+                role: selectedRole
+              })
+            });
 
-      // Update auth state
-      setUser(result.user);
-      localStorage.setItem("auth", JSON.stringify(result.user));
+            const data = await response.json();
 
-      setLocation("/dashboard");
-    } catch (error: any) {
-      setErrorMessage(error.message || "Google sign-up failed. Please try again.");
+            if (!response.ok) {
+              throw new Error(data.message || "Social signup failed");
+            }
+
+            // Update auth context
+            setUser(data.user);
+
+            // Navigate based on role
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
+            } else {
+              setLocation("/dashboard");
+            }
+          } catch (error) {
+            console.error("Google signup backend error:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Google sign-up failed. Please try again.");
+            setShowErrorModal(true);
+          }
+        },
+        (error: any) => {
+          console.error("Google signup error:", error);
+          setErrorMessage("Google sign-up failed. Please try again.");
+          setShowErrorModal(true);
+        }
+      );
+      await socialAuth.signInWithGoogle();
+    } catch (error) {
+      console.error("Google signup initialization error:", error);
+      setErrorMessage("Google sign-up is not available at the moment.");
       setShowErrorModal(true);
     }
   };
@@ -145,44 +198,68 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
-          console.log("Apple signup success:", profile);
-          // Send profile to backend for registration
+        async (profile: any) => {
           try {
-            const response = await fetch('/api/auth/social-login', {
-              method: 'POST',
+            console.log("Apple signup success:", profile);
+
+            // Send profile to backend for registration
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json"
               },
+              credentials: "include",
               body: JSON.stringify({
-                provider: 'apple',
+                provider: profile.provider,
                 socialId: profile.id,
                 email: profile.email,
-                fullName: profile.name,
+                name: profile.name,
+                picture: profile.picture,
                 role: selectedRole
-              }),
+              })
             });
 
-            if (response.ok) {
-              const result = await response.json();
-              setUser(result.user);
-              localStorage.setItem("auth", JSON.stringify(result.user));
-              setLocation("/dashboard");
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Social signup failed");
+            }
+
+            // Update auth context
+            setUser(data.user);
+
+            // Navigate based on role
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
-              throw new Error('Backend registration failed');
+              setLocation("/dashboard");
             }
           } catch (error) {
-            console.error('Apple signup backend error:', error);
-            setLocation("/otp-verification");
+            console.error("Apple signup backend error:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Apple sign-up failed. Please try again.");
+            setShowErrorModal(true);
           }
         },
-        (error) => {
+        (error: any) => {
+          console.error("Apple signup error:", error);
           setErrorMessage("Apple sign-up failed. Please try again.");
           setShowErrorModal(true);
         }
       );
       await socialAuth.signInWithApple();
     } catch (error) {
+      console.error("Apple signup initialization error:", error);
       setErrorMessage("Apple sign-up is not available at the moment.");
       setShowErrorModal(true);
     }
@@ -202,44 +279,68 @@ export default function SignupPage() {
     try {
       const { socialAuth } = await import("@/lib/social-auth");
       socialAuth.setCallbacks(
-        async (profile) => {
-          console.log("Facebook signup success:", profile);
-          // Send profile to backend for registration
+        async (profile: any) => {
           try {
-            const response = await fetch('/api/auth/social-login', {
-              method: 'POST',
+            console.log("Facebook signup success:", profile);
+
+            // Send profile to backend for registration
+            const response = await fetch("/api/auth/social-login", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json"
               },
+              credentials: "include",
               body: JSON.stringify({
-                provider: 'facebook',
+                provider: profile.provider,
                 socialId: profile.id,
                 email: profile.email,
-                fullName: profile.name,
+                name: profile.name,
+                picture: profile.picture,
                 role: selectedRole
-              }),
+              })
             });
 
-            if (response.ok) {
-              const result = await response.json();
-              setUser(result.user);
-              localStorage.setItem("auth", JSON.stringify(result.user));
-              setLocation("/dashboard");
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.message || "Social signup failed");
+            }
+
+            // Update auth context
+            setUser(data.user);
+
+            // Navigate based on role
+            if (data.user.role === "CONSUMER") {
+              setLocation("/consumer-home");
+            } else if (data.user.role === "MERCHANT") {
+              setLocation("/merchant-dashboard");
+            } else if (data.user.role === "DRIVER") {
+              // Check if driver has selected a tier
+              const selectedTier = sessionStorage.getItem('selectedDriverTier');
+              if (!selectedTier) {
+                setLocation("/driver-tier-selection");
+              } else {
+                sessionStorage.setItem('promptKYCVerification', 'true');
+                setLocation("/driver-dashboard");
+              }
             } else {
-              throw new Error('Backend registration failed');
+              setLocation("/dashboard");
             }
           } catch (error) {
-            console.error('Facebook signup backend error:', error);
-            setLocation("/otp-verification");
+            console.error("Facebook signup backend error:", error);
+            setErrorMessage(error instanceof Error ? error.message : "Facebook sign-up failed. Please try again.");
+            setShowErrorModal(true);
           }
         },
-        (error) => {
+        (error: any) => {
+          console.error("Facebook signup error:", error);
           setErrorMessage("Facebook sign-up failed. Please try again.");
           setShowErrorModal(true);
         }
       );
       await socialAuth.signInWithFacebook();
     } catch (error) {
+      console.error("Facebook signup initialization error:", error);
       setErrorMessage("Facebook sign-up is not available at the moment.");
       setShowErrorModal(true);
     }
