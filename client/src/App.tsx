@@ -78,36 +78,88 @@ function Router() {
       <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={MerchantDashboard} />} />
       <Route path="/order-management" component={lazy(() => import("./pages/order-management"))} />
       <Route path="/driver-dashboard" component={() => <ProtectedRoute component={DriverDashboard} />} />
-      <Route path="/driver-withdrawal" component={() => <ProtectedRoute component={DriverWithdrawal} />} />
-      <Route path="/delivery-detail" component={() => <ProtectedRoute component={DeliveryDetail} />} />
+      <Route path="/driver-withdrawal">
+        {() => <ProtectedRoute component={DriverWithdrawal} />}
+      </Route>
+      <Route path="/delivery-detail">
+        {() => <ProtectedRoute component={DeliveryDetail} />}
+      </Route>
       <Route path="/driver-tier-selection" component={DriverTierSelection} />
-      <Route path="/driver-registration" component={() => <ProtectedRoute component={DriverRegistration} />} />
-      <Route path="/identity-verification" component={() => <ProtectedRoute component={IdentityVerification} />} />
-      <Route path="/wallet/fund" component={() => <ProtectedRoute component={WalletFundPage} />} />
-      <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
+      <Route path="/driver-registration">
+        {() => <ProtectedRoute component={DriverRegistration} />}
+      </Route>
+      <Route path="/identity-verification">
+        {() => <ProtectedRoute component={IdentityVerification} />}
+      </Route>
+      <Route path="/wallet/fund">
+        {() => <ProtectedRoute component={WalletFundPage} />}
+      </Route>
+      <Route path="/fuel-ordering">
+        {() => <ProtectedRoute component={FuelOrderingPage} />}
+      </Route>
       <Route path="/fuel-order-details/:stationId" component={lazy(() => import("./pages/fuel-order-details"))} />
       <Route path="/order-confirmation/:orderId" component={lazy(() => import("./pages/order-confirmation"))} />
       <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
-      <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
-      <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
-      <Route path="/commodities" component={() => <ProtectedRoute component={CommoditiesPage} />} />
-      <Route path="/vendor-feed" component={() => <ProtectedRoute component={VendorFeedPage} />} />
-      <Route path="/chat" component={() => <ProtectedRoute component={ChatPage} />} />
-      <Route path="/map-home" component={() => <ProtectedRoute component={MapHomePage} />} />
-      <Route path="/location-setup" component={() => <ProtectedRoute component={LocationSetupPage} />} />
-      <Route path="/side-menu" component={() => <ProtectedRoute component={SideMenuPage} />} />
-      <Route path="/search-results" component={() => <ProtectedRoute component={SearchResultsPage} />} />
-      <Route path="/profile" component={() => <ProtectedRoute component={ProfilePage} />} />
-      <Route path="/edit-profile" component={() => <ProtectedRoute component={EditProfilePage} />} />
-      <Route path="/account-settings" component={() => <ProtectedRoute component={AccountSettingsPage} />} />
-      <Route path="/biometric-setup" component={() => <ProtectedRoute component={BiometricSetupPage} />} />
-      <Route path="/payment-methods" component={() => <ProtectedRoute component={PaymentMethodsPage} />} />
-      <Route path="/add-payment-method" component={() => <ProtectedRoute component={AddPaymentMethodPage} />} />
-      <Route path="/cart" component={() => <ProtectedRoute component={CartPage} />} />
-      <Route path="/order-history" component={() => <ProtectedRoute component={OrderHistory} />} />
-      <Route path="/order-history-detail" component={() => <ProtectedRoute component={OrderHistoryDetail} />} />
-      <Route path="/notifications" component={() => <ProtectedRoute component={NotificationsPage} />} />
-      <Route path="/merchants" component={() => <ProtectedRoute component={MerchantsPage} />} />
+      <Route path="/qr-scanner">
+        {() => <ProtectedRoute component={QRScannerPage} />}
+      </Route>
+      <Route path="/toll-payments">
+        {() => <ProtectedRoute component={TollPaymentsPage} />}
+      </Route>
+      <Route path="/commodities">
+        {() => <ProtectedRoute component={CommoditiesPage} />}
+      </Route>
+      <Route path="/vendor-feed">
+        {() => <ProtectedRoute component={VendorFeedPage} />}
+      </Route>
+      <Route path="/chat">
+        {() => <ProtectedRoute component={ChatPage} />}
+      </Route>
+      <Route path="/map-home">
+        {() => <ProtectedRoute component={MapHomePage} />}
+      </Route>
+      <Route path="/location-setup">
+        {() => <ProtectedRoute component={LocationSetupPage} />}
+      </Route>
+      <Route path="/side-menu">
+        {() => <ProtectedRoute component={SideMenuPage} />}
+      </Route>
+      <Route path="/search-results">
+        {() => <ProtectedRoute component={SearchResultsPage} />}
+      </Route>
+      <Route path="/profile">
+        {() => <ProtectedRoute component={ProfilePage} />}
+      </Route>
+      <Route path="/edit-profile">
+        {() => <ProtectedRoute component={EditProfilePage} />}
+      </Route>
+      <Route path="/account-settings">
+        {() => <ProtectedRoute component={AccountSettingsPage} />}
+      </Route>
+      <Route path="/biometric-setup">
+        {() => <ProtectedRoute component={BiometricSetupPage} />}
+      </Route>
+      <Route path="/payment-methods">
+        {() => <ProtectedRoute component={PaymentMethodsPage} />}
+      </Route>
+      <Route path="/add-payment-method">
+        {() => <ProtectedRoute component={AddPaymentMethodPage} />}
+      </Route>
+      <Route path="/cart">
+        {() => <ProtectedRoute component={CartPage} />}
+      </Route>
+      <Route path="/order-history">
+        {() => <ProtectedRoute component={OrderHistory} />}
+      </Route>
+      <Route path="/order-history-detail">
+        {() => <ProtectedRoute component={OrderHistoryDetail} />}
+      </Route>
+      <Route path="/notifications">
+        {() => <ProtectedRoute component={NotificationsPage} />}
+      </Route>
+      <Route path="/merchants">
+        {() => <ProtectedRoute component={MerchantsPage} />}
+      </Route>
       <Route path="/support" component={Support} />
       <Route path="/account-settings" component={AccountSettingsPage} />
       <Route path="/toll-payment-success" component={lazy(() => import("./pages/toll-payment-success"))} />

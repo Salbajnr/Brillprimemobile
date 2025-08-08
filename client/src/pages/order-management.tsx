@@ -19,7 +19,8 @@ import {
   Calendar,
   DollarSign,
   AlertCircle,
-  Navigation
+  Navigation,
+  Phone
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { NotificationModal } from "@/components/ui/notification-modal";
@@ -269,9 +270,9 @@ export default function OrderManagement() {
 
           {order.status === 'PENDING' && (
             <LoadingButton
-              size="sm"
               loading={updateStatusMutation.isPending}
               onClick={() => handleStatusUpdate(order.id, 'CONFIRMED')}
+              className="h-8 px-3 text-sm"
             >
               <Check className="h-4 w-4 mr-1" />
               Confirm
@@ -280,9 +281,9 @@ export default function OrderManagement() {
 
           {order.status === 'CONFIRMED' && (
             <LoadingButton
-              size="sm"
               loading={updateStatusMutation.isPending}
               onClick={() => handleStatusUpdate(order.id, 'PREPARING')}
+              className="h-8 px-3 text-sm"
             >
               <Clock className="h-4 w-4 mr-1" />
               Start Preparing
@@ -291,9 +292,9 @@ export default function OrderManagement() {
 
           {order.status === 'PREPARING' && (
             <LoadingButton
-              size="sm"
               loading={updateStatusMutation.isPending}
               onClick={() => handleStatusUpdate(order.id, 'READY')}
+              className="h-8 px-3 text-sm"
             >
               <Package className="h-4 w-4 mr-1" />
               Mark Ready
@@ -302,10 +303,10 @@ export default function OrderManagement() {
 
           {order.status === 'READY' && !order.driverId && (
             <LoadingButton
-              size="sm"
               variant="outline"
               loading={requestDeliveryMutation.isPending}
               onClick={() => handleRequestDelivery(order.id)}
+              className="h-8 px-3 text-sm"
             >
               <Truck className="h-4 w-4 mr-1" />
               Request Delivery
@@ -505,7 +506,7 @@ export default function OrderManagement() {
                             lat: driverLocations[selectedOrder.id].location.lat,
                             lng: driverLocations[selectedOrder.id].location.lng,
                             title: `Driver: ${selectedOrder.driverName}`,
-                            type: 'driver'
+                            type: 'driver' as const
                           }] : [])
                         ]}
                       />

@@ -34,7 +34,7 @@ interface FuelStation {
 export default function FuelOrderDetails() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { connected, sendMessage } = useWebSocketOrders();
+  const { connected } = useWebSocketOrders();
   const { 
     connected: fuelOrderConnected, 
     orderUpdates, 
@@ -160,19 +160,9 @@ export default function FuelOrderDetails() {
       const result = await response.json();
 
       if (result.success) {
-        // Real-time WebSocket notifications
+        // Real-time WebSocket notifications would be handled by the backend
         if (connected) {
-          sendMessage({
-            type: 'ORDER_CREATED',
-            payload: {
-              orderId: result.order.id,
-              customerName: user.fullName,
-              fuelType: selectedFuelType,
-              quantity,
-              deliveryAddress,
-              location: userLocation
-            }
-          });
+          console.log('Order created, WebSocket connected for real-time updates');
         }
 
         // Join order room for real-time updates
