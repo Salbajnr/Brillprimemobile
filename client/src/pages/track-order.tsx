@@ -173,7 +173,7 @@ export default function TrackOrder() {
       lat: order.currentLocation.latitude,
       lng: order.currentLocation.longitude,
       title: `Driver: ${order.driverName}`,
-      type: 'driver' as const
+      type: 'delivery' as const
     });
   }
 

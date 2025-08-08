@@ -69,7 +69,7 @@ const server = createServer(app);
   const io = await setupWebSocketServer(server);
 
   // Make WebSocket server globally available for route handlers
-  global.io = io;
+  (global as any).io = io;
   app.set('server', { io });
 
 // Setup Vite or static serving
@@ -80,7 +80,7 @@ if (app.get("env") === "development") {
 }
 
 // Start server
-const PORT = process.env.PORT || 5000;
+const PORT = parseInt(process.env.PORT || '5000', 10);
 server.listen(PORT, "0.0.0.0", () => {
   const formattedTime = new Intl.DateTimeFormat("en-US", {
     dateStyle: "short",

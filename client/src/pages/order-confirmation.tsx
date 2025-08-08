@@ -286,7 +286,7 @@ export default function OrderConfirmation() {
                     lat: driverLocation.lat,
                     lng: driverLocation.lng,
                     title: 'Driver Location',
-                    type: 'driver'
+                    type: 'driver' as const
                   }] : [])
                 ]}
               />
