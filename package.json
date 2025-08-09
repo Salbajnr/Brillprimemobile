@@ -11,7 +11,7 @@
     "dev": "NODE_ENV=development tsx server/index.ts",
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/Mobile",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npm run build:web && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "build:web": "npm run build --workspace=apps/web",
     "build:mobile": "npm run build --workspace=apps/Mobile",
     "start": "NODE_ENV=production node dist/index.js",
