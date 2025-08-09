@@ -13,6 +13,7 @@ export const db = drizzle(pool, { schema });
 
 
 import { pgTable, text, integer, timestamp, jsonb, pgEnum, serial } from "drizzle-orm/pg-core";
+import { users } from "@shared/schema";
 
 export const severityEnum = pgEnum('severity', ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL']);
 export const sourceEnum = pgEnum('source', ['frontend', 'backend', 'database', 'external']);
@@ -29,5 +30,3 @@ export const errorLogs = pgTable("error_logs", {
   timestamp: timestamp("timestamp").defaultNow(),
   metadata: text("metadata")
 });
-
-export { db };

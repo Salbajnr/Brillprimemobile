@@ -169,11 +169,14 @@ export const products = pgTable("products", {
 
 export const orders = pgTable("orders", {
   id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id), // Add userId field
   buyerId: integer("buyer_id").notNull().references(() => users.id),
   sellerId: integer("seller_id").notNull().references(() => users.id),
+  merchantId: integer("merchant_id").notNull().references(() => users.id), // Add merchantId field
   productId: uuid("product_id").notNull().references(() => products.id),
   quantity: integer("quantity").notNull(),
   totalPrice: decimal("total_price", { precision: 12, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 12, scale: 2 }).notNull(), // Add totalAmount field
   status: text("status", { enum: ["pending", "confirmed", "processing", "shipped", "delivered", "cancelled"] }).default("pending"),
   deliveryAddress: text("delivery_address").notNull(),
   driverId: integer("driver_id").references(() => users.id),

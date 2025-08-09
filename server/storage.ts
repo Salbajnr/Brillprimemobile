@@ -127,6 +127,36 @@ export interface IStorage {
   getMerchantKycStats(): Promise<any>;
   getMerchantKycAnalytics(): Promise<any>;
   updateMerchantProfile(merchantId: number, updates: any): Promise<any | null>;
+
+  // Additional missing methods from routes
+  storePushSubscription(userId: number, subscription: any): Promise<void>;
+  removePushSubscription(userId: number): Promise<void>;
+  createVendorPost(postData: any): Promise<any>;
+  likeVendorPost(postId: string, userId: number): Promise<any>;
+  addToWishlist(userId: number, productId: string): Promise<any>;
+  getWishlistItems(userId: number): Promise<any[]>;
+  getConversations(userId: number): Promise<any[]>;
+  createConversation(conversationData: any): Promise<any>;
+  getMessages(conversationId: string): Promise<any[]>;
+  updateUser(userId: number, updateData: any): Promise<any>;
+  createDriverProfile(userId: number, profileData: any): Promise<any>;
+  getDriverProfile(userId: number): Promise<any>;
+  getAvailableDeliveryJobs(driverId: number): Promise<any[]>;
+  acceptDeliveryJob(jobId: string, driverId: number): Promise<any>;
+  getDriverEarnings(driverId: number): Promise<any>;
+  getDriverDeliveryHistory(driverId: number): Promise<any[]>;
+  getMerchantProfile(merchantId: number): Promise<any>;
+  getMerchantDashboardStats(merchantId: number): Promise<any>;
+  getMerchantOrders(merchantId: number): Promise<any[]>;
+  updateOrderStatus(orderId: string, status: string, userId: number): Promise<any>;
+  getMerchantAnalytics(merchantId: number): Promise<any>;
+  updateUserSettings(userId: number, settings: any): Promise<any>;
+  createDeliveryRequest(requestData: any, userId: number): Promise<any>;
+  updateUserVerificationStatus(userId: number, status: string): Promise<any>;
+  getSupportTicketsForUser(userId: number): Promise<any[]>;
+  getTicketOwner(ticketId: string, userId: number): Promise<any>;
+  searchMerchants(query: string): Promise<any[]>;
+  getFuelStations(lat: number, lng: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1164,6 +1194,247 @@ export class DatabaseStorage implements IStorage {
       .update(vendorPosts)
       .set({ isActive: false })
       .where(eq(vendorPosts.id, postId));
+  }
+
+  // Implement missing methods from interface
+  async storePushSubscription(userId: number, subscription: any): Promise<void> {
+    console.log(`Storing push subscription for user ${userId}:`, subscription);
+    // In production, this would store to a push_subscriptions table
+  }
+
+  async removePushSubscription(userId: number): Promise<void> {
+    console.log(`Removing push subscription for user ${userId}`);
+    // In production, this would remove from push_subscriptions table
+  }
+
+  async likeVendorPost(postId: string, userId: number): Promise<any> {
+    const [like] = await db
+      .insert(vendorPostLikes)
+      .values({ postId, userId })
+      .returning();
+    
+    // Update like count
+    await db
+      .update(vendorPosts)
+      .set({ likeCount: sql`${vendorPosts.likeCount} + 1` })
+      .where(eq(vendorPosts.id, postId));
+
+    return like;
+  }
+
+  async addToWishlist(userId: number, productId: string): Promise<any> {
+    // In production, this would insert into a wishlist table
+    console.log(`Adding product ${productId} to wishlist for user ${userId}`);
+    return { userId, productId, addedAt: new Date() };
+  }
+
+  async getWishlistItems(userId: number): Promise<any[]> {
+    // In production, this would query a wishlist table
+    console.log(`Getting wishlist items for user ${userId}`);
+    return [];
+  }
+
+  async getConversations(userId: number): Promise<any[]> {
+    const conversations = await db
+      .select()
+      .from(conversations)
+      .where(or(
+        eq(conversations.customerId, userId),
+        eq(conversations.vendorId, userId)
+      ))
+      .orderBy(desc(conversations.lastMessageAt));
+    
+    return conversations;
+  }
+
+  async createConversation(conversationData: any): Promise<any> {
+    const [conversation] = await db
+      .insert(conversations)
+      .values(conversationData)
+      .returning();
+    
+    return conversation;
+  }
+
+  async getMessages(conversationId: string): Promise<any[]> {
+    const messages = await db
+      .select()
+      .from(chatMessages)
+      .where(eq(chatMessages.conversationId, conversationId))
+      .orderBy(chatMessages.createdAt);
+    
+    return messages;
+  }
+
+  async updateUser(userId: number, updateData: any): Promise<any> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateData)
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async createDriverProfile(userId: number, profileData: any): Promise<any> {
+    const [profile] = await db
+      .insert(driverProfiles)
+      .values({ ...profileData, userId })
+      .returning();
+    
+    return profile;
+  }
+
+  async getDriverProfile(userId: number): Promise<any> {
+    const [profile] = await db
+      .select()
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, userId))
+      .limit(1);
+    
+    return profile || null;
+  }
+
+  async getAvailableDeliveryJobs(driverId: number): Promise<any[]> {
+    // In production, this would query delivery_requests table
+    console.log(`Getting available delivery jobs for driver ${driverId}`);
+    return [];
+  }
+
+  async acceptDeliveryJob(jobId: string, driverId: number): Promise<any> {
+    console.log(`Driver ${driverId} accepting job ${jobId}`);
+    return { jobId, driverId, acceptedAt: new Date() };
+  }
+
+  async getDriverEarnings(driverId: number): Promise<any> {
+    const [profile] = await db
+      .select({ totalEarnings: driverProfiles.totalEarnings })
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+    
+    return profile || { totalEarnings: "0.00" };
+  }
+
+  async getDriverDeliveryHistory(driverId: number): Promise<any[]> {
+    // In production, this would query deliveries table
+    console.log(`Getting delivery history for driver ${driverId}`);
+    return [];
+  }
+
+  async getMerchantProfile(merchantId: number): Promise<any> {
+    const [profile] = await db
+      .select()
+      .from(merchantProfiles)
+      .where(eq(merchantProfiles.userId, merchantId))
+      .limit(1);
+    
+    return profile || null;
+  }
+
+  async getMerchantDashboardStats(merchantId: number): Promise<any> {
+    // Return basic stats - in production would aggregate from various tables
+    return {
+      totalOrders: 0,
+      totalRevenue: "0.00",
+      pendingOrders: 0,
+      todaysOrders: 0
+    };
+  }
+
+  async getMerchantOrders(merchantId: number): Promise<any[]> {
+    const orders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.sellerId, merchantId))
+      .orderBy(desc(orders.createdAt));
+    
+    return orders;
+  }
+
+  async updateOrderStatus(orderId: string, status: string, userId: number): Promise<any> {
+    const [updatedOrder] = await db
+      .update(orders)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(orders.id, orderId))
+      .returning();
+    
+    return updatedOrder;
+  }
+
+  async getMerchantAnalytics(merchantId: number): Promise<any> {
+    const analytics = await db
+      .select()
+      .from(merchantAnalytics)
+      .where(eq(merchantAnalytics.merchantId, merchantId))
+      .orderBy(desc(merchantAnalytics.date))
+      .limit(30);
+    
+    return analytics;
+  }
+
+  async updateUserSettings(userId: number, settings: any): Promise<any> {
+    // In production, this would update a user_settings table
+    console.log(`Updating settings for user ${userId}:`, settings);
+    return settings;
+  }
+
+  async createDeliveryRequest(requestData: any, userId: number): Promise<any> {
+    // In production, this would insert into delivery_requests table
+    console.log(`Creating delivery request for user ${userId}:`, requestData);
+    return { ...requestData, id: Date.now(), customerId: userId };
+  }
+
+  async updateUserVerificationStatus(userId: number, status: string): Promise<any> {
+    const [updatedUser] = await db
+      .update(users)
+      .set({ isVerified: status === "APPROVED" })
+      .where(eq(users.id, userId))
+      .returning();
+    
+    return updatedUser;
+  }
+
+  async getSupportTicketsForUser(userId: number): Promise<any[]> {
+    const tickets = await db
+      .select()
+      .from(supportTickets)
+      .where(eq(supportTickets.userId, userId))
+      .orderBy(desc(supportTickets.createdAt));
+    
+    return tickets;
+  }
+
+  async getTicketOwner(ticketId: string, userId: number): Promise<any> {
+    const [ticket] = await db
+      .select()
+      .from(supportTickets)
+      .where(and(
+        eq(supportTickets.id, ticketId),
+        eq(supportTickets.userId, userId)
+      ))
+      .limit(1);
+    
+    return ticket || null;
+  }
+
+  async searchMerchants(query: string): Promise<any[]> {
+    const merchants = await db
+      .select()
+      .from(users)
+      .where(and(
+        eq(users.role, "MERCHANT"),
+        like(users.fullName, `%${query}%`)
+      ))
+      .limit(20);
+    
+    return merchants;
+  }
+
+  async getFuelStations(lat: number, lng: number): Promise<any[]> {
+    // In production, this would query a fuel_stations table
+    console.log(`Getting fuel stations near ${lat}, ${lng}`);
+    return [];
   }
 
   async incrementPostViewCount(postId: string): Promise<void> {

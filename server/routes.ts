@@ -31,6 +31,7 @@ import { emailService } from "./services/email";
 import { registerEscrowManagementRoutes } from "./routes/escrow-management";
 import { registerVendorFeedRoutes } from "./routes/vendor-feed";
 import { registerProductRoutes } from "./routes/products";
+import { validateQuery, sanitizeInput, createRateLimit, commonSchemas } from './middleware/validation';
 import * as z from "zod";
 
 // Helper function to calculate distance between two coordinates
@@ -526,10 +527,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         vendorId: vendorPosts.vendorId,
         productId: vendorPosts.productId,
         content: vendorPosts.content,
-        imageUrl: vendorPosts.imageUrl,
-        price: vendorPosts.price,
-        location: vendorPosts.location,
-        isAvailable: vendorPosts.isAvailable,
+        images: vendorPosts.images,
+        originalPrice: vendorPosts.originalPrice,
+        discountPrice: vendorPosts.discountPrice,
+        isActive: vendorPosts.isActive,
         createdAt: vendorPosts.createdAt,
         // Vendor details
         vendorName: users.fullName,
@@ -600,8 +601,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search API for locations, merchants, and fuel stations
-  import { validateQuery, sanitizeInput, createRateLimit, commonSchemas } from './middleware/validation';
-
 const searchSchema = z.object({
   q: z.string().min(1).max(100).trim(),
   type: z.enum(['all', 'merchants', 'products', 'users', 'areas']).default('all'),
@@ -816,8 +815,7 @@ const searchSchema = z.object({
       await storage.updateUser(userId, { role: 'DRIVER' });
 
       // Create driver profile
-      const driverProfile = await storage.createDriverProfile({
-        userId,
+      const driverProfile = await storage.createDriverProfile(userId, {
         driverTier: registrationData.driverTier || 'STANDARD',
         accessLevel: registrationData.accessLevel || 'OPEN',
         vehicleType: registrationData.vehicleType,
@@ -1121,7 +1119,7 @@ const searchSchema = z.object({
       const userOrders = await db.select({
         id: orders.id,
         userId: orders.userId,
-        merchantId: orders.merchantId,
+        merchantId: orders.sellerId,
         totalAmount: orders.totalAmount,
         status: orders.status,
         deliveryAddress: orders.deliveryAddress,
@@ -1132,7 +1130,7 @@ const searchSchema = z.object({
         merchantProfilePicture: users.profilePicture
       })
       .from(orders)
-      .leftJoin(users, eq(orders.merchantId, users.id))
+      .leftJoin(users, eq(orders.sellerId, users.id))
       .where(whereCondition)
       .orderBy(desc(orders.createdAt))
       .limit(parseInt(limit as string))
@@ -1148,10 +1146,7 @@ const searchSchema = z.object({
   app.post("/api/merchant/request-delivery", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const deliveryData = req.body;
-      const deliveryRequest = await storage.createDeliveryRequest({
-        ...deliveryData,
-        merchantId: req.user.id
-      });
+      const deliveryRequest = await storage.createDeliveryRequest(deliveryData, req.user!.id);
       res.json(deliveryRequest);
     } catch (error) {
       console.error("Create delivery request error:", error);
@@ -1163,9 +1158,8 @@ const searchSchema = z.object({
   app.post("/api/driver/register", requireAuth, requireRole('CONSUMER'), async (req, res) => {
     try {
       const driverData = req.body;
-      const driverProfile = await storage.createDriverProfile({
+      const driverProfile = await storage.createDriverProfile(req.user!.id, {
         ...driverData,
-        userId: req.user.id,
         totalDeliveries: 0,
         totalEarnings: "0",
         rating: 0,
