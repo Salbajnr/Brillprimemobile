@@ -103,6 +103,9 @@ function Router() {
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
       <Route path="/admin-control-center" component={lazy(() => import("./pages/admin-control-center"))} />
+      <Route path="/admin-real-time" component={() => <ProtectedRoute component={lazy(() => import("./pages/admin-real-time-dashboard"))} />} />
+      <Route path="/real-time-tracking" component={() => <ProtectedRoute component={lazy(() => import("./pages/real-time-tracking"))} />} />
+      <Route path="/delivery-tracking" component={() => <ProtectedRoute component={lazy(() => import("./pages/real-time-tracking"))} />} />
       <Route path="/commodities">
         {() => <ProtectedRoute component={CommoditiesPage} />}
       </Route>
