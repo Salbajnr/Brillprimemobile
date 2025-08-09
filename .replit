@@ -26,7 +26,7 @@ externalPort = 3001
 PORT = "5000"
 
 [workflows]
-runButton = "Project"
+runButton = "Start Fixed Application"
 
 [[workflows.workflow]]
 name = "Project"
@@ -80,7 +80,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "node server/run.js"
+args = "npm run dev"
 
 [agent]
 integrations = ["javascript_log_in_with_replit==1.0.0", "javascript_websocket==1.0.0", "javascript_database==1.0.0"]
