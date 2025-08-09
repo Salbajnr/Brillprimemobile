@@ -1,10 +1,11 @@
+
 import React, { useState } from 'react';
 import { AdminProvider, useAdmin } from '../lib/admin-auth';
 import { AdminLogin } from '../components/admin-login';
 import { AdminLayout } from '../components/admin-layout';
 import { AdminDashboardMain } from '../components/admin-dashboard-main';
-import { AdminUserManagement } from '../components/admin-user-management';
-import { AdminKYCVerification } from '../components/admin-kyc-verification';
+import { AdminUserManagement } from './admin-user-management';
+import { AdminKYCVerification } from './admin-kyc-verification';
 
 type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security';
 
@@ -58,7 +59,7 @@ function AdminContent() {
   );
 }
 
-export default function AdminDashboard() {
+export function AdminDashboard() {
   return (
     <AdminProvider>
       <AdminContent />
