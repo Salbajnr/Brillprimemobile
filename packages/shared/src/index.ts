@@ -1,4 +1,3 @@
-
 // Export all shared modules for cross-platform use
 export * from './types';
 export * from './api';
@@ -14,6 +13,11 @@ export * from './hooks/useApiCall';
 export * from './validation/validators';
 export * from './formatters/currency';
 
+// Websocket
+export { WebSocketService } from './websocket/websocketService'
+export { WebSocketClient, useWebSocket } from './websocket/websocketClient'
+export type { WebSocketConfig, WebSocketMessage } from './websocket/websocketClient'
+
 // Re-export commonly used items with convenient names
 export { ApiClient as SharedApiClient } from './api';
 export { ApiService as SharedApiService } from './api/apiService';
@@ -26,8 +30,8 @@ export { useApiCall } from './hooks/useApiCall';
 export { validators, validateForm } from './validation/validators';
 export { formatCurrency, formatNumber, parseCurrency } from './formatters/currency';
 export { APP_CONFIG, COLORS, USER_ROLES, ORDER_STATUSES } from './constants';
-export { 
-  formatDate, 
-  validateEmail, 
-  getOrderStatusColor 
+export {
+  formatDate,
+  validateEmail,
+  getOrderStatusColor
 } from './utils';

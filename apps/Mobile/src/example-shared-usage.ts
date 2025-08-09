@@ -1,12 +1,11 @@
-
 // Example: Using shared code in mobile app
-import { 
-  SharedApiService, 
+import {
+  SharedApiService,
   SharedWebSocketService,
   useApiCall,
   validators,
   formatCurrency,
-  APP_CONFIG 
+  APP_CONFIG
 } from '@shared';
 import { ReactNativeStorageAdapter } from './services/storageAdapter';
 
@@ -36,7 +35,7 @@ export function formatPrice(amount: number) {
 export function validateUserInput(email: string, password: string) {
   const emailValidation = validators.email(email);
   const passwordValidation = validators.password(password);
-  
+
   return {
     isValid: emailValidation.isValid && passwordValidation.isValid,
     errors: [...emailValidation.errors, ...passwordValidation.errors],
