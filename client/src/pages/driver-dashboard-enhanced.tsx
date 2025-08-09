@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import {
   Power, PowerOff, MapPin, Clock, DollarSign, Star, Navigation, 
@@ -153,7 +154,7 @@ export default function EnhancedDriverDashboard() {
           
           // Send location update via WebSocket if connected
           if (locationConnected) {
-            sendLocationUpdate(coords.lat, coords.lng);
+            sendLocationUpdate(coords);
           }
         },
         (error) => {
@@ -210,8 +211,9 @@ export default function EnhancedDriverDashboard() {
     mutationFn: async (requestId: string) => {
       return apiRequest("POST", `/api/driver/accept-delivery/${requestId}`);
     },
-    onSuccess: (data) => {
-      setActiveDelivery(data);
+    onSuccess: async (response) => {
+      const data = await response.json();
+      setActiveDelivery(data.delivery);
       setShowRequestModal(false);
       setRequestTimer(null);
       refetchRequests();
