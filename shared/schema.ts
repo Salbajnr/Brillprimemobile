@@ -937,3 +937,445 @@ export const merchantProfilesRelations = relations(merchantProfiles, ({ one, man
 }));
 
 export const insertMerchantAnalyticsSchema = createInsertSchema(merchantAnalytics);
+
+// Role Management and Multi-Role Support Tables
+export const roleApplications = pgTable("role_applications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  fromRole: text("from_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  toRole: text("to_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  applicationStatus: text("application_status", { 
+    enum: ["PENDING", "UNDER_REVIEW", "APPROVED", "REJECTED", "REQUIRES_ADDITIONAL_INFO"] 
+  }).default("PENDING"),
+  applicationData: json("application_data"), // Store application-specific data
+  documents: text("documents").array(), // Array of document URLs
+  reviewedBy: integer("reviewed_by").references(() => adminUsers.id),
+  reviewNotes: text("review_notes"),
+  rejectionReason: text("rejection_reason"),
+  appliedAt: timestamp("applied_at").defaultNow(),
+  reviewedAt: timestamp("reviewed_at"),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userRoles = pgTable("user_roles", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  role: text("role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  isActive: boolean("is_active").default(true),
+  isPrimary: boolean("is_primary").default(false),
+  permissionLevel: text("permission_level", { enum: ["BASIC", "INTERMEDIATE", "ADVANCED", "FULL"] }).default("BASIC"),
+  roleSpecificData: json("role_specific_data"), // Store role-specific configuration
+  activatedAt: timestamp("activated_at").defaultNow(),
+  deactivatedAt: timestamp("deactivated_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Live System Interactions Tables
+export const websocketConnections = pgTable("websocket_connections", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  socketId: text("socket_id").notNull().unique(),
+  userRole: text("user_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER", "ADMIN"] }).notNull(),
+  connectionType: text("connection_type", { 
+    enum: ["ORDER_TRACKING", "LIVE_CHAT", "NOTIFICATIONS", "LOCATION_UPDATES", "ADMIN_MONITORING"] 
+  }).notNull(),
+  isOnline: boolean("is_online").default(true),
+  lastActivity: timestamp("last_activity").defaultNow(),
+  metadata: json("metadata"), // Store connection-specific data
+  connectedAt: timestamp("connected_at").defaultNow(),
+  disconnectedAt: timestamp("disconnected_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const liveNotifications = pgTable("live_notifications", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  notificationType: text("notification_type", { 
+    enum: ["ORDER_UPDATE", "CHAT_MESSAGE", "PAYMENT_UPDATE", "LOCATION_UPDATE", "PROMOTION", "SYSTEM_ALERT", "EMERGENCY"] 
+  }).notNull(),
+  title: text("title").notNull(),
+  message: text("message").notNull(),
+  priority: text("priority", { enum: ["LOW", "MEDIUM", "HIGH", "URGENT", "EMERGENCY"] }).default("MEDIUM"),
+  category: text("category", { enum: ["TRANSACTIONAL", "PROMOTIONAL", "INFORMATIONAL", "SECURITY"] }).notNull(),
+  
+  // Delivery channels
+  channels: text("channels").array().notNull(), // ["PUSH", "EMAIL", "SMS", "WEBSOCKET", "IN_APP"]
+  
+  // Status tracking
+  isRead: boolean("is_read").default(false),
+  isDelivered: boolean("is_delivered").default(false),
+  deliveryAttempts: integer("delivery_attempts").default(0),
+  deliveredAt: timestamp("delivered_at"),
+  readAt: timestamp("read_at"),
+  
+  // Content and metadata
+  actionUrl: text("action_url"),
+  imageUrl: text("image_url"),
+  metadata: json("metadata"),
+  expiresAt: timestamp("expires_at"),
+  
+  // Related entities
+  relatedEntityType: text("related_entity_type"), // order, chat, payment, etc.
+  relatedEntityId: text("related_entity_id"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const locationTracking = pgTable("location_tracking", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  userRole: text("user_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  
+  // Location data
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  altitude: decimal("altitude", { precision: 8, scale: 2 }),
+  accuracy: decimal("accuracy", { precision: 8, scale: 2 }),
+  heading: decimal("heading", { precision: 6, scale: 2 }),
+  speed: decimal("speed", { precision: 8, scale: 2 }),
+  
+  // Context
+  trackingType: text("tracking_type", { 
+    enum: ["DRIVER_DELIVERY", "CUSTOMER_PICKUP", "MERCHANT_LOCATION", "EMERGENCY", "GENERAL"] 
+  }).notNull(),
+  relatedOrderId: uuid("related_order_id").references(() => orders.id),
+  relatedDeliveryId: uuid("related_delivery_id").references(() => deliveryRequests.id),
+  
+  // Status
+  isActive: boolean("is_active").default(true),
+  batteryLevel: integer("battery_level"),
+  networkType: text("network_type"),
+  
+  // Privacy and permissions
+  sharingLevel: text("sharing_level", { 
+    enum: ["PUBLIC", "CUSTOMERS_ONLY", "MERCHANTS_ONLY", "PRIVATE"] 
+  }).default("CUSTOMERS_ONLY"),
+  
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Live Chat System Enhancement
+export const chatRooms = pgTable("chat_rooms", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  roomType: text("room_type", { 
+    enum: ["CUSTOMER_MERCHANT", "CUSTOMER_DRIVER", "CUSTOMER_SUPPORT", "GROUP", "EMERGENCY"] 
+  }).notNull(),
+  roomName: text("room_name"),
+  participants: json("participants").$type<number[]>().notNull(), // Array of user IDs
+  
+  // Room settings
+  isActive: boolean("is_active").default(true),
+  isEncrypted: boolean("is_encrypted").default(true),
+  maxParticipants: integer("max_participants").default(10),
+  
+  // Moderation
+  moderators: json("moderators").$type<number[]>(), // Array of moderator user IDs
+  chatRules: json("chat_rules"),
+  
+  // Related entities
+  relatedOrderId: uuid("related_order_id").references(() => orders.id),
+  relatedTicketId: uuid("related_ticket_id").references(() => supportTickets.id),
+  
+  // Metadata
+  metadata: json("metadata"),
+  lastActivityAt: timestamp("last_activity_at").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const enhancedChatMessages: any = pgTable("enhanced_chat_messages", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  chatRoomId: uuid("chat_room_id").notNull().references(() => chatRooms.id),
+  senderId: integer("sender_id").notNull().references(() => users.id),
+  
+  // Message content
+  messageType: text("message_type", { 
+    enum: ["TEXT", "IMAGE", "VIDEO", "AUDIO", "LOCATION", "DOCUMENT", "QUICK_RESPONSE", "SYSTEM"] 
+  }).default("TEXT"),
+  content: text("content"),
+  attachments: json("attachments").$type<{url: string, type: string, size?: number}[]>(),
+  
+  // Message status
+  isEdited: boolean("is_edited").default(false),
+  isDeleted: boolean("is_deleted").default(false),
+  editedAt: timestamp("edited_at"),
+  deletedAt: timestamp("deleted_at"),
+  
+  // Read receipts
+  readBy: json("read_by").$type<{userId: number, readAt: string}[]>().default([]),
+  deliveredTo: json("delivered_to").$type<{userId: number, deliveredAt: string}[]>().default([]),
+  
+  // Reply and threading
+  replyToMessageId: uuid("reply_to_message_id").references((): any => enhancedChatMessages.id),
+  threadId: uuid("thread_id"),
+  
+  // Priority and urgency
+  priority: text("priority", { enum: ["LOW", "NORMAL", "HIGH", "URGENT"] }).default("NORMAL"),
+  isEmergency: boolean("is_emergency").default(false),
+  
+  // Metadata
+  metadata: json("metadata"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Data Analytics and Personalization Tables
+export const userBehaviorTracking = pgTable("user_behavior_tracking", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  
+  // Session information
+  sessionId: text("session_id").notNull(),
+  userRole: text("user_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  
+  // Behavior data
+  eventType: text("event_type", { 
+    enum: ["PAGE_VIEW", "CLICK", "SEARCH", "PURCHASE", "SCROLL", "TIME_SPENT", "INTERACTION", "CONVERSION"] 
+  }).notNull(),
+  eventCategory: text("event_category").notNull(),
+  eventAction: text("event_action").notNull(),
+  eventLabel: text("event_label"),
+  eventValue: decimal("event_value", { precision: 12, scale: 2 }),
+  
+  // Page/screen information
+  pagePath: text("page_path"),
+  pageTitle: text("page_title"),
+  referrer: text("referrer"),
+  
+  // Device and technical data
+  deviceType: text("device_type", { enum: ["MOBILE", "TABLET", "DESKTOP"] }),
+  browserName: text("browser_name"),
+  operatingSystem: text("operating_system"),
+  screenResolution: text("screen_resolution"),
+  
+  // Location and network
+  ipAddress: text("ip_address"),
+  country: text("country"),
+  city: text("city"),
+  networkType: text("network_type"),
+  
+  // Timing
+  duration: integer("duration"), // in milliseconds
+  timestamp: timestamp("timestamp").defaultNow(),
+  
+  // Custom data
+  customDimensions: json("custom_dimensions"),
+  metadata: json("metadata"),
+  
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const personalizationProfiles = pgTable("personalization_profiles", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  
+  // Preferences
+  preferredCategories: text("preferred_categories").array().default([]),
+  preferredMerchants: json("preferred_merchants").$type<number[]>().default([]),
+  preferredDrivers: json("preferred_drivers").$type<number[]>().default([]),
+  priceRange: json("price_range").$type<{min: number, max: number}>(),
+  
+  // Behavioral patterns
+  averageOrderValue: decimal("average_order_value", { precision: 12, scale: 2 }).default("0"),
+  orderFrequency: text("order_frequency", { enum: ["DAILY", "WEEKLY", "MONTHLY", "OCCASIONAL"] }),
+  peakActivityHours: json("peak_activity_hours").$type<number[]>().default([]),
+  preferredDeliveryTimes: json("preferred_delivery_times").$type<string[]>().default([]),
+  
+  // Location preferences
+  frequentLocations: json("frequent_locations").$type<{name: string, lat: number, lng: number, frequency: number}[]>().default([]),
+  deliveryRadius: integer("delivery_radius").default(10), // km
+  
+  // Communication preferences
+  notificationPreferences: json("notification_preferences").$type<{
+    email: boolean,
+    sms: boolean,
+    push: boolean,
+    marketing: boolean,
+    promotions: boolean
+  }>().default({
+    email: true,
+    sms: true,
+    push: true,
+    marketing: false,
+    promotions: false
+  }),
+  
+  // AI/ML data
+  recommendationScore: json("recommendation_score").$type<{[key: string]: number}>().default({}),
+  churnRisk: decimal("churn_risk", { precision: 5, scale: 4 }).default("0.0000"), // 0-1 scale
+  lifetimeValue: decimal("lifetime_value", { precision: 15, scale: 2 }).default("0.00"),
+  
+  // Segmentation
+  customerSegment: text("customer_segment", { 
+    enum: ["HIGH_VALUE", "REGULAR", "OCCASIONAL", "NEW", "AT_RISK", "CHURNED"] 
+  }).default("NEW"),
+  
+  lastUpdated: timestamp("last_updated").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const systemMetrics = pgTable("system_metrics", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  
+  // Metric identification
+  metricType: text("metric_type", { 
+    enum: ["PERFORMANCE", "USAGE", "BUSINESS", "TECHNICAL", "SECURITY", "USER_EXPERIENCE"] 
+  }).notNull(),
+  metricName: text("metric_name").notNull(),
+  metricCategory: text("metric_category").notNull(),
+  
+  // Metric values
+  value: decimal("value", { precision: 20, scale: 8 }).notNull(),
+  unit: text("unit"), // e.g., "ms", "count", "percentage", "bytes"
+  
+  // Dimensions
+  dimensions: json("dimensions").$type<{[key: string]: string}>().default({}),
+  tags: text("tags").array().default([]),
+  
+  // Aggregation info
+  aggregationType: text("aggregation_type", { 
+    enum: ["SUM", "AVERAGE", "COUNT", "MIN", "MAX", "MEDIAN", "PERCENTILE"] 
+  }).default("COUNT"),
+  timeWindow: text("time_window"), // e.g., "1m", "5m", "1h", "1d"
+  
+  // Metadata
+  source: text("source"), // Which service/component generated this metric
+  environment: text("environment").default("production"),
+  version: text("version"),
+  
+  timestamp: timestamp("timestamp").defaultNow(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+// Ecosystem Interaction Tracking
+export const crossRoleInteractions = pgTable("cross_role_interactions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  
+  // Parties involved
+  initiatorId: integer("initiator_id").notNull().references(() => users.id),
+  initiatorRole: text("initiator_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  targetId: integer("target_id").notNull().references(() => users.id),
+  targetRole: text("target_role", { enum: ["CONSUMER", "MERCHANT", "DRIVER"] }).notNull(),
+  
+  // Interaction details
+  interactionType: text("interaction_type", { 
+    enum: ["ORDER_PLACEMENT", "DELIVERY_REQUEST", "CHAT_INITIATION", "REVIEW_SUBMISSION", "RECOMMENDATION", "DISPUTE"] 
+  }).notNull(),
+  interactionStatus: text("interaction_status", { 
+    enum: ["INITIATED", "IN_PROGRESS", "COMPLETED", "CANCELLED", "FAILED"] 
+  }).default("INITIATED"),
+  
+  // Context
+  relatedOrderId: uuid("related_order_id").references(() => orders.id),
+  relatedChatId: uuid("related_chat_id").references(() => chatRooms.id),
+  outcome: text("outcome"), // Success, failure, satisfaction level, etc.
+  
+  // Metrics
+  duration: integer("duration"), // Duration in seconds
+  satisfactionRating: integer("satisfaction_rating"), // 1-5 scale
+  
+  // Workflow tracking
+  workflowStage: text("workflow_stage"),
+  nextAction: text("next_action"),
+  
+  metadata: json("metadata"),
+  startedAt: timestamp("started_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Relations for new tables
+export const roleApplicationsRelations = relations(roleApplications, ({ one }) => ({
+  user: one(users, { fields: [roleApplications.userId], references: [users.id] }),
+  reviewer: one(adminUsers, { fields: [roleApplications.reviewedBy], references: [adminUsers.id] }),
+}));
+
+export const userRolesRelations = relations(userRoles, ({ one }) => ({
+  user: one(users, { fields: [userRoles.userId], references: [users.id] }),
+}));
+
+export const websocketConnectionsRelations = relations(websocketConnections, ({ one }) => ({
+  user: one(users, { fields: [websocketConnections.userId], references: [users.id] }),
+}));
+
+export const liveNotificationsRelations = relations(liveNotifications, ({ one }) => ({
+  user: one(users, { fields: [liveNotifications.userId], references: [users.id] }),
+}));
+
+export const locationTrackingRelations = relations(locationTracking, ({ one }) => ({
+  user: one(users, { fields: [locationTracking.userId], references: [users.id] }),
+  order: one(orders, { fields: [locationTracking.relatedOrderId], references: [orders.id] }),
+  delivery: one(deliveryRequests, { fields: [locationTracking.relatedDeliveryId], references: [deliveryRequests.id] }),
+}));
+
+export const chatRoomsRelations = relations(chatRooms, ({ one, many }) => ({
+  order: one(orders, { fields: [chatRooms.relatedOrderId], references: [orders.id] }),
+  ticket: one(supportTickets, { fields: [chatRooms.relatedTicketId], references: [supportTickets.id] }),
+  messages: many(enhancedChatMessages),
+}));
+
+export const enhancedChatMessagesRelations = relations(enhancedChatMessages, ({ one }) => ({
+  chatRoom: one(chatRooms, { fields: [enhancedChatMessages.chatRoomId], references: [chatRooms.id] }),
+  sender: one(users, { fields: [enhancedChatMessages.senderId], references: [users.id] }),
+}));
+
+export const userBehaviorTrackingRelations = relations(userBehaviorTracking, ({ one }) => ({
+  user: one(users, { fields: [userBehaviorTracking.userId], references: [users.id] }),
+}));
+
+export const personalizationProfilesRelations = relations(personalizationProfiles, ({ one }) => ({
+  user: one(users, { fields: [personalizationProfiles.userId], references: [users.id] }),
+}));
+
+export const crossRoleInteractionsRelations = relations(crossRoleInteractions, ({ one }) => ({
+  initiator: one(users, { fields: [crossRoleInteractions.initiatorId], references: [users.id] }),
+  target: one(users, { fields: [crossRoleInteractions.targetId], references: [users.id] }),
+  relatedOrder: one(orders, { fields: [crossRoleInteractions.relatedOrderId], references: [orders.id] }),
+  relatedChat: one(chatRooms, { fields: [crossRoleInteractions.relatedChatId], references: [chatRooms.id] }),
+}));
+
+// Insert schemas for new tables
+export const insertRoleApplicationSchema = createInsertSchema(roleApplications);
+export const insertUserRoleSchema = createInsertSchema(userRoles);
+export const insertWebsocketConnectionSchema = createInsertSchema(websocketConnections);
+export const insertLiveNotificationSchema = createInsertSchema(liveNotifications);
+export const insertLocationTrackingSchema = createInsertSchema(locationTracking);
+export const insertChatRoomSchema = createInsertSchema(chatRooms);
+export const insertEnhancedChatMessageSchema = createInsertSchema(enhancedChatMessages);
+export const insertUserBehaviorTrackingSchema = createInsertSchema(userBehaviorTracking);
+export const insertPersonalizationProfileSchema = createInsertSchema(personalizationProfiles);
+export const insertSystemMetricSchema = createInsertSchema(systemMetrics);
+export const insertCrossRoleInteractionSchema = createInsertSchema(crossRoleInteractions);
+
+// Types for new tables
+export type RoleApplication = typeof roleApplications.$inferSelect;
+export type InsertRoleApplication = typeof roleApplications.$inferInsert;
+export type UserRole = typeof userRoles.$inferSelect;
+export type InsertUserRole = typeof userRoles.$inferInsert;
+export type WebsocketConnection = typeof websocketConnections.$inferSelect;
+export type InsertWebsocketConnection = typeof websocketConnections.$inferInsert;
+export type LiveNotification = typeof liveNotifications.$inferSelect;
+export type InsertLiveNotification = typeof liveNotifications.$inferInsert;
+export type LocationTracking = typeof locationTracking.$inferSelect;
+export type InsertLocationTracking = typeof locationTracking.$inferInsert;
+export type ChatRoom = typeof chatRooms.$inferSelect;
+export type InsertChatRoom = typeof chatRooms.$inferInsert;
+export type EnhancedChatMessage = typeof enhancedChatMessages.$inferSelect;
+export type InsertEnhancedChatMessage = typeof enhancedChatMessages.$inferInsert;
+export type UserBehaviorTracking = typeof userBehaviorTracking.$inferSelect;
+export type InsertUserBehaviorTracking = typeof userBehaviorTracking.$inferInsert;
+export type PersonalizationProfile = typeof personalizationProfiles.$inferSelect;
+export type InsertPersonalizationProfile = typeof personalizationProfiles.$inferInsert;
+export type SystemMetric = typeof systemMetrics.$inferSelect;
+export type InsertSystemMetric = typeof systemMetrics.$inferInsert;
+export type CrossRoleInteraction = typeof crossRoleInteractions.$inferSelect;
+export type InsertCrossRoleInteraction = typeof crossRoleInteractions.$inferInsert;

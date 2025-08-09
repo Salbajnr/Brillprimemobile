@@ -1,0 +1,61 @@
+Live system interactions:WEBSOCKET CONNECTIONS
+├── Order Status Updates
+│   ├── Merchant → Customer: Order accepted/prepared
+│   ├── Driver → Customer: Pickup/delivery updates
+│   ├── System → All: Real-time location tracking
+│   └── Admin → Users: Important notifications
+│
+├── Live Chat System
+│   ├── Customer ↔ Merchant: Order clarifications
+│   ├── Customer ↔ Driver: Delivery coordination
+│   ├── Users ↔ Support: Help and assistance
+│   └── Emergency communication channels
+│
+├── Push Notifications
+│   ├── Order confirmations and status changes
+│   ├── Promotion and discount alerts
+│   ├── Payment and escrow notifications
+│   ├── Security and account alerts
+│   └── System maintenance announcements
+│
+└── Location Services
+    ├── Real-time driver tracking for customers
+    ├── Nearby merchant discovery
+    ├── Delivery route optimization
+    ├── Geofenced notifications
+    └── Location-based promotions
+    Make sure it is fully integrated 
+    ROLE SWITCHING AND MULTI ROLE USERS 
+    ROLE MANAGEMENT
+├── Consumer can apply to become Merchant
+├── Merchant can apply to become Driver
+├── Driver can operate as Consumer when off-duty
+├── Seamless role switching with different dashboards
+├── Unified profile with role-specific information
+├── Permission-based access to features
+└── Admin approval required for role upgrades
+
+ECOSYSTEM INTERACTIONS
+├── Consumer discovers merchant via map
+├── Merchant fulfills order and requests driver
+├── Driver accepts delivery and completes route
+├── Payment flows through escrow system
+├── All parties rate each other
+├── Admin monitors entire transaction
+└── Data feeds back into recommendation algorithms
+DATA FLOW AND ANALYTICS 
+DATA COLLECTION
+├── User behavior tracking and analytics
+├── Transaction patterns and preferences
+├── Location and movement data
+├── Performance metrics and KPIs
+├── Security and fraud indicators
+└── Business intelligence aggregation
+
+PERSONALIZATION ENGINE
+├── Merchant recommendations based on location/history
+├── Dynamic pricing and promotion targeting
+├── Optimized delivery route suggestions
+├── Predictive inventory management
+├── Custom dashboard layouts
+└── Intelligent notification timing

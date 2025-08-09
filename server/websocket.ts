@@ -49,6 +49,10 @@ export async function setupWebSocketServer(server: HTTPServer) {
     allowEIO3: true
   });
 
+  // Initialize comprehensive live system handler
+  const { LiveSystemHandler } = await import('./websocket/live-system-handler');
+  const liveSystemHandler = new LiveSystemHandler(io);
+
   // Note: Raw WebSocket support commented out for ES module compatibility
   // Consider implementing if needed for E2E tests
 

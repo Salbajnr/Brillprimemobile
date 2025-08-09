@@ -1441,6 +1441,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register secure transaction system routes
   registerSecureTransactionRoutes(app);
   registerAdminOversightRoutes(app);
+  
+  // Register new comprehensive system routes
+  app.use('/api/role-management', (await import('./routes/role-management')).default);
+  app.use('/api/live-system', (await import('./routes/live-system')).default);
+  app.use('/api/analytics', (await import('./routes/analytics')).default);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {

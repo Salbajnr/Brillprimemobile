@@ -71,6 +71,10 @@ const server = createServer(app);
   // Make WebSocket server globally available for route handlers
   (global as any).io = io;
   app.set('server', { io });
+  
+  // Initialize live system service with WebSocket
+  const { LiveSystemService } = await import('./services/live-system');
+  LiveSystemService.setSocketIOInstance(io);
 
 // Setup Vite or static serving
 if (app.get("env") === "development") {
