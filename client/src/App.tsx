@@ -76,8 +76,10 @@ function Router() {
       <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
       <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
       <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />} />
+      <Route path="/merchant-dashboard-enhanced" component={() => <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />} />
       <Route path="/order-management" component={lazy(() => import("./pages/order-management"))} />
       <Route path="/driver-dashboard" component={() => <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />} />
+      <Route path="/driver-dashboard-enhanced" component={() => <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />} />
       <Route path="/driver-withdrawal">
         {() => <ProtectedRoute component={DriverWithdrawal} />}
       </Route>
