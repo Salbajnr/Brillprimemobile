@@ -31,6 +31,7 @@ import { emailService } from "./services/email";
 import { registerEscrowManagementRoutes } from "./routes/escrow-management";
 import { registerVendorFeedRoutes } from "./routes/vendor-feed";
 import { registerProductRoutes } from "./routes/products";
+import * as z from "zod";
 
 // Helper function to calculate distance between two coordinates
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -603,7 +604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
 const searchSchema = z.object({
   q: z.string().min(1).max(100).trim(),
-  type: z.enum(['all', 'merchants', 'products', 'users']).default('all'),
+  type: z.enum(['all', 'merchants', 'products', 'users', 'areas']).default('all'),
   latitude: z.coerce.number().min(-90).max(90).optional(),
   longitude: z.coerce.number().min(-180).max(180).optional(),
   page: z.coerce.number().min(1).default(1),
@@ -653,7 +654,7 @@ const searchSchema = z.object({
           name: merchant.name,
           type: 'merchant',
           address: `${merchant.address || ''}, ${merchant.city || ''}, ${merchant.state || ''}`.replace(/^,\s*|,\s*$/g, ''),
-          distance: lat && lng ? calculateDistance(lat, lng, parseFloat(merchant.address?.split(',')[0] || '0'), parseFloat(merchant.address?.split(',')[1] || '0')) : null,
+          distance: lat && lng ? calculateDistance(lat, lng, merchant.address ? parseFloat(merchant.address.split(',')[0]) : 0, merchant.address ? parseFloat(merchant.address.split(',')[1]) : 0) : null,
           profilePicture: merchant.profilePicture
         })));
       }
@@ -900,11 +901,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.put("/api/driver/update-location", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'DRIVER') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.put("/api/driver/update-location", requireAuth, requireRole('DRIVER'), async (req, res) => {
     try {
       const { latitude, longitude, accuracy } = req.body;
       await storage.updateDriverLocation(req.user.id, { latitude, longitude, accuracy });
@@ -916,11 +913,7 @@ const searchSchema = z.object({
   });
 
   // Merchant Dashboard API Endpoints
-  app.get("/api/merchant/profile", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.get("/api/merchant/profile", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const merchantProfile = await storage.getMerchantProfile(req.user.id);
       res.json(merchantProfile);
@@ -930,11 +923,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.get("/api/merchant/dashboard-stats", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.get("/api/merchant/dashboard-stats", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const stats = await storage.getMerchantDashboardStats(req.user.id);
       res.json(stats);
@@ -944,11 +933,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.get("/api/merchant/orders", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.get("/api/merchant/orders", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const orders = await storage.getMerchantOrders(req.user.id);
       res.json(orders);
@@ -958,11 +943,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.put("/api/merchant/order/:orderId/status", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.put("/api/merchant/order/:orderId/status", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const { orderId } = req.params;
       const { status } = req.body;
@@ -974,11 +955,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.get("/api/merchant/analytics", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.get("/api/merchant/analytics", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const { period = '7d' } = req.query;
       const analytics = await storage.getMerchantAnalytics(req.user.id, period as string);
@@ -1168,11 +1145,7 @@ const searchSchema = z.object({
     }
   });
 
-  app.post("/api/merchant/request-delivery", async (req, res) => {
-    if (!req.isAuthenticated() || req.user.role !== 'MERCHANT') {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.post("/api/merchant/request-delivery", requireAuth, requireRole('MERCHANT'), async (req, res) => {
     try {
       const deliveryData = req.body;
       const deliveryRequest = await storage.createDeliveryRequest({
@@ -1187,11 +1160,7 @@ const searchSchema = z.object({
   });
 
   // Driver Registration API Endpoint
-  app.post("/api/driver/register", async (req, res) => {
-    if (!req.isAuthenticated()) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-
+  app.post("/api/driver/register", requireAuth, requireRole('CONSUMER'), async (req, res) => {
     try {
       const driverData = req.body;
       const driverProfile = await storage.createDriverProfile({
@@ -1205,6 +1174,15 @@ const searchSchema = z.object({
         isActive: true
       });
 
+      // Update user role to DRIVER
+      await storage.updateUser(req.user.id, { role: 'DRIVER' });
+
+      // Update session with new role
+      req.session.user = {
+        ...req.session.user,
+        role: 'DRIVER'
+      };
+
       res.json({ 
         message: "Driver registration successful", 
         profile: driverProfile 
@@ -1217,17 +1195,43 @@ const searchSchema = z.object({
 
   // Support Tickets API Endpoints
   // Identity verification
-  app.post("/api/auth/verify-identity", async (req, res) => {
+  app.post("/api/auth/verify-identity", requireAuth, async (req, res) => {
     try {
-      // Simple mock verification endpoint
-      const { userId, role } = req.body;
+      const { userId, role, documentType, documentNumber, dob, nationality } = req.body;
+      
+      // Basic validation
+      if (!userId || !role || !documentType || !documentNumber || !dob || !nationality) {
+        return res.status(400).json({ message: "Missing required identity verification fields" });
+      }
 
-      console.log(`Identity verification submitted for user ${userId} with role ${role}`);
+      // In a real application, you would integrate with an identity verification service here.
+      // For this example, we'll simulate a successful verification.
+      console.log(`Identity verification submitted for user ${userId} (Role: ${role})`);
+      console.log(`Document Type: ${documentType}, Number: ${documentNumber}`);
+      console.log(`DOB: ${dob}, Nationality: ${nationality}`);
+
+      // Simulate updating user's verification status
+      await storage.updateUserVerificationStatus(userId, {
+        isVerified: true, // Or a more granular status
+        verificationStatus: 'VERIFIED',
+        verificationDate: new Date(),
+        verificationDocumentType: documentType,
+        verificationDocumentNumber: documentNumber
+      });
+
+      // Optionally update session if the user is currently logged in and verifying their own identity
+      if (req.session?.userId === userId) {
+        req.session.user = {
+          ...req.session.user,
+          isVerified: true,
+          verificationStatus: 'VERIFIED'
+        };
+      }
 
       res.json({
         status: 'Success',
         message: 'Identity verification submitted successfully',
-        data: { verificationId: 'mock-verification-id' }
+        data: { verificationId: 'mock-verification-id' } // Mock verification ID
       });
 
     } catch (error) {
@@ -1264,10 +1268,18 @@ const searchSchema = z.object({
     }
   });
 
-  app.get("/api/support/tickets", async (req, res) => {
+  app.get("/api/support/tickets", requireAuth, async (req, res) => {
     try {
       // Admin endpoint - in real app would check admin permissions
       const { status, priority, userRole } = req.query;
+
+      // Basic check to ensure only admin-like roles can access all tickets.
+      // You might want a more robust role-based access control middleware.
+      if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') {
+        // If not an admin, try to get tickets for the current user
+        const tickets = await storage.getSupportTicketsForUser(req.user.id);
+        return res.json(tickets);
+      }
 
       const tickets = await storage.getSupportTickets({
         status: status as string,
@@ -1286,13 +1298,18 @@ const searchSchema = z.object({
   const { registerPaymentRoutes } = await import("./routes/payments");
   registerPaymentRoutes(app);
 
-  app.get("/api/support/tickets/:ticketId", async (req, res) => {
+  app.get("/api/support/tickets/:ticketId", requireAuth, async (req, res) => {
     try {
       const { ticketId } = req.params;
       const ticket = await storage.getSupportTicket(ticketId);
 
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
+      }
+
+      // Check if the user is the owner of the ticket or an admin
+      if (ticket.userId !== req.user.id && req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') {
+        return res.status(403).json({ message: "You do not have permission to view this ticket" });
       }
 
       res.json(ticket);
@@ -1302,11 +1319,21 @@ const searchSchema = z.object({
     }
   });
 
-  app.put("/api/support/tickets/:ticketId", async (req, res) => {
+  app.put("/api/support/tickets/:ticketId", requireAuth, async (req, res) => {
     try {
       // Admin endpoint - in real app would check admin permissions
       const { ticketId } = req.params;
       const updateData = req.body;
+
+      // Basic check to ensure only admin-like roles can update tickets
+      if (req.user.role !== 'ADMIN' && req.user.role !== 'MANAGER') {
+        // Allow ticket owner to update status to 'CLOSED' or similar if needed
+        if (updateData.status === 'CLOSED' && await storage.getTicketOwner(ticketId) === req.user.id) {
+           // Proceed with status update
+        } else {
+           return res.status(403).json({ message: "You do not have permission to update this ticket" });
+        }
+      }
 
       const updatedTicket = await storage.updateSupportTicket(ticketId, updateData);
 
@@ -1440,23 +1467,39 @@ const searchSchema = z.object({
   registerRatingsReviewsRoutes(app);
   registerLocationRecommendationsRoutes(app);
   registerTollPaymentRoutes(app);
-  
+
   // Register vendor feed and product routes
   registerVendorFeedRoutes(app);
   registerProductRoutes(app);
-  
+
   // Register enhanced merchant and driver routes
   registerMerchantRoutes(app);
   registerDriverRoutes(app);
-  
+
   // Register secure transaction system routes
   registerSecureTransactionRoutes(app);
   registerAdminOversightRoutes(app);
-  
+
   // Register new comprehensive system routes
   app.use('/api/role-management', (await import('./routes/role-management')).default);
   app.use('/api/live-system', (await import('./routes/live-system')).default);
   app.use('/api/analytics', (await import('./routes/analytics')).default);
+  
+  // Enhanced analytics logging with real-time streaming
+  // Assuming registerAnalyticsLoggingRoutes is defined elsewhere
+  // For now, commenting out as it's not provided in the original code
+  // const { registerAnalyticsLoggingRoutes } = await import('./routes/analytics-logging');
+  // registerAnalyticsLoggingRoutes(app);
+
+  // Merchant KYC verification routes
+  const { registerMerchantKycRoutes } = await import('./routes/merchant-kyc');
+  registerMerchantKycRoutes(app);
+
+  // Admin merchant KYC review routes
+  const { registerAdminMerchantKycRoutes } = await import('./routes/admin-merchant-kyc');
+  registerAdminMerchantKycRoutes(app);
+
+  console.log('All routes registered successfully');
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {
@@ -1599,7 +1642,6 @@ const searchSchema = z.object({
     }
   });
 
-  // Import routes
   // Import routes
   // Import routes
   // Import routes

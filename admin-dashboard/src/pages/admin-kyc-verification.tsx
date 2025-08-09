@@ -90,6 +90,50 @@ export function AdminKYCVerification() {
     }
   };
 
+  const [merchantKycSubmissions, setMerchantKycSubmissions] = useState<any[]>([]);
+  const [merchantKycStats, setMerchantKycStats] = useState<any>({});
+  
+  useEffect(() => {
+    fetchMerchantKycSubmissions();
+  }, []);
+
+  const fetchMerchantKycSubmissions = async () => {
+    try {
+      const response = await fetch('/api/admin/merchant-kyc/pending', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMerchantKycSubmissions(data.data.submissions || []);
+        setMerchantKycStats(data.data.stats || {});
+      }
+    } catch (error) {
+      console.error('Failed to fetch merchant KYC submissions:', error);
+    }
+  };
+
+  const handleMerchantKycReview = async (submissionId: string, action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch(`/api/admin/merchant-kyc/${submissionId}/review`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, reason }),
+      });
+
+      if (response.ok) {
+        await fetchMerchantKycSubmissions();
+      }
+    } catch (error) {
+      console.error('Failed to review merchant KYC:', error);
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     if (filterStatus === 'all') return true;
     return doc.status === filterStatus;
@@ -110,7 +154,9 @@ export function AdminKYCVerification() {
       <div className="flex justify-between items-center">
         <div>
           <h2 className="text-2xl font-bold">KYC Verification</h2>
-          <p className="text-gray-600">{pendingCount} documents pending review</p>
+          <p className="text-gray-600">
+            {pendingCount} consumer documents | {merchantKycStats.pending || 0} merchant submissions pending
+          </p>
         </div>
         {selectedDocuments.length > 0 && (
           <BatchKycActions
@@ -214,6 +260,91 @@ export function AdminKYCVerification() {
                     className="text-blue-600 hover:text-blue-900"
                   >
                     Review
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Merchant KYC Submissions */}
+      <div className="bg-white shadow rounded-lg overflow-hidden mt-8">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium">Merchant KYC Submissions</h3>
+          <p className="text-sm text-gray-600">
+            {merchantKycStats.pending || 0} pending submissions
+          </p>
+        </div>
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Business
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Business Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Owner
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Submitted
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {merchantKycSubmissions.map((submission) => (
+              <tr key={submission.id} className="hover:bg-gray-50">
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">
+                      {submission.businessRegistrationNumber}
+                    </div>
+                    <div className="text-sm text-gray-500">{submission.businessEmail}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm text-gray-900">
+                    {submission.businessType?.replace('_', ' ')}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div>
+                    <div className="text-sm font-medium text-gray-900">{submission.ownerFullName}</div>
+                    <div className="text-sm text-gray-500">{submission.ownerNationalId}</div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                    submission.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                    submission.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                    'bg-red-100 text-red-800'
+                  }`}>
+                    {submission.status}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {new Date(submission.submittedAt).toLocaleDateString()}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                  <button
+                    onClick={() => handleMerchantKycReview(submission.id.toString(), 'approve')}
+                    className="text-green-600 hover:text-green-900"
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => handleMerchantKycReview(submission.id.toString(), 'reject', 'Documents incomplete')}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Reject
                   </button>
                 </td>
               </tr>

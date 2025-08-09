@@ -1,4 +1,4 @@
-import { 
+import {
   users, otpCodes, categories, products, cartItems, userLocations, orders,
   vendorPosts, vendorPostLikes, vendorPostComments, conversations, chatMessages,
   driverProfiles, merchantProfiles, merchantAnalytics, supportTickets, fuelOrders,
@@ -117,10 +117,32 @@ export interface IStorage {
   performManualEscrowAction(actionData: any): Promise<any>;
   getPlatformAnalytics(filters: any): Promise<any>;
   getContentForReview(filters: any): Promise<any[]>;
+
+  // Merchant KYC Management
+  createMerchantKycSubmission(data: any): Promise<any>;
+  getMerchantKycSubmissions(options: { status?: string; page?: number; limit?: number }): Promise<{ submissions: any[]; pagination: any }>;
+  getMerchantKycSubmissionById(id: number): Promise<any | null>;
+  updateMerchantKycSubmission(id: number, updates: any): Promise<any | null>;
+  getMerchantKycStatus(merchantId: number): Promise<any | null>;
+  getMerchantKycStats(): Promise<any>;
+  getMerchantKycAnalytics(): Promise<any>;
+  updateMerchantProfile(merchantId: number, updates: any): Promise<any | null>;
 }
 
 export class DatabaseStorage implements IStorage {
   private db = db;
+
+  // Mock data store for in-memory operations if not using a real DB for all methods
+  private data: any = {
+    merchantProfiles: [],
+    merchantKycSubmissions: []
+  };
+
+  private async save() {
+    // In a real scenario, this would persist `this.data` to a database or file
+    // For this example, we'll just log it.
+    // console.log("Saving data:", JSON.stringify(this.data, null, 2));
+  }
 
   // User operations
   async getUser(id: number): Promise<User | undefined> {
@@ -157,11 +179,11 @@ export class DatabaseStorage implements IStorage {
     return user;
   }
 
-  async createSocialUser(userData: { 
-    fullName: string; 
-    email: string; 
-    socialProvider: string; 
-    socialId: string; 
+  async createSocialUser(userData: {
+    fullName: string;
+    email: string;
+    socialProvider: string;
+    socialId: string;
     profilePicture?: string;
     role?: string;
   }): Promise<User> {
@@ -442,7 +464,7 @@ export class DatabaseStorage implements IStorage {
         rating: 4.2
       },
       {
-        id: 'station_002', 
+        id: 'station_002',
         name: 'Mobil Lekki Phase 1',
         address: 'Admiralty Way, Lekki Phase 1, Lagos',
         latitude: 6.4500,
@@ -631,8 +653,8 @@ export class DatabaseStorage implements IStorage {
       })
       .map((driver: any) => ({
         ...driver,
-        distance: driver.currentLocation ? 
-          this.calculateDistance(lat, lng, driver.currentLocation.latitude, driver.currentLocation.longitude) : 
+        distance: driver.currentLocation ?
+          this.calculateDistance(lat, lng, driver.currentLocation.latitude, driver.currentLocation.longitude) :
           null
       }))
       .sort((a: any, b: any) => (a.distance || 0) - (b.distance || 0));
@@ -649,8 +671,8 @@ export class DatabaseStorage implements IStorage {
     if (fuelOrder[0]) {
       const updated = await this.db
         .update(fuelOrders)
-        .set({ 
-          driverId, 
+        .set({
+          driverId,
           status: 'ACCEPTED',
           acceptedAt: new Date(),
           estimatedDeliveryTime: new Date(Date.now() + 45 * 60 * 1000) // 45 minutes from now
@@ -687,7 +709,7 @@ export class DatabaseStorage implements IStorage {
   async updateDriverLocation(driverId: number, latitude: number, longitude: number): Promise<void> {
     await this.db
       .update(driverProfiles)
-      .set({ 
+      .set({
         currentLocation: { latitude, longitude },
       })
       .where(eq(driverProfiles.userId, driverId));
@@ -702,7 +724,7 @@ export class DatabaseStorage implements IStorage {
         isActive: true
       });
   }
-  
+
   async updateDriverProfile(driverId: number, data: any) {
     const [driver] = await db.update(driverProfiles)
       .set({
@@ -856,7 +878,7 @@ export class DatabaseStorage implements IStorage {
     const [userStats, orderStats, transactionStats] = await Promise.all([
       this.db.select({ count: count() }).from(users),
       this.db.select({ count: count() }).from(orders),
-      this.db.select({ 
+      this.db.select({
         count: count(),
         total: sum(sql`CAST(${orders.totalPrice} AS DECIMAL)`)
       }).from(orders).where(eq(orders.status, 'delivered'))
@@ -910,7 +932,7 @@ export class DatabaseStorage implements IStorage {
 
     const [recentOrders, recentFuelOrders] = await Promise.all([
       this.db
-        .select({ 
+        .select({
           count: count(),
           total: sum(sql`CAST(${orders.totalPrice} AS DECIMAL)`)
         })
@@ -918,7 +940,7 @@ export class DatabaseStorage implements IStorage {
         .where(sql`${orders.createdAt} >= ${timeAgo}`),
 
       this.db
-        .select({ 
+        .select({
           count: count(),
           total: sum(sql`CAST(${fuelOrders.totalAmount} AS DECIMAL)`)
         })
@@ -928,7 +950,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       totalTransactions: (recentOrders[0]?.count || 0) + (recentFuelOrders[0]?.count || 0),
-      totalVolume: (parseFloat(recentOrders[0]?.total?.toString() || '0')) + 
+      totalVolume: (parseFloat(recentOrders[0]?.total?.toString() || '0')) +
                    (parseFloat(recentFuelOrders[0]?.total?.toString() || '0')),
       regularOrders: recentOrders[0]?.count || 0,
       fuelOrders: recentFuelOrders[0]?.count || 0,
@@ -957,9 +979,9 @@ export class DatabaseStorage implements IStorage {
     const R = 6371; // Earth's radius in kilometers
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = 
+    const a =
       Math.sin(dLat/2) * Math.sin(dLat/2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
       Math.sin(dLon/2) * Math.sin(dLon/2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
     return R * c; // Distance in kilometers
@@ -1147,8 +1169,8 @@ export class DatabaseStorage implements IStorage {
   async incrementPostViewCount(postId: string): Promise<void> {
     await db
       .update(vendorPosts)
-      .set({ 
-        viewCount: sql`${vendorPosts.viewCount} + 1` 
+      .set({
+        viewCount: sql`${vendorPosts.viewCount} + 1`
       })
       .where(eq(vendorPosts.id, postId));
   }
@@ -1705,6 +1727,194 @@ export class DatabaseStorage implements IStorage {
         reviewStatus: 'PENDING'
       }
     ];
+  }
+
+  // Merchant KYC Management
+  async createMerchantKycSubmission(data: any): Promise<any> {
+    const submission = {
+      id: Date.now(),
+      ...data,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+
+    if (!this.data.merchantKycSubmissions) {
+      this.data.merchantKycSubmissions = [];
+    }
+
+    this.data.merchantKycSubmissions.push(submission);
+    await this.save();
+    return submission;
+  }
+
+  async getMerchantKycSubmissions(options: { status?: string; page?: number; limit?: number }): Promise<{ submissions: any[]; pagination: any }> {
+    if (!this.data.merchantKycSubmissions) {
+      return { submissions: [], pagination: { total: 0, page: 1, limit: 20, totalPages: 0 } };
+    }
+
+    let submissions = this.data.merchantKycSubmissions;
+
+    if (options.status && options.status !== 'all') {
+      submissions = submissions.filter(s => s.status === options.status);
+    }
+
+    const page = options.page || 1;
+    const limit = options.limit || 20;
+    const offset = (page - 1) * limit;
+
+    const paginatedSubmissions = submissions.slice(offset, offset + limit);
+
+    return {
+      submissions: paginatedSubmissions,
+      pagination: {
+        total: submissions.length,
+        page,
+        limit,
+        totalPages: Math.ceil(submissions.length / limit)
+      }
+    };
+  }
+
+  async getMerchantKycSubmissionById(id: number): Promise<any | null> {
+    if (!this.data.merchantKycSubmissions) return null;
+    return this.data.merchantKycSubmissions.find(s => s.id === id);
+  }
+
+  async updateMerchantKycSubmission(id: number, updates: any): Promise<any | null> {
+    if (!this.data.merchantKycSubmissions) return null;
+
+    const submissionIndex = this.data.merchantKycSubmissions.findIndex(s => s.id === id);
+    if (submissionIndex === -1) return null;
+
+    this.data.merchantKycSubmissions[submissionIndex] = {
+      ...this.data.merchantKycSubmissions[submissionIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    await this.save();
+    return this.data.merchantKycSubmissions[submissionIndex];
+  }
+
+  async getMerchantKycStatus(merchantId: number): Promise<any | null> {
+    if (!this.data.merchantKycSubmissions) return null;
+    return this.data.merchantKycSubmissions
+      .filter(s => s.merchantId === merchantId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+  }
+
+  async getMerchantKycStats(): Promise<any> {
+    if (!this.data.merchantKycSubmissions) {
+      return {
+        pending: 0,
+        approved: 0,
+        rejected: 0,
+        total: 0,
+        todaySubmissions: 0
+      };
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const stats = {
+      pending: this.data.merchantKycSubmissions.filter(s => s.status === 'PENDING').length,
+      approved: this.data.merchantKycSubmissions.filter(s => s.status === 'APPROVED').length,
+      rejected: this.data.merchantKycSubmissions.filter(s => s.status === 'REJECTED').length,
+      total: this.data.merchantKycSubmissions.length,
+      todaySubmissions: this.data.merchantKycSubmissions.filter(s =>
+        new Date(s.createdAt) >= today
+      ).length
+    };
+
+    return stats;
+  }
+
+  async getMerchantKycAnalytics() {
+    if (!this.data.merchantKycSubmissions) {
+      return {
+        totalSubmissions: 0,
+        approvalRate: 0,
+        averageProcessingTime: 0,
+        monthlyTrends: []
+      };
+    }
+
+    const submissions = this.data.merchantKycSubmissions;
+    const approved = submissions.filter(s => s.status === 'APPROVED');
+    const processed = submissions.filter(s => s.reviewedAt);
+
+    // Calculate average processing time
+    const processingTimes = processed.map(s => {
+      const submitted = new Date(s.createdAt);
+      const reviewed = new Date(s.reviewedAt);
+      return (reviewed.getTime() - submitted.getTime()) / (1000 * 60 * 60 * 24); // days
+    });
+
+    const averageProcessingTime = processingTimes.length > 0
+      ? processingTimes.reduce((a, b) => a + b, 0) / processingTimes.length
+      : 0;
+
+    return {
+      totalSubmissions: submissions.length,
+      approvalRate: submissions.length > 0 ? (approved.length / submissions.length) * 100 : 0,
+      averageProcessingTime: Math.round(averageProcessingTime * 10) / 10,
+      monthlyTrends: this.calculateMonthlyKycTrends(submissions)
+    };
+  }
+
+  private calculateMonthlyKycTrends(submissions: any[]) {
+    const trends = [];
+    const now = new Date();
+
+    for (let i = 5; i >= 0; i--) {
+      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+
+      const monthSubmissions = submissions.filter(s => {
+        const submissionDate = new Date(s.createdAt);
+        return submissionDate >= month && submissionDate < nextMonth;
+      });
+
+      trends.push({
+        month: month.toISOString().slice(0, 7), // YYYY-MM format
+        submissions: monthSubmissions.length,
+        approved: monthSubmissions.filter(s => s.status === 'APPROVED').length,
+        rejected: monthSubmissions.filter(s => s.status === 'REJECTED').length
+      });
+    }
+
+    return trends;
+  }
+
+  async updateMerchantProfile(merchantId: number, updates: any): Promise<any | null> {
+    if (!this.data.merchantProfiles) {
+      this.data.merchantProfiles = [];
+    }
+
+    const profileIndex = this.data.merchantProfiles.findIndex(p => p.userId === merchantId);
+    if (profileIndex === -1) {
+      // Create new profile if it doesn't exist
+      const newProfile = {
+        id: Date.now(),
+        userId: merchantId,
+        ...updates,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      };
+      this.data.merchantProfiles.push(newProfile);
+      await this.save();
+      return newProfile;
+    } else {
+      // Update existing profile
+      this.data.merchantProfiles[profileIndex] = {
+        ...this.data.merchantProfiles[profileIndex],
+        ...updates,
+        updatedAt: new Date()
+      };
+      await this.save();
+      return this.data.merchantProfiles[profileIndex];
+    }
   }
 }
 

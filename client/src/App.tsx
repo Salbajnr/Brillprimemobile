@@ -172,6 +172,13 @@ function Router() {
       <Route path="/identity-verification">
         {() => <ProtectedRoute component={IdentityVerification} />}
       </Route>
+      <Route path="/merchant-kyc" component={() => (
+        <PageErrorBoundary pageName="Merchant KYC">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={lazy(() => import("./pages/merchant-kyc-verification"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
       <Route path="/wallet/fund">
         {() => <ProtectedRoute component={WalletFundPage} />}
       </Route>
