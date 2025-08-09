@@ -94,18 +94,14 @@ function Router() {
       <Route path="/wallet/fund">
         {() => <ProtectedRoute component={WalletFundPage} />}
       </Route>
-      <Route path="/fuel-ordering">
-        {() => <ProtectedRoute component={FuelOrderingPage} />}
-      </Route>
+      <Route path="/fuel-ordering" component={() => <ProtectedRoute component={FuelOrderingPage} />} />
       <Route path="/fuel-order-details/:stationId" component={lazy(() => import("./pages/fuel-order-details"))} />
       <Route path="/order-confirmation/:orderId" component={lazy(() => import("./pages/order-confirmation"))} />
       <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
       <Route path="/qr-scanner">
         {() => <ProtectedRoute component={QRScannerPage} />}
       </Route>
-      <Route path="/toll-payments">
-        {() => <ProtectedRoute component={TollPaymentsPage} />}
-      </Route>
+      <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
       <Route path="/commodities">
         {() => <ProtectedRoute component={CommoditiesPage} />}
       </Route>
@@ -148,6 +144,7 @@ function Router() {
       <Route path="/cart">
         {() => <ProtectedRoute component={CartPage} />}
       </Route>
+      <Route path="/checkout" component={() => <ProtectedRoute component={lazy(() => import("./pages/checkout"))} />} />
       <Route path="/order-history">
         {() => <ProtectedRoute component={OrderHistory} />}
       </Route>

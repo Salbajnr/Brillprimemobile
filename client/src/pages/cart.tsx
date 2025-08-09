@@ -115,6 +115,11 @@ export default function Cart() {
 
   const handleCheckout = () => {
     if (cartItems.length === 0) return;
+    if (!user?.id) {
+      // Prompt non-logged users to sign in
+      setLocation("/signin");
+      return;
+    }
     // Navigate to checkout page with cart data
     setLocation("/checkout");
   };
