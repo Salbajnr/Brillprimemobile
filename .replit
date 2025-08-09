@@ -26,7 +26,7 @@ externalPort = 3001
 PORT = "5000"
 
 [workflows]
-runButton = "Start Fixed Application"
+runButton = "Start Real-Time App"
 
 [[workflows.workflow]]
 name = "Project"
@@ -76,6 +76,15 @@ args = "cd admin-dashboard && npm run dev"
 [[workflows.workflow]]
 name = "Start Fixed Application"
 author = 46181792
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start Real-Time App"
+author = 46185472
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
