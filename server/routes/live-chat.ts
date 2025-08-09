@@ -6,31 +6,27 @@ import { liveChatService } from "../services/live-chat";
 
 // Live Chat schemas
 const startChatSchema = z.object({
-  type: z.enum(['CUSTOMER_DRIVER', 'CUSTOMER_MERCHANT', 'SUPPORT']),
-  recipientId: z.number().optional(),
-  orderId: z.string().optional(),
+  type: z.enum(['CUSTOMER_DRIVER', 'CUSTOMER_MERCHANT', 'CUSTOMER_SUPPORT']),
+  recipientId: z.coerce.number().positive().optional(),
+  orderId: z.string().uuid().optional(),
   issueType: z.string().optional()
 });
 
 const sendMessageSchema = z.object({
-  roomId: z.string(),
-  content: z.string(),
-  messageType: z.enum(['TEXT', 'IMAGE', 'LOCATION', 'ORDER_UPDATE', 'VOICE']).default('TEXT'),
-  metadata: z.object({
-    location: z.object({
-      latitude: z.number(),
-      longitude: z.number()
-    }).optional(),
-    imageUrl: z.string().optional(),
-    voiceUrl: z.string().optional(),
-    orderId: z.string().optional()
-  }).optional()
+  roomId: z.string().uuid(),
+  content: z.string().min(1).max(2000).trim(),
+  messageType: z.enum(['TEXT', 'IMAGE', 'LOCATION', 'QUICK_RESPONSE']).default('TEXT'),
+  attachments: z.array(z.object({
+    url: z.string().url(),
+    type: z.string(),
+    size: z.number().optional()
+  })).optional()
 });
 
 const getChatHistorySchema = z.object({
-  roomId: z.string(),
-  limit: z.number().default(50),
-  offset: z.number().default(0)
+  roomId: z.string().uuid(),
+  limit: z.coerce.number().min(1).max(100).default(50),
+  offset: z.coerce.number().min(0).default(0)
 });
 
 export function registerLiveChatRoutes(app: Express) {
@@ -71,7 +67,7 @@ export function registerLiveChatRoutes(app: Express) {
           );
           break;
 
-        case 'SUPPORT':
+        case 'CUSTOMER_SUPPORT':
           if (!data.issueType) {
             return res.status(400).json({
               success: false,
@@ -151,7 +147,7 @@ export function registerLiveChatRoutes(app: Express) {
   app.get("/api/chat/history/:roomId", requireAuth, async (req, res) => {
     try {
       const { roomId } = req.params;
-      const { limit = 50, offset = 0 } = req.query;
+      const queryParams = getChatHistorySchema.parse(req.query);
       const userId = req.session!.userId!;
 
       // Validate access to chat room
@@ -168,14 +164,14 @@ export function registerLiveChatRoutes(app: Express) {
       // Get messages from database
       const messages = await storage.getConversationMessages(
         roomId,
-        parseInt(limit as string),
-        parseInt(offset as string)
+        queryParams.limit,
+        queryParams.offset
       );
 
       res.json({
         success: true,
         messages,
-        hasMore: messages.length === parseInt(limit as string)
+        hasMore: messages.length === queryParams.limit
       });
 
     } catch (error: any) {
@@ -271,7 +267,7 @@ export function registerLiveChatRoutes(app: Express) {
     try {
       // This would need admin authorization middleware
       const userId = req.session!.userId!;
-      
+
       // For now, we'll return mock stats
       // In production, implement proper admin stats
       const stats = {
@@ -370,7 +366,7 @@ export function registerLiveChatRoutes(app: Express) {
           "We'll have it ready in 15 minutes.",
           "Is there anything else we can help you with?"
         ],
-        SUPPORT: [
+        CUSTOMER_SUPPORT: [
           "I'm here to help you with your issue.",
           "Let me look into this for you.",
           "Can you provide more details?",

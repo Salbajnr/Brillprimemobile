@@ -8,6 +8,8 @@ import { fuelOrders, users, driverProfiles } from '@shared/schema';
 import { eq, and, desc, isNull, ne } from 'drizzle-orm';
 import { orderBroadcastingService } from '../services/order-broadcasting';
 
+import { validateSchema, sanitizeInput, createRateLimit } from '../middleware/validation';
+
 const createFuelOrderSchema = z.object({
   stationId: z.string(),
   fuelType: z.enum(['PMS', 'AGO', 'DPK']),
@@ -52,14 +54,18 @@ export function registerFuelOrderRoutes(app: Express) {
   });
 
   // Create fuel order
-  app.post("/api/fuel-orders", async (req: any, res: any) => {
-    try {
-      const userId = req.session?.userId;
-      if (!userId) {
-        return res.status(401).json({ success: false, error: 'User not authenticated' });
-      }
+  app.post("/api/fuel-orders", 
+    createRateLimit({ windowMs: 15 * 60 * 1000, max: 10 }), // 10 orders per 15 minutes
+    sanitizeInput(),
+    validateSchema(createFuelOrderSchema),
+    async (req: any, res: any) => {
+      try {
+        const userId = req.session?.userId;
+        if (!userId) {
+          return res.status(401).json({ success: false, error: 'User not authenticated' });
+        }
 
-      const validatedData = createFuelOrderSchema.parse(req.body);
+        const validatedData = req.body;
 
       const [newOrder] = await db.insert(fuelOrders).values({
         ...validatedData,

@@ -226,13 +226,19 @@ export function registerTollPaymentRoutes(app: Express) {
   });
 
   // Verify toll QR code
-  app.post("/api/toll/verify-qr", async (req: any, res: any) => {
-    try {
-      const { qrCode } = req.body;
+  const verifyQRSchema = z.object({
+  qrCode: z.string().min(10).max(100).refine(
+    (code) => code.startsWith('TOLL_'),
+    { message: 'QR code must be a valid toll code' }
+  )
+});
 
-      if (!qrCode || !qrCode.startsWith('TOLL_')) {
-        return res.status(400).json({ success: false, error: 'Invalid QR code' });
-      }
+  app.post("/api/toll/verify-qr", 
+    sanitizeInput(),
+    validateSchema(verifyQRSchema),
+    async (req: any, res: any) => {
+      try {
+        const { qrCode } = req.body;
 
       // Parse QR code to extract transaction info
       const qrParts = qrCode.split('_');

@@ -5,13 +5,12 @@ import { merchantProfiles, users, locationRecommendations, reviews } from "@shar
 import { eq, and, desc, sql, avg, count, lt, gt } from "drizzle-orm";
 
 const getRecommendationsSchema = z.object({
-  latitude: z.number(),
-  longitude: z.number(),
-  radius: z.number().default(10), // kilometers
-  category: z.string().optional(),
-  minRating: z.number().min(1).max(5).optional(),
-  limit: z.number().default(20),
-  sortBy: z.enum(['distance', 'rating', 'popularity', 'recent']).default('distance')
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  radius: z.number().min(100).max(50000).default(10000), // 100m to 50km
+  category: z.string().min(1).max(50).optional(),
+  minRating: z.number().min(0).max(5).optional(),
+  sortBy: z.enum(['distance', 'rating', 'reviews']).default('distance'),
 });
 
 const trackInteractionSchema = z.object({

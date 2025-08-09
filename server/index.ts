@@ -12,86 +12,106 @@ import { apiLimiter, authLimiter, paymentLimiter } from "./middleware/rateLimite
 import helmet from "helmet";
 import compression from "compression";
 import errorLoggingRoutes from "./routes/error-logging";
+import { securityHeaders, corsHeaders, requestValidation } from "./middleware/securityHeaders";
+import { sanitizeInput } from "./middleware/validation";
 
 async function startServer() {
-const app = express();
+  const app = express();
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "https:"],
+  // Security middleware
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        scriptSrc: ["'self'"],
+        imgSrc: ["'self'", "data:", "https:"],
+      },
     },
-  },
-}));
-app.use(compression());
+  }));
+  app.use(compression());
 
-// Rate limiting
-app.use('/api/auth', authLimiter);
-app.use('/api/transactions', paymentLimiter);
-app.use('/api', apiLimiter);
+  // Rate limiting
+  app.use('/api/auth', authLimiter);
+  app.use('/api/transactions', paymentLimiter);
+  app.use('/api', apiLimiter);
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: false, limit: '10mb' }));
+  // Security headers first
+  app.use(securityHeaders());
+  app.use(corsHeaders());
+  app.use(requestValidation());
 
-// Session configuration
-const PgSession = connectPgSimple(session);
+  // CORS middleware
+  app.use(cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:5173",
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
+  }));
 
-app.use(
-  session({
-    store: new PgSession({
-      pool: db as any,
-      tableName: 'session',
-      createTableIfMissing: true,
-    }),
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-    },
-  })
-);
+  // Express middleware with size limits
+  app.use(express.json({
+    limit: '10mb',
+    verify: (req, res, buf) => {
+      if (buf.length > 10 * 1024 * 1024) {
+        throw new Error('Request entity too large');
+      }
+    }
+  }));
+  app.use(express.urlencoded({
+    extended: true,
+    limit: '10mb',
+    parameterLimit: 1000
+  }));
 
-// Add CORS middleware
-app.use((req: Request, res: Response, next: NextFunction) => {
-  res.header('Access-Control-Allow-Origin', '*');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+  // Input sanitization
+  app.use(sanitizeInput());
 
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
+  // Session configuration
+  const PgSession = connectPgSimple(session);
 
-// Register admin routes
-app.use('/api/admin', adminRoutes);
+  app.use(
+    session({
+      store: new PgSession({
+        pool: db as any,
+        tableName: 'session',
+        createTableIfMissing: true,
+      }),
+      secret: process.env.SESSION_SECRET || 'your-secret-key',
+      resave: false,
+      saveUninitialized: false,
+      cookie: {
+        secure: process.env.NODE_ENV === 'production',
+        httpOnly: true,
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        sameSite: 'strict'
+      },
+      name: 'sessionId' // Change default session name
+    })
+  );
 
-// Register main API routes
-registerRoutes(app);
+  // Authentication setup
+  app.use(setupAuth());
 
-// Register error logging route
-app.use('/api/errors', errorLoggingRoutes);
+  // Register admin routes
+  app.use('/api/admin', adminRoutes);
 
-// Error handling middleware
-app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-  const status = err.status || err.statusCode || 500;
-  const message = err.message || "Internal Server Error";
+  // Register main API routes
+  registerRoutes(app);
 
-  res.status(status).json({ message });
-});
+  // Register error logging route
+  app.use('/api/errors', errorLoggingRoutes);
 
-// Create HTTP server
-const server = createServer(app);
+  // Error handling middleware (must be last)
+  import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+  app.use(notFoundHandler);
+  app.use(errorHandler);
 
-// Setup WebSocket server
+
+  // Create HTTP server
+  const server = createServer(app);
+
+  // Setup WebSocket server
   const io = await setupWebSocketServer(server);
 
   // Make WebSocket server globally available for route handlers
@@ -102,24 +122,24 @@ const server = createServer(app);
   const { LiveSystemService } = await import('./services/live-system');
   LiveSystemService.setSocketIOInstance(io);
 
-// Setup Vite or static serving
-if (app.get("env") === "development") {
-  await setupVite(app, server);
-} else {
-  serveStatic(app);
-}
+  // Setup Vite or static serving
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
 
-// Start server
-const PORT = parseInt(process.env.PORT || '5000', 10);
-server.listen(PORT, "0.0.0.0", () => {
-  const formattedTime = new Intl.DateTimeFormat("en-US", {
-    dateStyle: "short",
-    timeStyle: "medium",
-    timeZone: "UTC",
-  }).format(new Date());
+  // Start server
+  const PORT = parseInt(process.env.PORT || '5000', 10);
+  server.listen(PORT, "0.0.0.0", () => {
+    const formattedTime = new Intl.DateTimeFormat("en-US", {
+      dateStyle: "short",
+      timeStyle: "medium",
+      timeZone: "UTC",
+    }).format(new Date());
 
-  console.log(`${formattedTime} [express] serving on port ${PORT}`);
-});
+    console.log(`${formattedTime} [express] serving on port ${PORT}`);
+  });
 
 }
 

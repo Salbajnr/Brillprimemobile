@@ -599,17 +599,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Search API for locations, merchants, and fuel stations
-  app.get("/api/search", async (req, res) => {
-    try {
-      const { q, type, latitude, longitude } = req.query;
-      const searchQuery = q as string;
-      const searchType = type as string || 'all';
-      const lat = latitude ? parseFloat(latitude as string) : null;
-      const lng = longitude ? parseFloat(longitude as string) : null;
+  import { validateQuery, sanitizeInput, createRateLimit, commonSchemas } from './middleware/validation';
 
-      if (!searchQuery) {
-        return res.status(400).json({ message: "Search query required" });
-      }
+const searchSchema = z.object({
+  q: z.string().min(1).max(100).trim(),
+  type: z.enum(['all', 'merchants', 'products', 'users']).default('all'),
+  latitude: z.coerce.number().min(-90).max(90).optional(),
+  longitude: z.coerce.number().min(-180).max(180).optional(),
+  page: z.coerce.number().min(1).default(1),
+  limit: z.coerce.number().min(1).max(50).default(20)
+});
+
+  app.get("/api/search", 
+    createRateLimit({ windowMs: 60 * 1000, max: 30 }), // 30 searches per minute
+    sanitizeInput(),
+    validateQuery(searchSchema),
+    async (req, res) => {
+      try {
+        const { q, type, latitude, longitude, page, limit } = req.query as any;
+        const searchQuery = q as string;
+        const searchType = type as string;
+        const lat = latitude ? parseFloat(latitude as string) : null;
+        const lng = longitude ? parseFloat(longitude as string) : null;
 
       const results: any[] = [];
 

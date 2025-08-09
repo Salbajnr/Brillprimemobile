@@ -35,17 +35,54 @@ const upload = multer({
   }
 });
 
+import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation';
+import { z } from 'zod';
+
+const verificationDataSchema = z.object({
+  licenseNumber: z.string().min(3).max(50).optional(),
+  licenseExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  vehicleType: z.enum(['MOTORCYCLE', 'CAR', 'VAN', 'TRUCK']).optional(),
+  vehiclePlate: z.string().min(3).max(20).optional(),
+  vehicleModel: z.string().min(1).max(50).optional(),
+  vehicleYear: z.coerce.number().min(1900).max(new Date().getFullYear() + 1).optional(),
+  phoneVerification: z.boolean().optional()
+});
+
+const submitVerificationSchema = z.object({
+  userId: z.coerce.number().positive(),
+  role: z.enum(['CONSUMER', 'MERCHANT', 'DRIVER']),
+  verificationData: z.string().transform((data, ctx) => {
+    try {
+      const parsed = JSON.parse(data);
+      return verificationDataSchema.parse(parsed);
+    } catch (error) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Invalid verification data format'
+      });
+      return z.NEVER;
+    }
+  })
+});
+
 export const submitIdentityVerification = [
+  sanitizeInput(),
   upload.fields([
     { name: 'faceImage', maxCount: 1 },
     { name: 'licenseImage', maxCount: 1 }
   ]),
+  validateFileUpload({
+    maxSize: 5 * 1024 * 1024, // 5MB
+    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
+    maxFiles: 2
+  }),
+  validateSchema(submitVerificationSchema),
   async (req: Request, res: Response) => {
     try {
       const { userId, role, verificationData } = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       
-      const parsedData = JSON.parse(verificationData);
+      const parsedData = verificationData;
       
       // Handle face image upload
       let faceImageUrl = null;
@@ -136,9 +173,17 @@ export const getVerificationStatus = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyPhoneOTP = async (req: Request, res: Response) => {
-  try {
-    const { userId, otpCode } = req.body;
+const verifyOTPSchema = z.object({
+  userId: z.coerce.number().positive(),
+  otpCode: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits')
+});
+
+export const verifyPhoneOTP = [
+  sanitizeInput(),
+  validateSchema(verifyOTPSchema),
+  async (req: Request, res: Response) => {
+    try {
+      const { userId, otpCode } = req.body;
     
     const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
     
