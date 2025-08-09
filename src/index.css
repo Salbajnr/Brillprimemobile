@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary: hsl(210, 70%, 45%);
+  --secondary: hsl(0, 0%, 26%);
+  --accent: hsl(122, 100%, 39%);
+  --success: hsl(122, 39%, 49%);
+  --warning: hsl(45, 100%, 51%);
+  --error: hsl(14, 100%, 57%);
+  --gray-50: hsl(210, 40%, 98%);
+  --gray-100: hsl(220, 14%, 96%);
+  --gray-200: hsl(220, 13%, 91%);
+  --gray-500: hsl(220, 9%, 46%);
+  --gray-600: hsl(220, 14%, 37%);
+  --gray-700: hsl(217, 19%, 27%);
+  --gray-900: hsl(222, 84%, 5%);
+  --white: hsl(0, 0%, 100%);
+}
+
+.dark {
+  --primary: hsl(210, 70%, 55%);
+  --secondary: hsl(0, 0%, 74%);
+  --accent: hsl(122, 100%, 49%);
+  --success: hsl(122, 39%, 59%);
+  --warning: hsl(45, 100%, 61%);
+  --error: hsl(14, 100%, 67%);
+  --gray-50: hsl(222, 84%, 5%);
+  --gray-100: hsl(217, 19%, 8%);
+  --gray-200: hsl(220, 14%, 11%);
+  --gray-500: hsl(220, 9%, 54%);
+  --gray-600: hsl(220, 14%, 63%);
+  --gray-700: hsl(217, 19%, 73%);
+  --gray-900: hsl(210, 40%, 98%);
+  --white: hsl(222, 84%, 5%);
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  font-family: 'Inter', sans-serif;
+  background-color: var(--gray-50);
+  color: var(--gray-900);
+}
