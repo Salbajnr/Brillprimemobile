@@ -7,7 +7,25 @@ export const requireAdminAuth = (req: Request, res: Response, next: NextFunction
   }
 
   // Check if user has admin role
-  if (req.user?.role !== 'ADMIN') {
+  if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
+    return res.status(403).json({ success: false, error: 'Admin access required' });
+  }
+
+  next();
+};
+
+// Middleware specifically for admin routes
+export const adminRouteAuth = (req: Request, res: Response, next: NextFunction) => {
+  // For admin panel routes, check authorization header first
+  const token = req.headers.authorization?.replace('Bearer ', '');
+  
+  if (!token && !req.session?.userId) {
+    return res.status(401).json({ success: false, error: 'Authentication required' });
+  }
+
+  // If token exists, validate it (implement JWT validation here)
+  // For now, proceed with session-based auth
+  if (req.user?.role !== 'ADMIN' && req.user?.role !== 'SUPER_ADMIN') {
     return res.status(403).json({ success: false, error: 'Admin access required' });
   }
 
