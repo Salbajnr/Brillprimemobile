@@ -1,52 +1,51 @@
-# Brillprime - Financial Solutions Application
+# Brillprime - Cross-Platform Financial Solutions
 
 ## Overview
-Brillprime is a full-stack, mobile-first Progressive Web App (PWA) providing secure financial transaction capabilities and user management for CONSUMERs, MERCHANTs, and DRIVERs in the Nigerian market. It aims to be a comprehensive financial services platform offering digital wallet functionality, various payment methods, QR code scanning/generation, and a business marketplace. The project's vision is to deliver a robust and user-friendly financial ecosystem, enhancing accessibility and efficiency for its users.
+Brillprime is now a comprehensive cross-platform monorepo supporting iOS, Android, and Web applications with shared business logic, API calls, hooks, and constants. The project provides secure financial transaction capabilities and user management for CONSUMERs, MERCHANTs, and DRIVERs in the Nigerian market. Enhanced as a unified codebase that maximizes code reuse while maintaining platform-specific optimizations.
 
 ## User Preferences
-Preferred communication style: Simple, everyday language.
-User roles: Updated to CONSUMER, MERCHANT, DRIVER.
-Backend: User has existing backend API - frontend connects to external API endpoints.
+- Preferred communication style: Simple, everyday language
+- User roles: CONSUMER, MERCHANT, DRIVER, ADMIN
+- Architecture: Cross-platform monorepo with shared packages
+- Goal: Single codebase for iOS, Android, and Web with maximum code reuse
 
 ## System Architecture
-The application is a monorepo structured with distinct client, server, shared components, and an admin dashboard.
+Cross-platform monorepo with shared packages architecture enabling code reuse across Web, iOS, and Android platforms.
 
 **Core Technologies:**
-- **Frontend**: React SPA with TypeScript, Vite, Tailwind CSS, and shadcn/ui.
-- **Backend**: Express.js REST API server (primarily connects to external API).
-- **Database**: PostgreSQL with Drizzle ORM.
-- **Admin Dashboard**: Separate admin interface.
-- **Mobile App**: React Native app with Redux Toolkit, Navigation v6, and native features.
+- **Web App**: React SPA with TypeScript, Vite, Tailwind CSS (apps/web)
+- **Mobile App**: React Native with TypeScript and React Navigation (apps/Mobile)
+- **Backend**: Express.js REST API server
+- **Database**: PostgreSQL with Drizzle ORM
+- **Shared Packages**: Cross-platform utilities, UI components, business logic, API client, and constants
 
-**Frontend Architecture:**
-- **Routing**: Wouter.
-- **State Management**: Zustand for authentication.
-- **Data Fetching**: TanStack Query.
-- **Form Handling**: React Hook Form with Zod validation.
-- **UI Components**: shadcn/ui built on Radix UI.
-- **Styling**: Tailwind CSS with a consistent color scheme (Primary: #4682b4, Secondary: #0b1a51, Active: #010e42).
-- **Design Principles**: Mobile-first, responsive design with rounded borders (rounded-3xl) and 3D visual effects (depth shadows, gradient backgrounds, shimmer effects). Standardized icon usage and notification modal system.
+**Shared Package Architecture:**
+- **@packages/shared**: Cross-platform utilities (Platform detection, Storage abstraction, Navigation, Validation, Formatters, Common utilities)
+- **@packages/shared-ui**: React Native Web compatible UI components (Button, Card, Badge, Text, View)
+- **@packages/business-logic**: Shared hooks and business logic (useMonorepoStats, build utilities)
+- **@packages/api-client**: Unified API client for all platforms with error handling and retry logic
+- **@packages/constants**: Shared configuration, colors, and build constants
 
-**Backend Architecture:**
-- **External API Integration**: Frontend primarily interacts with an existing external REST API.
-- **Authentication**: Handles bcrypt password hashing and OTP-based email verification.
-- **Data Layer**: PostgreSQL with Drizzle ORM for local data management.
-- **Server Role**: Primarily serves the frontend and routes API requests.
-- **Admin Dashboard**: React TypeScript interface with user management, KYC verification, and role-based access control.
+**Platform Configuration:**
+- **Vite (Web)**: Configured with path aliases for shared packages
+- **Metro (React Native)**: Configured to resolve shared packages across monorepo
+- **TypeScript**: Project references for proper type checking across packages
 
-**Key Features & Flows:**
-- **Authentication System**: Onboarding, role selection, social login (Google, Apple, Facebook), email/password sign-up/sign-in, OTP verification, password recovery, biometric authentication.
-- **User & Profile Management**: Profile editing, account settings, unique user ID assignment.
-- **Financial Features**: Digital wallet, payment methods, shopping cart, checkout flow, secure transaction system with escrow management (automatic release triggers, dispute escalation).
-- **Marketplace & Services**: Business marketplace, vendor feed with interactions, merchant search, bill payments, fuel ordering, toll payments.
-- **Communication & Support**: Real-time chat system (customer-to-driver, customer-to-merchant, support), universal support ticket system.
-- **Role-Based Dashboards**: Tailored dashboards for Consumers, Merchants, and Drivers (including a two-tier driver system).
-- **Order & Delivery Management**: Universal order history, delivery detail pages, QR scanning for confirmation, real-time order status broadcasting with location tracking.
-- **Admin Management System**: Comprehensive admin dashboard with real-time monitoring, user management, KYC verification, merchant/driver application processing, support ticket management, fraud detection, system maintenance, and transaction management with filtering and refund processing.
-- **PWA Capabilities**: Service worker for offline functionality and app manifest.
-- **Real-Time System**: Comprehensive WebSocket service for notifications, order tracking, chat, location tracking, and admin dashboard monitoring.
-- **Native Mobile App**: Complete React Native application in `native-setup/` directory with Redux state management, role-based navigation, and native device features.
-- **Native File Sync System**: Comprehensive file synchronization between web app and native app with progress tracking, offline access, and automatic background sync.
+**Cross-Platform Features:**
+- **Platform Detection**: Automatic detection of web vs native environment
+- **Unified Storage**: localStorage on web, AsyncStorage on React Native
+- **Shared Validation**: Email, password, phone number validation across platforms
+- **Consistent Formatting**: Currency, date, time formatting with locale support
+- **React Native Web Compatibility**: UI components work seamlessly on both platforms
+- **Type Safety**: Full TypeScript support with shared type definitions
+
+**Development Workflow:**
+- **Single Codebase**: Shared business logic, API calls, hooks, and constants
+- **Platform-Specific Apps**: Web (Vite + React) and Mobile (React Native) applications
+- **Shared UI Components**: React Native Web compatible components with consistent styling
+- **Unified Development**: Single package.json with workspace support for all apps and packages
+- **Type Safety**: Full TypeScript integration across all platforms with shared type definitions
+- **Build System**: Configured for cross-platform development with Metro and Vite bundlers
 
 ## External Dependencies
 

@@ -16,10 +16,15 @@ export default defineConfig({
       '@business-logic': path.resolve(__dirname, '../../packages/business-logic/src'),
       '@api-client': path.resolve(__dirname, '../../packages/api-client/src'),
       '@constants': path.resolve(__dirname, '../../packages/constants/src'),
+      '@packages/shared': path.resolve(__dirname, '../../packages/shared/src'),
+      '@packages/shared-ui': path.resolve(__dirname, '../../packages/shared-ui/src'),
+      '@packages/business-logic': path.resolve(__dirname, '../../packages/business-logic/src'),
+      '@packages/api-client': path.resolve(__dirname, '../../packages/api-client/src'),
+      '@packages/constants': path.resolve(__dirname, '../../packages/constants/src'),
     },
   },
   server: {
-    port: 5000,
+    port: 3000,
     host: '0.0.0.0'
   },
   build: {

@@ -20,10 +20,16 @@
     "paths": {
       "@/*": ["./src/*"],
       "@packages/*": ["../../packages/*"],
+      "@shared/*": ["../../packages/shared/src/*"],
       "@shared-ui/*": ["../../packages/shared-ui/src/*"],
       "@business-logic/*": ["../../packages/business-logic/src/*"],
       "@api-client/*": ["../../packages/api-client/src/*"],
-      "@constants/*": ["../../packages/constants/src/*"]
+      "@constants/*": ["../../packages/constants/src/*"],
+      "@packages/shared": ["../../packages/shared/src"],
+      "@packages/shared-ui": ["../../packages/shared-ui/src"],
+      "@packages/business-logic": ["../../packages/business-logic/src"],
+      "@packages/api-client": ["../../packages/api-client/src"],
+      "@packages/constants": ["../../packages/constants/src"]
     }
   },
   "include": ["src"],

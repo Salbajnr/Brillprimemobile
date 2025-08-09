@@ -4,7 +4,7 @@ export const APP_CONFIG = {
   description: 'A monorepo setup for cross-platform development',
   
   api: {
-    baseUrl: process.env.VITE_API_BASE_URL || 'http://localhost:8000',
+    baseUrl: (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || 'http://localhost:8000',
     timeout: 10000
   },
   
