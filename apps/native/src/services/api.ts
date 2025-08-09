@@ -1,4 +1,3 @@
-
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -78,7 +77,7 @@ class ApiService {
   }): Promise<ApiResponse> {
     try {
       const response = await this.api.post('/api/auth/signin', credentials);
-      
+
       // Store tokens
       if (response.data.user) {
         const token = response.data.token || 'mock-token'; // Your backend might have different token structure
@@ -87,7 +86,7 @@ class ApiService {
           await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
         }
       }
-      
+
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
@@ -103,7 +102,7 @@ class ApiService {
   }): Promise<ApiResponse> {
     try {
       const response = await this.api.post('/api/auth/verify-otp', data);
-      
+
       // Store tokens after successful verification
       if (response.data.user) {
         const token = response.data.token || 'mock-token';
@@ -112,7 +111,7 @@ class ApiService {
           await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
         }
       }
-      
+
       return { success: true, data: response.data };
     } catch (error: any) {
       return {
