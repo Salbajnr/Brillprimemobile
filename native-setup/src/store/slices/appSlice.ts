@@ -1,121 +1,114 @@
-// App slice for global app state
+
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
-import { LocationPermission, CameraPermission, PushNotificationPermission, BiometricPermission } from '../../types';
+
+interface LocationPermission {
+  granted: boolean;
+  message?: string;
+}
+
+interface CameraPermission {
+  granted: boolean;
+  message?: string;
+}
+
+interface PushNotificationPermission {
+  granted: boolean;
+  token?: string;
+}
+
+interface BiometricPermission {
+  available: boolean;
+  type?: 'TouchID' | 'FaceID' | 'Fingerprint' | 'None';
+}
+
+interface NativeConfiguration {
+  apiBaseUrl: string;
+  websocketUrl: string;
+  paystackPublicKey: string;
+  googleMapsApiKey: string;
+  firebaseConfig: {
+    projectId: string;
+    appId: string;
+    apiKey: string;
+  };
+}
 
 interface AppState {
-  isOnboarded: boolean;
+  isFirstLaunch: boolean;
   permissions: {
     location: LocationPermission;
     camera: CameraPermission;
     pushNotifications: PushNotificationPermission;
     biometric: BiometricPermission;
   };
-  networkStatus: {
-    isConnected: boolean;
-    isInternetReachable: boolean;
-  };
-  appVersion: string;
-  apiBaseUrl: string;
-  websocketUrl: string;
+  configuration: NativeConfiguration;
+  networkStatus: 'online' | 'offline';
   theme: 'light' | 'dark';
-  language: string;
-  currency: string;
-  pushNotificationToken: string | null;
 }
 
 const initialState: AppState = {
-  isOnboarded: false,
+  isFirstLaunch: true,
   permissions: {
     location: { granted: false },
     camera: { granted: false },
     pushNotifications: { granted: false },
-    biometric: { available: false },
+    biometric: { available: false, type: 'None' },
   },
-  networkStatus: {
-    isConnected: true,
-    isInternetReachable: true,
+  configuration: {
+    apiBaseUrl: 'http://localhost:5000',
+    websocketUrl: 'ws://localhost:5000',
+    paystackPublicKey: '',
+    googleMapsApiKey: '',
+    firebaseConfig: {
+      projectId: '',
+      appId: '',
+      apiKey: '',
+    },
   },
-  appVersion: '1.0.0',
-  apiBaseUrl: 'http://localhost:5000',
-  websocketUrl: 'ws://localhost:5000',
+  networkStatus: 'online',
   theme: 'light',
-  language: 'en',
-  currency: 'NGN',
-  pushNotificationToken: null,
 };
 
 const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    setOnboarded: (state, action: PayloadAction<boolean>) => {
-      state.isOnboarded = action.payload;
+    setFirstLaunch: (state, action: PayloadAction<boolean>) => {
+      state.isFirstLaunch = action.payload;
     },
-    
     updateLocationPermission: (state, action: PayloadAction<LocationPermission>) => {
       state.permissions.location = action.payload;
     },
-    
     updateCameraPermission: (state, action: PayloadAction<CameraPermission>) => {
       state.permissions.camera = action.payload;
     },
-    
     updatePushNotificationPermission: (state, action: PayloadAction<PushNotificationPermission>) => {
       state.permissions.pushNotifications = action.payload;
     },
-    
     updateBiometricPermission: (state, action: PayloadAction<BiometricPermission>) => {
       state.permissions.biometric = action.payload;
     },
-    
-    updateNetworkStatus: (state, action: PayloadAction<{ isConnected: boolean; isInternetReachable: boolean }>) => {
+    updateConfiguration: (state, action: PayloadAction<Partial<NativeConfiguration>>) => {
+      state.configuration = { ...state.configuration, ...action.payload };
+    },
+    setNetworkStatus: (state, action: PayloadAction<'online' | 'offline'>) => {
       state.networkStatus = action.payload;
     },
-    
-    setApiBaseUrl: (state, action: PayloadAction<string>) => {
-      state.apiBaseUrl = action.payload;
-    },
-    
-    setWebsocketUrl: (state, action: PayloadAction<string>) => {
-      state.websocketUrl = action.payload;
-    },
-    
     setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
       state.theme = action.payload;
-    },
-    
-    setLanguage: (state, action: PayloadAction<string>) => {
-      state.language = action.payload;
-    },
-    
-    setCurrency: (state, action: PayloadAction<string>) => {
-      state.currency = action.payload;
-    },
-    
-    setPushNotificationToken: (state, action: PayloadAction<string | null>) => {
-      state.pushNotificationToken = action.payload;
-    },
-    
-    updateAppVersion: (state, action: PayloadAction<string>) => {
-      state.appVersion = action.payload;
     },
   },
 });
 
 export const {
-  setOnboarded,
+  setFirstLaunch,
   updateLocationPermission,
   updateCameraPermission,
   updatePushNotificationPermission,
   updateBiometricPermission,
-  updateNetworkStatus,
-  setApiBaseUrl,
-  setWebsocketUrl,
+  updateConfiguration,
+  setNetworkStatus,
   setTheme,
-  setLanguage,
-  setCurrency,
-  setPushNotificationToken,
-  updateAppVersion,
 } = appSlice.actions;
 
 export default appSlice.reducer;
