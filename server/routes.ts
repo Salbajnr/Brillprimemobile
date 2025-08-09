@@ -1474,14 +1474,16 @@ const searchSchema = z.object({
   registerSecureTransactionRoutes(app);
   registerAdminOversightRoutes(app);
 
-  // Register new comprehensive system routes
-  const { default: roleManagementRoutes } = await import('./routes/role-management');
-  const { default: liveSystemRoutes } = await import('./routes/live-system');
-  const { default: analyticsRoutes } = await import('./routes/analytics');
-  
-  app.use('/api/role-management', roleManagementRoutes);
-  app.use('/api/live-system', liveSystemRoutes);
-  app.use('/api/analytics', analyticsRoutes);
+  // Register new comprehensive system routes (using dynamic imports in Express context)
+  import('./routes/role-management').then(({ default: roleManagementRoutes }) => {
+    app.use('/api/role-management', roleManagementRoutes);
+  });
+  import('./routes/live-system').then(({ default: liveSystemRoutes }) => {
+    app.use('/api/live-system', liveSystemRoutes);
+  });
+  import('./routes/analytics').then(({ default: analyticsRoutes }) => {
+    app.use('/api/analytics', analyticsRoutes);
+  });
 
   // Enhanced analytics logging with real-time streaming
   // Assuming registerAnalyticsLoggingRoutes is defined elsewhere
@@ -1490,12 +1492,14 @@ const searchSchema = z.object({
   // registerAnalyticsLoggingRoutes(app);
 
   // Merchant KYC verification routes
-  const { registerMerchantKycRoutes } = await import('./routes/merchant-kyc');
-  registerMerchantKycRoutes(app);
+  import('./routes/merchant-kyc').then(({ registerMerchantKycRoutes }) => {
+    registerMerchantKycRoutes(app);
+  });
 
   // Admin merchant KYC review routes
-  const { registerAdminMerchantKycRoutes } = await import('./routes/admin-merchant-kyc');
-  registerAdminMerchantKycRoutes(app);
+  import('./routes/admin-merchant-kyc').then(({ registerAdminMerchantKycRoutes }) => {
+    registerAdminMerchantKycRoutes(app);
+  });
 
   console.log('All routes registered successfully');
 
