@@ -23,6 +23,10 @@ import ChatScreen from '../screens/ChatScreen';
 import WalletScreen from '../screens/WalletScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen'; // Import AccountSettingsScreen
+import HomeScreen from '../screens/HomeScreen';
+import CartScreen from '../screens/CartScreen';
+import CheckoutScreen from '../screens/CheckoutScreen';
+
 
 import { useAppSelector } from '../store/hooks';
 
@@ -200,19 +204,39 @@ const AppNavigator: React.FC = () => {
           options={{ headerShown: false }}
         />
         <Stack.Screen
+          name="Home"
+          component={HomeScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Cart"
+          component={CartScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Checkout"
+          component={CheckoutScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="OrderHistory"
+          component={OrderHistoryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
           name="Profile"
           component={ProfileScreen}
-          options={{ headerShown: false }}
+          options={{ title: 'Profile' }}
         />
         <Stack.Screen
           name="AccountSettings"
           component={AccountSettingsScreen}
-          options={{ headerShown: false }}
+          options={{ title: 'Account Settings' }}
         />
         <Stack.Screen
           name="Notifications"
           component={NotificationsScreen}
-          options={{ headerShown: false }}
+          options={{ title: 'Notifications' }}
         />
       </Stack.Navigator>
     </NavigationContainer>
