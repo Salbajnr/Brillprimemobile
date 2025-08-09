@@ -1,205 +1,71 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
-import { setupVite, serveStatic } from "./vite";
-import { createServer } from "http";
-import { setupWebSocketServer } from "./websocket";
-import session from "express-session";
-import connectPgSimple from "connect-pg-simple";
-import { db } from "./db";
-import adminRoutes from "./admin/routes";
-import { emailService } from "./services/email";
-import { apiLimiter, authLimiter, paymentLimiter } from "./middleware/rateLimiter";
-import helmet from "helmet";
-import compression from "compression";
-import errorLoggingRoutes from "./routes/error-logging";
-import { securityHeaders, corsHeaders, requestValidation } from "./middleware/securityHeaders";
-import { sanitizeInput } from "./middleware/validation";
-import { requestLoggerMiddleware, errorRequestLogger, securityLogger } from "./middleware/requestLogger";
-import { loggingService } from "./services/logging";
-import cors from "cors";
+import { setupVite, serveStatic, log } from "./vite";
 
-async function startServer() {
-  const app = express();
+const app = express();
+app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
-  // Import auth setup
-  const { setupAuth } = await import('./auth/setup');
+app.use((req, res, next) => {
+  const start = Date.now();
+  const path = req.path;
+  let capturedJsonResponse: Record<string, any> | undefined = undefined;
 
-  // Logging middleware (early in the stack)
-  app.use(requestLoggerMiddleware());
-  app.use(securityLogger());
+  const originalResJson = res.json;
+  res.json = function (bodyJson, ...args) {
+    capturedJsonResponse = bodyJson;
+    return originalResJson.apply(res, [bodyJson, ...args]);
+  };
 
-  // Security middleware
-  app.use(helmet({
-    contentSecurityPolicy: {
-      directives: {
-        defaultSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        scriptSrc: ["'self'"],
-        imgSrc: ["'self'", "data:", "https:"],
-      },
-    },
-  }));
-  app.use(compression());
-
-  // Rate limiting
-  app.use('/api/auth', authLimiter);
-  app.use('/api/transactions', paymentLimiter);
-  app.use('/api', apiLimiter);
-
-  // Security headers first
-  app.use(securityHeaders());
-  app.use(corsHeaders());
-  app.use(requestValidation());
-
-  // CORS middleware
-  app.use(cors({
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie']
-  }));
-
-  // Express middleware with size limits
-  app.use(express.json({
-    limit: '10mb',
-    verify: (req, res, buf) => {
-      if (buf.length > 10 * 1024 * 1024) {
-        throw new Error('Request entity too large');
+  res.on("finish", () => {
+    const duration = Date.now() - start;
+    if (path.startsWith("/api")) {
+      let logLine = `${req.method} ${path} ${res.statusCode} in ${duration}ms`;
+      if (capturedJsonResponse) {
+        logLine += ` :: ${JSON.stringify(capturedJsonResponse)}`;
       }
+
+      if (logLine.length > 80) {
+        logLine = logLine.slice(0, 79) + "…";
+      }
+
+      log(logLine);
     }
-  }));
-  app.use(express.urlencoded({
-    extended: true,
-    limit: '10mb',
-    parameterLimit: 1000
-  }));
+  });
 
-  // Input sanitization
-  app.use(sanitizeInput());
+  next();
+});
 
-  // Session configuration
-  const PgSession = connectPgSimple(session);
+(async () => {
+  const server = await registerRoutes(app);
 
-  app.use(
-    session({
-      store: new PgSession({
-        pool: db as any,
-        tableName: 'session',
-        createTableIfMissing: true,
-      }),
-      secret: process.env.SESSION_SECRET || 'your-secret-key',
-      resave: false,
-      saveUninitialized: false,
-      cookie: {
-        secure: process.env.NODE_ENV === 'production',
-        httpOnly: true,
-        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        sameSite: 'strict'
-      },
-      name: 'sessionId' // Change default session name
-    })
-  );
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-  // Authentication setup
-  if (setupAuth) {
-    app.use(setupAuth());
-  }
+    res.status(status).json({ message });
+    throw err;
+  });
 
-  // Register admin routes
-  app.use('/api/admin', adminRoutes);
-
-  // Register main API routes
-  registerRoutes(app);
-
-  // Register error logging route
-  app.use('/api/errors', errorLoggingRoutes);
-
-  // Error handling middleware (must be last)
-  // Error handling middleware (must be last)
-  const { errorHandler, notFoundHandler } = await import("./middleware/errorHandler");
-  app.use(errorRequestLogger());
-  app.use(notFoundHandler);
-  app.use(errorHandler);
-
-
-  // Create HTTP server
-  const server = createServer(app);
-
-  // Initialize WebSocket server
-  const io = await setupWebSocketServer(server);
-
-  // Initialize LiveSystemService with Socket.IO instance
-  const { LiveSystemService } = await import('./services/live-system');
-  LiveSystemService.setSocketIOInstance(io);
-
-  console.log('Real-time services initialized successfully');
-
-  // Make WebSocket server globally available for route handlers
-  (global as any).io = io;
-  app.set('server', { io });
-
-  // Setup Vite or static serving
+  // importantly only setup vite in development and after
+  // setting up all the other routes so the catch-all route
+  // doesn't interfere with the other routes
   if (app.get("env") === "development") {
     await setupVite(app, server);
   } else {
     serveStatic(app);
   }
 
-  // Start server
-  const PORT = parseInt(process.env.PORT || '5000', 10);
-  server.listen(PORT, "0.0.0.0", () => {
-    const formattedTime = new Intl.DateTimeFormat("en-US", {
-      dateStyle: "short",
-      timeStyle: "medium",
-      timeZone: "UTC",
-    }).format(new Date());
-
-    loggingService.info(`Server started on port ${PORT}`, {
-      port: PORT,
-      environment: process.env.NODE_ENV || 'development',
-      nodeVersion: process.version,
-      platform: process.platform,
-      pid: process.pid
-    });
-
-    console.log(`${formattedTime} [express] serving on port ${PORT}`);
+  // ALWAYS serve the app on the port specified in the environment variable PORT
+  // Other ports are firewalled. Default to 5000 if not specified.
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
+  const port = parseInt(process.env.PORT || '5000', 10);
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
+    log(`serving on port ${port}`);
   });
-
-  // Memory monitoring
-  setInterval(() => {
-    loggingService.logMemoryUsage();
-  }, 300000); // Every 5 minutes
-
-  // Graceful shutdown handling
-  process.on('SIGTERM', async () => {
-    loggingService.info('SIGTERM received, shutting down gracefully');
-    await loggingService.gracefulShutdown();
-    server.close(() => {
-      process.exit(0);
-    });
-  });
-
-  process.on('SIGINT', async () => {
-    loggingService.info('SIGINT received, shutting down gracefully');
-    await loggingService.gracefulShutdown();
-    server.close(() => {
-      process.exit(0);
-    });
-  });
-
-  // Unhandled rejection logging
-  process.on('unhandledRejection', (reason, promise) => {
-    loggingService.error('Unhandled Rejection', new Error(String(reason)), {
-      metadata: { promise: promise.toString() }
-    });
-  });
-
-  process.on('uncaughtException', (error) => {
-    loggingService.error('Uncaught Exception', error);
-    process.exit(1);
-  });
-
-}
-
-// Start the server
-startServer().catch(console.error);
+})();
