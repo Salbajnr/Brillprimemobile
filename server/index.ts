@@ -14,9 +14,19 @@ import compression from "compression";
 import errorLoggingRoutes from "./routes/error-logging";
 import { securityHeaders, corsHeaders, requestValidation } from "./middleware/securityHeaders";
 import { sanitizeInput } from "./middleware/validation";
+import { requestLoggerMiddleware, errorRequestLogger, securityLogger } from "./middleware/requestLogger";
+import { loggingService } from "./services/logging";
+import cors from "cors";
 
 async function startServer() {
   const app = express();
+
+  // Import auth setup
+  const { setupAuth } = await import('./auth/setup');
+
+  // Logging middleware (early in the stack)
+  app.use(requestLoggerMiddleware());
+  app.use(securityLogger());
 
   // Security middleware
   app.use(helmet({
@@ -91,7 +101,9 @@ async function startServer() {
   );
 
   // Authentication setup
-  app.use(setupAuth());
+  if (setupAuth) {
+    app.use(setupAuth());
+  }
 
   // Register admin routes
   app.use('/api/admin', adminRoutes);
@@ -104,6 +116,7 @@ async function startServer() {
 
   // Error handling middleware (must be last)
   import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+  app.use(errorRequestLogger());
   app.use(notFoundHandler);
   app.use(errorHandler);
 
@@ -138,7 +151,49 @@ async function startServer() {
       timeZone: "UTC",
     }).format(new Date());
 
+    loggingService.info(`Server started on port ${PORT}`, {
+      port: PORT,
+      environment: process.env.NODE_ENV || 'development',
+      nodeVersion: process.version,
+      platform: process.platform,
+      pid: process.pid
+    });
+
     console.log(`${formattedTime} [express] serving on port ${PORT}`);
+  });
+
+  // Memory monitoring
+  setInterval(() => {
+    loggingService.logMemoryUsage();
+  }, 300000); // Every 5 minutes
+
+  // Graceful shutdown handling
+  process.on('SIGTERM', async () => {
+    loggingService.info('SIGTERM received, shutting down gracefully');
+    await loggingService.gracefulShutdown();
+    server.close(() => {
+      process.exit(0);
+    });
+  });
+
+  process.on('SIGINT', async () => {
+    loggingService.info('SIGINT received, shutting down gracefully');
+    await loggingService.gracefulShutdown();
+    server.close(() => {
+      process.exit(0);
+    });
+  });
+
+  // Unhandled rejection logging
+  process.on('unhandledRejection', (reason, promise) => {
+    loggingService.error('Unhandled Rejection', new Error(String(reason)), {
+      metadata: { promise: promise.toString() }
+    });
+  });
+
+  process.on('uncaughtException', (error) => {
+    loggingService.error('Uncaught Exception', error);
+    process.exit(1);
   });
 
 }

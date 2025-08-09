@@ -24,14 +24,25 @@ export function errorHandler(
   let message = 'Internal server error';
   let details: any = undefined;
 
-  // Log error
-  console.error('Error occurred:', {
-    error: error.message,
-    stack: error.stack,
-    url: req.url,
-    method: req.method,
+  // Import logging service
+  const { loggingService } = require('../services/logging');
+
+  // Enhanced error logging with context
+  loggingService.error('Request error occurred', error, {
+    requestId: (req as any).requestId,
+    userId: req.user?.id,
+    userRole: req.user?.role,
+    sessionId: req.sessionID,
     userAgent: req.headers['user-agent'],
-    timestamp: new Date().toISOString()
+    ip: req.ip || req.connection.remoteAddress,
+    route: req.route?.path || req.path,
+    method: req.method,
+    metadata: {
+      body: req.body,
+      query: req.query,
+      params: req.params,
+      headers: req.headers
+    }
   });
 
   // Handle different error types

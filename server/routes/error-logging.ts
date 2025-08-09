@@ -18,30 +18,83 @@ interface ErrorLogData {
 router.post("/log-error", async (req, res) => {
   try {
     const errorData: ErrorLogData = req.body;
+    const { loggingService } = await import('../services/logging');
     
-    // Log error to console in development
-    if (process.env.NODE_ENV === 'development') {
-      console.error('Frontend Error:', {
-        message: errorData.message,
-        stack: errorData.stack,
+    // Enhanced frontend error logging
+    loggingService.error('Frontend Error', new Error(errorData.message), {
+      userId: errorData.userId,
+      userAgent: errorData.userAgent,
+      metadata: {
+        source: 'frontend',
         url: errorData.url,
-        timestamp: errorData.timestamp
+        componentStack: errorData.componentStack,
+        timestamp: errorData.timestamp,
+        stack: errorData.stack,
+        userAgent: errorData.userAgent,
+        sessionId: req.sessionID,
+        ip: req.ip || req.connection.remoteAddress
+      }
+    });
+
+    // Store critical errors in database for tracking
+    if (errorData.message.toLowerCase().includes('critical') || 
+        errorData.message.toLowerCase().includes('payment') ||
+        errorData.message.toLowerCase().includes('security')) {
+      
+      try {
+        await db.insert(errorLogs).values({
+          message: errorData.message,
+          stack: errorData.stack,
+          url: errorData.url,
+          userAgent: errorData.userAgent,
+          userId: errorData.userId,
+          severity: 'CRITICAL',
+          source: 'frontend',
+          timestamp: new Date(errorData.timestamp),
+          metadata: JSON.stringify({
+            componentStack: errorData.componentStack,
+            sessionId: req.sessionID,
+            ip: req.ip || req.connection.remoteAddress
+          })
+        });
+      } catch (dbError) {
+        loggingService.error('Failed to store error in database', dbError as Error, {
+          originalError: errorData.message
+        });
+      }
+    }
+
+    // Send alerts for critical errors
+    if (process.env.NODE_ENV === 'production' && 
+        (errorData.message.toLowerCase().includes('payment') ||
+         errorData.message.toLowerCase().includes('security'))) {
+      
+      // Here you could integrate with alerting services
+      loggingService.logSecurity({
+        event: 'SUSPICIOUS_ACTIVITY',
+        userId: errorData.userId,
+        ip: req.ip || req.connection.remoteAddress || '',
+        userAgent: errorData.userAgent,
+        details: {
+          type: 'CRITICAL_FRONTEND_ERROR',
+          error: errorData.message,
+          url: errorData.url
+        }
       });
     }
 
-    // In production, you might want to:
-    // 1. Store errors in database
-    // 2. Send to error tracking service (Sentry, Bugsnag, etc.)
-    // 3. Send alerts for critical errors
-
-    // For now, just acknowledge the error was received
     res.status(200).json({ 
       success: true, 
-      message: "Error logged successfully" 
+      message: "Error logged successfully",
+      errorId: `fe_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
     });
 
   } catch (error) {
-    console.error('Failed to log frontend error:', error);
+    const { loggingService } = await import('../services/logging');
+    loggingService.error('Failed to log frontend error', error as Error, {
+      originalErrorData: req.body
+    });
+    
     res.status(500).json({ 
       success: false, 
       message: "Failed to log error" 
