@@ -19,6 +19,8 @@ export { ApiClient as SharedApiClient } from './api';
 export { ApiService as SharedApiService } from './api/apiService';
 export { WebSocketService as SharedWebSocketService } from './websocket/websocketService';
 export { StorageAdapter, WebStorageAdapter } from './storage/storageAdapter';
+export { WebStorageAdapter } from './storage/webStorageAdapter';
+export { NativeFileSyncService } from './api/nativeFileSync';
 export { useAuth as useSharedAuth } from './hooks';
 export { useApiCall } from './hooks/useApiCall';
 export { validators, validateForm } from './validation/validators';
