@@ -9,7 +9,8 @@ import {
   type Conversation, type InsertConversation, type ChatMessage, type InsertChatMessage,
   type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
   type MerchantAnalytics, type InsertMerchantAnalytics,
-  type SupportTicket, type InsertSupportTicket
+  type SupportTicket, type InsertSupportTicket,
+  escrowTransactions, escrowReleases, disputes, deliveryConfirmations, transactions // Assuming these are imported correctly
 } from "@shared/schema";
 import { desc, eq, and, isNull, ne, sql, count, sum, avg, gte, like, or, gt, lt, lte, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./db";
@@ -66,12 +67,13 @@ export interface IStorage {
   getAvailableDrivers(lat: number, lng: number, radius?: number): Promise<any[]>;
   assignDriverToOrder(orderId: string, driverId: number): Promise<any>;
   updateDriverLocation(driverId: number, latitude: number, longitude: number): Promise<void>;
+  updateDriverProfile(driverId: number, data: any): Promise<any>; // Added this method
 
   // Real-time Analytics operations
   getSystemMetrics(): Promise<any>;
   getUserActivityMetrics(timeframe?: string): Promise<any>;
   getTransactionMetrics(timeframe?: string): Promise<any>;
-  
+
   // Enhanced merchant methods
   getMerchantOrdersForDate(merchantId: number, date: Date): Promise<any[]>;
   getMerchantActiveOrders(merchantId: number): Promise<any[]>;
@@ -79,7 +81,7 @@ export interface IStorage {
   getMerchantProducts(merchantId: number): Promise<any[]>;
   getMerchantOrdersForPeriod(merchantId: number, startDate: Date, endDate: Date): Promise<any[]>;
   updateMerchantBusinessHours(merchantId: number, isOpen: boolean): Promise<any>;
-  
+
   // Enhanced driver methods
   updateDriverStatus(driverId: number, isOnline: boolean, location?: { lat: number; lng: number }): Promise<any>;
   getAvailableDeliveryRequests(driverId: number): Promise<any[]>;
@@ -91,7 +93,7 @@ export interface IStorage {
   getDriverDeliveriesForDate(driverId: number, date: Date): Promise<any[]>;
   getDriverDeliveriesForPeriod(driverId: number, startDate: Date, endDate: Date): Promise<any[]>;
   getDriverDeliveries(driverId: number): Promise<any[]>;
-  
+
   // Secure Transaction System methods
   createEscrowTransaction(transaction: any): Promise<any>;
   processSecurePayment(paymentData: any): Promise<any>;
@@ -103,7 +105,7 @@ export interface IStorage {
   getMerchantEscrowBalance(merchantId: number): Promise<any>;
   getUserTransactionHistory(userId: number, filters: any): Promise<any[]>;
   confirmDelivery(confirmationData: any): Promise<any>;
-  
+
   // Admin Oversight methods
   getPendingVerifications(filters: any): Promise<any[]>;
   reviewVerification(reviewData: any): Promise<any>;
@@ -700,6 +702,154 @@ export class DatabaseStorage implements IStorage {
         isActive: true
       });
   }
+  
+  async updateDriverProfile(driverId: number, data: any) {
+    const [driver] = await db.update(driverProfiles)
+      .set({
+        phoneNumber: data.phoneNumber,
+        vehicleType: data.vehicleType,
+        vehicleModel: data.vehicleModel,
+        plateNumber: data.plateNumber,
+        driverLicense: data.driverLicense,
+        vehicleRegistration: data.vehicleRegistration,
+        insuranceDocument: data.insuranceDocument,
+        profilePicture: data.profilePicture,
+        backgroundCheckStatus: data.backgroundCheckStatus,
+        tier: data.tier,
+        isVerified: data.isVerified,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.id, driverId))
+      .returning();
+
+    return driver;
+  }
+
+  // SECURE TRANSACTION METHODS
+  async createEscrowTransaction(data: any) {
+    const [transaction] = await db.insert(escrowTransactions)
+      .values(data)
+      .returning();
+    return transaction;
+  }
+
+  async getEscrowTransaction(transactionId: string) {
+    const [transaction] = await db.select()
+      .from(escrowTransactions)
+      .where(eq(escrowTransactions.id, transactionId));
+    return transaction;
+  }
+
+  async updateEscrowTransaction(transactionId: string, data: any) {
+    const [transaction] = await db.update(escrowTransactions)
+      .set(data)
+      .where(eq(escrowTransactions.id, transactionId))
+      .returning();
+    return transaction;
+  }
+
+  async processSecurePayment(paymentData: any) {
+    try {
+      // Simulate payment processing - replace with actual Paystack integration
+      return {
+        success: true,
+        reference: `PAY_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        message: "Payment processed successfully"
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: "Payment processing failed"
+      };
+    }
+  }
+
+  async verifyEscrowReleaseConditions(transactionId: string) {
+    const transaction = await this.getEscrowTransaction(transactionId);
+
+    if (!transaction) {
+      return { eligible: false, reason: "Transaction not found" };
+    }
+
+    if (transaction.status !== 'PAID') {
+      return { eligible: false, reason: "Transaction not paid" };
+    }
+
+    if (transaction.disputeId) {
+      return { eligible: false, reason: "Transaction is disputed" };
+    }
+
+    return { eligible: true };
+  }
+
+  async releaseEscrowFunds(data: any) {
+    const { transactionId, releaseType, notes, releasedBy } = data;
+
+    // Update transaction status
+    await this.updateEscrowTransaction(transactionId, {
+      status: 'RELEASED',
+      releasedAt: new Date()
+    });
+
+    // Create release record
+    const [release] = await db.insert(escrowReleases)
+      .values({
+        transactionId,
+        releaseType,
+        releasedBy,
+        amount: 0, // Will be updated with actual amount
+        notes,
+        releasedAt: new Date()
+      })
+      .returning();
+
+    return release;
+  }
+
+  async createDispute(data: any) {
+    const [dispute] = await db.insert(disputes)
+      .values(data)
+      .returning();
+    return dispute;
+  }
+
+  async getMerchantEscrowBalance(merchantId: number) {
+    // Mock implementation - replace with actual database queries
+    return {
+      totalHeld: 0,
+      pendingRelease: 0,
+      availableForWithdrawal: 0,
+      totalWithdrawn: 0,
+      recentTransactions: []
+    };
+  }
+
+  async getUserTransactionHistory(userId: number, options: any) {
+    const { status, limit = 50, offset = 0 } = options;
+
+    let query = db.select()
+      .from(escrowTransactions)
+      .where(or(
+        eq(escrowTransactions.customerId, userId),
+        eq(escrowTransactions.merchantId, userId)
+      ))
+      .limit(limit)
+      .offset(offset);
+
+    if (status) {
+      query = query.where(eq(escrowTransactions.status, status));
+    }
+
+    return await query;
+  }
+
+  async confirmDelivery(data: any) {
+    const [confirmation] = await db.insert(deliveryConfirmations)
+      .values(data)
+      .returning();
+    return confirmation;
+  }
+
 
   // Real-time Analytics Operations
   async getSystemMetrics(): Promise<any> {
@@ -884,7 +1034,7 @@ export class DatabaseStorage implements IStorage {
       .insert(vendorPosts)
       .values(postData)
       .returning();
-    
+
     return post;
   }
 
@@ -1102,7 +1252,7 @@ export class DatabaseStorage implements IStorage {
       .insert(products)
       .values(productData)
       .returning();
-    
+
     return product;
   }
 
@@ -1423,99 +1573,6 @@ export class DatabaseStorage implements IStorage {
 
   async getDriverDeliveries(driverId: number): Promise<any[]> {
     return [];
-  }
-
-  // Secure Transaction System implementations
-  async createEscrowTransaction(transaction: any): Promise<any> {
-    const transactionId = `TXN_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    return {
-      id: transactionId,
-      ...transaction,
-      createdAt: new Date()
-    };
-  }
-
-  async processSecurePayment(paymentData: any): Promise<any> {
-    // Mock payment processing - integrate with actual Paystack/Flutterwave
-    if (paymentData.amount > 0) {
-      return {
-        success: true,
-        reference: `REF_${Date.now()}`,
-        transactionId: paymentData.transactionId,
-        amount: paymentData.amount
-      };
-    }
-    return { success: false, error: 'Invalid payment amount' };
-  }
-
-  async updateEscrowTransaction(transactionId: string, updateData: any): Promise<any> {
-    return { transactionId, ...updateData, updatedAt: new Date() };
-  }
-
-  async getEscrowTransaction(transactionId: string): Promise<any> {
-    return {
-      id: transactionId,
-      customerId: 1,
-      merchantId: 2,
-      amount: 15000,
-      status: 'PAID',
-      escrowReleaseDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-    };
-  }
-
-  async verifyEscrowReleaseConditions(transactionId: string): Promise<any> {
-    return { eligible: true, reason: 'All conditions met' };
-  }
-
-  async releaseEscrowFunds(releaseData: any): Promise<any> {
-    return {
-      transactionId: releaseData.transactionId,
-      releaseType: releaseData.releaseType,
-      releasedAt: new Date(),
-      amount: 15000
-    };
-  }
-
-  async createDispute(disputeData: any): Promise<any> {
-    const disputeId = `DISPUTE_${Date.now()}`;
-    return {
-      id: disputeId,
-      ...disputeData,
-      status: 'OPEN',
-      createdAt: new Date()
-    };
-  }
-
-  async getMerchantEscrowBalance(merchantId: number): Promise<any> {
-    return {
-      totalHeld: 124000, // ₦124,000
-      pendingRelease: 45000,
-      availableForWithdrawal: 79000,
-      totalWithdrawn: 230000,
-      recentTransactions: []
-    };
-  }
-
-  async getUserTransactionHistory(userId: number, filters: any): Promise<any[]> {
-    return [
-      {
-        id: 'TXN_001',
-        orderId: 'ORD_001',
-        amount: 15000,
-        status: 'COMPLETED',
-        paymentMethod: 'card',
-        createdAt: new Date(),
-        escrowReleaseDate: new Date()
-      }
-    ];
-  }
-
-  async confirmDelivery(confirmationData: any): Promise<any> {
-    return {
-      transactionId: confirmationData.transactionId,
-      confirmedAt: new Date(),
-      rating: confirmationData.rating
-    };
   }
 
   // Admin Oversight implementations

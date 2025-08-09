@@ -8,11 +8,33 @@ import connectPgSimple from "connect-pg-simple";
 import { db } from "./db";
 import adminRoutes from "./admin/routes";
 import { emailService } from "./services/email";
+import { apiLimiter, authLimiter, paymentLimiter } from "./middleware/rateLimiter";
+import helmet from "helmet";
+import compression from "compression";
 
 async function startServer() {
 const app = express();
-app.use(express.json());
-app.use(express.urlencoded({ extended: false }));
+
+// Security middleware
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+app.use(compression());
+
+// Rate limiting
+app.use('/api/auth', authLimiter);
+app.use('/api/transactions', paymentLimiter);
+app.use('/api', apiLimiter);
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: false, limit: '10mb' }));
 
 // Session configuration
 const PgSession = connectPgSimple(session);
