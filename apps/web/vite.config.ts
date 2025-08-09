@@ -19,18 +19,18 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      "@": path.resolve(import.meta.dirname, "src"),
-      "@shared": path.resolve(import.meta.dirname, "..", "..", "packages", "shared", "src"),
-      "@server": path.resolve(import.meta.dirname, "..", "..", "packages", "server", "src"),
+      "@": path.resolve(__dirname, "src"),
+      "@shared": path.resolve(__dirname, "..", "..", "packages", "shared", "src"),
+      "@server": path.resolve(__dirname, "..", "..", "packages", "server", "src"),
     },
   },
   build: {
-    outDir: path.resolve(import.meta.dirname, "dist"),
+    outDir: path.resolve(__dirname, "dist"),
     emptyOutDir: true,
   },
   server: {
     host: '0.0.0.0',
-    port: 5173,
+    port: 5000,
     fs: {
       strict: false,
       allow: ['../..']

@@ -12,7 +12,7 @@
     "db:push": "drizzle-kit push"
   },
   "dependencies": {
-    "@brillprime/shared": "workspace:*",
+    "@brillprime/shared": "*",
     "@neondatabase/serverless": "^0.10.4",
     "@paypal/paypal-server-sdk": "^1.1.0",
     "@stripe/stripe-js": "^7.5.0",
