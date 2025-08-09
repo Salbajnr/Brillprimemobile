@@ -55,7 +55,7 @@ import Messages from "@/pages/messages";
 import IdentityVerification from "@/pages/identity-verification-simple";
 import TollPayments from "./pages/toll-payments";
 import FuelDeliveryTracking from "./pages/fuel-delivery-tracking";
-import AdminDashboard from "@/pages/admin-dashboard";
+
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
@@ -68,13 +68,13 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 }
 
 function AdminProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const { isAuthenticated } = useAuth();
+  const AdminProtected = React.lazy(() => import('./components/admin-protected-route'));
   
-  if (!isAuthenticated()) {
-    return <SignInPage />;
-  }
-
-  return <Component />;
+  return (
+    <AdminProtected>
+      <Component />
+    </AdminProtected>
+  );
 }
 
 function Router() {
@@ -199,7 +199,7 @@ function Router() {
       <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
-      {/* Admin Routes */}
+      {/* Admin Routes - Consolidated under /admin */}
       <Route path="/admin" component={() => (
         <PageErrorBoundary pageName="Admin Login">
           <AsyncErrorBoundary>
