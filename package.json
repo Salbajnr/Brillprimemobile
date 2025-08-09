@@ -3,9 +3,16 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5000",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "npm run dev:server & npm run dev:web",
+    "dev:server": "cd packages/server && npm run dev",
+    "dev:web": "cd apps/web && npm run dev",
+    "build": "npm run build:shared && npm run build:server && npm run build:web",
+    "build:shared": "cd packages/shared && npm run build",
+    "build:server": "cd packages/server && npm run build",
+    "build:web": "cd apps/web && npm run build",
+    "start": "cd packages/server && npm start",
+    "test": "jest",
+    "test:e2e": "jest --config=jest.e2e.config.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
