@@ -1723,6 +1723,9 @@ export function setupRoutes(app: any) {
   registerLocationRecommendationsRoutes(app);
   registerTollPaymentRoutes(app);
 
+  // Register file sync routes for native app integration
+  app.use('/api/files', (await import('./routes/file-sync')).default);
+
   const server = createServer(app);
   return server;
 }
