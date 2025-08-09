@@ -1,42 +1,25 @@
-
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import path from "path";
-import { fileURLToPath } from "url";
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-import runtimeErrorOverlay from "@replit/vite-plugin-runtime-error-modal";
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
-  plugins: [
-    react(),
-    runtimeErrorOverlay(),
-    ...(process.env.NODE_ENV !== "development" &&
-    process.env.REPL_ID !== undefined
-      ? [
-          await import("@replit/vite-plugin-cartographer").then((m) =>
-            m.cartographer(),
-          ),
-        ]
-      : []),
-  ],
+  plugins: [react()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "src"),
-      "@shared": path.resolve(__dirname, "..", "..", "packages", "shared", "src"),
-      "@server": path.resolve(__dirname, "..", "..", "packages", "server", "src"),
+      '@': path.resolve(__dirname, './src'),
+      '@packages': path.resolve(__dirname, '../../packages'),
+      '@shared-ui': path.resolve(__dirname, '../../packages/shared-ui/src'),
+      '@business-logic': path.resolve(__dirname, '../../packages/business-logic/src'),
+      '@api-client': path.resolve(__dirname, '../../packages/api-client/src'),
+      '@constants': path.resolve(__dirname, '../../packages/constants/src'),
     },
-  },
-  build: {
-    outDir: path.resolve(__dirname, "dist"),
-    emptyOutDir: true,
   },
   server: {
-    host: '0.0.0.0',
     port: 5000,
-    fs: {
-      strict: false,
-      allow: ['../..']
-    },
+    host: '0.0.0.0'
   },
-});
+  build: {
+    outDir: 'dist',
+    sourcemap: true
+  }
+})
