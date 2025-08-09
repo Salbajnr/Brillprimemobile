@@ -1,14 +1,23 @@
 {
-  "name": "rest-express",
+  "name": "brillprime-monorepo",
   "version": "1.0.0",
   "type": "module",
   "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "NODE_ENV=development tsx server/index.ts",
+    "dev:web": "npm run dev --workspace=apps/web",
+    "dev:mobile": "npm run start --workspace=apps/Mobile",
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build:web": "npm run build --workspace=apps/web",
+    "build:mobile": "npm run build --workspace=apps/Mobile",
     "start": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "install:all": "npm install && npm install --workspace=apps/web && npm install --workspace=apps/Mobile"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
