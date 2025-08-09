@@ -100,10 +100,9 @@ function Router() {
       <Route path="/fuel-order-details/:stationId" component={lazy(() => import("./pages/fuel-order-details"))} />
       <Route path="/order-confirmation/:orderId" component={lazy(() => import("./pages/order-confirmation"))} />
       <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
-      <Route path="/qr-scanner">
-        {() => <ProtectedRoute component={QRScannerPage} />}
-      </Route>
+      <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
+      <Route path="/admin-control-center" component={lazy(() => import("./pages/admin-control-center"))} />
       <Route path="/commodities">
         {() => <ProtectedRoute component={CommoditiesPage} />}
       </Route>

@@ -10,6 +10,8 @@ import { registerOrderStatusRoutes } from "./routes/order-status";
 import { registerTestRealtimeRoutes } from "./routes/test-realtime";
 import { registerMerchantRoutes } from "./routes/merchant";
 import { registerDriverRoutes } from "./routes/driver";
+import { registerSecureTransactionRoutes } from "./routes/secure-transactions";
+import { registerAdminOversightRoutes } from "./routes/admin-oversight";
 import { registerRatingsReviewsRoutes } from "./routes/ratings-reviews";
 import { registerLocationRecommendationsRoutes } from "./routes/location-recommendations";
 import { registerTollPaymentRoutes } from "./routes/toll-payments";
@@ -1435,6 +1437,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register enhanced merchant and driver routes
   registerMerchantRoutes(app);
   registerDriverRoutes(app);
+  
+  // Register secure transaction system routes
+  registerSecureTransactionRoutes(app);
+  registerAdminOversightRoutes(app);
 
     // Authentication middleware
   const auth = (req: any, res: any, next: any) => {

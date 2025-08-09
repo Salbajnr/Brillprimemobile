@@ -1,0 +1,57 @@
+Secure transaction system 
+PAYMENT INITIATION
+├── Customer places order and pays
+├── Payment processed via Paystack/Flutterwave
+├── Funds held in secure escrow account
+├── Merchant receives order notification
+└── Order fulfillment begins
+
+ESCROW MANAGEMENT
+├── Funds remain in escrow during delivery
+├── Automatic release triggers:
+│   ├── 7-day holding period completion
+│   ├── Customer confirms delivery satisfaction
+│   ├── No disputes filed within grace period
+│   └── Admin manual release for special cases
+├── Dispute escalation:
+│   ├── Customer or merchant files dispute
+│   ├── Evidence submission period (48 hours)
+│   ├── Automated resolution attempt
+│   ├── Admin intervention if needed
+│   └── Final resolution and fund distribution
+└── Transaction completion and settlement
+SEPERATE ADMIN DASHBOARD OR PANEL OVER SIGHT (control center by admin )
+ADMIN DASHBOARD
+├── System Monitoring
+│   ├── Real-time platform metrics and health
+│   ├── User activity and transaction monitoring
+│   ├── Security alerts and fraud detection
+│   └── System performance and uptime tracking
+│
+├── User Management
+│   ├── Account verification and approval workflow
+│   ├── Document review for merchants/drivers
+│   ├── Role switching approval process
+│   ├── Account suspension and compliance actions
+│   └── User support ticket management
+│
+├── Escrow & Financial Operations
+│   ├── Escrow balance monitoring (₦12.4M total)
+│   ├── Dispute resolution with evidence review
+│   ├── Manual fund release/refund processing
+│   ├── Financial audit trails and reporting
+│   └── Regulatory compliance monitoring
+│
+├── Platform Analytics
+│   ├── Business intelligence and performance metrics
+│   ├── User behavior analysis and insights
+│   ├── Revenue tracking and financial forecasting
+│   ├── Market trends and competitive analysis
+│   └── Fraud detection and security monitoring
+│
+└── Content & Quality Control
+    ├── Product listing review and moderation
+    ├── User-generated content oversight
+    ├── Quality assurance and standards enforcement
+    ├── Merchant performance evaluation
+    └── Platform policy enforcement
