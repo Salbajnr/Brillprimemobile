@@ -1,22 +1,21 @@
-
 {
   "name": "@brillprime/shared",
   "version": "1.0.0",
   "main": "src/index.ts",
-  "types": "src/index.ts",
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"
   },
   "dependencies": {
-    "react": "^18.3.1",
-    "react-native": "*"
-  },
-  "devDependencies": {
-    "typescript": "^5.6.3",
-    "@types/react": "^18.3.23"
+    "axios": "^1.6.2",
+    "zod": "^3.22.4"
   },
   "peerDependencies": {
-    "react": "^18.3.1"
+    "react": "^18.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.0.0"
   }
 }

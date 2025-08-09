@@ -29,7 +29,7 @@ console.log('API Base URL:', APP_CONFIG.api.baseUrl);
 
 // Use shared hooks (works with React)
 export function useSharedExample() {
-  return useApiCall(() => apiService.get('/api/products'));
+  return useApiCall(() => apiService.getProducts());
 }
 
 // Use shared utilities

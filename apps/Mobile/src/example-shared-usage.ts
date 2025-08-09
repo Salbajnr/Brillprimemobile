@@ -40,7 +40,7 @@ console.log('API Base URL:', APP_CONFIG.api.baseUrl);
 
 // Use shared hooks (works with React Native)
 export function useSharedExample() {
-  return useApiCall(() => apiService.getProducts());
+  return useApiCall(() => mobileApiService.getProducts());
 }
 
 // Use shared utilities

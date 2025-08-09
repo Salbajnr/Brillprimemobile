@@ -39,3 +39,38 @@ export { formatDate, getOrderStatusColor } from './utils';
 export { ApiService as SharedApiService } from './api/apiService';
 export { WebSocketService as SharedWebSocketService } from './websocket/websocketService';
 export { useAuth as useSharedAuth } from './hooks';
+
+// Export everything from shared packages
+export * from './api/apiService';
+export * from './api/nativeFileSync';
+export * from './websocket/websocketClient';
+export * from './websocket/websocketService';
+export * from './storage/storageAdapter';
+export * from './storage/webStorageAdapter';
+export * from './hooks/useApiCall';
+export * from './hooks/useAuth';
+export * from './hooks/useOrders';
+export * from './hooks/useProducts';
+export * from './validation/validators';
+export * from './formatters/currency';
+
+// Re-export types
+export * from './types';
+
+// Export default configurations
+export { APP_CONFIG } from './constants';
+
+// Create convenient service aliases for backward compatibility
+export { WebSocketService as WebSocketClient } from './websocket/websocketService';
+export { createWebSocketClient, useWebSocket } from './websocket/websocketClient';
+
+// Export validators with convenient names
+export { 
+  validateEmail,
+  validatePassword,
+  validatePhone,
+  validateRequired
+} from './validation/validators';
+
+// Export formatters
+export { formatCurrency } from './formatters/currency';
