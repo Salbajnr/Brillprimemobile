@@ -22,6 +22,14 @@ import CheckoutScreen from '../screens/CheckoutScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import { FileManagerScreen } from '../screens/FileManagerScreen';
 import { FileViewerScreen } from '../screens/FileViewerScreen';
+import WalletFundScreen from '../screens/WalletFundScreen';
+import FuelOrderingScreen from '../screens/FuelOrderingScreen';
+import QRScannerScreen from '../screens/QRScannerScreen';
+import TollPaymentsScreen from '../screens/TollPaymentsScreen';
+import CommoditiesScreen from '../screens/CommoditiesScreen';
+import VendorFeedScreen from '../screens/VendorFeedScreen';
+import MerchantsScreen from '../screens/MerchantsScreen';
+import ChatScreen from '../screens/ChatScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -104,6 +112,14 @@ const AppStack = () => (
             component={FileViewerScreen}
             options={{ title: 'File Viewer' }}
           />
+        <Stack.Screen name="WalletFund" component={WalletFundScreen} />
+        <Stack.Screen name="FuelOrdering" component={FuelOrderingScreen} />
+        <Stack.Screen name="QRScanner" component={QRScannerScreen} />
+        <Stack.Screen name="TollPayments" component={TollPaymentsScreen} />
+        <Stack.Screen name="Commodities" component={CommoditiesScreen} />
+        <Stack.Screen name="VendorFeed" component={VendorFeedScreen} />
+        <Stack.Screen name="Merchants" component={MerchantsScreen} />
+        <Stack.Screen name="Chat" component={ChatScreen} />
   </Stack.Navigator>
 );
 
