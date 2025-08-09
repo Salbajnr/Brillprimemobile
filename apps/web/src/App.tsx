@@ -9,6 +9,7 @@ import React from "react";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageErrorBoundary } from "@/components/PageErrorBoundary";
 import { AsyncErrorBoundary } from "@/components/AsyncErrorBoundary";
+import { AdminProvider } from "@/lib/admin-auth";
 
 import SplashPage from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
@@ -59,6 +60,16 @@ import AdminDashboard from "@/pages/admin-dashboard";
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { isAuthenticated } = useAuth();
 
+  if (!isAuthenticated()) {
+    return <SignInPage />;
+  }
+
+  return <Component />;
+}
+
+function AdminProtectedRoute({ component: Component }: { component: React.ComponentType }) {
+  const { isAuthenticated } = useAuth();
+  
   if (!isAuthenticated()) {
     return <SignInPage />;
   }
@@ -188,6 +199,77 @@ function Router() {
       <Route path="/track-order/:orderId" component={lazy(() => import("./pages/track-order"))} />
       <Route path="/qr-scanner" component={() => <ProtectedRoute component={QRScannerPage} />} />
       <Route path="/toll-payments" component={() => <ProtectedRoute component={TollPaymentsPage} />} />
+      {/* Admin Routes */}
+      <Route path="/admin" component={() => (
+        <PageErrorBoundary pageName="Admin Login">
+          <AsyncErrorBoundary>
+            {React.createElement(lazy(() => import("./components/admin-login")))}
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/dashboard" component={() => (
+        <PageErrorBoundary pageName="Admin Dashboard">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-dashboard"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/users" component={() => (
+        <PageErrorBoundary pageName="Admin User Management">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-user-management"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/kyc" component={() => (
+        <PageErrorBoundary pageName="Admin KYC">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-kyc-verification"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/transactions" component={() => (
+        <PageErrorBoundary pageName="Admin Transactions">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-transactions"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/monitoring" component={() => (
+        <PageErrorBoundary pageName="Admin Monitoring">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-monitoring"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/fraud" component={() => (
+        <PageErrorBoundary pageName="Admin Fraud">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-fraud"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/support" component={() => (
+        <PageErrorBoundary pageName="Admin Support">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-support"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/escrow" component={() => (
+        <PageErrorBoundary pageName="Admin Escrow">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-escrow-management"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/admin/moderation" component={() => (
+        <PageErrorBoundary pageName="Admin Moderation">
+          <AsyncErrorBoundary>
+            <AdminProtectedRoute component={lazy(() => import("./pages/admin-moderation"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
       <Route path="/admin-control-center" component={lazy(() => import("./pages/admin-control-center"))} />
       <Route path="/admin-real-time" component={() => <ProtectedRoute component={lazy(() => import("./pages/admin-real-time-dashboard"))} />} />
       <Route path="/real-time-tracking" component={() => <ProtectedRoute component={lazy(() => import("./pages/real-time-tracking"))} />} />
@@ -274,12 +356,14 @@ function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Toaster />
-          <AsyncErrorBoundary>
-            <Router />
-          </AsyncErrorBoundary>
-        </TooltipProvider>
+        <AdminProvider>
+          <TooltipProvider>
+            <Toaster />
+            <AsyncErrorBoundary>
+              <Router />
+            </AsyncErrorBoundary>
+          </TooltipProvider>
+        </AdminProvider>
       </QueryClientProvider>
     </ErrorBoundary>
   );
