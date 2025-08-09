@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { Bell, Plus, Send, Download, CreditCard, TrendingUp, Phone, Wifi, ArrowUp, ArrowDown, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth-simple";
 import { useLocation } from "wouter";
 
 export default function DashboardPage() {
