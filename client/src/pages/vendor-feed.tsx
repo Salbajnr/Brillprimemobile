@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
@@ -32,8 +32,6 @@ interface ExtendedVendorPost extends VendorPost {
   productName?: string;
   productPrice?: string;
   productImage?: string;
-  productId?: string; // Added to ensure it exists for mutations
-  vendorId: string; // Added to ensure it exists for mutations
 }
 
 const POST_TYPES = [
@@ -93,51 +91,20 @@ export default function VendorFeed() {
     }
   });
 
-  const [posts, setPosts] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchVendorPosts = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const params = new URLSearchParams();
-        if (selectedFilter !== 'ALL') {
-          params.append('postType', selectedFilter);
-        }
-
-        const response = await fetch(`/api/vendor-posts?${params}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.success) {
-          setPosts(data.data || []);
-        } else {
-          throw new Error(data.message || 'Failed to fetch posts');
-        }
-      } catch (error) {
-        console.error('Error fetching vendor posts:', error);
-        setError(error.message);
-        setPosts([]); // Set empty array on error
-      } finally {
-        setLoading(false);
+  // Fetch vendor posts with real database integration and like counts
+  const { data: posts = [], isLoading } = useQuery<ExtendedVendorPost[]>({
+    queryKey: ['/api/vendor-posts', selectedFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (selectedFilter !== 'ALL') {
+        params.append('postType', selectedFilter);
       }
-    };
-
-    fetchVendorPosts();
-  }, [selectedFilter]); // Re-fetch when filter changes
+      const response = await fetch(`/api/vendor-posts?${params}`);
+      if (!response.ok) throw new Error('Failed to fetch vendor posts');
+      return response.json();
+    },
+    staleTime: 1000 * 60 * 2, // 2 minutes for fresh data
+  });
 
   // Add to cart mutation
   const addToCartMutation = useMutation<unknown, Error, { productId: string; quantity: number }>({
@@ -179,21 +146,16 @@ export default function VendorFeed() {
     createPostMutation.mutate(postData);
   };
 
-  const formatTimeAgo = (date: Date | string | null | undefined) => {
+  const formatTimeAgo = (date: Date) => {
     if (!date) return "";
-    const postDate = typeof date === 'string' ? new Date(date) : date;
-    if (!(postDate instanceof Date) || isNaN(postDate.getTime())) return 'Invalid Date';
-
     const now = new Date();
-    const diffInSeconds = Math.floor((now.getTime() - postDate.getTime()) / 1000);
-    const diffInMinutes = Math.floor(diffInSeconds / 60);
-    const diffInHours = Math.floor(diffInMinutes / 60);
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return "Just now";
+    if (diffInHours < 24) return `${diffInHours}h ago`;
     const diffInDays = Math.floor(diffInHours / 24);
-
-    if (diffInDays > 0) return `${diffInDays}d ago`;
-    if (diffInHours > 0) return `${diffInHours}h ago`;
-    if (diffInMinutes > 0) return `${diffInMinutes}m ago`;
-    return "Just now";
+    if (diffInDays < 7) return `${diffInDays}d ago`;
+    return date.toLocaleDateString();
   };
 
   const getPostTypeIcon = (postType: typeof POST_TYPES[number]['value']) => {
@@ -208,57 +170,6 @@ export default function VendorFeed() {
       case "RESTOCK": return "bg-blue-100 text-blue-800";
       case "PRODUCT_UPDATE": return "bg-yellow-100 text-yellow-800";
       default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const handleLikePost = async (postId: string) => {
-    try {
-      const response = await fetch(`/api/vendor-posts/${postId}/like`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        // Update post likes in state
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post.id === postId 
-              ? { ...post, likes: result.likes, isLiked: result.isLiked }
-              : post
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error liking post:', error);
-    }
-  };
-
-  const handleSharePost = async (postId: string) => {
-    try {
-      const response = await fetch(`/api/vendor-posts/${postId}/share`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post.id === postId 
-              ? { ...post, shares: result.shares }
-              : post
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error sharing post:', error);
     }
   };
 
@@ -277,7 +188,7 @@ export default function VendorFeed() {
             </Button>
             <h1 className="text-xl font-semibold text-[#131313]">Vendor Feed</h1>
           </div>
-
+          
           {user?.role === "MERCHANT" && (
             <Dialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen}>
               <DialogTrigger asChild>
@@ -298,7 +209,7 @@ export default function VendorFeed() {
                       onChange={(e) => setNewPost({ ...newPost, title: e.target.value })}
                     />
                   </div>
-
+                  
                   <div>
                     <Select value={newPost.postType} onValueChange={(value: typeof POST_TYPES[number]['value']) => setNewPost({ ...newPost, postType: value })}>
                       <SelectTrigger>
@@ -389,20 +300,43 @@ export default function VendorFeed() {
 
       {/* Posts Feed */}
       <div className="p-4 space-y-4">
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-          </div>
-        ) : error ? (
-          <div className="text-center py-8">
-            <p className="text-red-600 mb-4">Error loading posts: {error}</p>
-            <Button onClick={() => window.location.reload()}>
-              Try Again
-            </Button>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-4">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="w-10 h-10 bg-gray-200 rounded-full"></div>
+                    <div className="flex-1">
+                      <div className="h-4 bg-gray-200 rounded w-1/3 mb-1"></div>
+                      <div className="h-3 bg-gray-200 rounded w-1/4"></div>
+                    </div>
+                  </div>
+                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
+                  <div className="h-16 bg-gray-200 rounded"></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : posts.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
-            No posts available
+          <div className="text-center py-12">
+            <div className="text-gray-400 text-4xl mb-4">📱</div>
+            <h3 className="text-lg font-medium text-[#131313] mb-2">No posts yet</h3>
+            <p className="text-gray-600 mb-4">
+              {user?.role === "MERCHANT" 
+                ? "Be the first to share updates with your customers!" 
+                : "Follow some vendors to see their latest updates here."
+              }
+            </p>
+            {user?.role === "MERCHANT" && (
+              <Button 
+                onClick={() => setIsCreatePostOpen(true)}
+                className="bg-[#4682b4] hover:bg-[#0b1a51] text-white"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Create Your First Post
+              </Button>
+            )}
           </div>
         ) : (
           posts.map((post: ExtendedVendorPost) => (
@@ -526,7 +460,7 @@ export default function VendorFeed() {
                       <ShoppingCart className="h-3 w-3" />
                       <span>Add to Cart</span>
                     </Button>
-
+                    
                     {/* Get Quote */}
                     <Button
                       variant="outline"
@@ -541,7 +475,7 @@ export default function VendorFeed() {
                       <span>Quote</span>
                     </Button>
                   </div>
-
+                  
                   {/* Add to Wishlist */}
                   <Button
                     variant="ghost"

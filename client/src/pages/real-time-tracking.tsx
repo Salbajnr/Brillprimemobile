@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { MapPin, MessageSquare, Package, Truck, ArrowLeft } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
@@ -14,44 +14,19 @@ export default function RealTimeTrackingPage() {
   const { user } = useAuth();
   const [selectedOrderId, setSelectedOrderId] = useState<string>('ORDER-123');
   const [selectedChatRoom, setSelectedChatRoom] = useState<string>('order_123');
-  const [loading, setLoading] = useState(true);
-  const [orderInfo, setOrderInfo] = useState<any>(null);
-  const [participants, setParticipants] = useState<any[]>([]);
 
-  useEffect(() => {
-    // Simulate fetching real-time data
-    const fetchRealTimeData = async () => {
-      setLoading(true);
-      try {
-        // Replace with actual API calls to fetch order details, participants, etc.
-        // Example:
-        // const orderData = await fetch(`/api/orders/${selectedOrderId}`).then(res => res.json());
-        // const participantData = await fetch(`/api/orders/${selectedOrderId}/participants`).then(res => res.json());
+  // Mock data for demonstration
+  const mockParticipants = [
+    { id: 1, name: 'John Customer', role: 'CONSUMER', avatar: '', isOnline: true },
+    { id: 2, name: 'Merchant Store', role: 'MERCHANT', avatar: '', isOnline: true },
+    { id: 3, name: 'Driver Mike', role: 'DRIVER', avatar: '', isOnline: false }
+  ];
 
-        // Using mock data for now as placeholders for real API calls
-        const mockOrderInfo = {
-          orderId: selectedOrderId,
-          orderNumber: 'ORD-12345',
-          status: 'in_transit'
-        };
-        const mockParticipants = [
-          { id: 1, name: 'John Customer', role: 'CONSUMER', avatar: '', isOnline: true },
-          { id: 2, name: 'Merchant Store', role: 'MERCHANT', avatar: '', isOnline: true },
-          { id: 3, name: 'Driver Mike', role: 'DRIVER', avatar: '', isOnline: false }
-        ];
-
-        setOrderInfo(mockOrderInfo);
-        setParticipants(mockParticipants);
-      } catch (error) {
-        console.error("Error fetching real-time data:", error);
-        // Handle error appropriately, e.g., show an error message
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchRealTimeData();
-  }, [selectedOrderId]); // Re-fetch if selectedOrderId changes
+  const mockOrderInfo = {
+    orderId: selectedOrderId,
+    orderNumber: 'ORD-12345',
+    status: 'in_transit'
+  };
 
   const handleChatWithDriver = () => {
     setSelectedChatRoom('customer_driver_123');
@@ -103,20 +78,12 @@ export default function RealTimeTrackingPage() {
 
           {/* Order Tracking Tab */}
           <TabsContent value="order" className="space-y-4">
-            {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-              </div>
-            ) : orderInfo ? (
-              <RealTimeOrderTracking
-                orderId={selectedOrderId}
-                orderInfo={orderInfo}
-              />
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No order data available
-              </div>
-            )}
+            <RealTimeOrderTracking
+              orderId={selectedOrderId}
+              onChatWithDriver={handleChatWithDriver}
+              onChatWithMerchant={handleChatWithMerchant}
+              onCallDriver={handleCallDriver}
+            />
           </TabsContent>
 
           {/* Location Tracking Tab */}
@@ -132,18 +99,13 @@ export default function RealTimeTrackingPage() {
           {/* Chat Tab */}
           <TabsContent value="chat" className="space-y-4">
             <div className="h-96">
-              {loading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                </div>
-              ) : (
-                <RealTimeChatSystem
-                  roomId={selectedChatRoom}
-                  currentUser={user}
-                  participants={participants}
-                  orderInfo={orderInfo}
-                />
-              )}
+              <RealTimeChatSystem
+                roomId={selectedChatRoom}
+                roomType="customer-merchant"
+                participants={mockParticipants}
+                currentUserId={user?.id || 1}
+                orderInfo={mockOrderInfo}
+              />
             </div>
           </TabsContent>
         </Tabs>
@@ -153,7 +115,7 @@ export default function RealTimeTrackingPage() {
           <CardHeader>
             <CardTitle className="text-sm">Quick Actions</CardTitle>
           </CardHeader>
-
+          
           <CardContent>
             <div className="grid grid-cols-2 gap-3">
               <Button
@@ -164,7 +126,7 @@ export default function RealTimeTrackingPage() {
                 <MessageSquare className="h-4 w-4 mr-2" />
                 Contact Support
               </Button>
-
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -173,7 +135,7 @@ export default function RealTimeTrackingPage() {
                 <Truck className="h-4 w-4 mr-2" />
                 Call Driver
               </Button>
-
+              
               <Button
                 variant="outline"
                 size="sm"
@@ -182,7 +144,7 @@ export default function RealTimeTrackingPage() {
                 <Package className="h-4 w-4 mr-2" />
                 Order History
               </Button>
-
+              
               <Button
                 variant="outline"
                 size="sm"
