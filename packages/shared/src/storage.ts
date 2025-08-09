@@ -16,14 +16,9 @@ export class Storage {
       throw new Error('Native storage not available on web')
     }
     
-    try {
-      // Dynamic import for React Native AsyncStorage
-      const AsyncStorage = await import('@react-native-async-storage/async-storage')
-      return AsyncStorage.default
-    } catch (error) {
-      // Fallback for when AsyncStorage is not available
-      throw new Error('AsyncStorage not available in this environment')
-    }
+    // For React Native, AsyncStorage would be imported in the mobile app
+    // This is a placeholder that will be properly implemented in React Native environment
+    throw new Error('AsyncStorage not configured - implement in React Native app');
   }
   
   static async setItem(key: string, value: string): Promise<void> {
