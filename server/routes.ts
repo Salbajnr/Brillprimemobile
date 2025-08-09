@@ -1474,16 +1474,18 @@ const searchSchema = z.object({
   registerSecureTransactionRoutes(app);
   registerAdminOversightRoutes(app);
 
-  // Register new comprehensive system routes (using dynamic imports in Express context)
-  import('./routes/role-management').then(({ default: roleManagementRoutes }) => {
+  // Register new comprehensive system routes
+  try {
+    const { default: roleManagementRoutes } = await import('./routes/role-management.js');
+    const { default: liveSystemRoutes } = await import('./routes/live-system.js');
+    const { default: analyticsRoutes } = await import('./routes/analytics.js');
+    
     app.use('/api/role-management', roleManagementRoutes);
-  });
-  import('./routes/live-system').then(({ default: liveSystemRoutes }) => {
     app.use('/api/live-system', liveSystemRoutes);
-  });
-  import('./routes/analytics').then(({ default: analyticsRoutes }) => {
     app.use('/api/analytics', analyticsRoutes);
-  });
+  } catch (error) {
+    console.warn('Some advanced routes could not be loaded:', error.message);
+  }
 
   // Enhanced analytics logging with real-time streaming
   // Assuming registerAnalyticsLoggingRoutes is defined elsewhere
@@ -1492,14 +1494,20 @@ const searchSchema = z.object({
   // registerAnalyticsLoggingRoutes(app);
 
   // Merchant KYC verification routes
-  import('./routes/merchant-kyc').then(({ registerMerchantKycRoutes }) => {
+  try {
+    const { registerMerchantKycRoutes } = await import('./routes/merchant-kyc.js');
     registerMerchantKycRoutes(app);
-  });
+  } catch (error) {
+    console.warn('Merchant KYC routes could not be loaded:', error.message);
+  }
 
   // Admin merchant KYC review routes
-  import('./routes/admin-merchant-kyc').then(({ registerAdminMerchantKycRoutes }) => {
+  try {
+    const { registerAdminMerchantKycRoutes } = await import('./routes/admin-merchant-kyc.js');
     registerAdminMerchantKycRoutes(app);
-  });
+  } catch (error) {
+    console.warn('Admin merchant KYC routes could not be loaded:', error.message);
+  }
 
   console.log('All routes registered successfully');
 

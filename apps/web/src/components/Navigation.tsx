@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import RealTimeNotificationCenter from './RealTimeNotificationCenter';
-import { useRealTimeUpdates } from '../hooks/useRealTimeUpdates';
+import { useRealTimeUpdates } from '@/hooks/useRealTimeUpdates';
 
 export default function Navigation() {
   const [location, setLocation] = useLocation();

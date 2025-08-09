@@ -1,0 +1,13 @@
+
+{
+  "name": "brillprime-server",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "NODE_ENV=development tsx index.ts",
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "tsx": "^4.7.0"
+  }
+}

@@ -1,3 +1,2 @@
 
-export * from './schema';
-export type * from './schema';
+export * from '../../../shared/schema.js';
