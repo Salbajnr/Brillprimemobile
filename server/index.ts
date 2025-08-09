@@ -49,81 +49,85 @@ if (process.env.NODE_ENV === "production") {
           <meta charset="UTF-8" />
           <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Brillprime - Financial Solutions</title>
+          <meta name="description" content="Comprehensive financial services platform with web, native mobile, and admin applications for Nigeria.">
           <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
           <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
           <script src="https://cdn.tailwindcss.com"></script>
+          <script src="https://unpkg.com/wouter@3.3.5/index.js"></script>
         </head>
         <body>
           <div id="root"></div>
+          <script type="module" src="/client/src/main.tsx"></script>
           <script>
-            const { useState, useEffect } = React;
-            const { createRoot } = ReactDOM;
+            // Inline fallback if module loading fails
+            if (!window.React) {
+              const { useState, useEffect } = React;
+              const { createRoot } = ReactDOM;
+              const { Route, Switch, useLocation } = wouter;
 
-            function App() {
-              const [users, setUsers] = useState([]);
-              const [loading, setLoading] = useState(true);
+              // Simple splash screen fallback
+              function SplashPage() {
+                const [, setLocation] = useLocation();
 
-              useEffect(() => {
-                fetch('/api/users')
-                  .then(res => res.json())
-                  .then(data => {
-                    setUsers(data);
-                    setLoading(false);
-                  })
-                  .catch(err => {
-                    console.error('Error fetching users:', err);
-                    setLoading(false);
-                  });
-              }, []);
+                React.useEffect(() => {
+                  const timer = setTimeout(() => {
+                    const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+                    if (hasSeenOnboarding) {
+                      setLocation("/role-selection");
+                    } else {
+                      setLocation("/onboarding");
+                    }
+                  }, 3000);
+                  return () => clearTimeout(timer);
+                }, [setLocation]);
 
-              return React.createElement('div', {
-                className: 'min-h-screen bg-gray-50 py-12 px-4'
-              },
-                React.createElement('div', {
-                  className: 'max-w-md mx-auto bg-white rounded-lg shadow-md p-6'
+                return React.createElement('div', {
+                  className: 'w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center'
                 },
-                  React.createElement('h1', {
-                    className: 'text-2xl font-bold text-gray-900 mb-2'
-                  }, 'Brillprime'),
-                  React.createElement('p', {
-                    className: 'text-gray-600 mb-6'
-                  }, 'Cross-Platform Financial Solutions'),
                   React.createElement('div', {
-                    className: 'space-y-3'
+                    className: 'w-32 h-32 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse'
                   },
-                    React.createElement('button', {
-                      className: 'w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition-colors',
-                      'data-testid': 'button-consumer'
-                    }, 'Consumer Portal'),
-                    React.createElement('button', {
-                      className: 'w-full bg-gray-600 text-white py-2 px-4 rounded-md hover:bg-gray-700 transition-colors',
-                      'data-testid': 'button-merchant'
-                    }, 'Merchant Dashboard'),
-                    React.createElement('button', {
-                      className: 'w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors',
-                      'data-testid': 'button-driver'
-                    }, 'Driver Hub')
+                    React.createElement('div', {
+                      className: 'text-white text-4xl font-bold'
+                    }, 'B')
                   ),
                   React.createElement('div', {
-                    className: 'mt-6 p-4 bg-gray-50 rounded-md'
+                    className: 'mt-6 text-center'
                   },
-                    React.createElement('h3', {
-                      className: 'font-semibold text-gray-900 mb-2'
-                    }, 'System Status'),
-                    loading 
-                      ? React.createElement('p', {
-                          className: 'text-gray-600'
-                        }, 'Loading...')
-                      : React.createElement('p', {
-                          className: 'text-green-600'
-                        }, \`API Connected - \${users.length} users loaded\`)
+                    React.createElement('h1', {
+                      className: 'text-2xl font-bold text-gray-900'
+                    }, 'Brillprime'),
+                    React.createElement('p', {
+                      className: 'text-gray-600 mt-2 text-sm'
+                    }, 'Financial Solutions')
+                  ),
+                  React.createElement('div', {
+                    className: 'mt-8 flex space-x-2'
+                  },
+                    React.createElement('div', {
+                      className: 'w-3 h-3 bg-blue-600 rounded-full animate-bounce'
+                    }),
+                    React.createElement('div', {
+                      className: 'w-3 h-3 bg-blue-600 rounded-full animate-bounce',
+                      style: { animationDelay: '0.2s' }
+                    }),
+                    React.createElement('div', {
+                      className: 'w-3 h-3 bg-blue-600 rounded-full animate-bounce',
+                      style: { animationDelay: '0.4s' }
+                    })
                   )
-                )
-              );
-            }
+                );
+              }
 
-            const root = createRoot(document.getElementById('root'));
-            root.render(React.createElement(App));
+              function App() {
+                return React.createElement(Switch, {},
+                  React.createElement(Route, { path: '/', component: SplashPage })
+                );
+              }
+
+              const root = createRoot(document.getElementById('root'));
+              root.render(React.createElement(App));
+            }
           </script>
         </body>
       </html>
