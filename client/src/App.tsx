@@ -5,6 +5,10 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { useAuth } from "@/hooks/use-auth";
 import { useEffect, lazy } from "react";
+import React from "react";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { PageErrorBoundary } from "@/components/PageErrorBoundary";
+import { AsyncErrorBoundary } from "@/components/AsyncErrorBoundary";
 
 import SplashPage from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
@@ -64,22 +68,97 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
 
 function Router() {
   return (
-    <Switch>
-      <Route path="/" component={SplashPage} />
-      <Route path="/onboarding" component={OnboardingPage} />
-      <Route path="/role-selection" component={RoleSelectionPage} />
-      <Route path="/signup" component={SignupPage} />
-      <Route path="/signin" component={SignInPage} />
-      <Route path="/forgot-password" component={ForgotPasswordPage} />
-      <Route path="/reset-password/:token" component={ResetPasswordPage} />
-      <Route path="/otp-verification" component={OtpVerificationPage} />
-      <Route path="/dashboard" component={() => <ProtectedRoute component={DashboardPage} />} />
-      <Route path="/consumer-home" component={() => <ProtectedRoute component={ConsumerHomePage} />} />
-      <Route path="/merchant-dashboard" component={() => <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />} />
-      <Route path="/merchant-dashboard-enhanced" component={() => <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />} />
-      <Route path="/order-management" component={lazy(() => import("./pages/order-management"))} />
-      <Route path="/driver-dashboard" component={() => <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />} />
-      <Route path="/driver-dashboard-enhanced" component={() => <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />} />
+    <ErrorBoundary>
+      <Switch>
+        <Route path="/" component={() => (
+          <PageErrorBoundary pageName="Splash">
+            <SplashPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/onboarding" component={() => (
+          <PageErrorBoundary pageName="Onboarding">
+            <OnboardingPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/role-selection" component={() => (
+          <PageErrorBoundary pageName="Role Selection">
+            <RoleSelectionPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/signup" component={() => (
+          <PageErrorBoundary pageName="Sign Up">
+            <SignupPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/signin" component={() => (
+          <PageErrorBoundary pageName="Sign In">
+            <SignInPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/forgot-password" component={() => (
+          <PageErrorBoundary pageName="Forgot Password">
+            <ForgotPasswordPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/reset-password/:token" component={() => (
+          <PageErrorBoundary pageName="Reset Password">
+            <ResetPasswordPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/otp-verification" component={() => (
+          <PageErrorBoundary pageName="OTP Verification">
+            <OtpVerificationPage />
+          </PageErrorBoundary>
+        )} />
+        <Route path="/dashboard" component={() => (
+          <PageErrorBoundary pageName="Dashboard">
+            <AsyncErrorBoundary>
+              <ProtectedRoute component={DashboardPage} />
+            </AsyncErrorBoundary>
+          </PageErrorBoundary>
+        )} />
+      <Route path="/consumer-home" component={() => (
+        <PageErrorBoundary pageName="Consumer Home">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={ConsumerHomePage} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/merchant-dashboard" component={() => (
+        <PageErrorBoundary pageName="Merchant Dashboard">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/merchant-dashboard-enhanced" component={() => (
+        <PageErrorBoundary pageName="Merchant Dashboard">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={lazy(() => import("./pages/merchant-dashboard-enhanced"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/order-management" component={() => (
+        <PageErrorBoundary pageName="Order Management">
+          <AsyncErrorBoundary>
+            {React.createElement(lazy(() => import("./pages/order-management")))}
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/driver-dashboard" component={() => (
+        <PageErrorBoundary pageName="Driver Dashboard">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
+      <Route path="/driver-dashboard-enhanced" component={() => (
+        <PageErrorBoundary pageName="Driver Dashboard">
+          <AsyncErrorBoundary>
+            <ProtectedRoute component={lazy(() => import("./pages/driver-dashboard-enhanced"))} />
+          </AsyncErrorBoundary>
+        </PageErrorBoundary>
+      )} />
       <Route path="/driver-withdrawal">
         {() => <ProtectedRoute component={DriverWithdrawal} />}
       </Route>
@@ -164,8 +243,13 @@ function Router() {
       <Route path="/support" component={Support} />
       <Route path="/account-settings" component={AccountSettingsPage} />
       <Route path="/toll-payment-success" component={lazy(() => import("./pages/toll-payment-success"))} />
-      <Route component={NotFound} />
+      <Route component={() => (
+        <PageErrorBoundary pageName="Not Found">
+          <NotFound />
+        </PageErrorBoundary>
+      )} />
     </Switch>
+    </ErrorBoundary>
   );
 }
 
@@ -181,12 +265,16 @@ function App() {
   }, [user]);
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <TooltipProvider>
+          <Toaster />
+          <AsyncErrorBoundary>
+            <Router />
+          </AsyncErrorBoundary>
+        </TooltipProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

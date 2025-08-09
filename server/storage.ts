@@ -10,7 +10,7 @@ import {
   type DriverProfile, type InsertDriverProfile, type MerchantProfile, type InsertMerchantProfile,
   type MerchantAnalytics, type InsertMerchantAnalytics,
   type SupportTicket, type InsertSupportTicket,
-  escrowTransactions, escrowReleases, disputes, deliveryConfirmations, transactions // Assuming these are imported correctly
+  escrowTransactions, escrowReleases, deliveryConfirmations, transactions
 } from "@shared/schema";
 import { desc, eq, and, isNull, ne, sql, count, sum, avg, gte, like, or, gt, lt, lte, inArray, isNotNull } from "drizzle-orm";
 import { db } from "./db";

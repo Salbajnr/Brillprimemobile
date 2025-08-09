@@ -11,6 +11,7 @@ import { emailService } from "./services/email";
 import { apiLimiter, authLimiter, paymentLimiter } from "./middleware/rateLimiter";
 import helmet from "helmet";
 import compression from "compression";
+import errorLoggingRoutes from "./routes/error-logging";
 
 async function startServer() {
 const app = express();
@@ -76,6 +77,9 @@ app.use('/api/admin', adminRoutes);
 // Register main API routes
 registerRoutes(app);
 
+// Register error logging route
+app.use('/api/errors', errorLoggingRoutes);
+
 // Error handling middleware
 app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
   const status = err.status || err.statusCode || 500;
@@ -93,7 +97,7 @@ const server = createServer(app);
   // Make WebSocket server globally available for route handlers
   (global as any).io = io;
   app.set('server', { io });
-  
+
   // Initialize live system service with WebSocket
   const { LiveSystemService } = await import('./services/live-system');
   LiveSystemService.setSocketIOInstance(io);
