@@ -8,6 +8,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
       '@packages': path.resolve(__dirname, '../../packages'),
+      '@shared': path.resolve(__dirname, '../../packages/shared/src'),
       '@shared-ui': path.resolve(__dirname, '../../packages/shared-ui/src'),
       '@business-logic': path.resolve(__dirname, '../../packages/business-logic/src'),
       '@api-client': path.resolve(__dirname, '../../packages/api-client/src'),

@@ -27,6 +27,10 @@ const config = {
       '@utils': './src/utils',
       '@navigation': './src/navigation',
       '@shared': path.resolve(monorepoRoot, 'packages/shared/src'),
+      '@shared-ui': path.resolve(monorepoRoot, 'packages/shared-ui/src'),
+      '@business-logic': path.resolve(monorepoRoot, 'packages/business-logic/src'),
+      '@api-client': path.resolve(monorepoRoot, 'packages/api-client/src'),
+      '@constants': path.resolve(monorepoRoot, 'packages/constants/src'),
       '@server': path.resolve(monorepoRoot, 'packages/server/src'),
     },
     nodeModulesPaths: [
@@ -34,6 +38,7 @@ const config = {
       path.resolve(monorepoRoot, 'node_modules'),
     ],
     disableHierarchicalLookup: false,
+    platforms: ['ios', 'android', 'native', 'web'],
   },
   transformer: {
     getTransformOptions: async () => ({
