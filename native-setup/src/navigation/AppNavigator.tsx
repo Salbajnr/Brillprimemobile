@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -23,6 +22,7 @@ import NotificationsScreen from '../screens/NotificationsScreen';
 import ChatScreen from '../screens/ChatScreen';
 import WalletScreen from '../screens/WalletScreen';
 import SettingsScreen from '../screens/SettingsScreen';
+import AccountSettingsScreen from '../screens/AccountSettingsScreen'; // Import AccountSettingsScreen
 
 import { useAppSelector } from '../store/hooks';
 
@@ -48,7 +48,7 @@ const ConsumerTabs = () => (
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName = '';
-        
+
         if (route.name === 'Home') {
           iconName = 'home';
         } else if (route.name === 'Orders') {
@@ -82,7 +82,7 @@ const MerchantTabs = () => (
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName = '';
-        
+
         if (route.name === 'Dashboard') {
           iconName = 'dashboard';
         } else if (route.name === 'Orders') {
@@ -116,7 +116,7 @@ const DriverTabs = () => (
     screenOptions={({ route }) => ({
       tabBarIcon: ({ focused, color, size }) => {
         let iconName = '';
-        
+
         if (route.name === 'Dashboard') {
           iconName = 'dashboard';
         } else if (route.name === 'Deliveries') {
@@ -194,6 +194,26 @@ const AppNavigator: React.FC = () => {
         ) : (
           <Stack.Screen name="Auth" component={AuthStack} />
         )}
+        <Stack.Screen
+          name="Dashboard"
+          component={DashboardScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Profile"
+          component={ProfileScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="AccountSettings"
+          component={AccountSettingsScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="Notifications"
+          component={NotificationsScreen}
+          options={{ headerShown: false }}
+        />
       </Stack.Navigator>
     </NavigationContainer>
   );

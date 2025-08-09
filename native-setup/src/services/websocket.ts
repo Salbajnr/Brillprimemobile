@@ -95,7 +95,7 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        
+
         // Handle different message types
         switch (data.type) {
           case 'ping':
@@ -264,12 +264,12 @@ class WebSocketService {
   disconnect(): void {
     this.isManualClose = true;
     this.stopHeartbeat();
-    
+
     if (this.ws) {
       this.ws.close(1000, 'Manual disconnect');
       this.ws = null;
     }
-    
+
     this.isConnected = false;
     this.config = null;
     this.callbacks = {};
