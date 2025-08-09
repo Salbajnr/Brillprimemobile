@@ -1,18 +1,35 @@
+
 // Example: Using shared code in mobile app
 import {
-  SharedApiService,
-  SharedWebSocketService,
+  ApiService,
+  WebSocketService,
   useApiCall,
   validators,
   formatCurrency,
   APP_CONFIG
 } from '@shared';
-import { ReactNativeStorageAdapter } from './services/storageAdapter';
+
+// For React Native, you'll need a platform-specific storage adapter
+// This is a placeholder - implement based on AsyncStorage or SecureStore
+class ReactNativeStorageAdapter {
+  async getItem(key: string): Promise<string | null> {
+    // Implement with AsyncStorage or SecureStore
+    return null;
+  }
+  
+  async setItem(key: string, value: string): Promise<void> {
+    // Implement with AsyncStorage or SecureStore
+  }
+  
+  async removeItem(key: string): Promise<void> {
+    // Implement with AsyncStorage or SecureStore
+  }
+}
 
 // Initialize services
 const storageAdapter = new ReactNativeStorageAdapter();
-const apiService = new SharedApiService('http://0.0.0.0:5000', storageAdapter);
-const websocketService = new SharedWebSocketService({
+const apiService = new ApiService('http://0.0.0.0:5000', storageAdapter);
+const websocketService = new WebSocketService({
   url: 'ws://0.0.0.0:5000',
   reconnectInterval: 3000,
   maxReconnectAttempts: 5,
