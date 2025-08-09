@@ -321,6 +321,48 @@ export default function OrderHistory() {
     }
   }, [notifications]);
 
+  // Fetch order history from API
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchOrderHistory = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await fetch('/api/orders', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.success) {
+          setOrders(data.data || []);
+        } else {
+          throw new Error(data.message || 'Failed to fetch orders');
+        }
+      } catch (error) {
+        console.error('Error fetching order history:', error);
+        setError(error.message);
+        setOrders([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrderHistory();
+  }, []);
+
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
@@ -357,7 +399,9 @@ export default function OrderHistory() {
 
       {/* Order History List */}
       <div className="max-w-md mx-auto p-5 space-y-4">
-        {orderHistory.length === 0 ? (
+        {loading && <p>Loading orders...</p>}
+        {error && <p className="text-red-500">Error: {error}</p>}
+        {orders.length === 0 && !loading && !error ? (
           <Card className="rounded-3xl border" style={{ borderColor: COLORS.PRIMARY }}>
             <CardContent className="text-center py-16">
               <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-full mx-auto mb-6 flex items-center justify-center">
@@ -383,7 +427,7 @@ export default function OrderHistory() {
             </CardContent>
           </Card>
         ) : (
-          orderHistory.map((order) => {
+          orders.map((order) => {
             const statusConfig = getStatusColor(order.status);
 
             return (

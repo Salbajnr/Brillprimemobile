@@ -78,7 +78,7 @@ export default function ChatPage() {
   const [showCallMenu, setShowCallMenu] = useState(false);
   const [showProfileDetails, setShowProfileDetails] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  
+
   // WebSocket integration for real-time chat
   const { connected: wsConnected, chatMessages: wsMessages, sendChatMessage, connectionError: wsError } = useWebSocketChat();
 
@@ -125,7 +125,7 @@ export default function ChatPage() {
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
       queryClient.invalidateQueries({ queryKey: ['/api/conversations', user?.id] });
       setNewMessage("");
-      
+
       // Also send via WebSocket for real-time delivery
       if (selectedConversation) {
         const conversation = conversations.find((c: Conversation) => c.id === selectedConversation);
@@ -133,7 +133,7 @@ export default function ChatPage() {
           // Determine recipient based on user role
           let recipientId: string;
           let recipientRole: ClientRole;
-          
+
           if (user?.role === "CONSUMER") {
             recipientId = conversation.vendorId.toString();
             recipientRole = ClientRole.MERCHANT;
@@ -154,14 +154,14 @@ export default function ChatPage() {
             recipientId = conversation.customerId.toString();
             recipientRole = ClientRole.CONSUMER;
           }
-          
+
           // Send the message via WebSocket
           sendChatMessage(recipientId, recipientRole, data.content);
         }
       }
     }
   });
-  
+
   // Process WebSocket messages and add them to the UI
   useEffect(() => {
     if (wsMessages.length > 0 && selectedConversation) {
@@ -172,7 +172,7 @@ export default function ChatPage() {
         return msg.type === MessageType.CHAT_MESSAGE && 
                (msg.senderId === String(user?.id) || msg.recipientId === String(user?.id));
       });
-      
+
       if (newWsMessages.length > 0) {
         // Refresh the messages query to include the new WebSocket messages
         queryClient.invalidateQueries({ queryKey: ['/api/conversations', selectedConversation, 'messages'] });
@@ -187,7 +187,7 @@ export default function ChatPage() {
 
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversation) return;
-    
+
     sendMessageMutation.mutate({
       conversationId: selectedConversation,
       content: newMessage.trim(),
@@ -318,7 +318,7 @@ export default function ChatPage() {
                           } else if (user?.role === "DRIVER") {
                             profilePhoto = conv.conversationType === "PICKUP" ? conv.vendorPhoto : conv.customerPhoto;
                           }
-                          
+
                           return profilePhoto ? (
                             <img 
                               src={profilePhoto} 
@@ -367,19 +367,19 @@ export default function ChatPage() {
                           {new Date(conv.lastMessageAt).toLocaleDateString()}
                         </span>
                       </div>
-                      
+
                       {conv.productName && (
                         <p className="text-sm mb-2 truncate" style={{ color: COLORS.PRIMARY }}>
                           About: {conv.productName}
                         </p>
                       )}
-                      
+
                       {conv.lastMessage && (
                         <p className="text-sm truncate" style={{ color: COLORS.TEXT + '70' }}>
                           {conv.lastMessage}
                         </p>
                       )}
-                      
+
                       <div className="flex items-center justify-between mt-2">
                         <Badge 
                           variant="default"
@@ -407,7 +407,7 @@ export default function ChatPage() {
                         >
                           {conv.conversationType}
                         </Badge>
-                        
+
                         {/* Unread indicator */}
                         <div 
                           className="w-3 h-3 rounded-full"
@@ -427,7 +427,7 @@ export default function ChatPage() {
 
   // Show full chat screen when conversation is selected
   const selectedConv = conversations.find((c: Conversation) => c.id === selectedConversation);
-  
+
   return (
     <div className="h-screen flex flex-col" style={{ backgroundColor: COLORS.WHITE }}>
       {/* Chat Header */}
@@ -441,7 +441,7 @@ export default function ChatPage() {
             >
               <ArrowLeft className="h-6 w-6" style={{ color: COLORS.TEXT }} />
             </Button>
-            
+
             {selectedConv && (
               <>
                 <div 
@@ -458,7 +458,7 @@ export default function ChatPage() {
                     } else if (user?.role === "DRIVER") {
                       profilePhoto = selectedConv.conversationType === "PICKUP" ? selectedConv.vendorPhoto : selectedConv.customerPhoto;
                     }
-                    
+
                     return profilePhoto ? (
                       <img 
                         src={profilePhoto} 
@@ -499,7 +499,7 @@ export default function ChatPage() {
               </>
             )}
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {selectedConv && (
               <Badge 
@@ -561,7 +561,7 @@ export default function ChatPage() {
                   <X className="h-4 w-4" style={{ color: COLORS.TEXT }} />
                 </Button>
               </div>
-              
+
               <div className="flex items-center space-x-4 mb-4">
                 <div 
                   className="w-16 h-16 rounded-full overflow-hidden border-2"
@@ -576,7 +576,7 @@ export default function ChatPage() {
                     } else if (user?.role === "DRIVER") {
                       profilePhoto = selectedConv.conversationType === "PICKUP" ? selectedConv.vendorPhoto : selectedConv.customerPhoto;
                     }
-                    
+
                     return profilePhoto ? (
                       <img 
                         src={profilePhoto} 
@@ -641,14 +641,14 @@ export default function ChatPage() {
                     })()}
                   </p>
                 </div>
-                
+
                 {selectedConv.productName && (
                   <div>
                     <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Current Discussion</p>
                     <p className="text-sm" style={{ color: COLORS.PRIMARY }}>{selectedConv.productName}</p>
                   </div>
                 )}
-                
+
                 <div>
                   <p className="text-sm font-medium" style={{ color: COLORS.TEXT }}>Member Since</p>
                   <p className="text-sm" style={{ color: COLORS.TEXT + '70' }}>
@@ -718,7 +718,7 @@ export default function ChatPage() {
             </Badge>
           </div>
         ) : null}
-        
+
         {loadingMessages ? (
           <div className="text-center py-8" style={{ color: COLORS.TEXT + '80' }}>Loading messages...</div>
         ) : (
@@ -747,7 +747,7 @@ export default function ChatPage() {
                         </div>
                       </div>
                     )}
-                    
+
                     {message.messageType === "QUOTE_RESPONSE" && (
                       <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-3">
                         <div className="flex items-center space-x-2">
@@ -756,9 +756,9 @@ export default function ChatPage() {
                         </div>
                       </div>
                     )}
-                    
+
                     <p className="text-sm leading-relaxed">{message.content}</p>
-                    
+
                     <div className="flex items-center justify-between mt-3">
                       <span className="text-xs opacity-80">
                         {message.senderName}
@@ -840,7 +840,7 @@ export default function ChatPage() {
               />
             </div>
           </div>
-          
+
           {/* Image/Camera Button with Round Border */}
           <Button
             onClick={() => setShowImageMenu(!showImageMenu)}
