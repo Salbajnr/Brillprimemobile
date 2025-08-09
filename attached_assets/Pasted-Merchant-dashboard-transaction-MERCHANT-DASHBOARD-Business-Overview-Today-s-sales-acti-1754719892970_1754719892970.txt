@@ -1,0 +1,73 @@
+Merchant dashboard transaction 
+MERCHANT DASHBOARD
+├── Business Overview
+│   ├── Today's sales, active orders, customer count
+│   ├── Inventory status with low-stock alerts
+│   ├── Revenue analytics and performance metrics
+│   └── Quick action buttons for common tasks
+│
+├── Order Management
+│   ├── New order notifications (with accept/decline)
+│   ├── Order preparation workflow with status updates
+│   ├── Driver assignment coordination
+│   ├── Customer communication via integrated chat
+│   └── Order completion and handover to driver
+│
+├── Product Catalog Management
+│   ├── Add/edit products with images and descriptions
+│   ├── Inventory tracking and stock level management
+│   ├── Pricing and promotion management
+│   ├── Category organization and search optimization
+│   └── Product performance analytics
+│
+├── Business Operations
+│   ├── Revenue tracking and financial analytics
+│   ├── Customer insights and behavioral data
+│   ├── Promotion creation and marketing tools
+│   ├── Business hours and availability settings
+│   └── Staff management and role permissions
+│
+└── Payment & Finances
+    ├── Escrow balance monitoring
+    ├── Transaction history and settlements
+    ├── Revenue withdrawal to bank account
+    ├── Tax reporting and financial statements
+    └── Dispute management and resolution
+
+DRIVER OPERATIONS &DELIVERY 
+DRIVER DASHBOARD
+├── Online/Offline Status Management
+│   ├── Go online to receive delivery requests
+│   ├── Real-time location sharing when active
+│   ├── Availability scheduling and break management
+│   └── Earnings tracking and performance metrics
+│
+├── Order Assignment
+│   ├── Receive nearby delivery requests with details
+│   ├── 15-second accept/decline timer with route preview
+│   ├── Multiple order batching for efficient routes
+│   ├── Distance, estimated time, and earnings preview
+│   └── Smart routing for fuel-efficient deliveries
+│
+├── Delivery Workflow
+│   ├── Navigate to merchant for pickup
+│   ├── Verify order details and customer information
+│   ├── Update status: "Picked up" with photo proof
+│   ├── GPS-tracked route to customer location
+│   ├── Real-time location sharing with customer
+│   ├── Delivery completion with customer confirmation
+│   └── Photo/signature proof of delivery
+│
+├── Special Delivery Handling
+│   ├── Fuel delivery with certified driver verification
+│   ├── High-value item delivery with enhanced security
+│   ├── Temperature-sensitive delivery monitoring
+│   ├── Fragile item handling protocols
+│   └── Emergency delivery prioritization
+│
+└── Earnings & Performance
+    ├── Real-time earnings calculation
+    ├── Daily/weekly/monthly performance reports
+    ├── Customer rating and feedback system
+    ├── Bonus and incentive tracking
+    └── Payment withdrawal and tax documentation

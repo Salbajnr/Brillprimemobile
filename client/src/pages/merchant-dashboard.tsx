@@ -59,8 +59,10 @@ interface MerchantAnalytics {
 }
 
 export default function MerchantDashboard() {
-  const [selectedTab, setSelectedTab] = useState("orders");
+  const [selectedTab, setSelectedTab] = useState("overview");
   const [analyticsFilter, setAnalyticsFilter] = useState("7d");
+  const [isBusinessOpen, setIsBusinessOpen] = useState(true);
+  const [showNotifications, setShowNotifications] = useState(false);
   const queryClient = useQueryClient();
 
   // WebSocket integration for real-time features
