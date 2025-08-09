@@ -46,7 +46,7 @@ export const store = configureStore({
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
     }),
-  devTools: __DEV__, // Enable Redux DevTools in development
+  devTools: true, // Enable Redux DevTools in development
 });
 
 // Persistor

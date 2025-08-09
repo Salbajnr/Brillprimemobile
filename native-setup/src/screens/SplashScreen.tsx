@@ -1,53 +1,24 @@
-
 import React, { useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  Dimensions,
-  Image,
-  StatusBar,
-} from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { useAppSelector } from '../store/hooks';
-
-const { width, height } = Dimensions.get('window');
+import { View, Text, StyleSheet } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { setInitialized } from '../store/slices/appSlice';
 
 const SplashScreen: React.FC = () => {
-  const navigation = useNavigation<any>();
-  const isAuthenticated = useAppSelector(state => state.auth.isAuthenticated);
+  const dispatch = useDispatch();
 
   useEffect(() => {
+    // Simulate app initialization
     const timer = setTimeout(() => {
-      if (isAuthenticated) {
-        navigation.replace('MainTabs');
-      } else {
-        navigation.replace('Onboarding');
-      }
-    }, 3000);
+      dispatch(setInitialized(true));
+    }, 2000);
 
     return () => clearTimeout(timer);
-  }, [navigation, isAuthenticated]);
+  }, [dispatch]);
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#4682b4" />
-      
-      {/* Logo */}
-      <View style={styles.logoContainer}>
-        <View style={styles.logoPlaceholder}>
-          <Text style={styles.logoText}>BP</Text>
-        </View>
-        <Text style={styles.brandName}>BrillPrime</Text>
-        <Text style={styles.tagline}>Your trusted delivery partner</Text>
-      </View>
-
-      {/* Loading indicator */}
-      <View style={styles.loadingContainer}>
-        <View style={styles.loadingBar}>
-          <View style={styles.loadingProgress} />
-        </View>
-      </View>
+      <Text style={styles.title}>BrillPrime</Text>
+      <Text style={styles.subtitle}>Financial Solutions Platform</Text>
     </View>
   );
 };
@@ -55,55 +26,20 @@ const SplashScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#4682b4',
-    justifyContent: 'center',
-    alignItems: 'center',
   },
-  logoContainer: {
-    alignItems: 'center',
-    marginBottom: height * 0.1,
-  },
-  logoPlaceholder: {
-    width: 120,
-    height: 120,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    borderRadius: 60,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  logoText: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: '#ffffff',
-  },
-  brandName: {
+  title: {
     fontSize: 32,
     fontWeight: 'bold',
     color: '#ffffff',
     marginBottom: 8,
   },
-  tagline: {
+  subtitle: {
     fontSize: 16,
-    color: 'rgba(255, 255, 255, 0.8)',
-    textAlign: 'center',
-  },
-  loadingContainer: {
-    position: 'absolute',
-    bottom: 80,
-    width: width * 0.6,
-  },
-  loadingBar: {
-    height: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.3)',
-    borderRadius: 2,
-    overflow: 'hidden',
-  },
-  loadingProgress: {
-    height: '100%',
-    width: '70%',
-    backgroundColor: '#ffffff',
-    borderRadius: 2,
+    color: '#ffffff',
+    opacity: 0.8,
   },
 });
 

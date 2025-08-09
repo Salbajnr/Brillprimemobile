@@ -16,6 +16,7 @@ The application is a monorepo structured with distinct client, server, shared co
 - **Backend**: Express.js REST API server (primarily connects to external API).
 - **Database**: PostgreSQL with Drizzle ORM.
 - **Admin Dashboard**: Separate admin interface.
+- **Mobile App**: React Native app with Redux Toolkit, Navigation v6, and native features.
 
 **Frontend Architecture:**
 - **Routing**: Wouter.
@@ -44,6 +45,7 @@ The application is a monorepo structured with distinct client, server, shared co
 - **Admin Management System**: Comprehensive admin dashboard with real-time monitoring, user management, KYC verification, merchant/driver application processing, support ticket management, fraud detection, system maintenance, and transaction management with filtering and refund processing.
 - **PWA Capabilities**: Service worker for offline functionality and app manifest.
 - **Real-Time System**: Comprehensive WebSocket service for notifications, order tracking, chat, location tracking, and admin dashboard monitoring.
+- **Native Mobile App**: Complete React Native application in `native-setup/` directory with Redux state management, role-based navigation, and native device features.
 
 ## External Dependencies
 
