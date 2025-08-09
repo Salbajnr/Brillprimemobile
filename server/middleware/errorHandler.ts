@@ -25,7 +25,7 @@ export function errorHandler(
   let details: any = undefined;
 
   // Import logging service
-  const { loggingService } = require('../services/logging');
+  const { loggingService } = await import('../services/logging');
 
   // Enhanced error logging with context
   loggingService.error('Request error occurred', error, {

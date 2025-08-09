@@ -58,6 +58,34 @@ export async function setupVite(app: Express, server: Server) {
         "client",
         "index.html"
       );
+      
+      const template = await fs.promises.readFile(clientTemplate, "utf-8");
+      const html = await vite.transformIndexHtml(url, template);
+      
+      res.status(200).set({ "Content-Type": "text/html" }).end(html);
+    } catch (e) {
+      if (e instanceof Error) {
+        vite.ssrFixStacktrace(e);
+        console.log(e.stack);
+        res.status(500).end(e.stack);
+      }
+    }
+  });
+}
+
+export function serveStatic(app: Express) {
+  const distPath = path.resolve(__dirname, "..", "dist");
+  
+  if (!fs.existsSync(distPath)) {
+    throw new Error(`Build directory not found: ${distPath}`);
+  }
+
+  app.use(express.static(distPath));
+  
+  app.get("*", (req, res) => {
+    res.sendFile(path.resolve(distPath, "index.html"));
+  });
+}
 
       // always reload the index.html file from disk incase it changes
       let template = await fs.promises.readFile(clientTemplate, "utf-8");

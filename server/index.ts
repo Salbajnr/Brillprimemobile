@@ -115,7 +115,8 @@ async function startServer() {
   app.use('/api/errors', errorLoggingRoutes);
 
   // Error handling middleware (must be last)
-  import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
+  // Error handling middleware (must be last)
+  const { errorHandler, notFoundHandler } = await import("./middleware/errorHandler");
   app.use(errorRequestLogger());
   app.use(notFoundHandler);
   app.use(errorHandler);

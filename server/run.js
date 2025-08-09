@@ -25,12 +25,12 @@ const tsxProcess = spawn('npx', ['tsx', serverFile], {
 tsxProcess.on('error', (err) => {
   console.log('⚠️  tsx not available, using migration server...');
   // Fallback to our migration server
-  import('./index.js');
+  import('./index.js').catch(console.error);
 });
 
 tsxProcess.on('exit', (code) => {
   if (code !== 0) {
     console.log('⚠️  TypeScript server failed, using migration server...');
-    import('./index.js');
+    import('./index.js').catch(console.error);
   }
 });
