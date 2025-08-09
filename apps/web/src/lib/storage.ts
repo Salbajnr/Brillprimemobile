@@ -1,4 +1,4 @@
-import type { User } from "@shared/schema";
+import type { User } from "@shared/types";
 
 const STORAGE_KEYS = {
   USER: "brillprime_user",
