@@ -1,114 +1,66 @@
-
 import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 
-interface LocationPermission {
-  granted: boolean;
-  message?: string;
-}
-
-interface CameraPermission {
-  granted: boolean;
-  message?: string;
-}
-
-interface PushNotificationPermission {
-  granted: boolean;
-  token?: string;
-}
-
-interface BiometricPermission {
-  available: boolean;
-  type?: 'TouchID' | 'FaceID' | 'Fingerprint' | 'None';
-}
-
-interface NativeConfiguration {
-  apiBaseUrl: string;
-  websocketUrl: string;
-  paystackPublicKey: string;
-  googleMapsApiKey: string;
-  firebaseConfig: {
-    projectId: string;
-    appId: string;
-    apiKey: string;
-  };
-}
-
 interface AppState {
-  isFirstLaunch: boolean;
-  permissions: {
-    location: LocationPermission;
-    camera: CameraPermission;
-    pushNotifications: PushNotificationPermission;
-    biometric: BiometricPermission;
-  };
-  configuration: NativeConfiguration;
-  networkStatus: 'online' | 'offline';
+  isInitialized: boolean;
+  isOnboarded: boolean;
   theme: 'light' | 'dark';
+  language: string;
+  networkStatus: 'online' | 'offline';
+  loading: boolean;
+  error: string | null;
 }
 
 const initialState: AppState = {
-  isFirstLaunch: true,
-  permissions: {
-    location: { granted: false },
-    camera: { granted: false },
-    pushNotifications: { granted: false },
-    biometric: { available: false, type: 'None' },
-  },
-  configuration: {
-    apiBaseUrl: 'http://localhost:5000',
-    websocketUrl: 'ws://localhost:5000',
-    paystackPublicKey: '',
-    googleMapsApiKey: '',
-    firebaseConfig: {
-      projectId: '',
-      appId: '',
-      apiKey: '',
-    },
-  },
-  networkStatus: 'online',
+  isInitialized: false,
+  isOnboarded: false,
   theme: 'light',
+  language: 'en',
+  networkStatus: 'online',
+  loading: false,
+  error: null,
 };
 
 const appSlice = createSlice({
   name: 'app',
   initialState,
   reducers: {
-    setFirstLaunch: (state, action: PayloadAction<boolean>) => {
-      state.isFirstLaunch = action.payload;
+    setInitialized: (state, action: PayloadAction<boolean>) => {
+      state.isInitialized = action.payload;
     },
-    updateLocationPermission: (state, action: PayloadAction<LocationPermission>) => {
-      state.permissions.location = action.payload;
+    setOnboarded: (state, action: PayloadAction<boolean>) => {
+      state.isOnboarded = action.payload;
     },
-    updateCameraPermission: (state, action: PayloadAction<CameraPermission>) => {
-      state.permissions.camera = action.payload;
+    setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
+      state.theme = action.payload;
     },
-    updatePushNotificationPermission: (state, action: PayloadAction<PushNotificationPermission>) => {
-      state.permissions.pushNotifications = action.payload;
-    },
-    updateBiometricPermission: (state, action: PayloadAction<BiometricPermission>) => {
-      state.permissions.biometric = action.payload;
-    },
-    updateConfiguration: (state, action: PayloadAction<Partial<NativeConfiguration>>) => {
-      state.configuration = { ...state.configuration, ...action.payload };
+    setLanguage: (state, action: PayloadAction<string>) => {
+      state.language = action.payload;
     },
     setNetworkStatus: (state, action: PayloadAction<'online' | 'offline'>) => {
       state.networkStatus = action.payload;
     },
-    setTheme: (state, action: PayloadAction<'light' | 'dark'>) => {
-      state.theme = action.payload;
+    setLoading: (state, action: PayloadAction<boolean>) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action: PayloadAction<string>) => {
+      state.error = action.payload;
+      state.loading = false;
+    },
+    clearError: (state) => {
+      state.error = null;
     },
   },
 });
 
 export const {
-  setFirstLaunch,
-  updateLocationPermission,
-  updateCameraPermission,
-  updatePushNotificationPermission,
-  updateBiometricPermission,
-  updateConfiguration,
-  setNetworkStatus,
+  setInitialized,
+  setOnboarded,
   setTheme,
+  setLanguage,
+  setNetworkStatus,
+  setLoading,
+  setError,
+  clearError,
 } = appSlice.actions;
 
 export default appSlice.reducer;

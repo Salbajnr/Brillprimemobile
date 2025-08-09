@@ -1,12 +1,11 @@
-
 import React from 'react';
-import { View, ActivityIndicator, Text, StyleSheet } from 'react-native';
+import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 
 export const LoadingScreen: React.FC = () => {
   return (
     <View style={styles.container}>
       <ActivityIndicator size="large" color="#4682b4" />
-      <Text style={styles.loadingText}>Loading BrillPrime...</Text>
+      <Text style={styles.text}>Loading BrillPrime...</Text>
     </View>
   );
 };
@@ -18,10 +17,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#ffffff',
   },
-  loadingText: {
+  text: {
     marginTop: 16,
     fontSize: 16,
-    color: '#4682b4',
+    color: '#333333',
     fontWeight: '500',
   },
 });
+
+export default LoadingScreen;
