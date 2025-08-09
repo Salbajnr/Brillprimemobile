@@ -1,4 +1,3 @@
-
 import axios, { AxiosInstance, AxiosResponse, AxiosError } from 'axios';
 
 export interface ApiResponse<T = any> {

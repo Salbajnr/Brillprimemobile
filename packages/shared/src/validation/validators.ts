@@ -1,4 +1,3 @@
-
 export interface ValidationResult {
   isValid: boolean;
   errors: string[];
@@ -14,28 +13,22 @@ export const validators = {
     };
   },
 
-  phone: (phone: string): ValidationResult => {
-    const phoneRegex = /^\+?[\d\s\-\(\)]{10,}$/;
-    const isValid = phoneRegex.test(phone.replace(/\s/g, ''));
-    return {
-      isValid,
-      errors: isValid ? [] : ['Please enter a valid phone number'],
-    };
-  },
-
   password: (password: string): ValidationResult => {
     const errors: string[] = [];
-    
+
     if (password.length < 8) {
       errors.push('Password must be at least 8 characters long');
     }
-    if (!/[A-Z]/.test(password)) {
-      errors.push('Password must contain at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
+
+    if (!/(?=.*[a-z])/.test(password)) {
       errors.push('Password must contain at least one lowercase letter');
     }
-    if (!/[0-9]/.test(password)) {
+
+    if (!/(?=.*[A-Z])/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+
+    if (!/(?=.*\d)/.test(password)) {
       errors.push('Password must contain at least one number');
     }
 
@@ -45,47 +38,38 @@ export const validators = {
     };
   },
 
-  required: (value: any, fieldName: string): ValidationResult => {
+  required: (value: any): ValidationResult => {
     const isValid = value !== null && value !== undefined && value !== '';
     return {
       isValid,
-      errors: isValid ? [] : [`${fieldName} is required`],
-    };
-  },
-
-  minLength: (value: string, min: number, fieldName: string): ValidationResult => {
-    const isValid = value.length >= min;
-    return {
-      isValid,
-      errors: isValid ? [] : [`${fieldName} must be at least ${min} characters long`],
-    };
-  },
-
-  maxLength: (value: string, max: number, fieldName: string): ValidationResult => {
-    const isValid = value.length <= max;
-    return {
-      isValid,
-      errors: isValid ? [] : [`${fieldName} must be no more than ${max} characters long`],
+      errors: isValid ? [] : ['This field is required'],
     };
   },
 };
 
-export function validateForm(fields: Record<string, any>, rules: Record<string, ((value: any) => ValidationResult)[]>): ValidationResult {
-  const allErrors: string[] = [];
+export const validateForm = (fields: Record<string, any>, rules: Record<string, Function[]>): Record<string, ValidationResult> => {
+  const results: Record<string, ValidationResult> = {};
 
-  for (const [fieldName, fieldRules] of Object.entries(rules)) {
-    const fieldValue = fields[fieldName];
-    
-    for (const rule of fieldRules) {
-      const result = rule(fieldValue);
+  for (const [fieldName, validationRules] of Object.entries(rules)) {
+    const value = fields[fieldName];
+    const errors: string[] = [];
+
+    for (const rule of validationRules) {
+      const result = rule(value);
       if (!result.isValid) {
-        allErrors.push(...result.errors);
+        errors.push(...result.errors);
       }
     }
+
+    results[fieldName] = {
+      isValid: errors.length === 0,
+      errors,
+    };
   }
 
-  return {
-    isValid: allErrors.length === 0,
-    errors: allErrors,
-  };
-}
+  return results;
+};
+
+// Convenience exports
+export const validateEmail = (email: string) => validators.email(email);
+export const validatePassword = (password: string) => validators.password(password);

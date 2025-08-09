@@ -1,56 +1,103 @@
-// Example: Using shared code in mobile app
-import {
-  SharedApiService,
-  SharedWebSocketService,
-  useApiCall,
-  validators,
-  formatCurrency,
-  APP_CONFIG
-} from '@shared';
-import { ReactNativeStorageAdapter } from './services/storageAdapter';
+/**
+ * Example usage of shared packages in React Native
+ * This demonstrates how to import and use cross-platform code
+ */
 
-// Initialize services
-const storageAdapter = new ReactNativeStorageAdapter();
-const apiService = new SharedApiService('http://0.0.0.0:5000', storageAdapter);
-const websocketService = new SharedWebSocketService({
-  url: 'ws://0.0.0.0:5000',
-  reconnectInterval: 3000,
-  maxReconnectAttempts: 5,
-});
+// Import shared utilities
+import { 
+  Platform, 
+  Storage, 
+  validateEmail, 
+  formatCurrency, 
+  generateId,
+  COLORS,
+  APP_CONFIG 
+} from '@shared'
 
-// Use shared constants
-console.log('API Base URL:', APP_CONFIG.api.baseUrl);
+// Import shared UI components (React Native compatible)
+import { Button, Card, Badge, Text, View } from '@shared-ui'
 
-// Use shared hooks (works with React Native)
-export function useSharedExample() {
-  return useApiCall(() => apiService.getProducts());
+// Import business logic hooks
+import { useMonorepoStats } from '@business-logic'
+
+// Import API client
+import { ApiClient } from '@api-client'
+
+export const ExampleUsage = {
+  // Platform detection
+  checkPlatform: () => {
+    console.log('Current platform:', Platform.OS)
+    console.log('Is native app:', Platform.isNative)
+    console.log('Is mobile:', Platform.isMobile)
+  },
+
+  // Storage operations
+  saveUserData: async (userData: any) => {
+    try {
+      await Storage.setObject('user', userData)
+      console.log('User data saved successfully')
+    } catch (error) {
+      console.error('Failed to save user data:', error)
+    }
+  },
+
+  // Validation
+  validateUserInput: (email: string) => {
+    const result = validateEmail(email)
+    if (!result.isValid) {
+      console.error('Validation error:', result.error)
+    }
+    return result.isValid
+  },
+
+  // Formatting
+  displayPrice: (amount: number) => {
+    return formatCurrency(amount, 'NGN', 'en-NG')
+  },
+
+  // Generate unique IDs
+  createId: () => {
+    return generateId()
+  },
+
+  // Use constants
+  getAppColor: () => {
+    return COLORS.primary
+  },
+
+  // API client setup
+  setupApiClient: () => {
+    return new ApiClient({
+      baseUrl: APP_CONFIG.api.baseUrl,
+      timeout: APP_CONFIG.api.timeout
+    })
+  }
 }
 
-// Use shared utilities
-export function formatPrice(amount: number) {
-  return formatCurrency(amount);
-}
+// Example React Native component using shared packages
+export const ExampleComponent = () => {
+  const stats = useMonorepoStats()
 
-// Use shared validation
-export function validateUserInput(email: string, password: string) {
-  const emailValidation = validators.email(email);
-  const passwordValidation = validators.password(password);
+  return (
+    <View style={{ padding: 16 }}>
+      <Text variant="h3">Cross-Platform Example</Text>
+      
+      <Card style={{ marginVertical: 8 }}>
+        <Text>Platform: {Platform.OS}</Text>
+        <Text>Build time: {stats.buildTime}s</Text>
+        <Text>Coverage: {stats.coverage}%</Text>
+      </Card>
 
-  return {
-    isValid: emailValidation.isValid && passwordValidation.isValid,
-    errors: [...emailValidation.errors, ...passwordValidation.errors],
-  };
-}
+      <Button 
+        variant="primary" 
+        onPress={() => ExampleUsage.checkPlatform()}
+      >
+        Check Platform
+      </Button>
 
-// Example WebSocket usage
-export function initializeWebSocket() {
-  websocketService.onConnect(() => {
-    console.log('WebSocket connected');
-  });
-
-  websocketService.onMessage('order_update', (data) => {
-    console.log('Order update received:', data);
-  });
-
-  websocketService.connect();
+      <Badge variant="success">
+        Shared Package Working!
+      </Badge>
+    </View>
+  )
 }

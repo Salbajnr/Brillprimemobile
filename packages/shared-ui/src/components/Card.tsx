@@ -3,6 +3,7 @@ import { ReactNode } from 'react'
 export interface CardProps {
   children: ReactNode
   className?: string
+  style?: any // Support both React and React Native styles
   padding?: 'none' | 'sm' | 'md' | 'lg'
   shadow?: 'none' | 'sm' | 'md' | 'lg'
 }
@@ -10,6 +11,7 @@ export interface CardProps {
 const Card = ({ 
   children, 
   className = '', 
+  style,
   padding = 'md',
   shadow = 'sm'
 }: CardProps) => {
@@ -32,7 +34,7 @@ const Card = ({
   const classes = `${baseClasses} ${paddingClasses[padding]} ${shadowClasses[shadow]} ${className}`.trim()
   
   return (
-    <div className={classes}>
+    <div className={classes} style={style}>
       {children}
     </div>
   )

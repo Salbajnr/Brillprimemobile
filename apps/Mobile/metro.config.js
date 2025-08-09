@@ -13,6 +13,7 @@ const config = {
   projectRoot,
   watchFolders: [
     monorepoRoot,
+    path.resolve(monorepoRoot, 'packages'),
   ],
   resolver: {
     alias: {
@@ -32,6 +33,12 @@ const config = {
       '@api-client': path.resolve(monorepoRoot, 'packages/api-client/src'),
       '@constants': path.resolve(monorepoRoot, 'packages/constants/src'),
       '@server': path.resolve(monorepoRoot, 'packages/server/src'),
+      // Workspace package aliases
+      '@packages/shared': path.resolve(monorepoRoot, 'packages/shared/src'),
+      '@packages/shared-ui': path.resolve(monorepoRoot, 'packages/shared-ui/src'),
+      '@packages/business-logic': path.resolve(monorepoRoot, 'packages/business-logic/src'),
+      '@packages/api-client': path.resolve(monorepoRoot, 'packages/api-client/src'),
+      '@packages/constants': path.resolve(monorepoRoot, 'packages/constants/src'),
     },
     nodeModulesPaths: [
       path.resolve(projectRoot, 'node_modules'),
@@ -39,6 +46,8 @@ const config = {
     ],
     disableHierarchicalLookup: false,
     platforms: ['ios', 'android', 'native', 'web'],
+    // Support for TypeScript and JSX
+    sourceExts: ['js', 'jsx', 'ts', 'tsx', 'json'],
   },
   transformer: {
     getTransformOptions: async () => ({

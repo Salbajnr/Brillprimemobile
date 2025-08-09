@@ -5,13 +5,15 @@ export interface BadgeProps {
   variant?: 'default' | 'success' | 'warning' | 'error' | 'info'
   size?: 'sm' | 'md'
   className?: string
+  style?: any // Support both React and React Native styles
 }
 
 const Badge = ({ 
   children, 
   variant = 'default', 
   size = 'sm',
-  className = ''
+  className = '',
+  style
 }: BadgeProps) => {
   const baseClasses = 'inline-flex items-center font-medium rounded-full'
   
@@ -31,7 +33,7 @@ const Badge = ({
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${className}`.trim()
   
   return (
-    <span className={classes}>
+    <span className={classes} style={style}>
       {children}
     </span>
   )

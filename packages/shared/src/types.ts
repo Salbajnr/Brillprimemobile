@@ -1,198 +1,117 @@
+/**
+ * Shared types for cross-platform compatibility
+ */
 
-// Platform-agnostic types for both web and native
 export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: "CONSUMER" | "MERCHANT" | "DRIVER" | "ADMIN";
-  phoneNumber?: string;
-  isVerified?: boolean;
-  createdAt?: string;
-  updatedAt?: string;
-  avatar?: string;
+  id: string
+  email: string
+  firstName: string
+  lastName: string
+  phoneNumber?: string
+  role: 'CONSUMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN'
+  isVerified: boolean
+  createdAt: string
+  updatedAt: string
 }
 
-export interface AuthState {
-  user: User | null;
-  token: string | null;
-  isAuthenticated: boolean;
-  isLoading: boolean;
-}
-
-export interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  merchantId: string;
-  imageUrl?: string;
-  inStock: boolean;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface Order {
-  id: string;
-  userId: string;
-  merchantId: string;
-  driverId?: string;
-  items: OrderItem[];
-  status: OrderStatus;
-  totalAmount: number;
-  deliveryAddress: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface OrderItem {
-  id: string;
-  productId: string;
-  quantity: number;
-  price: number;
-  product: Product;
-}
-
-export interface Merchant {
-  id: string;
-  name: string;
-  description: string;
-  address: string;
-  phoneNumber: string;
-  email: string;
-  isVerified: boolean;
-  rating: number;
-  imageUrl?: string;
-  categories: string[];
-  createdAt: string;
-}
-
-export interface Driver {
-  id: string;
-  name: string;
-  phoneNumber: string;
-  email: string;
-  vehicleType: string;
-  licenseNumber: string;
-  isAvailable: boolean;
-  rating: number;
-  currentLocation?: Location;
-  createdAt: string;
-}
-
-export interface Location {
-  latitude: number;
-  longitude: number;
-  address?: string;
-  timestamp?: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  senderId: string;
-  receiverId: string;
-  content: string;
-  timestamp: string;
-  isRead: boolean;
-  type: 'text' | 'image' | 'location';
-}
-
-export interface Notification {
-  id: string;
-  userId: string;
-  title: string;
-  message: string;
-  type: NotificationType;
-  isRead: boolean;
-  createdAt: string;
-  data?: any;
-}
-
-// Enums and Union Types
-export type UserRole = "CONSUMER" | "MERCHANT" | "DRIVER" | "ADMIN";
-export type OrderStatus = "PENDING" | "CONFIRMED" | "PREPARING" | "READY" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED";
-export type NotificationType = "ORDER_UPDATE" | "PAYMENT" | "CHAT" | "SYSTEM" | "PROMOTION";
-
-// API Response Types
 export interface ApiResponse<T = any> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
+  data: T
+  success: boolean
+  message?: string
+  error?: string
+}
+
+export interface ApiError {
+  message: string
+  code: string
+  status: number
+  details?: any
+}
+
+export interface NavigationParams {
+  [key: string]: string | number | boolean | undefined
+}
+
+export type StorageKey = 
+  | 'user'
+  | 'token'
+  | 'refreshToken'
+  | 'preferences'
+  | 'theme'
+  | 'language'
+  | 'onboardingComplete'
+
+export interface ValidationResult {
+  isValid: boolean
+  error?: string
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  data: T[]
+  pagination: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+    hasNext: boolean
+    hasPrev: boolean
+  }
 }
 
-// Form Types
-export interface LoginForm {
-  email: string;
-  password: string;
+export interface Location {
+  latitude: number
+  longitude: number
+  address?: string
 }
 
-export interface SignUpForm {
-  name: string;
-  email: string;
-  password: string;
-  phoneNumber: string;
-  role: UserRole;
+export interface FileUpload {
+  uri: string
+  type: string
+  name: string
+  size?: number
 }
 
-export interface OTPVerification {
-  email: string;
-  otp: string;
+export interface Notification {
+  id: string
+  title: string
+  message: string
+  type: 'info' | 'success' | 'warning' | 'error'
+  timestamp: string
+  read: boolean
+  data?: any
 }
 
-// Payment Types
-export interface PaymentMethod {
-  id: string;
-  type: 'card' | 'bank' | 'wallet';
-  last4?: string;
-  brand?: string;
-  isDefault: boolean;
+export interface Theme {
+  primary: string
+  secondary: string
+  background: string
+  surface: string
+  text: string
+  textSecondary: string
+  border: string
+  success: string
+  warning: string
+  error: string
+  info: string
 }
 
-export interface Transaction {
-  id: string;
-  userId: string;
-  amount: number;
-  type: 'debit' | 'credit';
-  description: string;
-  status: 'pending' | 'completed' | 'failed';
-  createdAt: string;
+export interface AppConfig {
+  apiBaseUrl: string
+  websocketUrl?: string
+  environment: 'development' | 'staging' | 'production'
+  version: string
+  features: {
+    darkMode: boolean
+    notifications: boolean
+    analytics: boolean
+    biometrics: boolean
+  }
 }
 
-// WebSocket Event Types
-export interface WebSocketEvent {
-  type: string;
-  data: any;
-  timestamp: string;
+// Utility types
+export type Optional<T, K extends keyof T> = Omit<T, K> & Partial<Pick<T, K>>
+export type RequiredBy<T, K extends keyof T> = Omit<T, K> & Required<Pick<T, K>>
+export type DeepPartial<T> = {
+  [P in keyof T]?: T[P] extends object ? DeepPartial<T[P]> : T[P]
 }
-
-export interface OrderUpdateEvent extends WebSocketEvent {
-  type: 'ORDER_UPDATE';
-  data: {
-    orderId: string;
-    status: OrderStatus;
-    driverId?: string;
-    estimatedDelivery?: string;
-  };
-}
-
-export interface LocationUpdateEvent extends WebSocketEvent {
-  type: 'LOCATION_UPDATE';
-  data: {
-    driverId: string;
-    location: Location;
-  };
-}
-
-export interface ChatMessageEvent extends WebSocketEvent {
-  type: 'CHAT_MESSAGE';
-  data: ChatMessage;
-}
+export type NonNullable<T> = T extends null | undefined ? never : T

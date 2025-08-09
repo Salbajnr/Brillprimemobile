@@ -22,7 +22,7 @@ class ApiClient {
   private defaultHeaders: Record<string, string>
 
   constructor(config: RequestConfig = {}) {
-    this.baseUrl = config.baseUrl || process.env.VITE_API_BASE_URL || 'http://localhost:8000'
+    this.baseUrl = config.baseUrl || (typeof process !== 'undefined' && process.env?.VITE_API_BASE_URL) || 'http://localhost:8000'
     this.timeout = config.timeout || 10000
     this.defaultHeaders = {
       'Content-Type': 'application/json',

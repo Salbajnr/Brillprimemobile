@@ -1,10 +1,12 @@
 import { ReactNode, ButtonHTMLAttributes } from 'react'
 
-export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
+export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'style'> {
   children: ReactNode
   variant?: 'primary' | 'secondary' | 'outline'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
+  style?: any // Support both React and React Native styles
+  onPress?: () => void // React Native compatibility
 }
 
 const Button = ({ 
@@ -13,6 +15,9 @@ const Button = ({
   size = 'md', 
   fullWidth = false,
   className = '',
+  onPress,
+  onClick,
+  style,
   ...props 
 }: ButtonProps) => {
   const baseClasses = 'inline-flex items-center justify-center font-medium rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2'
@@ -33,8 +38,19 @@ const Button = ({
   
   const classes = `${baseClasses} ${variantClasses[variant]} ${sizeClasses[size]} ${widthClass} ${className}`.trim()
   
+  // Handle both React and React Native events
+  const handlePress = () => {
+    if (onPress) onPress()
+    if (onClick) onClick({} as any)
+  }
+
   return (
-    <button className={classes} {...props}>
+    <button 
+      className={classes} 
+      onClick={handlePress}
+      style={style}
+      {...props}
+    >
       {children}
     </button>
   )
