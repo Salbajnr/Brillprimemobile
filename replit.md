@@ -46,6 +46,7 @@ The application is a monorepo structured with distinct client, server, shared co
 - **PWA Capabilities**: Service worker for offline functionality and app manifest.
 - **Real-Time System**: Comprehensive WebSocket service for notifications, order tracking, chat, location tracking, and admin dashboard monitoring.
 - **Native Mobile App**: Complete React Native application in `native-setup/` directory with Redux state management, role-based navigation, and native device features.
+- **Native File Sync System**: Comprehensive file synchronization between web app and native app with progress tracking, offline access, and automatic background sync.
 
 ## External Dependencies
 
