@@ -1,8 +1,14 @@
 
-// Re-export shared services with mobile-specific adaptations
-export { ApiService, WebSocketService, StorageAdapter } from '@shared'
-export { WebSocketClient, useWebSocket } from '@shared'
+// Re-export shared services for mobile app
+export { 
+  ApiService,
+  WebSocketService,
+  StorageAdapter,
+  useApiCall,
+  validateEmail,
+  validatePassword,
+  formatCurrency 
+} from '@shared';
 
-// Mobile-specific services
-export * from './storageAdapter'
-export * from './sharedServices'
+// Mobile-specific configurations
+export const mobileWebSocketUrl = 'ws://localhost:8000';

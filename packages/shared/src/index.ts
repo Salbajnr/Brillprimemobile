@@ -13,9 +13,9 @@ export * from './hooks/useApiCall';
 export * from './validation/validators';
 export * from './formatters/currency';
 
-// Websocket
-export { WebSocketService } from './websocket/websocketService'
-export { WebSocketClient, useWebSocket } from './websocket/websocketClient'
+// WebSocket Services
+export { WebSocketService } from './websocket/websocketService';
+export { WebSocketClient, createWebSocketClient } from './websocket/websocketClient';
 export type { WebSocketConfig, WebSocketMessage } from './websocket/websocketClient'
 
 // Re-export commonly used items with convenient names

@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from 'react';
 
 export interface WebSocketConfig {
@@ -14,47 +13,43 @@ export interface WebSocketMessage {
 }
 
 export class WebSocketClient {
-  private ws: WebSocket | null = null;
+  private socket: WebSocket | null = null;
   private url: string;
-  private reconnectInterval: number;
-  private maxReconnectAttempts: number;
-  private currentAttempts: number = 0;
-  private messageQueue: WebSocketMessage[] = [];
-  private listeners: Map<string, ((data: any) => void)[]> = new Map();
+  private reconnectAttempts = 0;
+  private maxReconnectAttempts = 5;
+  private reconnectInterval = 1000;
+  private listeners: Map<string, Function[]> = new Map();
 
-  constructor(config: WebSocketConfig) {
-    this.url = config.url;
-    this.reconnectInterval = config.reconnectInterval || 3000;
-    this.maxReconnectAttempts = config.maxReconnectAttempts || 5;
+  constructor(url: string) {
+    this.url = url;
   }
 
   connect(): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        this.ws = new WebSocket(this.url);
-        
-        this.ws.onopen = () => {
+        this.socket = new WebSocket(this.url);
+
+        this.socket.onopen = () => {
           console.log('WebSocket connected');
-          this.currentAttempts = 0;
-          this.flushMessageQueue();
+          this.reconnectAttempts = 0;
           resolve();
         };
 
-        this.ws.onmessage = (event) => {
+        this.socket.onmessage = (event) => {
           try {
-            const message: WebSocketMessage = JSON.parse(event.data);
-            this.handleMessage(message);
+            const data = JSON.parse(event.data);
+            this.emit(data.type, data.payload);
           } catch (error) {
-            console.error('Failed to parse WebSocket message:', error);
+            console.error('Error parsing WebSocket message:', error);
           }
         };
 
-        this.ws.onclose = () => {
+        this.socket.onclose = () => {
           console.log('WebSocket disconnected');
           this.attemptReconnect();
         };
 
-        this.ws.onerror = (error) => {
+        this.socket.onerror = (error) => {
           console.error('WebSocket error:', error);
           reject(error);
         };
@@ -64,40 +59,23 @@ export class WebSocketClient {
     });
   }
 
-  private handleMessage(message: WebSocketMessage) {
-    const typeListeners = this.listeners.get(message.type);
-    if (typeListeners) {
-      typeListeners.forEach(listener => listener(message.payload));
-    }
-  }
-
   private attemptReconnect() {
-    if (this.currentAttempts < this.maxReconnectAttempts) {
-      this.currentAttempts++;
-      console.log(`Attempting to reconnect... (${this.currentAttempts}/${this.maxReconnectAttempts})`);
-      
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+      this.reconnectAttempts++;
       setTimeout(() => {
+        console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
         this.connect().catch(console.error);
-      }, this.reconnectInterval);
+      }, this.reconnectInterval * this.reconnectAttempts);
     } else {
       console.error('Max reconnection attempts reached');
     }
   }
 
-  private flushMessageQueue() {
-    while (this.messageQueue.length > 0) {
-      const message = this.messageQueue.shift();
-      if (message) {
-        this.send(message);
-      }
-    }
-  }
-
   send(message: WebSocketMessage) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
     } else {
-      this.messageQueue.push(message);
+      console.warn('WebSocket not connected');
     }
   }
 
@@ -118,21 +96,31 @@ export class WebSocketClient {
     }
   }
 
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+  private emit(event: string, data: any) {
+    const eventListeners = this.listeners.get(event);
+    if (eventListeners) {
+      eventListeners.forEach(callback => callback(data));
     }
   }
+
+  disconnect() {
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
+    }
+    this.listeners.clear();
+  }
 }
+
+export const createWebSocketClient = (url: string) => new WebSocketClient(url);
 
 export function useWebSocket(config: WebSocketConfig) {
   const [connected, setConnected] = useState(false);
   const clientRef = useRef<WebSocketClient | null>(null);
 
   useEffect(() => {
-    clientRef.current = new WebSocketClient(config);
-    
+    clientRef.current = createWebSocketClient(config.url);
+
     clientRef.current.connect()
       .then(() => setConnected(true))
       .catch(console.error);
@@ -140,6 +128,7 @@ export function useWebSocket(config: WebSocketConfig) {
     return () => {
       if (clientRef.current) {
         clientRef.current.disconnect();
+        clientRef.current = null;
       }
     };
   }, [config.url]);
@@ -148,9 +137,9 @@ export function useWebSocket(config: WebSocketConfig) {
     client: clientRef.current,
     connected,
     send: (message: WebSocketMessage) => clientRef.current?.send(message),
-    subscribe: (type: string, callback: (data: any) => void) => 
+    subscribe: (type: string, callback: (data: any) => void) =>
       clientRef.current?.subscribe(type, callback),
-    unsubscribe: (type: string, callback: (data: any) => void) => 
+    unsubscribe: (type: string, callback: (data: any) => void) =>
       clientRef.current?.unsubscribe(type, callback)
   };
 }

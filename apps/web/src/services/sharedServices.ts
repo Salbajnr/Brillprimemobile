@@ -1,42 +1,20 @@
 
-<old_str>// Setup shared services for web app
-import { SharedApiClient, API_CONFIG } from '@shared';
-import { WebStorageAdapter } from './storageAdapter';
-
-// Initialize shared services
-export const storageAdapter = new WebStorageAdapter();
-
-export const apiClient = new SharedApiClient({
-  baseURL: API_CONFIG.BASE_URL,
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-// Export for use in components
-export { useSharedAuth, useOrders, useNotifications, useWebSocket } from '@shared';</old_str>
-<new_str>// Setup shared services for web app
-import { 
-  SharedApiService, 
-  SharedWebSocketService, 
+// Re-export shared services for web app
+export { 
+  ApiService,
+  WebSocketService,
+  WebSocketClient,
+  createWebSocketClient,
+  StorageAdapter,
   WebStorageAdapter,
-  NativeFileSyncService,
-  APP_CONFIG 
+  useApiCall,
+  validateEmail,
+  validatePassword,
+  formatCurrency 
 } from '@shared';
 
-// Initialize shared services
-export const storageAdapter = new WebStorageAdapter();
+// Web-specific service configurations
+import { WebStorageAdapter } from '@shared';
 
-export const apiService = new SharedApiService(APP_CONFIG.api.baseUrl, storageAdapter);
-
-export const websocketService = new SharedWebSocketService({
-  url: `ws://${window.location.host}`,
-  reconnectInterval: 3000,
-  maxReconnectAttempts: 5,
-});
-
-export const nativeFileSyncService = new NativeFileSyncService(apiService);
-
-// Export for use in components
-export { useSharedAuth, useApiCall } from '@shared';</new_str>
+export const webStorage = new WebStorageAdapter();
+export const webSocketUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000';
