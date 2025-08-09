@@ -125,16 +125,18 @@ async function startServer() {
   // Create HTTP server
   const server = createServer(app);
 
-  // Setup WebSocket server
+  // Initialize WebSocket server
   const io = await setupWebSocketServer(server);
+
+  // Initialize LiveSystemService with Socket.IO instance
+  const { LiveSystemService } = await import('./services/live-system');
+  LiveSystemService.setSocketIOInstance(io);
+
+  console.log('Real-time services initialized successfully');
 
   // Make WebSocket server globally available for route handlers
   (global as any).io = io;
   app.set('server', { io });
-
-  // Initialize live system service with WebSocket
-  const { LiveSystemService } = await import('./services/live-system');
-  LiveSystemService.setSocketIOInstance(io);
 
   // Setup Vite or static serving
   if (app.get("env") === "development") {

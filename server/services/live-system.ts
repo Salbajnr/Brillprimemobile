@@ -265,17 +265,17 @@ export class LiveSystemService {
         case 'PUBLIC':
           this.io.emit('location_update', data);
           break;
-        
+
         case 'CUSTOMERS_ONLY':
           if (location.relatedOrderId) {
             // TODO: Get customers associated with this order and broadcast to them
           }
           break;
-        
+
         case 'MERCHANTS_ONLY':
           await this.broadcastToRole('MERCHANT', 'location_update', data);
           break;
-        
+
         default:
           // Private - don't broadcast
           break;

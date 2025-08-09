@@ -1475,9 +1475,13 @@ const searchSchema = z.object({
   registerAdminOversightRoutes(app);
 
   // Register new comprehensive system routes
-  app.use('/api/role-management', (await import('./routes/role-management')).default);
-  app.use('/api/live-system', (await import('./routes/live-system')).default);
-  app.use('/api/analytics', (await import('./routes/analytics')).default);
+  const { default: roleManagementRoutes } = await import('./routes/role-management');
+  const { default: liveSystemRoutes } = await import('./routes/live-system');
+  const { default: analyticsRoutes } = await import('./routes/analytics');
+  
+  app.use('/api/role-management', roleManagementRoutes);
+  app.use('/api/live-system', liveSystemRoutes);
+  app.use('/api/analytics', analyticsRoutes);
 
   // Enhanced analytics logging with real-time streaming
   // Assuming registerAnalyticsLoggingRoutes is defined elsewhere

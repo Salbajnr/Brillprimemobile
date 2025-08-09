@@ -14,14 +14,49 @@ interface UseRealTimeUpdatesOptions {
   subscriptions?: string[];
 }
 
+interface Notification {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  timestamp: Date;
+  isRead: boolean;
+  priority: string;
+  actionUrl?: string;
+}
+
+interface OrderUpdate {
+  orderId: string;
+  status: string;
+  timestamp: Date;
+  updatedBy: string;
+}
+
+interface DeliveryUpdate {
+  deliveryId: string;
+  status: string;
+  location?: any;
+  timestamp: Date;
+  driverId: string;
+}
+
+interface ChatMessage {
+  id: string;
+  roomId: string;
+  senderId: number;
+  senderName: string;
+  message: string;
+  timestamp: Date;
+}
+
 export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
   const { user, isAuthenticated } = useAuth();
   const [connected, setConnected] = useState(false);
   const [updates, setUpdates] = useState<RealTimeUpdate[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [orderUpdates, setOrderUpdates] = useState<any[]>([]);
-  const [deliveryUpdates, setDeliveryUpdates] = useState<any[]>([]);
-  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [orderUpdates, setOrderUpdates] = useState<OrderUpdate[]>([]);
+  const [deliveryUpdates, setDeliveryUpdates] = useState<DeliveryUpdate[]>([]);
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [presenceUpdates, setPresenceUpdates] = useState<any[]>([]);
 
   const { autoConnect = true, subscriptions = [] } = options;
@@ -58,9 +93,9 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     setConnected(false);
   }, []);
 
-  const handleNotificationReceived = useCallback((notification: any) => {
+  const handleNotificationReceived = useCallback((notification: Notification) => {
     setNotifications(prev => [notification, ...prev].slice(0, 50)); // Keep last 50
-    
+
     // Add to general updates
     setUpdates(prev => [{
       id: notification.id || Date.now().toString(),
@@ -70,9 +105,9 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     }, ...prev].slice(0, 100)); // Keep last 100
   }, []);
 
-  const handleOrderStatusChanged = useCallback((update: any) => {
+  const handleOrderStatusChanged = useCallback((update: OrderUpdate) => {
     setOrderUpdates(prev => [update, ...prev].slice(0, 50));
-    
+
     setUpdates(prev => [{
       id: `order_${update.orderId}_${Date.now()}`,
       type: 'order_update',
@@ -81,9 +116,9 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     }, ...prev].slice(0, 100));
   }, []);
 
-  const handleDeliveryStatusChanged = useCallback((update: any) => {
+  const handleDeliveryStatusChanged = useCallback((update: DeliveryUpdate) => {
     setDeliveryUpdates(prev => [update, ...prev].slice(0, 50));
-    
+
     setUpdates(prev => [{
       id: `delivery_${update.deliveryId}_${Date.now()}`,
       type: 'delivery_update',
@@ -92,9 +127,9 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     }, ...prev].slice(0, 100));
   }, []);
 
-  const handleChatMessageReceived = useCallback((message: any) => {
+  const handleChatMessageReceived = useCallback((message: ChatMessage) => {
     setChatMessages(prev => [message, ...prev].slice(0, 100));
-    
+
     setUpdates(prev => [{
       id: `chat_${message.id || Date.now()}`,
       type: 'chat_message',
@@ -126,7 +161,7 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
     webSocketService.on('notification:received', handleNotificationReceived);
     webSocketService.on('order:status_changed', handleOrderStatusChanged);
     webSocketService.on('delivery:status_changed', handleDeliveryStatusChanged);
-    webSocketService.on('delivery:location_update', handleDeliveryStatusChanged);
+    webSocketService.on('delivery:location_update', handleLocationUpdate); // Corrected event name
     webSocketService.on('chat:message_received', handleChatMessageReceived);
     webSocketService.on('presence:update', handlePresenceUpdate);
     webSocketService.on('location:update', handleLocationUpdate);
@@ -137,7 +172,7 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
       webSocketService.off('notification:received', handleNotificationReceived);
       webSocketService.off('order:status_changed', handleOrderStatusChanged);
       webSocketService.off('delivery:status_changed', handleDeliveryStatusChanged);
-      webSocketService.off('delivery:location_update', handleDeliveryStatusChanged);
+      webSocketService.off('delivery:location_update', handleLocationUpdate); // Corrected event name
       webSocketService.off('chat:message_received', handleChatMessageReceived);
       webSocketService.off('presence:update', handlePresenceUpdate);
       webSocketService.off('location:update', handleLocationUpdate);
@@ -234,11 +269,11 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
 
   const markNotificationAsRead = useCallback((notificationId: string) => {
     webSocketService.markNotificationAsRead(notificationId);
-    
+
     // Update local state
-    setNotifications(prev => 
-      prev.map(notif => 
-        notif.id === notificationId 
+    setNotifications(prev =>
+      prev.map(notif =>
+        notif.id === notificationId
           ? { ...notif, isRead: true }
           : notif
       )
@@ -258,13 +293,13 @@ export const useRealTimeUpdates = (options: UseRealTimeUpdatesOptions = {}) => {
   }, [notifications]);
 
   const getActiveDeliveries = useCallback(() => {
-    return deliveryUpdates.filter(delivery => 
+    return deliveryUpdates.filter(delivery =>
       ['ASSIGNED', 'PICKED_UP', 'IN_TRANSIT'].includes(delivery.status)
     );
   }, [deliveryUpdates]);
 
   const getPendingOrders = useCallback(() => {
-    return orderUpdates.filter(order => 
+    return orderUpdates.filter(order =>
       ['PENDING', 'CONFIRMED', 'PREPARING'].includes(order.status)
     );
   }, [orderUpdates]);
