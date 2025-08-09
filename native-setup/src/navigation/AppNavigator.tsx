@@ -20,6 +20,8 @@ import OrderHistoryScreen from '../screens/OrderHistoryScreen';
 import NotificationsScreen from '../screens/NotificationsScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
+import { FileManagerScreen } from '../screens/FileManagerScreen';
+import { FileViewerScreen } from '../screens/FileViewerScreen';
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -49,29 +51,29 @@ const MainTabs = () => (
       tabBarInactiveTintColor: '#888888',
     }}
   >
-    <Tab.Screen 
-      name="Home" 
+    <Tab.Screen
+      name="Home"
       component={HomeScreen}
       options={{
         tabBarLabel: 'Home',
       }}
     />
-    <Tab.Screen 
-      name="Dashboard" 
+    <Tab.Screen
+      name="Dashboard"
       component={DashboardScreen}
       options={{
         tabBarLabel: 'Dashboard',
       }}
     />
-    <Tab.Screen 
-      name="Cart" 
+    <Tab.Screen
+      name="Cart"
       component={CartScreen}
       options={{
         tabBarLabel: 'Cart',
       }}
     />
-    <Tab.Screen 
-      name="Profile" 
+    <Tab.Screen
+      name="Profile"
       component={ProfileScreen}
       options={{
         tabBarLabel: 'Profile',
@@ -87,6 +89,21 @@ const AppStack = () => (
     <Stack.Screen name="Notifications" component={NotificationsScreen} />
     <Stack.Screen name="Checkout" component={CheckoutScreen} />
     <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
+    <Stack.Screen
+            name="Profile"
+            component={ProfileScreen}
+            options={{ title: 'Profile' }}
+          />
+          <Stack.Screen
+            name="FileManager"
+            component={FileManagerScreen}
+            options={{ title: 'File Manager' }}
+          />
+          <Stack.Screen
+            name="FileViewer"
+            component={FileViewerScreen}
+            options={{ title: 'File Viewer' }}
+          />
   </Stack.Navigator>
 );
 

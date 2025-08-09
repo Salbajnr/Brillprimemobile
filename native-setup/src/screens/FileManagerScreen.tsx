@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
@@ -5,139 +6,225 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  RefreshControl,
   Alert,
+  RefreshControl,
   ActivityIndicator,
   TextInput,
   Modal,
-  ScrollView
+  Image,
 } from 'react-native';
-import { webFileFetcher, type SyncProgress } from '../services/webFileFetcher';
-import type { FileInfo } from '../services/fileSync';
+import { webFileFetcher, type FileInfo, type SyncProgress } from '../services/webFileFetcher';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { updateSyncStatus } from '../store/slices/appSlice';
 
-const FileManagerScreen: React.FC = () => {
+interface FileManagerScreenProps {
+  navigation: any;
+}
+
+export const FileManagerScreen: React.FC<FileManagerScreenProps> = ({ navigation }) => {
+  const dispatch = useAppDispatch();
+  const syncStatus = useAppSelector(state => state.app.syncStatus);
+  
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filteredFiles, setFilteredFiles] = useState<FileInfo[]>([]);
   const [syncProgress, setSyncProgress] = useState<SyncProgress | null>(null);
-  const [showSyncModal, setShowSyncModal] = useState(false);
-  const [selectedDirectory, setSelectedDirectory] = useState<string>('uploads/');
-  const [directories, setDirectories] = useState<string[]>([]);
+  const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [sortBy, setSortBy] = useState<'name' | 'date' | 'size'>('date');
+  const [filterType, setFilterType] = useState<'all' | 'images' | 'documents' | 'others'>('all');
 
   useEffect(() => {
     initializeFileManager();
+    setupProgressTracking();
+    
     return () => {
       webFileFetcher.removeProgressCallback(handleSyncProgress);
     };
   }, []);
 
+  useEffect(() => {
+    filterAndSortFiles();
+  }, [files, searchQuery, sortBy, filterType]);
+
   const initializeFileManager = async () => {
     try {
+      setLoading(true);
       await webFileFetcher.initialize();
-      webFileFetcher.onProgress(handleSyncProgress);
       await loadFiles();
-      await loadDirectories();
     } catch (error) {
-      console.error('Error initializing file manager:', error);
+      console.error('Failed to initialize file manager:', error);
       Alert.alert('Error', 'Failed to initialize file manager');
-    }
-  };
-
-  const handleSyncProgress = useCallback((progress: SyncProgress) => {
-    setSyncProgress(progress);
-    if (progress.progress === 100) {
-      setShowSyncModal(false);
-      loadFiles(); // Refresh file list after sync
-    }
-  }, []);
-
-  const loadFiles = async () => {
-    if (loading) return;
-    
-    setLoading(true);
-    try {
-      const fileList = await webFileFetcher.fetchWebFiles({
-        directory: selectedDirectory,
-        maxFiles: 100
-      });
-      setFiles(fileList);
-    } catch (error) {
-      console.error('Error loading files:', error);
-      Alert.alert('Error', 'Failed to load files from web app');
     } finally {
       setLoading(false);
     }
   };
 
-  const loadDirectories = async () => {
+  const setupProgressTracking = () => {
+    webFileFetcher.onProgress(handleSyncProgress);
+  };
+
+  const handleSyncProgress = useCallback((progress: SyncProgress) => {
+    setSyncProgress(progress);
+    dispatch(updateSyncStatus({
+      isOnline: true,
+      lastSyncTime: Date.now(),
+      syncInProgress: progress.progress < 100,
+    }));
+  }, [dispatch]);
+
+  const loadFiles = async () => {
     try {
-      const dirs = await webFileFetcher.getWebDirectories();
-      setDirectories(dirs);
+      const fetchedFiles = await webFileFetcher.fetchWebFiles({
+        directory: 'uploads/',
+        includeHidden: false,
+        maxFiles: 1000,
+      });
+      setFiles(fetchedFiles);
     } catch (error) {
-      console.error('Error loading directories:', error);
+      console.error('Failed to load files:', error);
+      Alert.alert('Error', 'Failed to load files from server');
     }
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadFiles();
-    setRefreshing(false);
+    try {
+      await loadFiles();
+    } finally {
+      setRefreshing(false);
+    }
+  }, []);
+
+  const filterAndSortFiles = () => {
+    let filtered = files;
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      filtered = filtered.filter(file =>
+        file.name.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
+    // Apply type filter
+    if (filterType !== 'all') {
+      filtered = filtered.filter(file => {
+        const type = file.type.toLowerCase();
+        switch (filterType) {
+          case 'images':
+            return type.includes('image') || ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => file.name.toLowerCase().endsWith(ext));
+          case 'documents':
+            return ['.pdf', '.doc', '.docx', '.txt', '.rtf'].some(ext => file.name.toLowerCase().endsWith(ext));
+          case 'others':
+            return !type.includes('image') && !['.pdf', '.doc', '.docx', '.txt', '.rtf'].some(ext => file.name.toLowerCase().endsWith(ext));
+          default:
+            return true;
+        }
+      });
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case 'name':
+          return a.name.localeCompare(b.name);
+        case 'size':
+          return b.size - a.size;
+        case 'date':
+        default:
+          return b.lastModified - a.lastModified;
+      }
+    });
+
+    setFilteredFiles(filtered);
   };
 
-  const handleFilePress = (file: FileInfo) => {
-    Alert.alert(
-      file.name,
-      `Size: ${formatFileSize(file.size)}\nType: ${file.type}\nLast Modified: ${new Date(file.lastModified).toLocaleDateString()}`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Download', onPress: () => downloadFile(file) },
-        { text: 'Get Info', onPress: () => showFileInfo(file) }
-      ]
-    );
+  const handleFilePress = async (file: FileInfo) => {
+    if (selectionMode) {
+      toggleFileSelection(file.id);
+      return;
+    }
+
+    try {
+      // Try to get cached version first
+      const cachedContent = await webFileFetcher.getCachedFileContent(file.id);
+      
+      if (cachedContent) {
+        // Open cached file
+        openFile(file, cachedContent);
+      } else {
+        // Download and cache file
+        Alert.alert(
+          'Download File',
+          `File "${file.name}" is not cached. Download it now?`,
+          [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Download', onPress: () => downloadFile(file) },
+          ]
+        );
+      }
+    } catch (error) {
+      console.error('Error accessing file:', error);
+      Alert.alert('Error', 'Failed to access file');
+    }
   };
 
   const downloadFile = async (file: FileInfo) => {
     try {
-      setShowSyncModal(true);
-      await webFileFetcher.downloadFiles([file.id]);
-      Alert.alert('Success', `${file.name} downloaded successfully`);
-    } catch (error) {
-      console.error('Error downloading file:', error);
-      Alert.alert('Error', 'Failed to download file');
-    } finally {
-      setShowSyncModal(false);
-    }
-  };
-
-  const showFileInfo = async (file: FileInfo) => {
-    try {
-      const metadata = await webFileFetcher.getWebFileMetadata(file.id);
-      if (metadata) {
-        Alert.alert(
-          'File Information',
-          `Name: ${metadata.name}\nSize: ${formatFileSize(metadata.size)}\nType: ${metadata.type}\nChecksum: ${metadata.checksum.substring(0, 8)}...\nLast Modified: ${new Date(metadata.lastModified).toLocaleString()}`
-        );
+      setLoading(true);
+      const result = await webFileFetcher.downloadFiles([file.id]);
+      
+      if (result.success.length > 0) {
+        Alert.alert('Success', `Downloaded "${file.name}" successfully`);
+        // Optionally refresh the list to update cached status
+        await loadFiles();
+      } else {
+        Alert.alert('Error', `Failed to download "${file.name}"`);
       }
     } catch (error) {
-      console.error('Error getting file info:', error);
-      Alert.alert('Error', 'Failed to get file information');
+      console.error('Download failed:', error);
+      Alert.alert('Error', 'Download failed');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      await loadFiles();
-      return;
-    }
+  const openFile = (file: FileInfo, content: string) => {
+    // Navigate to file viewer or handle file opening
+    navigation.navigate('FileViewer', { file, content });
+  };
 
-    setLoading(true);
+  const toggleFileSelection = (fileId: string) => {
+    const newSelection = new Set(selectedFiles);
+    if (newSelection.has(fileId)) {
+      newSelection.delete(fileId);
+    } else {
+      newSelection.add(fileId);
+    }
+    setSelectedFiles(newSelection);
+  };
+
+  const handleBatchDownload = async () => {
+    if (selectedFiles.size === 0) return;
+
     try {
-      const searchResults = await webFileFetcher.searchWebFiles(searchQuery);
-      setFiles(searchResults);
+      setLoading(true);
+      const fileIds = Array.from(selectedFiles);
+      const result = await webFileFetcher.downloadFiles(fileIds);
+      
+      Alert.alert(
+        'Download Complete',
+        `Downloaded ${result.success.length} files successfully. ${result.failed.length} failed.`
+      );
+      
+      setSelectedFiles(new Set());
+      setSelectionMode(false);
+      await loadFiles();
     } catch (error) {
-      console.error('Error searching files:', error);
-      Alert.alert('Error', 'Search failed');
+      console.error('Batch download failed:', error);
+      Alert.alert('Error', 'Batch download failed');
     } finally {
       setLoading(false);
     }
@@ -145,87 +232,79 @@ const FileManagerScreen: React.FC = () => {
 
   const handleSyncAll = async () => {
     try {
-      setShowSyncModal(true);
+      setLoading(true);
       await webFileFetcher.syncAllFiles();
       Alert.alert('Success', 'All files synced successfully');
+      await loadFiles();
     } catch (error) {
-      console.error('Error syncing files:', error);
+      console.error('Sync failed:', error);
       Alert.alert('Error', 'Sync failed');
     } finally {
-      setShowSyncModal(false);
+      setLoading(false);
     }
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return '0 B';
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = ['B', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
 
-  const getFileIcon = (fileType: string): string => {
-    if (fileType.includes('image')) return '🖼️';
-    if (fileType.includes('video')) return '🎥';
-    if (fileType.includes('audio')) return '🎵';
-    if (fileType.includes('pdf')) return '📄';
-    if (fileType.includes('text')) return '📝';
-    if (fileType.includes('json') || fileType.includes('xml')) return '📋';
+  const formatDate = (timestamp: number): string => {
+    return new Date(timestamp).toLocaleDateString();
+  };
+
+  const getFileIcon = (file: FileInfo) => {
+    const type = file.type.toLowerCase();
+    const name = file.name.toLowerCase();
+    
+    if (type.includes('image') || ['.jpg', '.jpeg', '.png', '.gif', '.webp'].some(ext => name.endsWith(ext))) {
+      return '🖼️';
+    } else if (['.pdf'].some(ext => name.endsWith(ext))) {
+      return '📄';
+    } else if (['.doc', '.docx'].some(ext => name.endsWith(ext))) {
+      return '📝';
+    } else if (['.txt', '.rtf'].some(ext => name.endsWith(ext))) {
+      return '📃';
+    } else if (['.mp4', '.avi', '.mov'].some(ext => name.endsWith(ext))) {
+      return '🎥';
+    } else if (['.mp3', '.wav', '.aac'].some(ext => name.endsWith(ext))) {
+      return '🎵';
+    }
     return '📁';
   };
 
-  const renderFile = ({ item }: { item: FileInfo }) => (
-    <TouchableOpacity 
-      style={styles.fileItem} 
+  const renderFileItem = ({ item }: { item: FileInfo }) => (
+    <TouchableOpacity
+      style={[
+        styles.fileItem,
+        selectedFiles.has(item.id) && styles.selectedFileItem
+      ]}
       onPress={() => handleFilePress(item)}
+      onLongPress={() => {
+        setSelectionMode(true);
+        toggleFileSelection(item.id);
+      }}
     >
-      <View style={styles.fileIconContainer}>
-        <Text style={styles.fileIcon}>{getFileIcon(item.type)}</Text>
+      <View style={styles.fileIcon}>
+        <Text style={styles.fileIconText}>{getFileIcon(item)}</Text>
       </View>
-      <View style={styles.fileDetails}>
+      <View style={styles.fileInfo}>
         <Text style={styles.fileName} numberOfLines={1}>
           {item.name}
         </Text>
-        <Text style={styles.fileSize}>
-          {formatFileSize(item.size)} • {new Date(item.lastModified).toLocaleDateString()}
+        <Text style={styles.fileDetails}>
+          {formatFileSize(item.size)} • {formatDate(item.lastModified)}
         </Text>
       </View>
-      <TouchableOpacity 
-        style={styles.downloadButton}
-        onPress={() => downloadFile(item)}
-      >
-        <Text style={styles.downloadButtonText}>⬇️</Text>
-      </TouchableOpacity>
+      {selectionMode && (
+        <View style={styles.checkbox}>
+          <Text>{selectedFiles.has(item.id) ? '✓' : '○'}</Text>
+        </View>
+      )}
     </TouchableOpacity>
-  );
-
-  const renderDirectorySelector = () => (
-    <ScrollView 
-      horizontal 
-      style={styles.directorySelector}
-      showsHorizontalScrollIndicator={false}
-    >
-      {directories.map((dir) => (
-        <TouchableOpacity
-          key={dir}
-          style={[
-            styles.directoryChip,
-            selectedDirectory === dir && styles.selectedDirectoryChip
-          ]}
-          onPress={() => {
-            setSelectedDirectory(dir);
-            loadFiles();
-          }}
-        >
-          <Text style={[
-            styles.directoryChipText,
-            selectedDirectory === dir && styles.selectedDirectoryChipText
-          ]}>
-            {dir.replace('/', '')}
-          </Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
   );
 
   return (
@@ -233,9 +312,11 @@ const FileManagerScreen: React.FC = () => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>File Manager</Text>
-        <TouchableOpacity style={styles.syncButton} onPress={handleSyncAll}>
-          <Text style={styles.syncButtonText}>Sync All</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleSyncAll} style={styles.syncButton}>
+            <Text style={styles.syncButtonText}>Sync All</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Search Bar */}
@@ -245,69 +326,88 @@ const FileManagerScreen: React.FC = () => {
           placeholder="Search files..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          onSubmitEditing={handleSearch}
         />
-        <TouchableOpacity style={styles.searchButton} onPress={handleSearch}>
-          <Text style={styles.searchButtonText}>🔍</Text>
-        </TouchableOpacity>
       </View>
 
-      {/* Directory Selector */}
-      {renderDirectorySelector()}
+      {/* Filter Controls */}
+      <View style={styles.filterContainer}>
+        <View style={styles.filterRow}>
+          {['all', 'images', 'documents', 'others'].map((type) => (
+            <TouchableOpacity
+              key={type}
+              style={[
+                styles.filterButton,
+                filterType === type && styles.activeFilterButton
+              ]}
+              onPress={() => setFilterType(type as any)}
+            >
+              <Text style={[
+                styles.filterButtonText,
+                filterType === type && styles.activeFilterButtonText
+              ]}>
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+
+      {/* Selection Mode Actions */}
+      {selectionMode && (
+        <View style={styles.selectionActions}>
+          <TouchableOpacity
+            style={styles.actionButton}
+            onPress={handleBatchDownload}
+          >
+            <Text style={styles.actionButtonText}>
+              Download Selected ({selectedFiles.size})
+            </Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.cancelButton]}
+            onPress={() => {
+              setSelectionMode(false);
+              setSelectedFiles(new Set());
+            }}
+          >
+            <Text style={styles.actionButtonText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Sync Progress */}
+      {syncProgress && syncProgress.progress < 100 && (
+        <View style={styles.progressContainer}>
+          <Text style={styles.progressText}>
+            Syncing: {syncProgress.completed}/{syncProgress.total} files
+          </Text>
+          <View style={styles.progressBar}>
+            <View 
+              style={[styles.progressFill, { width: `${syncProgress.progress}%` }]} 
+            />
+          </View>
+        </View>
+      )}
 
       {/* File List */}
       <FlatList
-        data={files}
-        renderItem={renderFile}
+        data={filteredFiles}
+        renderItem={renderFileItem}
         keyExtractor={(item) => item.id}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            {loading ? (
-              <ActivityIndicator size="large" color="#4682b4" />
-            ) : (
-              <>
-                <Text style={styles.emptyText}>No files found</Text>
-                <Text style={styles.emptySubtext}>
-                  Pull down to refresh or try a different directory
-                </Text>
-              </>
-            )}
-          </View>
-        }
         style={styles.fileList}
+        contentContainerStyle={styles.fileListContent}
       />
 
-      {/* Sync Progress Modal */}
-      <Modal
-        visible={showSyncModal}
-        transparent
-        animationType="fade"
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Syncing Files</Text>
-            {syncProgress && (
-              <>
-                <View style={styles.progressContainer}>
-                  <View style={[styles.progressBar, { width: `${syncProgress.progress}%` }]} />
-                </View>
-                <Text style={styles.progressText}>
-                  {syncProgress.completed} of {syncProgress.total} files
-                </Text>
-                {syncProgress.currentFile && (
-                  <Text style={styles.currentFileText}>
-                    {syncProgress.currentFile}
-                  </Text>
-                )}
-              </>
-            )}
-            <ActivityIndicator size="large" color="#4682b4" style={styles.loadingIndicator} />
-          </View>
+      {/* Loading Overlay */}
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color="#007AFF" />
+          <Text style={styles.loadingText}>Loading...</Text>
         </View>
-      </Modal>
+      )}
     </View>
   );
 };
@@ -315,193 +415,176 @@ const FileManagerScreen: React.FC = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingTop: 60,
-    paddingBottom: 20,
-    backgroundColor: '#4682b4',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#ffffff',
+    color: '#333',
+  },
+  headerActions: {
+    flexDirection: 'row',
   },
   syncButton: {
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: '#007AFF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
   },
   syncButtonText: {
-    color: '#4682b4',
+    color: 'white',
     fontWeight: '600',
   },
   searchContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  searchInput: {
-    flex: 1,
-    height: 40,
-    borderWidth: 1,
-    borderColor: '#dee2e6',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    backgroundColor: '#f8f9fa',
-  },
-  searchButton: {
-    marginLeft: 12,
-    height: 40,
-    width: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#4682b4',
-    borderRadius: 8,
-  },
-  searchButtonText: {
-    fontSize: 16,
-  },
-  directorySelector: {
-    backgroundColor: '#ffffff',
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
-  },
-  directoryChip: {
     paddingHorizontal: 16,
     paddingVertical: 8,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 16,
-    marginRight: 8,
+    backgroundColor: 'white',
+  },
+  searchInput: {
+    height: 40,
     borderWidth: 1,
-    borderColor: '#dee2e6',
+    borderColor: '#ddd',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#f9f9f9',
   },
-  selectedDirectoryChip: {
-    backgroundColor: '#4682b4',
-    borderColor: '#4682b4',
+  filterContainer: {
+    backgroundColor: 'white',
+    paddingHorizontal: 16,
+    paddingBottom: 8,
   },
-  directoryChipText: {
-    fontSize: 14,
-    color: '#495057',
-    fontWeight: '500',
+  filterRow: {
+    flexDirection: 'row',
+    gap: 8,
   },
-  selectedDirectoryChipText: {
-    color: '#ffffff',
+  filterButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    backgroundColor: '#f0f0f0',
+  },
+  activeFilterButton: {
+    backgroundColor: '#007AFF',
+  },
+  filterButtonText: {
+    fontSize: 12,
+    color: '#666',
+  },
+  activeFilterButtonText: {
+    color: 'white',
+  },
+  selectionActions: {
+    flexDirection: 'row',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#e8f4fd',
+    gap: 8,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#007AFF',
+    paddingVertical: 8,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButton: {
+    backgroundColor: '#666',
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: '600',
+  },
+  progressContainer: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fff3cd',
+  },
+  progressText: {
+    fontSize: 12,
+    color: '#856404',
+    marginBottom: 4,
+  },
+  progressBar: {
+    height: 4,
+    backgroundColor: '#ffeaa7',
+    borderRadius: 2,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#fdcb6e',
+    borderRadius: 2,
   },
   fileList: {
     flex: 1,
   },
+  fileListContent: {
+    paddingVertical: 8,
+  },
   fileItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#ffffff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
-  },
-  fileIconContainer: {
-    width: 40,
-    height: 40,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#f8f9fa',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: 'white',
+    marginHorizontal: 8,
+    marginVertical: 2,
     borderRadius: 8,
-    marginRight: 12,
+    elevation: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+  },
+  selectedFileItem: {
+    backgroundColor: '#e8f4fd',
+    borderColor: '#007AFF',
+    borderWidth: 1,
   },
   fileIcon: {
-    fontSize: 20,
+    marginRight: 12,
   },
-  fileDetails: {
+  fileIconText: {
+    fontSize: 24,
+  },
+  fileInfo: {
     flex: 1,
   },
   fileName: {
     fontSize: 16,
     fontWeight: '500',
-    color: '#333333',
-    marginBottom: 4,
+    color: '#333',
+    marginBottom: 2,
   },
-  fileSize: {
-    fontSize: 14,
-    color: '#666666',
+  fileDetails: {
+    fontSize: 12,
+    color: '#666',
   },
-  downloadButton: {
-    padding: 8,
+  checkbox: {
+    marginLeft: 8,
   },
-  downloadButtonText: {
-    fontSize: 18,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 18,
-    fontWeight: '500',
-    color: '#666666',
-    marginBottom: 8,
-  },
-  emptySubtext: {
-    fontSize: 14,
-    color: '#999999',
-    textAlign: 'center',
-  },
-  modalOverlay: {
-    flex: 1,
+  loadingOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  modalContent: {
-    backgroundColor: '#ffffff',
-    borderRadius: 12,
-    padding: 24,
-    minWidth: 280,
-    alignItems: 'center',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 16,
-    color: '#333333',
-  },
-  progressContainer: {
-    width: '100%',
-    height: 8,
-    backgroundColor: '#e9ecef',
-    borderRadius: 4,
-    marginBottom: 12,
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#4682b4',
-    borderRadius: 4,
-  },
-  progressText: {
-    fontSize: 14,
-    color: '#666666',
-    marginBottom: 8,
-  },
-  currentFileText: {
-    fontSize: 12,
-    color: '#999999',
-    marginBottom: 16,
-    textAlign: 'center',
-  },
-  loadingIndicator: {
+  loadingText: {
+    color: 'white',
     marginTop: 8,
+    fontSize: 16,
   },
 });
-
-export default FileManagerScreen;

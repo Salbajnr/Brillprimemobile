@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -56,9 +55,9 @@ const DashboardScreen: React.FC = () => {
       }
 
       const results = await Promise.allSettled(promises);
-      
+
       const newData: DashboardData = {};
-      
+
       results.forEach((result, index) => {
         if (result.status === 'fulfilled' && result.value.success) {
           switch (index) {
