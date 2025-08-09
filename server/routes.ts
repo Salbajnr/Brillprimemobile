@@ -1192,7 +1192,7 @@ const searchSchema = z.object({
   app.post("/api/auth/verify-identity", requireAuth, async (req, res) => {
     try {
       const { userId, role, documentType, documentNumber, dob, nationality } = req.body;
-      
+
       // Basic validation
       if (!userId || !role || !documentType || !documentNumber || !dob || !nationality) {
         return res.status(400).json({ message: "Missing required identity verification fields" });
@@ -1478,7 +1478,7 @@ const searchSchema = z.object({
   app.use('/api/role-management', (await import('./routes/role-management')).default);
   app.use('/api/live-system', (await import('./routes/live-system')).default);
   app.use('/api/analytics', (await import('./routes/analytics')).default);
-  
+
   // Enhanced analytics logging with real-time streaming
   // Assuming registerAnalyticsLoggingRoutes is defined elsewhere
   // For now, commenting out as it's not provided in the original code
