@@ -1,23 +1,17 @@
+
 {
-  "include": ["client/src/**/*", "shared/**/*", "server/**/*"],
-  "exclude": ["node_modules", "build", "dist", "**/*.test.ts"],
+  "files": [],
+  "references": [
+    { "path": "./apps/web" },
+    { "path": "./apps/admin" },
+    { "path": "./packages/shared" },
+    { "path": "./packages/server" }
+  ],
   "compilerOptions": {
-    "incremental": true,
-    "tsBuildInfoFile": "./node_modules/typescript/tsbuildinfo",
-    "noEmit": true,
-    "module": "ESNext",
-    "strict": true,
-    "lib": ["esnext", "dom", "dom.iterable"],
-    "jsx": "react-jsx",
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "allowImportingTsExtensions": true,
-    "moduleResolution": "bundler",
     "baseUrl": ".",
-    "types": ["node", "vite/client"],
     "paths": {
-      "@/*": ["./client/src/*"],
-      "@shared/*": ["./shared/*"]
+      "@brillprime/shared": ["./packages/shared/src"],
+      "@brillprime/shared/*": ["./packages/shared/src/*"]
     }
   }
 }
