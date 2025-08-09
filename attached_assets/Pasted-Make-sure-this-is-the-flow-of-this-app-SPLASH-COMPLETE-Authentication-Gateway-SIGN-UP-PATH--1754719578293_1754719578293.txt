@@ -1,0 +1,54 @@
+Make sure this is the flow of this app SPLASH COMPLETE
+↓
+Authentication Gateway:
+├── SIGN UP PATH
+│   ├── Choose Role: Consumer | Merchant | Driver
+│   ├── Personal Information Form (curved input design)
+│   ├── Email/Phone Verification (6-digit code system)
+│   ├── Password Setup with security requirements
+│   ├── Role-specific additional info:
+│   │   ├── Consumer: Location preferences, interests
+│   │   ├── Merchant: Business details, documents upload
+│   │   └── Driver: Vehicle info, license verification
+│   └── Welcome to role-specific dashboard
+└── SIGN IN PATH
+    ├── Email/Password or Social Login (Google, Facebook)
+    ├── Role selection if user has multiple approved roles
+    ├── Biometric authentication option (Face ID/Fingerprint)
+    └── Navigate to role-appropriate dashboard for first time user journey 
+MAIN CONSUMER JOURNEY
+CONSUMER DASHBOARD
+├── Location-Based Discovery
+│   ├── Map view with nearby merchants plotted
+│   ├── Search/filter by category, rating, distance
+│   ├── Merchant cards with ratings, delivery time, offers
+│   └── Real-time merchant availability status
+│
+├── Shopping Experience
+│   ├── Browse merchant store (product catalog)
+│   ├── Add items to multi-merchant cart
+│   ├── View cart with merchant groupings
+│   ├── Apply promo codes and discounts
+│   └── Proceed to checkout
+│
+├── Checkout & Payment
+│   ├── Review order summary by merchant
+│   ├── Set delivery address and preferences
+│   ├── Choose payment method (Card/Bank/Wallet)
+│   ├── Secure payment via Paystack integration
+│   ├── Funds moved to escrow system
+│   └── Order confirmation with tracking info
+│
+├── Order Tracking
+│   ├── Real-time order status updates
+│   ├── Live driver location tracking
+│   ├── ETA notifications and updates
+│   ├── Direct chat with merchant/driver
+│   └── Delivery confirmation and rating
+│
+└── Post-Purchase
+    ├── Rate merchant and driver experience
+    ├── Leave product reviews
+    ├── Order history and reorder options
+    ├── Escrow auto-release (7 days) or manual confirmation
+    └── Dispute resolution if needed
