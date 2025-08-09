@@ -4,6 +4,8 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
+// Remove unused imports since we'll integrate shared packages into specific pages
+
 // Import only essential pages directly to avoid circular dependencies
 import SplashPage from "@/pages/splash";
 import OnboardingPage from "@/pages/onboarding";
