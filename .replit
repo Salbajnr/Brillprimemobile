@@ -30,7 +30,7 @@ externalPort = 5173
 PORT = "5000"
 
 [workflows]
-runButton = "Start Monorepo Dev"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Project"
@@ -45,9 +45,12 @@ args = "Start application"
 name = "Start application"
 author = "agent"
 
+[workflows.workflow.metadata]
+outputType = "webview"
+
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cp simple-package.json package-temp.json && cp package-temp.json package.json && cp vite.config.simple.ts vite.config.ts && cp postcss.config.simple.js postcss.config.js && npm install && npm run dev"
+args = "cd apps/web && npm run dev"
 waitForPort = 5000
 
 [[workflows.workflow]]
