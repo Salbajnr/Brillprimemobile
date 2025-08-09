@@ -1,28 +1,38 @@
 
 import React, { useState } from 'react';
-import { AdminProvider, useAdmin } from '../lib/admin-auth';
-import { AdminLogin } from '../components/admin-login';
+import { useAdmin } from '../lib/admin-auth';
 import { AdminLayout } from '../components/admin-layout';
 import { AdminDashboardMain } from '../components/admin-dashboard-main';
 import { AdminUserManagement } from './admin-user-management';
 import { AdminKYCVerification } from './admin-kyc-verification';
+import { AdminTransactions } from './admin-transactions';
+import { AdminMonitoring } from './admin-monitoring';
+import { AdminFraud } from './admin-fraud';
+import { AdminSupport } from './admin-support';
+import { AdminEscrowManagement } from './admin-escrow-management';
+import { AdminModeration } from './admin-moderation';
 
-type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security';
+type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation';
 
-function AdminContent() {
-  const { isAuthenticated, isLoading } = useAdmin();
+function AdminDashboard() {
+  const { user, isAuthenticated, isLoading } = useAdmin();
   const [currentPage, setCurrentPage] = useState<AdminPageType>('dashboard');
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-indigo-600"></div>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading admin dashboard...</p>
+        </div>
       </div>
     );
   }
 
   if (!isAuthenticated) {
-    return <AdminLogin />;
+    // This should not happen as the route is protected, but just in case
+    window.location.href = '/admin';
+    return null;
   }
 
   const renderPage = () => {
@@ -33,16 +43,32 @@ function AdminContent() {
         return <AdminUserManagement />;
       case 'kyc':
         return <AdminKYCVerification />;
-      case 'escrow':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Escrow Management</h1><p className="text-gray-600">Coming soon...</p></div>;
       case 'transactions':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Transactions</h1><p className="text-gray-600">Coming soon...</p></div>;
+        return <AdminTransactions />;
+      case 'monitoring':
+        return <AdminMonitoring />;
+      case 'fraud':
+        return <AdminFraud />;
       case 'support':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Support & Tickets</h1><p className="text-gray-600">Coming soon...</p></div>;
+        return <AdminSupport />;
+      case 'escrow':
+        return <AdminEscrowManagement />;
+      case 'moderation':
+        return <AdminModeration />;
       case 'analytics':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Platform Analytics</h1><p className="text-gray-600">Coming soon...</p></div>;
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-bold text-gray-900">Platform Analytics</h1>
+            <p className="text-gray-600 mt-2">Advanced analytics and reporting tools coming soon...</p>
+          </div>
+        );
       case 'security':
-        return <div className="p-6"><h1 className="text-2xl font-bold">Security & Fraud</h1><p className="text-gray-600">Coming soon...</p></div>;
+        return (
+          <div className="p-6">
+            <h1 className="text-2xl font-bold text-gray-900">Security Center</h1>
+            <p className="text-gray-600 mt-2">Security monitoring and threat detection tools coming soon...</p>
+          </div>
+        );
       default:
         return <AdminDashboardMain />;
     }
@@ -53,16 +79,12 @@ function AdminContent() {
   };
 
   return (
-    <AdminLayout currentPage={currentPage} onPageChange={handlePageChange}>
-      {renderPage()}
-    </AdminLayout>
+    <div className="min-h-screen bg-gray-50">
+      <AdminLayout currentPage={currentPage} onPageChange={handlePageChange}>
+        {renderPage()}
+      </AdminLayout>
+    </div>
   );
 }
 
-export function AdminDashboard() {
-  return (
-    <AdminProvider>
-      <AdminContent />
-    </AdminProvider>
-  );
-}
+export default AdminDashboard;
