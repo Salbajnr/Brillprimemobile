@@ -13,7 +13,7 @@ class ApiService {
   private api: AxiosInstance;
   private baseURL: string;
 
-  constructor(baseURL: string = 'http://localhost:5000') {
+  constructor(baseURL: string = 'http://0.0.0.0:5000') {
     this.baseURL = baseURL;
     this.api = axios.create({
       baseURL: this.baseURL,
@@ -53,7 +53,7 @@ class ApiService {
     );
   }
 
-  // Auth endpoints
+  // Auth endpoints - mirroring your web app
   async register(userData: {
     email: string;
     password: string;
@@ -62,8 +62,8 @@ class ApiService {
     role: string;
   }): Promise<ApiResponse> {
     try {
-      const response = await this.api.post('/auth/register', userData);
-      return response.data;
+      const response = await this.api.post('/api/auth/signup', userData);
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -77,17 +77,18 @@ class ApiService {
     password: string;
   }): Promise<ApiResponse> {
     try {
-      const response = await this.api.post('/auth/login', credentials);
+      const response = await this.api.post('/api/auth/signin', credentials);
       
       // Store tokens
-      if (response.data.token) {
-        await AsyncStorage.setItem('authToken', response.data.token);
+      if (response.data.user) {
+        const token = response.data.token || 'mock-token'; // Your backend might have different token structure
+        await AsyncStorage.setItem('authToken', token);
         if (response.data.refreshToken) {
           await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
         }
       }
       
-      return response.data;
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -101,8 +102,18 @@ class ApiService {
     otp: string;
   }): Promise<ApiResponse> {
     try {
-      const response = await this.api.post('/auth/verify-otp', data);
-      return response.data;
+      const response = await this.api.post('/api/auth/verify-otp', data);
+      
+      // Store tokens after successful verification
+      if (response.data.user) {
+        const token = response.data.token || 'mock-token';
+        await AsyncStorage.setItem('authToken', token);
+        if (response.data.refreshToken) {
+          await AsyncStorage.setItem('refreshToken', response.data.refreshToken);
+        }
+      }
+      
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -111,15 +122,33 @@ class ApiService {
     }
   }
 
+  async resendOTP(email: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.post('/api/auth/resend-otp', { email });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to resend OTP',
+      };
+    }
+  }
+
   async logout(): Promise<void> {
-    await AsyncStorage.multiRemove(['authToken', 'refreshToken']);
+    try {
+      await this.api.post('/api/auth/logout');
+    } catch (error) {
+      console.log('Logout API call failed, clearing local storage anyway');
+    } finally {
+      await AsyncStorage.multiRemove(['authToken', 'refreshToken']);
+    }
   }
 
   // User profile endpoints
   async getUserProfile(): Promise<ApiResponse> {
     try {
-      const response = await this.api.get('/user/profile');
-      return response.data;
+      const response = await this.api.get('/api/user/profile');
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -130,8 +159,8 @@ class ApiService {
 
   async updateProfile(profileData: any): Promise<ApiResponse> {
     try {
-      const response = await this.api.put('/user/profile', profileData);
-      return response.data;
+      const response = await this.api.put('/api/user/profile', profileData);
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -140,11 +169,11 @@ class ApiService {
     }
   }
 
-  // Orders endpoints
+  // Orders endpoints - matching your web app
   async getOrders(): Promise<ApiResponse> {
     try {
-      const response = await this.api.get('/orders');
-      return response.data;
+      const response = await this.api.get('/api/orders');
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -155,8 +184,8 @@ class ApiService {
 
   async createOrder(orderData: any): Promise<ApiResponse> {
     try {
-      const response = await this.api.post('/orders', orderData);
-      return response.data;
+      const response = await this.api.post('/api/orders', orderData);
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -165,11 +194,23 @@ class ApiService {
     }
   }
 
+  async getOrderById(orderId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get(`/api/orders/${orderId}`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get order',
+      };
+    }
+  }
+
   // Products endpoints
   async getProducts(): Promise<ApiResponse> {
     try {
-      const response = await this.api.get('/products');
-      return response.data;
+      const response = await this.api.get('/api/products');
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -178,11 +219,23 @@ class ApiService {
     }
   }
 
+  async getProductById(productId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get(`/api/products/${productId}`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get product',
+      };
+    }
+  }
+
   // Merchants endpoints
   async getMerchants(): Promise<ApiResponse> {
     try {
-      const response = await this.api.get('/merchants');
-      return response.data;
+      const response = await this.api.get('/api/merchants');
+      return { success: true, data: response.data };
     } catch (error: any) {
       return {
         success: false,
@@ -191,10 +244,236 @@ class ApiService {
     }
   }
 
+  async getMerchantById(merchantId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get(`/api/merchants/${merchantId}`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get merchant',
+      };
+    }
+  }
+
+  // Merchant dashboard endpoints
+  async getMerchantMetrics(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/merchant/metrics');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get metrics',
+      };
+    }
+  }
+
+  async getMerchantOrders(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/merchant/orders');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get merchant orders',
+      };
+    }
+  }
+
+  async getMerchantProducts(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/merchant/products');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get merchant products',
+      };
+    }
+  }
+
+  async getMerchantRevenue(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/merchant/revenue');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get revenue data',
+      };
+    }
+  }
+
+  // Driver endpoints
+  async getDriverDeliveries(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/driver/deliveries');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get deliveries',
+      };
+    }
+  }
+
+  async updateDeliveryStatus(deliveryId: string, status: string, data: any = {}): Promise<ApiResponse> {
+    try {
+      const response = await this.api.put(`/api/driver/deliveries/${deliveryId}/status`, {
+        status,
+        ...data,
+      });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update delivery status',
+      };
+    }
+  }
+
+  // Payment endpoints
+  async initializePayment(paymentData: any): Promise<ApiResponse> {
+    try {
+      const response = await this.api.post('/api/payments/initialize', paymentData);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to initialize payment',
+      };
+    }
+  }
+
+  async verifyPayment(reference: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.post('/api/payments/verify', { reference });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to verify payment',
+      };
+    }
+  }
+
+  // Wallet endpoints
+  async getWalletBalance(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/wallet/balance');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get wallet balance',
+      };
+    }
+  }
+
+  async getWalletTransactions(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/wallet/transactions');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get transactions',
+      };
+    }
+  }
+
+  // Location endpoints
+  async updateLocation(locationData: {
+    latitude: number;
+    longitude: number;
+    address?: string;
+  }): Promise<ApiResponse> {
+    try {
+      const response = await this.api.post('/api/location/update', locationData);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to update location',
+      };
+    }
+  }
+
+  // Notifications endpoints
+  async getNotifications(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/notifications');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get notifications',
+      };
+    }
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.put(`/api/notifications/${notificationId}/read`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to mark notification as read',
+      };
+    }
+  }
+
+  // Chat endpoints
+  async getChatRooms(): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get('/api/chat/rooms');
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get chat rooms',
+      };
+    }
+  }
+
+  async getChatMessages(roomId: string): Promise<ApiResponse> {
+    try {
+      const response = await this.api.get(`/api/chat/rooms/${roomId}/messages`);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to get messages',
+      };
+    }
+  }
+
+  async sendChatMessage(roomId: string, message: string, messageType: string = 'text'): Promise<ApiResponse> {
+    try {
+      const response = await this.api.post(`/api/chat/rooms/${roomId}/messages`, {
+        message,
+        messageType,
+      });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send message',
+      };
+    }
+  }
+
   // Update base URL
   updateBaseURL(newBaseURL: string) {
     this.baseURL = newBaseURL;
     this.api.defaults.baseURL = newBaseURL;
+  }
+
+  // Get current base URL
+  getBaseURL(): string {
+    return this.baseURL;
   }
 }
 
