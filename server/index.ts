@@ -105,7 +105,7 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="flex flex-col items-center justify-center min-h-screen max-w-md mx-auto relative overflow-hidden bg-white">
               <div className="w-48 h-48 flex items-center justify-center animate-pulse">
-                <img src="/src/assets/images/logo.png" alt="Brillprime Logo" className="w-40 h-40 object-contain" onError={(e) => {
+                <img src="/src/assets/images/logo.png" alt="Brillprime Logo" className="w-full h-full object-contain max-w-44 max-h-44" onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextElementSibling.style.display = 'block';
                 }} />
@@ -159,18 +159,18 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="flex flex-col min-h-screen max-w-md mx-auto bg-white p-6">
               <div className="flex-1 flex flex-col items-center justify-center text-center">
-                <div className="w-64 h-64 mb-8">
+                <div className="w-72 h-72 mb-8 flex items-center justify-center">
                   <img 
                     src={currentData.image} 
                     alt="Onboarding" 
-                    className="w-full h-full object-contain"
+                    className="w-full h-full object-contain max-w-64 max-h-64"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextElementSibling.style.display = 'block';
                     }}
                   />
-                  <div className="w-full h-full bg-blue-100 rounded-lg flex items-center justify-center" style={{display: 'none'}}>
-                    <span className="text-blue-600 text-4xl">📱</span>
+                  <div className="w-64 h-64 bg-blue-100 rounded-lg flex items-center justify-center" style={{display: 'none'}}>
+                    <span className="text-blue-600 text-6xl">📱</span>
                   </div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-4 whitespace-pre-line">
@@ -247,7 +247,7 @@ if (process.env.NODE_ENV === "production") {
                   <img 
                     src="/src/assets/images/sign_up_option_logo.png" 
                     alt="Logo" 
-                    className="w-20 h-20 object-contain"
+                    className="w-full h-full object-contain max-w-20 max-h-20"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextElementSibling.style.display = 'block';
@@ -333,7 +333,7 @@ if (process.env.NODE_ENV === "production") {
                   <img 
                     src="/src/assets/images/logo.png" 
                     alt="Brillprime Logo" 
-                    className="w-16 h-16 object-contain"
+                    className="w-full h-full object-contain max-w-16 max-h-16"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextElementSibling.style.display = 'block';
@@ -460,7 +460,7 @@ if (process.env.NODE_ENV === "production") {
                   <img 
                     src="/src/assets/images/logo.png" 
                     alt="Brillprime Logo" 
-                    className="w-16 h-16 object-contain"
+                    className="w-full h-full object-contain max-w-16 max-h-16"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextElementSibling.style.display = 'block';
@@ -572,7 +572,7 @@ if (process.env.NODE_ENV === "production") {
             <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col justify-center">
               <div className="text-center mb-8">
                 <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                  <span className="text-4xl">📱</span>
+                  <span className="text-5xl">📱</span>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
                 <p className="text-gray-600">
