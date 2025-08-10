@@ -1,6 +1,7 @@
-
 import express from 'express';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
+import { Redis } from 'ioredis';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -8,6 +9,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { validateEnvironment } from './env-validation';
+import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
+import { xssProtection, csrfProtection } from './middleware/validation';
+import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
+import { messageQueue } from './services/messageQueue';
+import { pushNotificationService } from './services/pushNotifications';
 
 // Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
@@ -27,6 +33,10 @@ import qrProcessingRoutes from './routes/qr-processing';
 import paystackWebhooksRoutes from './routes/paystack-webhooks';
 import { registerEscrowManagementRoutes } from './routes/escrow-management';
 import withdrawalSystemRoutes from './routes/withdrawal-system';
+// Import compliance routes
+import dataPrivacyRoutes from "./routes/data-privacy";
+import legalComplianceRoutes from "./routes/legal-compliance";
+import nigerianComplianceRoutes from "./routes/nigerian-compliance";
 
 // Validate environment variables
 validateEnvironment();
@@ -37,8 +47,8 @@ const server = createServer(app);
 // Initialize Socket.IO with enhanced configuration
 const io = new SocketIOServer(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ["https://your-domain.com"] 
+    origin: process.env.NODE_ENV === 'production'
+      ? ["https://your-domain.com"]
       : ["http://localhost:5173", "http://localhost:3000"],
     credentials: true
   },
@@ -60,7 +70,7 @@ io.on('connection', (socket) => {
   socket.on('authenticate', (userData) => {
     if (userData.userId) {
       socket.join(`user_${userData.userId}`);
-      
+
       // Join role-specific rooms
       if (userData.role === 'ADMIN') {
         socket.join('admin_dashboard');
@@ -75,7 +85,7 @@ io.on('connection', (socket) => {
         socket.join('merchants');
         socket.join(`merchant_${userData.userId}`);
       }
-      
+
       console.log(`User ${userData.userId} authenticated as ${userData.role}`);
     }
   });
@@ -98,7 +108,7 @@ io.on('connection', (socket) => {
         });
       });
     }
-    
+
     // Broadcast to admin
     socket.to('admin_tracking').emit('driver_location_update', data);
   });
@@ -144,45 +154,87 @@ io.on('connection', (socket) => {
   });
 });
 
+// Security middleware
+app.use(xssProtection);
+app.use(generalLimiter);
+app.use(responseTimeMiddleware);
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ["https://your-domain.com"] 
+  origin: process.env.NODE_ENV === 'production'
+    ? ["https://your-domain.com"]
     : ["http://localhost:5173", "http://localhost:3000"],
   credentials: true
 }));
 
-// Enhanced session configuration
-app.use(session({
+// Redis client for session storage
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3,
+  lazyConnect: true
+});
+
+// Handle Redis connection
+redis.on('connect', () => {
+  console.log('✅ Redis connected for session storage');
+});
+
+redis.on('error', (err) => {
+  console.error('❌ Redis session store error:', err);
+});
+
+// Enhanced session configuration with Redis
+const sessionConfig = {
+  store: new RedisStore({
+    client: redis,
+    prefix: 'sess:',
+    ttl: 24 * 60 * 60 // 24 hours
+  }),
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
+  rolling: true, // Reset expiration on activity
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   },
-  name: 'brillprime.sid'
-}));
+  name: 'brillprime.sid',
+  genid: () => {
+    // Generate secure session ID
+    return require('crypto').randomBytes(32).toString('hex');
+  }
+};
+
+app.use(session(sessionConfig));
+
+// CSRF token generation
+app.use((req, res, next) => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = require('crypto').randomBytes(32).toString('hex');
+  }
+  res.locals.csrfToken = req.session.csrfToken;
+  next();
+});
 
 // Enhanced request logging
 app.use((req, res, next) => {
   const start = Date.now();
-  
+
   res.on('finish', () => {
     const duration = Date.now() - start;
     console.log(`${req.method} ${req.url} - ${res.statusCode} (${duration}ms)`);
-    
+
     // Log slow requests
     if (duration > 1000) {
       console.warn(`Slow request: ${req.method} ${req.url} took ${duration}ms`);
     }
   });
-  
+
   next();
 });
 
@@ -204,9 +256,9 @@ app.get('/api/ws-test', (req, res) => {
     timestamp: new Date().toISOString(),
     connectedClients: io.engine.clientsCount
   };
-  
+
   io.emit('server_test', testData);
-  
+
   res.json({
     success: true,
     message: 'WebSocket test broadcast sent',
@@ -215,8 +267,13 @@ app.get('/api/ws-test', (req, res) => {
   });
 });
 
-// API Routes with enhanced error handling
+// API Routes with enhanced error handling and specific rate limiting
 const apiRouter = express.Router();
+
+// Apply specific rate limiters
+apiRouter.use('/auth', authLimiter);
+apiRouter.use('/payments', paymentLimiter);
+apiRouter.use('/wallet/fund', paymentLimiter);
 
 // Centralized error handling for API routes
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
@@ -246,10 +303,26 @@ registerEscrowManagementRoutes(app);
 
 app.use('/api', apiRouter);
 
+// Import PCI compliance middleware
+import {
+  pciSecurityHeaders,
+  sanitizeCardData,
+  enforceHttps,
+  pciAuditLogger
+} from './middleware/pci-compliance';
+
+// Apply PCI DSS compliance middleware
+app.use(pciSecurityHeaders);
+app.use(sanitizeCardData);
+app.use('/api/payments', enforceHttps);
+app.use('/api/transactions', enforceHttps);
+app.use('/api/wallet', enforceHttps);
+app.use(pciAuditLogger);
+
 // Enhanced error handling middleware
 app.use((error: any, req: any, res: any, next: any) => {
   console.error('Unhandled error:', error);
-  
+
   // Log error details
   const errorDetails = {
     message: error.message,
@@ -261,15 +334,15 @@ app.use((error: any, req: any, res: any, next: any) => {
     timestamp: new Date().toISOString(),
     userId: req.session?.userId
   };
-  
+
   // In production, you would send this to a logging service
   console.error('Error details:', errorDetails);
-  
+
   // Don't expose internal errors in production
-  const message = process.env.NODE_ENV === 'production' 
-    ? 'Internal server error' 
+  const message = process.env.NODE_ENV === 'production'
+    ? 'Internal server error'
     : error.message;
-  
+
   res.status(error.status || 500).json({
     success: false,
     message,
@@ -283,7 +356,7 @@ const __dirname = dirname(__filename);
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  
+
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   });
@@ -291,21 +364,21 @@ if (process.env.NODE_ENV === 'production') {
   // Development mode: serve the client assets if available
   const clientDistPath = path.join(__dirname, '../client/dist');
   const clientPublicPath = path.join(__dirname, '../client/public');
-  
+
   // Try to serve built assets first
   app.use(express.static(clientDistPath));
   app.use(express.static(clientPublicPath));
-  
+
   // For development, provide a simple landing page if no frontend build exists
   app.get('*', (req, res) => {
     // Don't intercept API routes
     if (req.path.startsWith('/api')) {
       return res.status(404).json({ error: 'API endpoint not found' });
     }
-    
+
     // Try to serve the built index.html first
     const indexPath = path.join(clientDistPath, 'index.html');
-    
+
     // Check if built assets exist
     try {
       res.sendFile(indexPath);
@@ -333,28 +406,28 @@ if (process.env.NODE_ENV === 'production') {
           <div class="container">
             <div class="logo">🚀 BrillPrime</div>
             <h1>Development Server Status</h1>
-            
+
             <div class="status success">
               ✅ Backend Server: Running on port ${PORT}
             </div>
-            
+
             <div class="status success">
               ✅ Database: Connected and configured
             </div>
-            
+
             <div class="status success">
               ✅ WebSocket: Enabled for real-time features
             </div>
-            
+
             <div class="status warning">
               ⚠️ Frontend: Build required for full application access
             </div>
-            
+
             <h2>Available API Endpoints</h2>
             <div class="info">
               The following API endpoints are available for testing:
             </div>
-            
+
             <div class="code">
               GET  /api/health - Server health check<br>
               POST /api/auth/login - User authentication<br>
@@ -362,7 +435,7 @@ if (process.env.NODE_ENV === 'production') {
               GET  /api/ws-test - WebSocket test endpoint<br>
               ... and many more financial service endpoints
             </div>
-            
+
             <h2>Getting Started</h2>
             <div class="info">
               The BrillPrime platform includes:
@@ -376,7 +449,7 @@ if (process.env.NODE_ENV === 'production') {
                 <li>📱 Mobile-Optimized Interface</li>
               </ul>
             </div>
-            
+
             <div class="code">
               Server Time: ${new Date().toISOString()}<br>
               Server Uptime: ${Math.round(process.uptime())}s<br>
@@ -399,7 +472,7 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
-  
+
   // Real-time system health monitoring
   setInterval(() => {
     const memUsage = process.memoryUsage();
@@ -409,12 +482,12 @@ server.listen(PORT, '0.0.0.0', () => {
       heapUsed: Math.round(memUsage.heapUsed / 1024 / 1024 * 100) / 100,
       external: Math.round(memUsage.external / 1024 / 1024 * 100) / 100
     };
-    
+
     // Log memory usage if it's high
     if (memUsageMB.heapUsed > 100) {
       console.warn('High memory usage:', memUsageMB);
     }
-    
+
     // Broadcast system health to admin clients
     io.to('admin_dashboard').emit('system_health', {
       memory: memUsageMB,
@@ -450,5 +523,10 @@ process.on('unhandledRejection', (reason, promise) => {
     process.exit(1);
   }
 });
+
+// Register compliance and legal routes
+app.use("/api/data-privacy", dataPrivacyRoutes);
+app.use("/api/legal", legalComplianceRoutes);
+app.use("/api/compliance", nigerianComplianceRoutes);
 
 export default app;

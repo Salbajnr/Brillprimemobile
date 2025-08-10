@@ -244,17 +244,17 @@ export const merchantProfiles = pgTable("merchant_profiles", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Notifications table (from original, unchanged)
-export const notifications = pgTable("notifications", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  title: text("title").notNull(),
-  message: text("message").notNull(),
-  type: text("type").notNull(),
-  isRead: boolean("is_read").default(false),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow()
-});
+// Notifications table (from original, unchanged) - This is a duplicate, will be replaced by the new one below.
+// export const notifications = pgTable("notifications", {
+//   id: serial("id").primaryKey(),
+//   userId: integer("user_id").references(() => users.id).notNull(),
+//   title: text("title").notNull(),
+//   message: text("message").notNull(),
+//   type: text("type").notNull(),
+//   isRead: boolean("is_read").default(false),
+//   metadata: jsonb("metadata"),
+//   createdAt: timestamp("created_at").defaultNow()
+// });
 
 // Identity verifications table (from original, unchanged)
 export const identityVerifications = pgTable("identity_verifications", {
@@ -478,19 +478,19 @@ export const suspiciousActivities = pgTable("suspicious_activities", {
 });
 
 // Account flags table (from original, unchanged)
-export const accountFlags = pgTable("account_flags", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id).notNull(),
-  flagType: text("flag_type").notNull(),
-  reason: text("reason").notNull(),
-  severity: text("severity").default('MEDIUM'),
-  isActive: boolean("is_active").default(true),
-  flaggedBy: integer("flagged_by").references(() => adminUsers.id),
-  resolvedBy: integer("resolved_by").references(() => adminUsers.id),
-  resolvedAt: timestamp("resolved_at"),
-  expiresAt: timestamp("expires_at"),
-  metadata: jsonb("metadata"),
-  createdAt: timestamp("created_at").defaultNow()
+export const accountFlags = pgTable('account_flags', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  flagType: text('flag_type').notNull(),
+  reason: text('reason').notNull(),
+  severity: text('severity').default('MEDIUM'),
+  isActive: boolean('is_active').default(true),
+  flaggedBy: integer('flagged_by').references(() => adminUsers.id),
+  resolvedBy: integer('resolved_by').references(() => adminUsers.id),
+  resolvedAt: timestamp('resolved_at'),
+  expiresAt: timestamp('expires_at'),
+  metadata: jsonb('metadata'),
+  createdAt: timestamp('created_at').defaultNow()
 });
 
 // Delivery requests table (from original, unchanged)
@@ -618,6 +618,50 @@ export const supportResponses = pgTable('support_responses', {
   message: text('message').notNull(),
   attachments: text('attachments'), // JSON array of file URLs
   createdAt: timestamp('created_at').defaultNow()
+});
+
+// Audit Logs table (New)
+export const auditLogs = pgTable('audit_logs', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id),
+  action: varchar('action', { length: 100 }).notNull(),
+  resource: varchar('resource', { length: 50 }).notNull(),
+  resourceId: varchar('resource_id', { length: 255 }),
+  oldValues: text('old_values'),
+  newValues: text('new_values'),
+  ipAddress: varchar('ip_address', { length: 45 }).notNull(),
+  userAgent: text('user_agent'),
+  sessionId: varchar('session_id', { length: 255 }),
+  success: boolean('success').notNull(),
+  errorMessage: text('error_message'),
+  metadata: text('metadata'),
+  createdAt: timestamp('created_at').defaultNow().notNull()
+});
+
+// Push Tokens table (New)
+export const pushTokens = pgTable('push_tokens', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  token: text('token').notNull(),
+  platform: varchar('platform', { length: 10 }).notNull(), // 'ios', 'android', 'web'
+  deviceInfo: text('device_info'),
+  isActive: boolean('is_active').default(true).notNull(),
+  lastUsed: timestamp('last_used').defaultNow().notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
+});
+
+// Notifications table (New)
+export const notifications = pgTable('notifications', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').references(() => users.id).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  body: text('body').notNull(),
+  category: varchar('category', { length: 50 }).default('general').notNull(),
+  data: text('data'),
+  isRead: boolean('is_read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
 

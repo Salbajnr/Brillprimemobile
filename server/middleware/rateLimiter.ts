@@ -1,98 +1,144 @@
 
 import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
+import { Redis } from 'ioredis';
 
-// Create rate limiter with enhanced security
-const createSecureRateLimit = (windowMs: number, max: number, message: string, skipSuccessfulRequests = false) => {
-  return rateLimit({
-    windowMs,
-    max,
-    message: {
-      success: false,
-      error: message,
-      retryAfter: Math.ceil(windowMs / 1000)
-    },
-    standardHeaders: true,
-    legacyHeaders: false,
-    skipSuccessfulRequests,
-    keyGenerator: (req: Request) => {
-      // Use IP + User Agent for better tracking
-      return `${req.ip}_${req.headers['user-agent'] || 'unknown'}`;
-    },
-    onLimitReached: (req: Request, res: Response) => {
-      console.warn(`Rate limit exceeded for IP: ${req.ip}, Path: ${req.path}, UA: ${req.headers['user-agent']}`);
+// Create Redis client for rate limiting storage
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+
+// Custom rate limiter store using Redis
+class RedisStore {
+  constructor(private redis: Redis, private prefix: string = 'rl:') {}
+
+  async incr(key: string): Promise<{ totalHits: number; resetTime?: Date }> {
+    const fullKey = `${this.prefix}${key}`;
+    const current = await this.redis.incr(fullKey);
+    
+    if (current === 1) {
+      // First request, set expiry
+      await this.redis.expire(fullKey, 60); // 1 minute window
     }
-  });
+    
+    const ttl = await this.redis.ttl(fullKey);
+    const resetTime = new Date(Date.now() + ttl * 1000);
+    
+    return { totalHits: current, resetTime };
+  }
+
+  async decrement(key: string): Promise<void> {
+    await this.redis.decr(`${this.prefix}${key}`);
+  }
+
+  async resetKey(key: string): Promise<void> {
+    await this.redis.del(`${this.prefix}${key}`);
+  }
+}
+
+const store = new RedisStore(redis);
+
+// Role-based rate limits
+const RATE_LIMITS = {
+  ADMIN: { windowMs: 60 * 1000, max: 1000 }, // 1000 requests per minute
+  MERCHANT: { windowMs: 60 * 1000, max: 200 }, // 200 requests per minute
+  DRIVER: { windowMs: 60 * 1000, max: 300 }, // 300 requests per minute
+  CONSUMER: { windowMs: 60 * 1000, max: 100 }, // 100 requests per minute
+  GUEST: { windowMs: 60 * 1000, max: 20 } // 20 requests per minute for unauthenticated
 };
 
-// General API rate limiter - more restrictive
-export const apiLimiter = createSecureRateLimit(
-  15 * 60 * 1000, // 15 minutes
-  50, // Reduced from 100 to 50 requests
-  'Too many requests from this IP, please try again later.'
-);
+// API-specific rate limits
+const API_LIMITS = {
+  '/api/auth/login': { windowMs: 15 * 60 * 1000, max: 5 }, // 5 login attempts per 15 minutes
+  '/api/auth/register': { windowMs: 60 * 60 * 1000, max: 3 }, // 3 registrations per hour
+  '/api/payments': { windowMs: 60 * 1000, max: 10 }, // 10 payment requests per minute
+  '/api/wallet/fund': { windowMs: 60 * 1000, max: 5 }, // 5 funding attempts per minute
+  '/api/verification': { windowMs: 60 * 60 * 1000, max: 5 } // 5 verification attempts per hour
+};
 
-// Strict rate limiter for authentication endpoints
-export const authLimiter = createSecureRateLimit(
-  15 * 60 * 1000, // 15 minutes
-  3, // Very strict - only 3 attempts
-  'Too many authentication attempts, please try again later.',
-  true // Skip successful requests
-);
+// Create dynamic rate limiter based on user role and endpoint
+export const createRateLimiter = (options: {
+  keyGenerator?: (req: Request) => string;
+  skipFailedRequests?: boolean;
+  skipSuccessfulRequests?: boolean;
+  onLimitReached?: (req: Request, res: Response) => void;
+} = {}) => {
+  return async (req: Request, res: Response, next: Function) => {
+    try {
+      // Determine user role
+      const userRole = req.session?.user?.role || 'GUEST';
+      const userId = req.session?.user?.id;
+      
+      // Get rate limit for user role
+      let rateLimit = RATE_LIMITS[userRole as keyof typeof RATE_LIMITS] || RATE_LIMITS.GUEST;
+      
+      // Check for API-specific limits
+      const endpoint = req.path;
+      for (const [pattern, limit] of Object.entries(API_LIMITS)) {
+        if (endpoint.startsWith(pattern)) {
+          rateLimit = limit;
+          break;
+        }
+      }
+      
+      // Generate key for rate limiting
+      const key = options.keyGenerator 
+        ? options.keyGenerator(req)
+        : `${userId || req.ip}:${userRole}:${endpoint}`;
+      
+      // Check rate limit
+      const result = await store.incr(key);
+      
+      // Add rate limit headers
+      res.set({
+        'X-RateLimit-Limit': rateLimit.max.toString(),
+        'X-RateLimit-Remaining': Math.max(0, rateLimit.max - result.totalHits).toString(),
+        'X-RateLimit-Reset': result.resetTime?.toISOString() || ''
+      });
+      
+      if (result.totalHits > rateLimit.max) {
+        // Rate limit exceeded
+        if (options.onLimitReached) {
+          options.onLimitReached(req, res);
+        }
+        
+        // Log rate limit violation
+        console.warn(`Rate limit exceeded for ${userRole} user ${userId || 'anonymous'} on ${endpoint}`);
+        
+        return res.status(429).json({
+          success: false,
+          message: 'Too many requests. Please try again later.',
+          code: 'RATE_LIMIT_EXCEEDED',
+          retryAfter: result.resetTime
+        });
+      }
+      
+      next();
+    } catch (error) {
+      console.error('Rate limiting error:', error);
+      // Don't block requests if rate limiter fails
+      next();
+    }
+  };
+};
 
-// Payment endpoints rate limiter - very strict
-export const paymentLimiter = createSecureRateLimit(
-  60 * 1000, // 1 minute
-  2, // Only 2 payment requests per minute
-  'Too many payment attempts, please wait before trying again.'
-);
+// Specific rate limiters
+export const authLimiter = createRateLimiter({
+  keyGenerator: (req) => `auth:${req.ip}`,
+  onLimitReached: (req, res) => {
+    console.warn(`Authentication rate limit exceeded from IP: ${req.ip}`);
+  }
+});
 
-// OTP verification rate limiter
-export const otpLimiter = createSecureRateLimit(
-  5 * 60 * 1000, // 5 minutes
-  3, // Only 3 OTP attempts per 5 minutes
-  'Too many OTP verification attempts, please wait before trying again.',
-  true // Skip successful requests
-);
+export const paymentLimiter = createRateLimiter({
+  keyGenerator: (req) => `payment:${req.session?.user?.id || req.ip}`,
+  skipSuccessfulRequests: true
+});
 
-// Password reset rate limiter
-export const passwordResetLimiter = createSecureRateLimit(
-  60 * 60 * 1000, // 1 hour
-  3, // Only 3 password reset attempts per hour
-  'Too many password reset attempts, please try again later.'
-);
+export const generalLimiter = createRateLimiter();
 
-// Registration rate limiter
-export const registrationLimiter = createSecureRateLimit(
-  60 * 60 * 1000, // 1 hour
-  3, // Only 3 registrations per hour per IP
-  'Too many registration attempts, please try again later.'
-);
-
-// File upload rate limiter
-export const uploadLimiter = createSecureRateLimit(
-  60 * 60 * 1000, // 1 hour
-  10, // 10 file uploads per hour
-  'Too many file upload attempts, please try again later.'
-);
-
-// Admin endpoints rate limiter
-export const adminLimiter = createSecureRateLimit(
-  60 * 1000, // 1 minute
-  10, // 10 admin requests per minute
-  'Too many admin requests, please slow down.'
-);
-
-// Search rate limiter to prevent abuse
-export const searchLimiter = createSecureRateLimit(
-  60 * 1000, // 1 minute
-  20, // 20 searches per minute
-  'Too many search requests, please slow down.'
-);
-
-// Transaction viewing rate limiter
-export const transactionViewLimiter = createSecureRateLimit(
-  60 * 1000, // 1 minute
-  30, // 30 transaction view requests per minute
-  'Too many transaction requests, please slow down.'
-);
+// Cleanup function
+export const cleanupRateLimitStore = async () => {
+  const keys = await redis.keys('rl:*');
+  if (keys.length > 0) {
+    await redis.del(...keys);
+  }
+};
