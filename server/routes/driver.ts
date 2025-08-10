@@ -277,18 +277,6 @@ router.get("/earnings", requireAuth, async (req, res) => {
   try {
     const driverId = req.session!.userId!;
 
-    const earnings = {
-      todayEarnings: 0,
-      weeklyEarnings: 0,
-      monthlyEarnings: 0,
-      totalEarnings: 0,
-      completedDeliveries: 0,
-      bonusEarnings: 0,
-      pendingEarnings: 0,
-      averageDeliveryTime: 0,
-      onTimeDeliveryRate: 0
-    };
-
     // Get delivery history for different periods
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -300,23 +288,157 @@ router.get("/earnings", requireAuth, async (req, res) => {
     const monthDeliveries = await storage.getDriverDeliveriesForPeriod(driverId, monthStart, now);
     const allDeliveries = await storage.getDriverDeliveries(driverId);
 
-    earnings.todayEarnings = todayDeliveries.reduce((sum: number, d: any) => sum + d.deliveryFee, 0);
-    earnings.weeklyEarnings = weekDeliveries.reduce((sum: number, d: any) => sum + d.deliveryFee, 0);
-    earnings.monthlyEarnings = monthDeliveries.reduce((sum: number, d: any) => sum + d.deliveryFee, 0);
-    earnings.totalEarnings = allDeliveries.reduce((sum: number, d: any) => sum + d.deliveryFee, 0);
+    // Calculate earnings
+    const todayEarnings = todayDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
+    const weeklyEarnings = weekDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
+    const monthlyEarnings = monthDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
+    const totalEarnings = allDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
 
-    earnings.completedDeliveries = allDeliveries.filter((d: any) => d.status === 'DELIVERED').length;
+    // Calculate performance metrics
+    const completedDeliveries = allDeliveries.filter((d: any) => d.status === 'delivered').length;
+    const todayCompletedDeliveries = todayDeliveries.filter((d: any) => d.status === 'delivered').length;
+    
+    // Calculate on-time delivery rate from recent deliveries
+    const recentDeliveries = weekDeliveries.filter((d: any) => d.status === 'delivered');
+    const onTimeDeliveries = recentDeliveries.filter((d: any) => d.onTime === true);
+    const onTimeDeliveryRate = recentDeliveries.length > 0 
+      ? Math.round((onTimeDeliveries.length / recentDeliveries.length) * 100) 
+      : 0;
 
-    // Calculate performance metrics (mock data for now)
-    earnings.averageDeliveryTime = 25;
-    earnings.onTimeDeliveryRate = 92;
-    earnings.bonusEarnings = earnings.monthlyEarnings * 0.1; // 10% bonus
-    earnings.pendingEarnings = earnings.todayEarnings * 0.2; // 20% pending
+    // Calculate average delivery time (mock for now)
+    const averageDeliveryTime = 25 + Math.floor(Math.random() * 10);
+
+    // Calculate bonuses based on tier and performance
+    const driverProfile = await storage.getDriverProfile(driverId);
+    const tierMultiplier = driverProfile?.tier === 'PREMIUM' ? 1.15 : driverProfile?.tier === 'ELITE' ? 1.25 : 1.0;
+    const bonusEarnings = monthlyEarnings * (tierMultiplier - 1);
+
+    // Calculate pending earnings (typically held for 24-48 hours)
+    const pendingEarnings = todayEarnings * 0.3; // 30% pending for processing
+
+    const earnings = {
+      todayEarnings,
+      weeklyEarnings,
+      monthlyEarnings,
+      totalEarnings,
+      completedDeliveries: todayCompletedDeliveries,
+      bonusEarnings,
+      pendingEarnings,
+      averageDeliveryTime,
+      onTimeDeliveryRate
+    };
 
     res.json(earnings);
   } catch (error) {
     console.error("Get driver earnings error:", error);
     res.status(500).json({ message: "Failed to fetch earnings" });
+  }
+});
+
+// Get driver tier progress
+router.get("/tier-progress", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const driverProfile = await storage.getDriverProfile(driverId);
+    
+    if (!driverProfile) {
+      return res.status(404).json({ message: "Driver profile not found" });
+    }
+
+    const currentTier = driverProfile.tier || 'STANDARD';
+    const totalDeliveries = driverProfile.totalDeliveries || 0;
+    const totalEarnings = driverProfile.totalEarnings || 0;
+    const rating = driverProfile.rating || 0;
+
+    // Get recent deliveries to calculate on-time rate
+    const recentDeliveries = await storage.getDriverDeliveriesForPeriod(
+      driverId, 
+      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 
+      new Date()
+    );
+    
+    const onTimeDeliveries = recentDeliveries.filter((d: any) => d.onTime === true).length;
+    const onTimeRate = recentDeliveries.length > 0 ? (onTimeDeliveries / recentDeliveries.length) * 100 : 0;
+
+    // Define tier requirements and benefits
+    const tierData = {
+      STANDARD: {
+        nextTier: 'PREMIUM',
+        requirements: { deliveries: 50, rating: 4.5, earnings: 100000, onTimeRate: 85 },
+        benefits: ["Standard delivery access", "Basic earnings structure", "Regular support"],
+        nextTierBenefits: ["Premium delivery access", "15% higher rates", "Priority support", "Bonus eligibility"]
+      },
+      PREMIUM: {
+        nextTier: 'ELITE',
+        requirements: { deliveries: 150, rating: 4.7, earnings: 300000, onTimeRate: 90 },
+        benefits: ["Premium delivery access", "15% higher rates", "Priority support", "Bonus eligibility"],
+        nextTierBenefits: ["Elite delivery access", "25% higher rates", "24/7 priority support", "Exclusive bonuses", "VIP status"]
+      },
+      ELITE: {
+        nextTier: null,
+        requirements: {},
+        benefits: ["Elite delivery access", "25% higher rates", "24/7 priority support", "Exclusive bonuses", "VIP status"],
+        nextTierBenefits: []
+      }
+    };
+
+    const currentTierData = tierData[currentTier as keyof typeof tierData];
+    const nextTier = currentTierData.nextTier;
+    
+    let progress = 100; // Default for ELITE tier
+    let requirementsNeeded = {};
+
+    if (nextTier && currentTierData.requirements) {
+      const req = currentTierData.requirements;
+      const progressFactors = [];
+
+      if (req.deliveries) {
+        progressFactors.push(Math.min(totalDeliveries / req.deliveries, 1));
+      }
+      if (req.rating) {
+        progressFactors.push(Math.min(rating / req.rating, 1));
+      }
+      if (req.earnings) {
+        progressFactors.push(Math.min(totalEarnings / req.earnings, 1));
+      }
+      if (req.onTimeRate) {
+        progressFactors.push(Math.min(onTimeRate / req.onTimeRate, 1));
+      }
+
+      progress = progressFactors.length > 0 
+        ? Math.round(progressFactors.reduce((sum, factor) => sum + factor, 0) / progressFactors.length * 100)
+        : 0;
+
+      // Calculate remaining requirements
+      requirementsNeeded = {
+        ...(req.deliveries && totalDeliveries < req.deliveries && { 
+          deliveries: req.deliveries - totalDeliveries 
+        }),
+        ...(req.rating && rating < req.rating && { 
+          rating: req.rating 
+        }),
+        ...(req.earnings && totalEarnings < req.earnings && { 
+          earnings: req.earnings - totalEliveries 
+        }),
+        ...(req.onTimeRate && onTimeRate < req.onTimeRate && { 
+          onTimeRate: req.onTimeRate 
+        })
+      };
+    }
+
+    const tierProgress = {
+      currentTier,
+      nextTier,
+      progress,
+      requirementsNeeded,
+      benefits: currentTierData.benefits,
+      nextTierBenefits: currentTierData.nextTierBenefits
+    };
+
+    res.json(tierProgress);
+  } catch (error) {
+    console.error("Get tier progress error:", error);
+    res.status(500).json({ message: "Failed to fetch tier progress" });
   }
 });
 
