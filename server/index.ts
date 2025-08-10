@@ -7,6 +7,19 @@ import { createServer } from "http";
 import { spawn } from "child_process";
 import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
+import supportRoutes from "./routes/support";
+import adminSupportRoutes from "./routes/admin-support";
+import { db } from './db.js';
+import { 
+  notifications, 
+  users, 
+  orders, 
+  driverProfiles, 
+  merchantProfiles,
+  supportTickets,
+  transactions
+} from '../shared/schema.js';
+import { eq, desc, count, and, sum, sql } from 'drizzle-orm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -111,6 +124,10 @@ app.use(session({
   }
 }));
 
+// Register routes
+app.use('/api/support', supportRoutes);
+app.use('/api/admin/support', adminSupportRoutes);
+
 // Health check endpoint
 app.get("/api/health", (req, res) => {
   res.json({ 
@@ -190,7 +207,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const user = await storage.getUser(userId);
-    
+
     if (!user) {
       // Return default consumer data if user not found
       return res.json({
@@ -204,7 +221,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
 
     // Get role-specific dashboard data from database
     let dashboardData: any;
-    
+
     switch (role) {
       case 'DRIVER':
         dashboardData = await storage.getDriverDashboardData(userId);
@@ -218,7 +235,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
           quickActions: ["Start Trip", "View Earnings", "Update Status", "Fuel Delivery", "Trip History"]
         };
         return res.json(formattedDriverData);
-        
+
       case 'MERCHANT':
         dashboardData = await storage.getMerchantDashboardData(userId);
         const formattedMerchantData = {
@@ -231,7 +248,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
           quickActions: ["View Orders", "Add Product", "Analytics", "Withdraw Funds", "KYC Status"]
         };
         return res.json(formattedMerchantData);
-        
+
       case 'CONSUMER':
       default:
         dashboardData = await storage.getConsumerDashboardData(userId);
@@ -262,7 +279,7 @@ app.get("/api/wallet/balance", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const consumerData = await storage.getConsumerDashboardData(userId);
-    
+
     const walletData = {
       balance: consumerData.balance,
       currency: "NGN",
@@ -317,7 +334,7 @@ app.get("/api/wallet/transactions", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const consumerData = await storage.getConsumerDashboardData(userId);
-    
+
     const filteredTransactions = type ? 
       consumerData.recentTransactions.filter((t: any) => t.type === type) : 
       consumerData.recentTransactions;
@@ -387,10 +404,10 @@ app.get("/api/fuel/orders", requireAuth, async (req: any, res: any) => {
   try {
     const { status, userId } = req.query;
     const currentUserId = req.session.userId;
-    
+
     // Get driver's fuel orders from database
     const driverData = await storage.getDriverDashboardData(currentUserId);
-    
+
     res.json(driverData.activeFuelOrders);
   } catch (error) {
     console.error('Fuel orders error:', error);
@@ -422,100 +439,227 @@ app.post("/api/fuel/orders", (req, res) => {
   res.status(201).json({ message: "Fuel order created", order });
 });
 
-// Driver management endpoints
-app.get("/api/drivers", (req, res) => {
-  const { available, tier } = req.query;
+// Driver management endpoints with real database integration
+app.get("/api/drivers", async (req, res) => {
+  try {
+    const { available, tier } = req.query;
 
-  const mockDrivers = [
-    {
-      id: "driver_001",
-      name: "Ahmed Musa",
-      phone: "+2348123456789",
-      vehicleType: "Fuel Truck",
-      tier: "PREMIUM",
-      rating: 4.8,
-      available: true,
-      location: { lat: 6.5244, lng: 3.3792 },
-      totalDeliveries: 156,
-      earnings: 85500
-    },
-    {
-      id: "driver_002", 
-      name: "Kemi Adebayo",
-      phone: "+2348123456790",
-      vehicleType: "Mini Truck",
-      tier: "STANDARD",
-      rating: 4.6,
-      available: false,
-      location: { lat: 6.5244, lng: 3.3792 },
-      totalDeliveries: 89,
-      earnings: 52300
+    // Get drivers with their profiles
+    const driversQuery = db.select({
+      id: users.id,
+      name: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      vehicleType: driverProfiles.vehicleType,
+      vehicleModel: driverProfiles.vehicleModel,
+      plateNumber: driverProfiles.plateNumber,
+      isAvailable: driverProfiles.isAvailable,
+      rating: driverProfiles.rating,
+      totalTrips: driverProfiles.totalTrips,
+      earnings: driverProfiles.earnings,
+      currentLatitude: driverProfiles.currentLatitude,
+      currentLongitude: driverProfiles.currentLongitude,
+      createdAt: users.createdAt
+    })
+    .from(users)
+    .leftJoin(driverProfiles, eq(users.id, driverProfiles.userId))
+    .where(eq(users.role, 'DRIVER'));
+
+    const drivers = await driversQuery;
+
+    let filteredDrivers = drivers.filter(driver => driver.vehicleType); // Only drivers with profiles
+
+    if (available !== undefined) {
+      filteredDrivers = filteredDrivers.filter(d => d.isAvailable === (available === 'true'));
     }
-  ];
 
-  let filteredDrivers = mockDrivers;
-  if (available !== undefined) {
-    filteredDrivers = filteredDrivers.filter(d => d.available === (available === 'true'));
-  }
-  if (tier) {
-    filteredDrivers = filteredDrivers.filter(d => d.tier === tier);
-  }
+    const formattedDrivers = filteredDrivers.map(driver => ({
+      id: `driver_${driver.id}`,
+      name: driver.name,
+      phone: driver.phone,
+      vehicleType: driver.vehicleType,
+      vehicleModel: driver.vehicleModel,
+      plateNumber: driver.plateNumber,
+      tier: "STANDARD", // Default tier, can be added to schema later
+      rating: parseFloat(driver.rating || '0'),
+      available: driver.isAvailable,
+      location: {
+        lat: parseFloat(driver.currentLatitude || '6.5244'),
+        lng: parseFloat(driver.currentLongitude || '3.3792')
+      },
+      totalDeliveries: driver.totalTrips,
+      earnings: parseFloat(driver.earnings || '0'),
+      registeredAt: driver.createdAt
+    }));
 
-  res.json(filteredDrivers);
+    res.json(formattedDrivers);
+  } catch (error) {
+    console.error('Get drivers error:', error);
+    res.status(500).json({ error: 'Failed to fetch drivers' });
+  }
 });
 
-app.post("/api/drivers/register", (req, res) => {
-  const { name, phone, vehicleType, licenseNumber, tier } = req.body;
+app.post("/api/drivers/register", async (req, res) => {
+  try {
+    const { name, phone, vehicleType, licenseNumber, vehicleModel, plateNumber } = req.body;
 
-  if (!name || !phone || !vehicleType || !licenseNumber) {
-    return res.status(400).json({ message: "Missing required fields" });
+    if (!name || !phone || !vehicleType || !licenseNumber) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    // Create user account for driver
+    const userData = {
+      fullName: name,
+      phone,
+      role: 'DRIVER' as const,
+      email: `${phone.replace(/[^0-9]/g, '')}@driver.brillprime.com`, // Generate email from phone
+      password: null, // Driver will set password later
+      isVerified: false
+    };
+
+    const user = await storage.createUser(userData);
+
+    // Create driver profile
+    const driverProfileData = {
+      userId: user.id,
+      vehicleType,
+      vehicleModel: vehicleModel || null,
+      plateNumber: plateNumber || null,
+      licenseNumber,
+      isAvailable: false,
+      rating: '5.0',
+      totalTrips: 0,
+      earnings: '0'
+    };
+
+    await db.insert(driverProfiles).values(driverProfileData);
+
+    res.status(201).json({ 
+      message: "Driver registration submitted successfully", 
+      driver: {
+        id: user.id,
+        name: user.fullName,
+        phone: user.phone,
+        vehicleType,
+        verificationStatus: "PENDING",
+        registeredAt: user.createdAt
+      }
+    });
+  } catch (error) {
+    console.error('Driver registration error:', error);
+    res.status(500).json({ error: 'Failed to register driver' });
   }
-
-  const driver = {
-    id: `driver_${Date.now()}`,
-    name,
-    phone,
-    vehicleType,
-    licenseNumber,
-    tier: tier || "STANDARD",
-    rating: 0,
-    available: false,
-    verificationStatus: "PENDING",
-    registeredAt: new Date().toISOString()
-  };
-
-  res.status(201).json({ message: "Driver registration submitted", driver });
 });
 
-// Merchant endpoints
-app.get("/api/merchants", (req, res) => {
-  const { verified, category } = req.query;
+// Merchant analytics endpoint
+app.get("/api/merchant/analytics", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.session.userId;
+    const { range = '30d' } = req.query;
 
-  const mockMerchants = [
-    {
-      id: "merchant_001",
-      businessName: "Lagos Fuel Station",
-      ownerName: "John Doe",
-      phone: "+2348123456791",
-      category: "FUEL_STATION", 
-      address: "45 Allen Avenue, Ikeja, Lagos",
-      verified: true,
-      rating: 4.7,
-      kycStatus: "APPROVED",
-      revenue: 2450000,
-      orders: 156
+    // Mock analytics data - in production this would come from database
+    const analytics = {
+      revenue: {
+        total: 2450000,
+        thisMonth: 340000,
+        lastMonth: 285000,
+        growth: 19.3
+      },
+      orders: {
+        total: 456,
+        thisMonth: 67,
+        pending: 12,
+        completed: 398,
+        cancelled: 46
+      },
+      customers: {
+        total: 234,
+        new: 23,
+        returning: 211,
+        retention: 89.7
+      },
+      products: {
+        bestselling: [
+          { id: "1", name: "Premium Petrol", sales: 1200, revenue: 740400 },
+          { id: "2", name: "Diesel Fuel", sales: 890, revenue: 578340 },
+          { id: "3", name: "Kerosene", sales: 456, revenue: 182400 }
+        ],
+        lowStock: [
+          { id: "4", name: "Engine Oil", stock: 5 },
+          { id: "5", name: "Car Battery", stock: 3 }
+        ]
+      },
+      ratings: {
+        average: 4.7,
+        total: 89,
+        distribution: { 5: 45, 4: 32, 3: 8, 2: 3, 1: 1 }
+      }
+    };
+
+    res.json(analytics);
+  } catch (error) {
+    console.error('Merchant analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
+});
+
+// Merchant endpoints with real database integration
+app.get("/api/merchants", async (req, res) => {
+  try {
+    const { verified, category } = req.query;
+
+    // Get merchants with their profiles
+    const merchantsQuery = db.select({
+      id: users.id,
+      ownerName: users.fullName,
+      phone: users.phone,
+      email: users.email,
+      isVerified: users.isVerified,
+      businessName: merchantProfiles.businessName,
+      businessAddress: merchantProfiles.businessAddress,
+      businessType: merchantProfiles.businessType,
+      isOpen: merchantProfiles.isOpen,
+      rating: merchantProfiles.rating,
+      totalOrders: merchantProfiles.totalOrders,
+      revenue: merchantProfiles.revenue,
+      createdAt: users.createdAt
+    })
+    .from(users)
+    .leftJoin(merchantProfiles, eq(users.id, merchantProfiles.userId))
+    .where(eq(users.role, 'MERCHANT'));
+
+    const merchants = await merchantsQuery;
+
+    let filteredMerchants = merchants.filter(merchant => merchant.businessName); // Only merchants with profiles
+
+    if (verified !== undefined) {
+      filteredMerchants = filteredMerchants.filter(m => m.isVerified === (verified === 'true'));
     }
-  ];
+    if (category) {
+      filteredMerchants = filteredMerchants.filter(m => m.businessType === category);
+    }
 
-  let filteredMerchants = mockMerchants;
-  if (verified !== undefined) {
-    filteredMerchants = filteredMerchants.filter(m => m.verified === (verified === 'true'));
-  }
-  if (category) {
-    filteredMerchants = filteredMerchants.filter(m => m.category === category);
-  }
+    const formattedMerchants = filteredMerchants.map(merchant => ({
+      id: `merchant_${merchant.id}`,
+      businessName: merchant.businessName,
+      ownerName: merchant.ownerName,
+      phone: merchant.phone,
+      category: merchant.businessType || "GENERAL",
+      address: merchant.businessAddress,
+      verified: merchant.isVerified,
+      rating: parseFloat(merchant.rating || '0'),
+      kycStatus: merchant.isVerified ? "APPROVED" : "PENDING",
+      revenue: parseFloat(merchant.revenue || '0'),
+      orders: merchant.totalOrders || 0,
+      isOpen: merchant.isOpen,
+      joinedAt: merchant.createdAt
+    }));
 
-  res.json(filteredMerchants);
+    res.json(formattedMerchants);
+  } catch (error) {
+    console.error('Get merchants error:', error);
+    res.status(500).json({ error: 'Failed to fetch merchants' });
+  }
 });
 
 app.post("/api/merchants/kyc", (req, res) => {
@@ -539,20 +683,75 @@ app.post("/api/merchants/kyc", (req, res) => {
   res.status(201).json({ message: "KYC submitted for review", submission: kycSubmission });
 });
 
-// Real-time tracking endpoints
-app.get("/api/tracking/:orderId", (req, res) => {
-  const { orderId } = req.params;
+// Real-time tracking endpoints with database integration
+app.get("/api/tracking/:orderId", async (req, res) => {
+  try {
+    const { orderId } = req.params;
 
-  const trackingData = {
-    orderId,
-    status: "IN_TRANSIT",
-    driverLocation: { lat: 6.5244, lng: 3.3792 },
-    estimatedArrival: new Date(Date.now() + 1800000).toISOString(),
-    completionPercentage: 65,
-    lastUpdate: new Date().toISOString()
-  };
+    // Get order details with driver information
+    const [orderDetails] = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      status: orders.status,
+      driverId: orders.driverId,
+      deliveryAddress: orders.deliveryAddress,
+      deliveryLatitude: orders.deliveryLatitude,
+      deliveryLongitude: orders.deliveryLongitude,
+      totalAmount: orders.totalAmount,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      driverName: users.fullName,
+      driverPhone: users.phone,
+      currentLatitude: driverProfiles.currentLatitude,
+      currentLongitude: driverProfiles.currentLongitude
+    })
+    .from(orders)
+    .leftJoin(users, eq(orders.driverId, users.id))
+    .leftJoin(driverProfiles, eq(orders.driverId, driverProfiles.userId))
+    .where(eq(orders.id, parseInt(orderId)))
+    .limit(1);
 
-  res.json(trackingData);
+    if (!orderDetails) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    // Calculate completion percentage based on status
+    const statusPercentage = {
+      'PENDING': 10,
+      'CONFIRMED': 25,
+      'IN_PROGRESS': 50,
+      'DELIVERED': 100,
+      'CANCELLED': 0
+    };
+
+    const trackingData = {
+      orderId: orderDetails.id,
+      orderNumber: orderDetails.orderNumber,
+      status: orderDetails.status,
+      driverLocation: {
+        lat: parseFloat(orderDetails.currentLatitude || '6.5244'),
+        lng: parseFloat(orderDetails.currentLongitude || '3.3792')
+      },
+      deliveryLocation: {
+        lat: parseFloat(orderDetails.deliveryLatitude || '6.5244'),
+        lng: parseFloat(orderDetails.deliveryLongitude || '3.3792'),
+        address: orderDetails.deliveryAddress
+      },
+      driverInfo: orderDetails.driverId ? {
+        name: orderDetails.driverName,
+        phone: orderDetails.driverPhone
+      } : null,
+      estimatedArrival: new Date(Date.now() + 1800000).toISOString(), // 30 minutes from now
+      completionPercentage: statusPercentage[orderDetails.status as keyof typeof statusPercentage] || 0,
+      lastUpdate: orderDetails.updatedAt?.toISOString() || new Date().toISOString(),
+      totalAmount: parseFloat(orderDetails.totalAmount)
+    };
+
+    res.json(trackingData);
+  } catch (error) {
+    console.error('Tracking error:', error);
+    res.status(500).json({ error: 'Failed to fetch tracking data' });
+  }
 });
 
 // QR code toll payment endpoints
@@ -576,88 +775,142 @@ app.post("/api/toll/scan", (req, res) => {
   res.json({ message: "Toll payment initiated", payment: tollPayment });
 });
 
-// Admin endpoints
-app.get("/api/admin/stats", (req, res) => {
-  const stats = {
-    totalUsers: 15420,
-    totalDrivers: 892,
-    totalMerchants: 156,
-    totalTransactions: 28945,
-    totalRevenue: 125450000,
-    activeOrders: 23,
-    pendingKyc: 12,
-    flaggedTransactions: 3
-  };
+// Admin endpoints with real database queries
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    // Get total users by role
+    const [userStats] = await db.select({
+      totalUsers: count(),
+      totalDrivers: sql<number>`count(case when role = 'DRIVER' then 1 end)`,
+      totalMerchants: sql<number>`count(case when role = 'MERCHANT' then 1 end)`,
+      totalConsumers: sql<number>`count(case when role = 'CONSUMER' then 1 end)`
+    }).from(users);
 
-  res.json(stats);
+    // Get transaction stats
+    const [transactionStats] = await db.select({
+      totalTransactions: count(),
+      totalRevenue: sum(transactions.amount)
+    }).from(transactions);
+
+    // Get active orders
+    const [orderStats] = await db.select({
+      activeOrders: count(),
+      pendingOrders: sql<number>`count(case when status = 'PENDING' then 1 end)`
+    }).from(orders).where(
+      sql`status NOT IN ('DELIVERED', 'CANCELLED')`
+    );
+
+    // Get pending KYC count
+    const [kycStats] = await db.select({
+      pendingKyc: count()
+    }).from(users).where(eq(users.isVerified, false));
+
+    const stats = {
+      totalUsers: userStats.totalUsers || 0,
+      totalDrivers: userStats.totalDrivers || 0,
+      totalMerchants: userStats.totalMerchants || 0,
+      totalConsumers: userStats.totalConsumers || 0,
+      totalTransactions: transactionStats.totalTransactions || 0,
+      totalRevenue: parseFloat(transactionStats.totalRevenue?.toString() || '0'),
+      activeOrders: orderStats.activeOrders || 0,
+      pendingOrders: orderStats.pendingOrders || 0,
+      pendingKyc: kycStats.pendingKyc || 0,
+      flaggedTransactions: 0 // This would come from a fraud detection system
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('Admin stats error:', error);
+    res.status(500).json({ error: 'Failed to fetch admin stats' });
+  }
 });
 
-app.get("/api/admin/users", (req, res) => {
-  const { role, status, page = 1 } = req.query;
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const { page = 1, limit = 10, role, status } = req.query;
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-  const mockUsers = [
-    {
-      id: "user_001",
-      email: "user@example.com",
-      fullName: "John Consumer",
-      role: "CONSUMER",
-      status: "ACTIVE",
-      joinDate: "2024-01-15",
-      lastActive: new Date().toISOString()
-    },
-    {
-      id: "merchant_001", 
-      email: "merchant@example.com",
-      fullName: "Jane Merchant",
-      role: "MERCHANT",
-      status: "ACTIVE",
-      joinDate: "2024-02-01",
-      lastActive: new Date().toISOString()
-    }
-  ];
+    let query = db.select().from(users);
 
-  res.json({
-    users: mockUsers,
-    pagination: {
-      currentPage: parseInt(page as string),
-      totalPages: 1,
-      totalCount: mockUsers.length
+    if (role) {
+      query = query.where(eq(users.role, role as string));
     }
-  });
+
+    const allUsers = await query.limit(parseInt(limit as string)).offset(offset);
+    const totalCount = await db.select({ count: count() }).from(users);
+
+    const formattedUsers = allUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      status: user.isVerified ? "ACTIVE" : "PENDING",
+      joinDate: user.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      lastActive: user.updatedAt?.toISOString() || new Date().toISOString()
+    }));
+
+    res.json({
+      users: formattedUsers,
+      pagination: {
+        currentPage: parseInt(page as string),
+        totalPages: Math.ceil(totalCount[0].count / parseInt(limit as string)),
+        totalCount: totalCount[0].count
+      }
+    });
+  } catch (error) {
+    console.error('Get admin users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get users' });
+  }
 });
 
-// Notification endpoints
-app.get("/api/notifications", (req, res) => {
-  const { userId, read } = req.query;
+// Notification endpoints with real database integration
+app.get("/api/notifications", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.session.userId;
+    const { read, limit = 10 } = req.query;
 
-  const mockNotifications = [
-    {
-      id: 1,
-      userId: "user_001",
-      title: "Payment Successful",
-      message: "Your fuel order payment of ₦12,340 was successful",
-      type: "success",
-      read: false,
-      timestamp: new Date().toISOString()
-    },
-    {
-      id: 2,
-      userId: "user_001", 
-      title: "Driver Assigned",
-      message: "Ahmed has been assigned to deliver your fuel order",
-      type: "info",
-      read: true,
-      timestamp: new Date(Date.now() - 3600000).toISOString()
-    }
-  ];
+    const userNotifications = await storage.getNotifications(userId, parseInt(limit as string));
+    
+    const filteredNotifications = read !== undefined 
+      ? userNotifications.filter(n => n.isRead === (read === 'true'))
+      : userNotifications;
 
-  res.json(mockNotifications);
+    const formattedNotifications = filteredNotifications.map(notification => ({
+      id: notification.id,
+      userId: notification.userId,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      read: notification.isRead,
+      timestamp: notification.createdAt?.toISOString(),
+      metadata: notification.metadata
+    }));
+
+    res.json(formattedNotifications);
+  } catch (error) {
+    console.error('Get notifications error:', error);
+    res.status(500).json({ error: 'Failed to fetch notifications' });
+  }
 });
 
-app.put("/api/notifications/:id/read", (req, res) => {
-  const { id } = req.params;
+app.put("/api/notifications/:id/read", requireAuth, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session.userId;
 
-  res.json({ message: "Notification marked as read", id });
+    // Update notification read status
+    await db.update(notifications)
+      .set({ isRead: true })
+      .where(and(
+        eq(notifications.id, parseInt(id)),
+        eq(notifications.userId, userId)
+      ));
+
+    res.json({ message: "Notification marked as read", id });
+  } catch (error) {
+    console.error('Mark notification read error:', error);
+    res.status(500).json({ error: 'Failed to mark notification as read' });
+  }
 });
 
 // Websocket connection status endpoint

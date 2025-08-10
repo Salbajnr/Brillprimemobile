@@ -1,5 +1,5 @@
-
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
+import { varchar } from "drizzle-orm/pg-core"; // Import varchar
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -281,22 +281,7 @@ export const complianceDocuments = pgTable("compliance_documents", {
   notes: text("notes")
 });
 
-// Support tickets table
-export const supportTickets = pgTable("support_tickets", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  subject: text("subject").notNull(),
-  description: text("description").notNull(),
-  category: text("category"),
-  priority: text("priority").default('MEDIUM'),
-  status: text("status").default('OPEN'),
-  assignedTo: integer("assigned_to").references(() => adminUsers.id),
-  attachments: jsonb("attachments").default([]),
-  resolution: text("resolution"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+// Support tickets table removed - using updated definition below
 
 // Content reports table
 export const contentReports = pgTable("content_reports", {
@@ -495,3 +480,49 @@ export const signInSchema = z.object({
 });
 
 export type SignInData = z.infer<typeof signInSchema>;
+
+// Toll Gates table
+export const tollGates = pgTable('toll_gates', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 255 }).notNull(),
+  location: varchar('location', { length: 255 }).notNull(),
+  latitude: decimal('latitude', { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal('longitude', { precision: 11, scale: 8 }).notNull(),
+  qrCode: varchar('qr_code', { length: 255 }).unique().notNull(),
+  tariff: decimal('tariff', { precision: 10, scale: 2 }).notNull(),
+  operationalHours: varchar('operational_hours', { length: 100 }),
+  status: varchar('status', { length: 20 }).default('ACTIVE'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Support tickets table
+export const supportTickets = pgTable('support_tickets', {
+  id: serial('id').primaryKey(),
+  ticketNumber: varchar('ticket_number', { length: 20 }).unique().notNull(),
+  userId: integer('user_id').references(() => users.id),
+  userRole: varchar('user_role', { length: 20 }).notNull(),
+  name: varchar('name', { length: 255 }).notNull(),
+  email: varchar('email', { length: 255 }).notNull(),
+  subject: varchar('subject', { length: 500 }).notNull(),
+  message: text('message').notNull(),
+  status: varchar('status', { length: 20 }).default('OPEN'), // OPEN, IN_PROGRESS, RESOLVED, CLOSED
+  priority: varchar('priority', { length: 20 }).default('NORMAL'), // LOW, NORMAL, HIGH, URGENT
+  assignedTo: integer('assigned_to').references(() => adminUsers.id),
+  adminNotes: text('admin_notes'),
+  resolution: text('resolution'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+  resolvedAt: timestamp('resolved_at')
+});
+
+// Support responses table
+export const supportResponses = pgTable('support_responses', {
+  id: serial('id').primaryKey(),
+  ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
+  responderId: integer('responder_id').notNull(),
+  responderType: varchar('responder_type', { length: 20 }).notNull(), // ADMIN, USER
+  message: text('message').notNull(),
+  attachments: text('attachments'), // JSON array of file URLs
+  createdAt: timestamp('created_at').defaultNow()
+});
