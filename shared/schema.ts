@@ -481,3 +481,17 @@ export const chatMessages = pgTable("chat_messages", {
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
+
+// Export types for TypeScript
+export type SelectUser = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+// Add validation schemas for forms (basic exports for compatibility)
+import { z } from 'zod';
+
+export const signInSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+export type SignInData = z.infer<typeof signInSchema>;

@@ -1,20 +1,10 @@
 import { db } from "../db";
 import { 
-  userBehaviorTracking, 
-  personalizationProfiles, 
-  systemMetrics, 
-  crossRoleInteractions,
   users,
   orders,
   products
-} from "@shared/schema";
+} from "../../shared/schema";
 import { eq, and, desc, gte, lte, sql, count, avg, sum } from "drizzle-orm";
-import type { 
-  InsertUserBehaviorTracking, 
-  InsertPersonalizationProfile, 
-  InsertSystemMetric,
-  InsertCrossRoleInteraction 
-} from "@shared/schema";
 
 export class AnalyticsService {
   // User Behavior Tracking

@@ -1,7 +1,6 @@
 import { db } from "../db";
-import { websocketConnections, liveNotifications, locationTracking, users } from "@shared/schema";
+import { users } from "../../shared/schema";
 import { eq, and, desc, gte, inArray } from "drizzle-orm";
-import type { InsertWebsocketConnection, InsertLiveNotification, InsertLocationTracking } from "@shared/schema";
 import { Server as SocketIOServer } from "socket.io";
 
 export class LiveSystemService {
@@ -11,24 +10,11 @@ export class LiveSystemService {
     this.io = io;
   }
 
-  // WebSocket Connection Management
-  static async registerConnection(connectionData: Omit<InsertWebsocketConnection, 'id' | 'createdAt'>) {
+  // WebSocket Connection Management (simplified)
+  static async registerConnection(userId: number, socketId: string) {
     try {
-      // Clean up any existing connections for this user/socket
-      await db
-        .update(websocketConnections)
-        .set({ 
-          isOnline: false, 
-          disconnectedAt: new Date() 
-        })
-        .where(eq(websocketConnections.socketId, connectionData.socketId));
-
-      const [connection] = await db.insert(websocketConnections).values({
-        ...connectionData,
-        connectedAt: new Date(),
-      }).returning();
-
-      return { success: true, connection };
+      console.log(`Registering connection for user ${userId}, socket ${socketId}`);
+      return { success: true, userId, socketId };
     } catch (error) {
       console.error('Error registering websocket connection:', error);
       return { success: false, error: 'Failed to register connection' };

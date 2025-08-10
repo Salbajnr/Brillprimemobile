@@ -336,3 +336,8 @@ export function useChat(conversationId?: string) {
     stopTyping,
   };
 }
+
+// Export additional hooks for backward compatibility with existing imports
+export const useWebSocketOrders = useOrderUpdates;
+export const useWebSocketNotifications = useNotifications;
+export const useWebSocketChat = useChat;

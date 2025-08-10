@@ -68,6 +68,31 @@ export default function DashboardPage() {
     }
   };
 
+  const handleQuickAction = (action: string) => {
+    switch(action) {
+      case 'Fund Wallet':
+        setLocation('/wallet-fund');
+        break;
+      case 'View Transactions':
+        setLocation('/wallet/transactions');
+        break;
+      case 'Send Money':
+        setLocation('/transfer');
+        break;
+      case 'Pay Bills':
+        setLocation('/bills');
+        break;
+      case 'View Orders':
+        setLocation('/merchant/orders');
+        break;
+      case 'Start Trip':
+        setLocation('/driver/trip-start');
+        break;
+      default:
+        console.log('Quick action:', action);
+    }
+  };
+
   const renderRecentActivity = () => {
     if (!dashboardData?.recentActivity || dashboardData.recentActivity.length === 0) {
       return <p className="text-gray-500">No recent activity.</p>;

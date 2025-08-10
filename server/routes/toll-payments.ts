@@ -2,7 +2,7 @@
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { users, transactions, wallets } from "@shared/schema";
+import { users, transactions, wallets } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
 import { transactionService } from "../services/transaction";
 import { sanitizeInput, validateSchema } from "../middleware/validation";

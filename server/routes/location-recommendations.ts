@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { z } from "zod";
 import { db } from "../db";
-import { merchantProfiles, users, locationRecommendations, reviews } from "@shared/schema";
+import { merchantProfiles, users, locationRecommendations, reviews } from "../../shared/schema";
 import { eq, and, desc, sql, avg, count, lt, gt } from "drizzle-orm";
 
 const getRecommendationsSchema = z.object({
