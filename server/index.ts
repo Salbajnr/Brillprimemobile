@@ -7,6 +7,8 @@ import { createServer } from "http";
 import { spawn } from "child_process";
 import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
+import supportRoutes from "./routes/support";
+import adminSupportRoutes from "./routes/admin-support";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -110,6 +112,10 @@ app.use(session({
     maxAge: 1000 * 60 * 60 * 24 * 7 
   }
 }));
+
+// Register routes
+app.use('/api/support', supportRoutes);
+app.use('/api/admin/support', adminSupportRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -485,6 +491,58 @@ app.post("/api/drivers/register", (req, res) => {
   };
 
   res.status(201).json({ message: "Driver registration submitted", driver });
+});
+
+// Merchant analytics endpoint
+app.get("/api/merchant/analytics", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.session.userId;
+    const { range = '30d' } = req.query;
+    
+    // Mock analytics data - in production this would come from database
+    const analytics = {
+      revenue: {
+        total: 2450000,
+        thisMonth: 340000,
+        lastMonth: 285000,
+        growth: 19.3
+      },
+      orders: {
+        total: 456,
+        thisMonth: 67,
+        pending: 12,
+        completed: 398,
+        cancelled: 46
+      },
+      customers: {
+        total: 234,
+        new: 23,
+        returning: 211,
+        retention: 89.7
+      },
+      products: {
+        bestselling: [
+          { id: "1", name: "Premium Petrol", sales: 1200, revenue: 740400 },
+          { id: "2", name: "Diesel Fuel", sales: 890, revenue: 578340 },
+          { id: "3", name: "Kerosene", sales: 456, revenue: 182400 }
+        ],
+        lowStock: [
+          { id: "4", name: "Engine Oil", stock: 5 },
+          { id: "5", name: "Car Battery", stock: 3 }
+        ]
+      },
+      ratings: {
+        average: 4.7,
+        total: 89,
+        distribution: { 5: 45, 4: 32, 3: 8, 2: 3, 1: 1 }
+      }
+    };
+
+    res.json(analytics);
+  } catch (error) {
+    console.error('Merchant analytics error:', error);
+    res.status(500).json({ error: 'Failed to fetch analytics' });
+  }
 });
 
 // Merchant endpoints
