@@ -136,13 +136,13 @@ if (process.env.NODE_ENV === "production") {
 } else {
   // Development mode - build and serve the client
   console.log('Development mode: building and serving React client');
-  
+
   const clientBuildPath = path.join(__dirname, "../client/dist");
   const clientHtmlPath = path.join(clientBuildPath, "index.html");
-  
+
   // Serve static assets from client/src/assets during development
   app.use('/src/assets', express.static(path.join(__dirname, '../client/src/assets')));
-  
+
   // Check if client build exists, if not serve from source
   if (fs.existsSync(clientHtmlPath)) {
     console.log('Serving React client from build directory');
@@ -218,7 +218,7 @@ if (process.env.NODE_ENV === "production") {
 
         function OnboardingPage({ onComplete }) {
           const [currentStep, setCurrentStep] = useState(0);
-          
+
           const onboardingData = [
             {
               title: "Welcome to\\nBrill Prime",
@@ -272,7 +272,7 @@ if (process.env.NODE_ENV === "production") {
                   {currentData.description}
                 </p>
               </div>
-              
+
               <div className="space-y-4">
                 <div className="flex justify-center space-x-2">
                   {onboardingData.map((_, index) => (
@@ -407,7 +407,7 @@ if (process.env.NODE_ENV === "production") {
               alert('Passwords do not match');
               return;
             }
-            
+
             setIsLoading(true);
             // Simulate API call
             setTimeout(() => {
@@ -493,7 +493,7 @@ if (process.env.NODE_ENV === "production") {
                     required
                   />
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -535,7 +535,7 @@ if (process.env.NODE_ENV === "production") {
           const handleSubmit = async (e) => {
             e.preventDefault();
             setIsLoading(true);
-            
+
             // Simulate API call
             setTimeout(() => {
               localStorage.setItem('userEmail', formData.email);
@@ -587,7 +587,7 @@ if (process.env.NODE_ENV === "production") {
                     required
                   />
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={isLoading}
@@ -629,7 +629,7 @@ if (process.env.NODE_ENV === "production") {
               const newOtp = [...otp];
               newOtp[index] = value;
               setOtp(newOtp);
-              
+
               // Auto-focus next input
               if (value && index < 5) {
                 const nextInput = document.getElementById(`otp-${index + 1}`);
@@ -644,7 +644,7 @@ if (process.env.NODE_ENV === "production") {
               alert('Please enter all 6 digits');
               return;
             }
-            
+
             setIsLoading(true);
             // Simulate API call
             setTimeout(() => {
@@ -687,7 +687,7 @@ if (process.env.NODE_ENV === "production") {
                     />
                   ))}
                 </div>
-                
+
                 <button
                   type="submit"
                   disabled={isLoading || otp.join('').length !== 6}
@@ -732,7 +732,7 @@ if (process.env.NODE_ENV === "production") {
               <div className="bg-white rounded-lg shadow p-6 mb-6">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{getDashboardTitle()}</h1>
                 <p className="text-gray-600 mb-6">Welcome to Brill Prime Financial Solutions</p>
-                
+
                 <div className="space-y-3 mb-6">
                   <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors">
                     Send Money
@@ -784,7 +784,7 @@ if (process.env.NODE_ENV === "production") {
         // Mount the app
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-        
+
         console.log('Brill Prime script loaded');
     </script>
 </body>

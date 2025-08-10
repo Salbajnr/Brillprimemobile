@@ -1,10 +1,9 @@
-
 import { Request, Response, Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "../storage";
-import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation';
+import { storage } from "../storage.js";
+import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation.js';
 import { z } from 'zod';
 
 const router = Router();
@@ -31,7 +30,7 @@ const upload = multer({
     const allowedTypes = /jpeg|jpg|png/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
-    
+
     if (mimetype && extname) {
       return cb(null, true);
     } else {
@@ -73,7 +72,7 @@ const verifyOTPSchema = z.object({
 });
 
 // Submit identity verification
-router.post('/identity-verification', 
+router.post('/identity-verification',
   sanitizeInput(),
   upload.fields([
     { name: 'faceImage', maxCount: 1 },
@@ -89,29 +88,29 @@ router.post('/identity-verification',
     try {
       const { userId, role, verificationData } = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      
+
       const parsedData = verificationData;
-      
+
       // Handle face image upload
       let faceImageUrl = null;
       if (files.faceImage && files.faceImage[0]) {
         faceImageUrl = `/uploads/${files.faceImage[0].filename}`;
       }
-      
+
       // Create identity verification record
       const identityVerification = await storage.createIdentityVerification({
         userId: parseInt(userId),
         faceImageUrl,
         verificationStatus: 'PENDING'
       });
-      
+
       // Handle driver-specific verification
       if (role === 'DRIVER') {
         let licenseImageUrl = null;
         if (files.licenseImage && files.licenseImage[0]) {
           licenseImageUrl = `/uploads/${files.licenseImage[0].filename}`;
         }
-        
+
         await storage.createDriverVerification({
           userId: parseInt(userId),
           licenseNumber: parsedData.licenseNumber,
@@ -124,7 +123,7 @@ router.post('/identity-verification',
           verificationStatus: 'PENDING'
         });
       }
-      
+
       // Handle phone verification for consumers
       if (role === 'CONSUMER' && parsedData.phoneVerification) {
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
@@ -135,16 +134,16 @@ router.post('/identity-verification',
           expiresAt: new Date(Date.now() + 10 * 60 * 1000),
           isVerified: false
         });
-        
+
         console.log(`Phone verification OTP for ${req.user?.phone}: ${otpCode}`);
       }
-      
+
       res.json({
         status: 'Success',
         message: 'Identity verification submitted successfully',
         data: { verificationId: identityVerification.id }
       });
-      
+
     } catch (error) {
       console.error('Identity verification error:', error);
       res.status(500).json({
@@ -159,10 +158,10 @@ router.post('/identity-verification',
 router.get('/status/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
-    
+
     const identityVerification = await storage.getIdentityVerificationByUserId(parseInt(userId));
     const driverVerification = await storage.getDriverVerificationByUserId(parseInt(userId));
-    
+
     res.json({
       status: 'Success',
       data: {
@@ -170,7 +169,7 @@ router.get('/status/:userId', async (req: Request, res: Response) => {
         driver: driverVerification
       }
     });
-    
+
   } catch (error) {
     console.error('Get verification status error:', error);
     res.status(500).json({
@@ -187,12 +186,12 @@ router.post('/verify-phone-otp',
   async (req: Request, res: Response) => {
     try {
       const { userId, otpCode } = req.body;
-    
+
       const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
-    
+
       if (phoneVerification) {
         await storage.updateUser(parseInt(userId), { isPhoneVerified: true });
-        
+
         res.json({
           status: 'Success',
           message: 'Phone number verified successfully'
@@ -203,7 +202,7 @@ router.post('/verify-phone-otp',
           message: 'Invalid or expired OTP code'
         });
       }
-    
+
     } catch (error) {
       console.error('Phone OTP verification error:', error);
       res.status(500).json({

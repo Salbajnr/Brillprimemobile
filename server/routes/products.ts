@@ -38,7 +38,7 @@ export function registerProductRoutes(app: Express) {
     try {
       const userId = req.session!.userId!;
       const user = await storage.getUserById(userId);
-      
+
       if (!user || user.role !== 'MERCHANT') {
         return res.status(403).json({
           success: false,
@@ -47,7 +47,7 @@ export function registerProductRoutes(app: Express) {
       }
 
       const validatedData = createProductSchema.parse(req.body);
-      
+
       const product = await storage.createProduct({
         ...validatedData,
         sellerId: userId,
@@ -106,7 +106,7 @@ export function registerProductRoutes(app: Express) {
   app.get("/api/products", async (req, res) => {
     try {
       const filters = productFiltersSchema.parse(req.query);
-      
+
       const products = await storage.getProducts({
         categoryId: filters.categoryId ? parseInt(filters.categoryId) : undefined,
         sellerId: filters.sellerId ? parseInt(filters.sellerId) : undefined,
@@ -145,7 +145,7 @@ export function registerProductRoutes(app: Express) {
     try {
       const { productId } = req.params;
       const product = await storage.getProductById(productId);
-      
+
       if (!product) {
         return res.status(404).json({
           success: false,
@@ -171,7 +171,7 @@ export function registerProductRoutes(app: Express) {
     try {
       const userId = req.session!.userId!;
       const { productId } = req.params;
-      
+
       // Verify ownership
       const existingProduct = await storage.getProductById(productId);
       if (!existingProduct || existingProduct.sellerId !== userId) {
@@ -314,7 +314,7 @@ export function registerProductRoutes(app: Express) {
     try {
       const userId = req.session!.userId!;
       const user = await storage.getUserById(userId);
-      
+
       if (!user || user.role !== 'MERCHANT') {
         return res.status(403).json({
           success: false,
@@ -350,7 +350,7 @@ export function registerProductRoutes(app: Express) {
     try {
       const userId = req.session!.userId!;
       const user = await storage.getUserById(userId);
-      
+
       if (!user || user.role !== 'MERCHANT') {
         return res.status(403).json({
           success: false,
