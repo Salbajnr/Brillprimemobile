@@ -1,120 +1,151 @@
 
-// Real auth hook connected to backend API
-import { useState, useEffect } from 'react';
+import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
+import { apiClient, User, ApiResponse } from '../lib/api';
 
-interface User {
-  id: number;
-  email: string;
-  fullName: string;
-  role: 'CONSUMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN';
-  isVerified: boolean;
+interface AuthContextType {
+  user: User | null;
+  loading: boolean;
+  error: string | null;
+  signin: (email: string, password: string) => Promise<boolean>;
+  signup: (userData: SignupData) => Promise<boolean>;
+  logout: () => Promise<void>;
+  clearError: () => void;
+  refreshUser: () => Promise<void>;
 }
 
-interface AuthResponse {
-  success: boolean;
-  message: string;
-  user?: User;
-  token?: string;
+interface SignupData {
+  fullName: string;
+  email: string;
+  password: string;
+  phone?: string;
+  role: string;
+  agreeToTerms: boolean;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Check if user is already authenticated on app load
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        setLoading(true);
+        const response = await apiClient.getCurrentUser();
+        if (response.success && response.user) {
+          setUser(response.user);
+        }
+      } catch (err) {
+        console.error('Auth check failed:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, []);
+
+  const signin = async (email: string, password: string): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.signin({ email, password });
+      
+      if (response.success && response.user) {
+        setUser(response.user);
+        return true;
+      } else {
+        setError(response.error || 'Login failed');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Login failed';
+      setError(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const signup = async (userData: SignupData): Promise<boolean> => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await apiClient.signup(userData);
+      
+      if (response.success) {
+        if (response.user) {
+          setUser(response.user);
+        }
+        return true;
+      } else {
+        setError(response.error || 'Registration failed');
+        return false;
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Registration failed';
+      setError(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const logout = async (): Promise<void> => {
+    try {
+      setLoading(true);
+      await apiClient.logout();
+      setUser(null);
+      setError(null);
+    } catch (err) {
+      console.error('Logout failed:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const refreshUser = async (): Promise<void> => {
+    try {
+      const response = await apiClient.getCurrentUser();
+      if (response.success && response.user) {
+        setUser(response.user);
+      }
+    } catch (err) {
+      console.error('Failed to refresh user:', err);
+    }
+  };
+
+  const clearError = () => {
+    setError(null);
+  };
+
+  const value = {
+    user,
+    loading,
+    error,
+    signin,
+    signup,
+    logout,
+    clearError,
+    refreshUser,
+  };
+
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isInitialized, setIsInitialized] = useState(false);
-  
-  // Check for existing session on mount
-  useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-    
-    if (token && userData) {
-      try {
-        const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
-      } catch (error) {
-        console.error('Error parsing stored user data:', error);
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('userData');
-      }
-    }
-    setIsInitialized(true);
-  }, []);
-
-  const login = async (email: string, password: string): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/signin', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
-        credentials: 'include'
-      });
-
-      const data: AuthResponse = await response.json();
-      
-      if (data.success && data.user && data.token) {
-        setUser(data.user);
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        return { success: true, message: data.message };
-      } else {
-        return { success: false, message: data.message || 'Login failed' };
-      }
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const signup = async (email: string, password: string, fullName: string, role: string = 'CONSUMER'): Promise<{ success: boolean; message: string }> => {
-    setIsLoading(true);
-    try {
-      const response = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password, fullName, role }),
-        credentials: 'include'
-      });
-
-      const data: AuthResponse = await response.json();
-      
-      if (data.success && data.user && data.token) {
-        setUser(data.user);
-        localStorage.setItem('authToken', data.token);
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        return { success: true, message: data.message };
-      } else {
-        return { success: false, message: data.message || 'Signup failed' };
-      }
-    } catch (error) {
-      console.error('Signup error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-  };
-
-  const isAuthenticated = () => !!user;
-
-  return { 
-    user, 
-    isLoading, 
-    isInitialized,
-    login, 
-    signup,
-    logout, 
-    isAuthenticated 
-  };
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
 }
