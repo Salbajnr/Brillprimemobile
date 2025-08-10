@@ -231,7 +231,12 @@ if (process.env.NODE_ENV === "production") {
           const handleContinue = () => {
             if (selectedRole) {
               localStorage.setItem('selectedRole', selectedRole);
-              onComplete('dashboard');
+              const isExistingUser = localStorage.getItem('isExistingUser');
+              if (isExistingUser) {
+                onComplete('signin');
+              } else {
+                onComplete('signup');
+              }
             }
           };
 
@@ -287,6 +292,319 @@ if (process.env.NODE_ENV === "production") {
           );
         }
 
+        function SignupPage({ onComplete }) {
+          const [formData, setFormData] = useState({
+            fullName: '',
+            email: '',
+            phone: '',
+            password: '',
+            confirmPassword: ''
+          });
+          const [isLoading, setIsLoading] = useState(false);
+
+          const handleInputChange = (e) => {
+            setFormData({
+              ...formData,
+              [e.target.name]: e.target.value
+            });
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            if (formData.password !== formData.confirmPassword) {
+              alert('Passwords do not match');
+              return;
+            }
+            
+            setIsLoading(true);
+            // Simulate API call
+            setTimeout(() => {
+              localStorage.setItem('userEmail', formData.email);
+              localStorage.setItem('userPhone', formData.phone);
+              setIsLoading(false);
+              onComplete('otp-verification');
+            }, 1500);
+          };
+
+          return (
+            <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white text-2xl font-bold">B</span>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
+                <p className="text-gray-600">Join Brillprime and start your financial journey</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="flex-1 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                  <input
+                    type="text"
+                    name="fullName"
+                    value={formData.fullName}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
+                  <input
+                    type="password"
+                    name="confirmPassword"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
+                >
+                  {isLoading ? 'Creating Account...' : 'Create Account'}
+                </button>
+              </form>
+
+              <div className="text-center mt-6">
+                <p className="text-gray-600">
+                  Already have an account?{' '}
+                  <button 
+                    onClick={() => onComplete('signin')}
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    Sign In
+                  </button>
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        function SigninPage({ onComplete }) {
+          const [formData, setFormData] = useState({
+            email: '',
+            password: ''
+          });
+          const [isLoading, setIsLoading] = useState(false);
+
+          const handleInputChange = (e) => {
+            setFormData({
+              ...formData,
+              [e.target.name]: e.target.value
+            });
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            setIsLoading(true);
+            
+            // Simulate API call
+            setTimeout(() => {
+              localStorage.setItem('userEmail', formData.email);
+              localStorage.setItem('isAuthenticated', 'true');
+              setIsLoading(false);
+              onComplete('dashboard');
+            }, 1500);
+          };
+
+          return (
+            <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white text-2xl font-bold">B</span>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+                <p className="text-gray-600">Sign in to your Brillprime account</p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                  <input
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    required
+                  />
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed mt-8"
+                >
+                  {isLoading ? 'Signing In...' : 'Sign In'}
+                </button>
+              </form>
+
+              <div className="text-center mt-6">
+                <p className="text-gray-600">
+                  Don't have an account?{' '}
+                  <button 
+                    onClick={() => onComplete('signup')}
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    Sign Up
+                  </button>
+                </p>
+              </div>
+            </div>
+          );
+        }
+
+        function OTPVerificationPage({ onComplete }) {
+          const [otp, setOtp] = useState(['', '', '', '', '', '']);
+          const [isLoading, setIsLoading] = useState(false);
+          const [countdown, setCountdown] = useState(30);
+
+          useEffect(() => {
+            if (countdown > 0) {
+              const timer = setTimeout(() => setCountdown(countdown - 1), 1000);
+              return () => clearTimeout(timer);
+            }
+          }, [countdown]);
+
+          const handleOtpChange = (index, value) => {
+            if (value.length <= 1) {
+              const newOtp = [...otp];
+              newOtp[index] = value;
+              setOtp(newOtp);
+              
+              // Auto-focus next input
+              if (value && index < 5) {
+                const nextInput = document.getElementById(\`otp-\${index + 1}\`);
+                if (nextInput) nextInput.focus();
+              }
+            }
+          };
+
+          const handleSubmit = async (e) => {
+            e.preventDefault();
+            if (otp.join('').length !== 6) {
+              alert('Please enter all 6 digits');
+              return;
+            }
+            
+            setIsLoading(true);
+            // Simulate API call
+            setTimeout(() => {
+              localStorage.setItem('isAuthenticated', 'true');
+              setIsLoading(false);
+              onComplete('dashboard');
+            }, 1500);
+          };
+
+          const resendOTP = () => {
+            setCountdown(30);
+            // Simulate resend
+            alert('OTP resent successfully');
+          };
+
+          return (
+            <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col justify-center">
+              <div className="text-center mb-8">
+                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-white text-2xl">📱</span>
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
+                <p className="text-gray-600">
+                  Enter the 6-digit code sent to<br />
+                  <span className="font-medium">{localStorage.getItem('userPhone') || '+234 XXX XXX XXXX'}</span>
+                </p>
+              </div>
+
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="flex justify-center space-x-3">
+                  {otp.map((digit, index) => (
+                    <input
+                      key={index}
+                      id={\`otp-\${index}\`}
+                      type="text"
+                      maxLength="1"
+                      value={digit}
+                      onChange={(e) => handleOtpChange(index, e.target.value)}
+                      className="w-12 h-12 text-center border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-lg font-semibold"
+                    />
+                  ))}
+                </div>
+                
+                <button
+                  type="submit"
+                  disabled={isLoading || otp.join('').length !== 6}
+                  className="w-full bg-blue-600 text-white py-3 px-6 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isLoading ? 'Verifying...' : 'Verify'}
+                </button>
+              </form>
+
+              <div className="text-center mt-6">
+                {countdown > 0 ? (
+                  <p className="text-gray-600">
+                    Resend code in <span className="font-medium">{countdown}s</span>
+                  </p>
+                ) : (
+                  <button 
+                    onClick={resendOTP}
+                    className="text-blue-600 font-medium hover:underline"
+                  >
+                    Resend Code
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        }
+
         function DashboardPage() {
           const [role, setRole] = useState(localStorage.getItem('selectedRole') || 'CONSUMER');
 
@@ -337,6 +655,12 @@ if (process.env.NODE_ENV === "production") {
                 return <OnboardingPage onComplete={setCurrentPage} />;
               case 'role-selection':
                 return <RoleSelectionPage onComplete={setCurrentPage} />;
+              case 'signup':
+                return <SignupPage onComplete={setCurrentPage} />;
+              case 'signin':
+                return <SigninPage onComplete={setCurrentPage} />;
+              case 'otp-verification':
+                return <OTPVerificationPage onComplete={setCurrentPage} />;
               case 'dashboard':
                 return <DashboardPage />;
               default:
