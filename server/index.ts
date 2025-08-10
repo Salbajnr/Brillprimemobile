@@ -178,8 +178,16 @@ app.post("/api/auth/verify-otp", (req, res) => {
 });
 
 // Dashboard data endpoint
-app.get("/api/dashboard", (req, res) => {
-  const { role } = req.query;
+app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.session.userId;
+    const user = await storage.getUser(userId);
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    const { role } = user;
 
   const dashboardData = {
     CONSUMER: {

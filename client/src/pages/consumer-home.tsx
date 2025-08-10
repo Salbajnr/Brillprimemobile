@@ -61,16 +61,19 @@ export default function ConsumerHome() {
   const [showBalance, setShowBalance] = useState(true);
 
   // Fetch wallet balance from API
-  const { data: walletData } = useQuery({
+  const { data: walletData, isLoading: walletLoading, error: walletError } = useQuery({
     queryKey: ['/api/wallet/balance'],
     queryFn: async () => {
-      const response = await fetch('/api/wallet/balance');
+      const response = await fetch('/api/wallet/balance', {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch wallet balance');
       return response.json();
     }
   });
 
   const walletBalance = walletData?.balance || 0;
+  const formattedBalance = walletData?.formattedBalance || "₦0.00";
 
   // WebSocket integration for real-time features
   const { connected: orderConnected, orderUpdates, connectionError: orderError } = useWebSocketOrders();

@@ -31,34 +31,7 @@ interface TollPayment {
   paymentMethod: string;
 }
 
-const mockTollGates: TollGate[] = [
-  {
-    id: "TG_VI_001",
-    name: "Third Mainland Bridge Toll",
-    location: "Victoria Island, Lagos",
-    operatingHours: "24/7",
-    isActive: true,
-    distance: "2.5 km",
-    vehicleClasses: [
-      { class: "Class 1", description: "Cars, SUVs, Pick-ups", price: 200 },
-      { class: "Class 2", description: "Mini Bus, Small Truck", price: 300 },
-      { class: "Class 3", description: "Large Bus, Truck", price: 500 }
-    ]
-  },
-  {
-    id: "TG_LK_002", 
-    name: "Lekki-Ikoyi Link Bridge",
-    location: "Lekki, Lagos",
-    operatingHours: "24/7",
-    isActive: true,
-    distance: "5.2 km",
-    vehicleClasses: [
-      { class: "Class 1", description: "Cars, SUVs, Pick-ups", price: 250 },
-      { class: "Class 2", description: "Mini Bus, Small Truck", price: 400 },
-      { class: "Class 3", description: "Large Bus, Truck", price: 600 }
-    ]
-  }
-];
+// Remove mock data - will fetch from API
 
 export default function EnhancedTollPayments() {
   const [, setLocation] = useLocation();
@@ -68,6 +41,42 @@ export default function EnhancedTollPayments() {
   const [plateNumber, setPlateNumber] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("wallet");
   const [isLoading, setIsLoading] = useState(false);
+  const [tollGates, setTollGates] = useState<TollGate[]>([]);
+  const [loadingGates, setLoadingGates] = useState(true);
+
+  // Fetch toll gates from API
+  useEffect(() => {
+    const fetchTollGates = async () => {
+      try {
+        const response = await fetch('/api/toll/gates');
+        const data = await response.json();
+        
+        if (data.success) {
+          // Transform API data to match component interface
+          const transformedGates = data.gates.map((gate: any) => ({
+            id: gate.id,
+            name: gate.name,
+            location: gate.location,
+            operatingHours: gate.operating_hours || "24/7",
+            isActive: gate.is_active,
+            distance: gate.distance ? `${gate.distance.toFixed(1)} km` : undefined,
+            vehicleClasses: [
+              { class: "Class 1", description: "Cars, SUVs, Pick-ups", price: gate.car_price || 200 },
+              { class: "Class 2", description: "Mini Bus, Small Truck", price: gate.bus_price || 300 },
+              { class: "Class 3", description: "Large Bus, Truck", price: gate.truck_price || 500 }
+            ]
+          }));
+          setTollGates(transformedGates);
+        }
+      } catch (error) {
+        console.error('Error fetching toll gates:', error);
+      } finally {
+        setLoadingGates(false);
+      }
+    };
+
+    fetchTollGates();
+  }, []);
   const [modalData, setModalData] = useState<{
     isOpen: boolean;
     type: "success" | "error";
@@ -104,13 +113,19 @@ export default function EnhancedTollPayments() {
         paymentMethod
       };
 
-      const response = await fetch('/api/toll/pay', {
+      const response = await fetch('/api/toll/payment', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         credentials: 'include',
-        body: JSON.stringify(paymentData)
+        body: JSON.stringify({
+          tollGateId: selectedTollGate.id,
+          vehicleType: selectedVehicleClass.toLowerCase().replace(' ', '_'),
+          amount: vehicleClass?.price || 0,
+          paymentMethod,
+          plateNumber: plateNumber.toUpperCase()
+        })
       });
 
       const result = await response.json();
@@ -178,7 +193,17 @@ export default function EnhancedTollPayments() {
           <div>
             <h2 className="text-lg font-semibold mb-4">Select Toll Gate</h2>
             <div className="space-y-3">
-              {mockTollGates.map((tollGate) => (
+              {loadingGates ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto"></div>
+                  <p className="text-gray-500 mt-2">Loading toll gates...</p>
+                </div>
+              ) : tollGates.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-gray-500">No toll gates available</p>
+                </div>
+              ) : (
+                tollGates.map((tollGate) => (
                 <Card 
                   key={tollGate.id}
                   className={`cursor-pointer transition-all ${
@@ -212,7 +237,8 @@ export default function EnhancedTollPayments() {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+                ))
+              )}
             </div>
           </div>
 
