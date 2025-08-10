@@ -25,33 +25,33 @@ const io = new SocketIOServer(server, {
 // Simple WebSocket handlers for real-time features
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
-  
+
   // Join user to their personal room
   socket.on('join_user_room', (userId) => {
     socket.join(`user_${userId}`);
     socket.emit('connection_ack', { status: 'connected', userId });
   });
-  
+
   // Order tracking room
   socket.on('join_order_room', (orderId) => {
     socket.join(`order_${orderId}`);
   });
-  
+
   // Live location updates for drivers
   socket.on('location_update', (data) => {
     socket.to(`order_${data.orderId}`).emit('driver_location', data);
   });
-  
+
   // Order status updates
   socket.on('order_status_update', (data) => {
     io.to(`order_${data.orderId}`).emit('order_update', data);
   });
-  
+
   // Notifications
   socket.on('send_notification', (data) => {
     io.to(`user_${data.userId}`).emit('notification', data);
   });
-  
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
@@ -347,7 +347,7 @@ app.post("/api/transfer/send", (req, res) => {
 // Fuel ordering system endpoints
 app.get("/api/fuel/orders", (req, res) => {
   const { status, userId } = req.query;
-  
+
   const mockOrders = [
     {
       id: "fo_001",
@@ -363,17 +363,17 @@ app.get("/api/fuel/orders", (req, res) => {
       estimatedDelivery: new Date(Date.now() + 3600000).toISOString()
     }
   ];
-  
+
   res.json(mockOrders);
 });
 
 app.post("/api/fuel/orders", (req, res) => {
   const { fuelType, quantity, deliveryAddress, paymentMethod } = req.body;
-  
+
   if (!fuelType || !quantity || !deliveryAddress) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-  
+
   const order = {
     id: `fo_${Date.now()}`,
     customerId: "user_001",
@@ -387,14 +387,14 @@ app.post("/api/fuel/orders", (req, res) => {
     orderDate: new Date().toISOString(),
     estimatedDelivery: new Date(Date.now() + 3600000).toISOString()
   };
-  
+
   res.status(201).json({ message: "Fuel order created", order });
 });
 
 // Driver management endpoints
 app.get("/api/drivers", (req, res) => {
   const { available, tier } = req.query;
-  
+
   const mockDrivers = [
     {
       id: "driver_001",
@@ -421,7 +421,7 @@ app.get("/api/drivers", (req, res) => {
       earnings: 52300
     }
   ];
-  
+
   let filteredDrivers = mockDrivers;
   if (available !== undefined) {
     filteredDrivers = filteredDrivers.filter(d => d.available === (available === 'true'));
@@ -429,17 +429,17 @@ app.get("/api/drivers", (req, res) => {
   if (tier) {
     filteredDrivers = filteredDrivers.filter(d => d.tier === tier);
   }
-  
+
   res.json(filteredDrivers);
 });
 
 app.post("/api/drivers/register", (req, res) => {
   const { name, phone, vehicleType, licenseNumber, tier } = req.body;
-  
+
   if (!name || !phone || !vehicleType || !licenseNumber) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-  
+
   const driver = {
     id: `driver_${Date.now()}`,
     name,
@@ -452,14 +452,14 @@ app.post("/api/drivers/register", (req, res) => {
     verificationStatus: "PENDING",
     registeredAt: new Date().toISOString()
   };
-  
+
   res.status(201).json({ message: "Driver registration submitted", driver });
 });
 
 // Merchant endpoints
 app.get("/api/merchants", (req, res) => {
   const { verified, category } = req.query;
-  
+
   const mockMerchants = [
     {
       id: "merchant_001",
@@ -475,7 +475,7 @@ app.get("/api/merchants", (req, res) => {
       orders: 156
     }
   ];
-  
+
   let filteredMerchants = mockMerchants;
   if (verified !== undefined) {
     filteredMerchants = filteredMerchants.filter(m => m.verified === (verified === 'true'));
@@ -483,17 +483,17 @@ app.get("/api/merchants", (req, res) => {
   if (category) {
     filteredMerchants = filteredMerchants.filter(m => m.category === category);
   }
-  
+
   res.json(filteredMerchants);
 });
 
 app.post("/api/merchants/kyc", (req, res) => {
   const { businessName, ownerName, address, businessRegistration, taxId } = req.body;
-  
+
   if (!businessName || !ownerName || !address) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-  
+
   const kycSubmission = {
     id: `kyc_${Date.now()}`,
     businessName,
@@ -504,14 +504,14 @@ app.post("/api/merchants/kyc", (req, res) => {
     status: "PENDING",
     submittedAt: new Date().toISOString()
   };
-  
+
   res.status(201).json({ message: "KYC submitted for review", submission: kycSubmission });
 });
 
 // Real-time tracking endpoints
 app.get("/api/tracking/:orderId", (req, res) => {
   const { orderId } = req.params;
-  
+
   const trackingData = {
     orderId,
     status: "IN_TRANSIT",
@@ -520,18 +520,18 @@ app.get("/api/tracking/:orderId", (req, res) => {
     completionPercentage: 65,
     lastUpdate: new Date().toISOString()
   };
-  
+
   res.json(trackingData);
 });
 
 // QR code toll payment endpoints
 app.post("/api/toll/scan", (req, res) => {
   const { qrCode, amount } = req.body;
-  
+
   if (!qrCode) {
     return res.status(400).json({ message: "QR code required" });
   }
-  
+
   const tollPayment = {
     id: `toll_${Date.now()}`,
     qrCode,
@@ -541,7 +541,7 @@ app.post("/api/toll/scan", (req, res) => {
     status: "PROCESSING",
     timestamp: new Date().toISOString()
   };
-  
+
   res.json({ message: "Toll payment initiated", payment: tollPayment });
 });
 
@@ -557,13 +557,13 @@ app.get("/api/admin/stats", (req, res) => {
     pendingKyc: 12,
     flaggedTransactions: 3
   };
-  
+
   res.json(stats);
 });
 
 app.get("/api/admin/users", (req, res) => {
   const { role, status, page = 1 } = req.query;
-  
+
   const mockUsers = [
     {
       id: "user_001",
@@ -584,7 +584,7 @@ app.get("/api/admin/users", (req, res) => {
       lastActive: new Date().toISOString()
     }
   ];
-  
+
   res.json({
     users: mockUsers,
     pagination: {
@@ -598,7 +598,7 @@ app.get("/api/admin/users", (req, res) => {
 // Notification endpoints
 app.get("/api/notifications", (req, res) => {
   const { userId, read } = req.query;
-  
+
   const mockNotifications = [
     {
       id: 1,
@@ -619,13 +619,13 @@ app.get("/api/notifications", (req, res) => {
       timestamp: new Date(Date.now() - 3600000).toISOString()
     }
   ];
-  
+
   res.json(mockNotifications);
 });
 
 app.put("/api/notifications/:id/read", (req, res) => {
   const { id } = req.params;
-  
+
   res.json({ message: "Notification marked as read", id });
 });
 

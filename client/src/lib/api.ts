@@ -404,13 +404,24 @@ class ApiClient {
   }
 
   // Merchant specific
+  async getProducts(): Promise<any> {
+    const response = await fetch('/api/products', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
 
-  async addProduct(productData: any): Promise<any> {
+    if (!response.ok) {
+      throw new Error('Failed to fetch products');
+    }
+
+    return response.json();
+  }
+
+  async createProduct(productData: any): Promise<any> {
     const response = await fetch('/api/products', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`
+        Authorization: `Bearer ${localStorage.getItem('token')}`,
       },
       body: JSON.stringify(productData),
     });
