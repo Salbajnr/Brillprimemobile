@@ -285,3 +285,239 @@ export const securityLogger = () => {
     next();
   };
 };
+import { Request, Response, NextFunction } from 'express';
+import { z } from 'zod';
+import DOMPurify from 'isomorphic-dompurify';
+import validator from 'validator';
+
+// Common validation schemas
+export const commonSchemas = {
+  email: z.string().email().max(255),
+  phone: z.string().regex(/^(\+234|0)[789]\d{9}$/, 'Invalid Nigerian phone number'),
+  password: z.string().min(8).max(128).regex(
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/,
+    'Password must contain uppercase, lowercase, number and special character'
+  ),
+  userId: z.string().uuid(),
+  amount: z.string().regex(/^\d+(\.\d{1,2})?$/, 'Invalid amount format'),
+  coordinates: z.object({
+    latitude: z.number().min(-90).max(90),
+    longitude: z.number().min(-180).max(180)
+  })
+};
+
+// Sanitization functions
+export const sanitizers = {
+  // Remove HTML tags and dangerous content
+  sanitizeHtml: (input: string): string => {
+    return DOMPurify.sanitize(input, { ALLOWED_TAGS: [] });
+  },
+  
+  // Sanitize user input for database queries
+  sanitizeString: (input: string): string => {
+    return validator.escape(input.trim());
+  },
+  
+  // Sanitize numeric input
+  sanitizeNumber: (input: string): number => {
+    const num = parseFloat(validator.escape(input));
+    return isNaN(num) ? 0 : num;
+  },
+  
+  // Sanitize boolean input
+  sanitizeBoolean: (input: any): boolean => {
+    return validator.toBoolean(String(input));
+  },
+  
+  // Remove SQL injection patterns
+  sanitizeSql: (input: string): string => {
+    const dangerous = /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC|UNION|SCRIPT)\b)/gi;
+    return input.replace(dangerous, '');
+  }
+};
+
+// Input validation middleware factory
+export const validateInput = (schema: z.ZodSchema) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      // Sanitize request body
+      if (req.body && typeof req.body === 'object') {
+        req.body = sanitizeObject(req.body);
+      }
+      
+      // Sanitize query parameters
+      if (req.query && typeof req.query === 'object') {
+        req.query = sanitizeObject(req.query);
+      }
+      
+      // Validate against schema
+      const result = schema.safeParse({
+        body: req.body,
+        query: req.query,
+        params: req.params
+      });
+      
+      if (!result.success) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid input data',
+          errors: result.error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message,
+            code: err.code
+          }))
+        });
+      }
+      
+      // Update request with validated data
+      req.body = result.data.body;
+      req.query = result.data.query;
+      req.params = result.data.params;
+      
+      next();
+    } catch (error) {
+      console.error('Input validation error:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Validation error'
+      });
+    }
+  };
+};
+
+// Recursive object sanitization
+function sanitizeObject(obj: any): any {
+  if (typeof obj === 'string') {
+    return sanitizers.sanitizeString(obj);
+  }
+  
+  if (typeof obj === 'number') {
+    return obj;
+  }
+  
+  if (typeof obj === 'boolean') {
+    return obj;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(sanitizeObject);
+  }
+  
+  if (obj && typeof obj === 'object') {
+    const sanitized: any = {};
+    for (const [key, value] of Object.entries(obj)) {
+      const sanitizedKey = sanitizers.sanitizeString(key);
+      sanitized[sanitizedKey] = sanitizeObject(value);
+    }
+    return sanitized;
+  }
+  
+  return obj;
+}
+
+// Specific validation schemas
+export const authValidation = {
+  register: validateInput(z.object({
+    body: z.object({
+      fullName: z.string().min(2).max(100),
+      email: commonSchemas.email,
+      phone: commonSchemas.phone,
+      password: commonSchemas.password,
+      role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT'])
+    })
+  })),
+  
+  login: validateInput(z.object({
+    body: z.object({
+      email: commonSchemas.email,
+      password: z.string().min(1).max(128)
+    })
+  }))
+};
+
+export const paymentValidation = {
+  initiate: validateInput(z.object({
+    body: z.object({
+      amount: commonSchemas.amount,
+      currency: z.enum(['NGN', 'USD']).default('NGN'),
+      description: z.string().max(500).optional(),
+      metadata: z.record(z.any()).optional()
+    })
+  })),
+  
+  transfer: validateInput(z.object({
+    body: z.object({
+      recipientId: z.string().uuid(),
+      amount: commonSchemas.amount,
+      description: z.string().max(200).optional()
+    })
+  }))
+};
+
+export const locationValidation = {
+  update: validateInput(z.object({
+    body: z.object({
+      latitude: z.number().min(-90).max(90),
+      longitude: z.number().min(-180).max(180),
+      accuracy: z.number().min(0).optional(),
+      heading: z.number().min(0).max(360).optional(),
+      speed: z.number().min(0).optional()
+    })
+  }))
+};
+
+// File upload validation
+export const fileValidation = {
+  image: (req: Request, res: Response, next: NextFunction) => {
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        message: 'No file uploaded'
+      });
+    }
+    
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg'];
+    const maxSize = 5 * 1024 * 1024; // 5MB
+    
+    if (!allowedTypes.includes(req.file.mimetype)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid file type. Only JPEG and PNG allowed.'
+      });
+    }
+    
+    if (req.file.size > maxSize) {
+      return res.status(400).json({
+        success: false,
+        message: 'File size too large. Maximum 5MB allowed.'
+      });
+    }
+    
+    next();
+  }
+};
+
+// XSS Protection
+export const xssProtection = (req: Request, res: Response, next: NextFunction) => {
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  next();
+};
+
+// CSRF Protection
+export const csrfProtection = (req: Request, res: Response, next: NextFunction) => {
+  if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
+    const token = req.headers['x-csrf-token'] as string;
+    const sessionToken = req.session?.csrfToken;
+    
+    if (!token || token !== sessionToken) {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid CSRF token'
+      });
+    }
+  }
+  next();
+};

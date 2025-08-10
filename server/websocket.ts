@@ -1,7 +1,14 @@
+
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
+import { Redis } from 'ioredis';
 import { storage } from "./storage";
 import jwt from 'jsonwebtoken';
+
+// Redis clients for pub/sub and data storage
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redisPub = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+const redisSub = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 // Define message types for WebSocket communication
 export enum MessageType {
@@ -12,6 +19,9 @@ export enum MessageType {
   NOTIFICATION = 'NOTIFICATION',
   DELIVERY_STATUS = 'DELIVERY_STATUS',
   PAYMENT_CONFIRMATION = 'PAYMENT_CONFIRMATION',
+  SYSTEM_ALERT = 'SYSTEM_ALERT',
+  HEARTBEAT = 'HEARTBEAT',
+  RECONNECT = 'RECONNECT',
   ERROR = 'ERROR',
   PING = 'PING',
   PONG = 'PONG'
@@ -29,6 +39,167 @@ interface AuthenticatedSocket extends Socket {
   userId?: number;
   userRole?: string;
   userName?: string;
+  lastActivity?: number;
+  connectionTime?: number;
+  reconnectCount?: number;
+}
+
+interface ConnectionMetrics {
+  totalConnections: number;
+  activeConnections: Map<string, AuthenticatedSocket>;
+  connectionsByRole: Map<string, Set<string>>;
+  connectionsByUser: Map<number, Set<string>>;
+  messageQueue: Map<string, any[]>;
+}
+
+class WebSocketConnectionManager {
+  private metrics: ConnectionMetrics;
+  private heartbeatInterval: NodeJS.Timeout | null = null;
+  private cleanupInterval: NodeJS.Timeout | null = null;
+
+  constructor() {
+    this.metrics = {
+      totalConnections: 0,
+      activeConnections: new Map(),
+      connectionsByRole: new Map(),
+      connectionsByUser: new Map(),
+      messageQueue: new Map()
+    };
+
+    this.startHeartbeat();
+    this.startCleanup();
+  }
+
+  addConnection(socket: AuthenticatedSocket): void {
+    this.metrics.activeConnections.set(socket.id, socket);
+    this.metrics.totalConnections++;
+
+    if (socket.userRole) {
+      if (!this.metrics.connectionsByRole.has(socket.userRole)) {
+        this.metrics.connectionsByRole.set(socket.userRole, new Set());
+      }
+      this.metrics.connectionsByRole.get(socket.userRole)!.add(socket.id);
+    }
+
+    if (socket.userId) {
+      if (!this.metrics.connectionsByUser.has(socket.userId)) {
+        this.metrics.connectionsByUser.set(socket.userId, new Set());
+      }
+      this.metrics.connectionsByUser.get(socket.userId)!.add(socket.id);
+    }
+
+    socket.connectionTime = Date.now();
+    socket.lastActivity = Date.now();
+    socket.reconnectCount = 0;
+  }
+
+  removeConnection(socket: AuthenticatedSocket): void {
+    this.metrics.activeConnections.delete(socket.id);
+
+    if (socket.userRole) {
+      const roleConnections = this.metrics.connectionsByRole.get(socket.userRole);
+      if (roleConnections) {
+        roleConnections.delete(socket.id);
+        if (roleConnections.size === 0) {
+          this.metrics.connectionsByRole.delete(socket.userRole);
+        }
+      }
+    }
+
+    if (socket.userId) {
+      const userConnections = this.metrics.connectionsByUser.get(socket.userId);
+      if (userConnections) {
+        userConnections.delete(socket.id);
+        if (userConnections.size === 0) {
+          this.metrics.connectionsByUser.delete(socket.userId);
+        }
+      }
+    }
+  }
+
+  getConnectionsByRole(role: string): Set<string> {
+    return this.metrics.connectionsByRole.get(role) || new Set();
+  }
+
+  getConnectionsByUser(userId: number): Set<string> {
+    return this.metrics.connectionsByUser.get(userId) || new Set();
+  }
+
+  isUserOnline(userId: number): boolean {
+    return this.metrics.connectionsByUser.has(userId);
+  }
+
+  getMetrics() {
+    return {
+      totalConnections: this.metrics.totalConnections,
+      activeConnections: this.metrics.activeConnections.size,
+      connectionsByRole: Object.fromEntries(
+        Array.from(this.metrics.connectionsByRole.entries()).map(
+          ([role, connections]) => [role, connections.size]
+        )
+      ),
+      onlineUsers: this.metrics.connectionsByUser.size
+    };
+  }
+
+  // Queue messages for offline users
+  async queueMessage(userId: number, message: any): Promise<void> {
+    const key = `msg_queue:${userId}`;
+    await redis.lpush(key, JSON.stringify(message));
+    await redis.expire(key, 24 * 60 * 60); // Expire after 24 hours
+  }
+
+  // Get queued messages for user
+  async getQueuedMessages(userId: number): Promise<any[]> {
+    const key = `msg_queue:${userId}`;
+    const messages = await redis.lrange(key, 0, -1);
+    await redis.del(key);
+    return messages.map(msg => JSON.parse(msg));
+  }
+
+  // Heartbeat mechanism
+  private startHeartbeat(): void {
+    this.heartbeatInterval = setInterval(() => {
+      this.metrics.activeConnections.forEach((socket, socketId) => {
+        const now = Date.now();
+        const timeSinceLastActivity = now - (socket.lastActivity || 0);
+        
+        // Send ping if inactive for 30 seconds
+        if (timeSinceLastActivity > 30000) {
+          socket.emit('ping', { timestamp: now });
+        }
+        
+        // Disconnect if inactive for 5 minutes
+        if (timeSinceLastActivity > 300000) {
+          console.log(`Disconnecting inactive socket: ${socketId}`);
+          socket.disconnect();
+        }
+      });
+    }, 30000); // Every 30 seconds
+  }
+
+  // Cleanup mechanism
+  private startCleanup(): void {
+    this.cleanupInterval = setInterval(async () => {
+      // Clean up old message queues
+      const keys = await redis.keys('msg_queue:*');
+      for (const key of keys) {
+        const ttl = await redis.ttl(key);
+        if (ttl === -1) { // No expiration set
+          await redis.expire(key, 24 * 60 * 60);
+        }
+      }
+    }, 60 * 60 * 1000); // Every hour
+  }
+
+  destroy(): void {
+    if (this.heartbeatInterval) {
+      clearInterval(this.heartbeatInterval);
+    }
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+  }
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -51,22 +222,38 @@ export async function setupWebSocketServer(server: HTTPServer) {
     },
     path: '/socket.io',
     transports: ['websocket', 'polling'],
-    allowEIO3: true
+    allowEIO3: true,
+    pingTimeout: 60000,
+    pingInterval: 25000,
+    upgradeTimeout: 30000,
+    maxHttpBufferSize: 1e6 // 1MB
   });
 
   // Make io globally available
   (global as any).io = io;
 
-  // Track online users and admin connections
-  const onlineUsers = new Map<number, string>(); // userId -> socketId
-  const adminConnections = new Set<string>(); // socketIds of admin users
-  const roomParticipants = new Map<string, Set<number>>(); // roomId -> Set of userIds
+  const connectionManager = new WebSocketConnectionManager();
+
+  // Redis pub/sub for scaling across multiple servers
+  redisSub.subscribe('websocket:broadcast');
+  redisSub.on('message', (channel, message) => {
+    if (channel === 'websocket:broadcast') {
+      const data = JSON.parse(message);
+      io.emit(data.event, data.payload);
+    }
+  });
 
   io.on('connection', (socket: AuthenticatedSocket) => {
-    console.log('WebSocket connection established:', socket.id);
+    console.log(`WebSocket connection established: ${socket.id}`);
+    connectionManager.addConnection(socket);
 
-    // Handle authentication
-    socket.on('authenticate', async (data: { token?: string; userId?: number }) => {
+    // Enhanced authentication with reconnection support
+    socket.on('authenticate', async (data: { 
+      token?: string; 
+      userId?: number; 
+      reconnectToken?: string;
+      clientInfo?: any;
+    }) => {
       try {
         if (data.token) {
           const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
@@ -74,6 +261,16 @@ export async function setupWebSocketServer(server: HTTPServer) {
           socket.userId = decoded.userId;
           socket.userRole = decoded.role;
           socket.userName = decoded.fullName;
+        } else if (data.reconnectToken) {
+          // Handle reconnection with stored session
+          const sessionData = await redis.get(`session:${data.reconnectToken}`);
+          if (sessionData) {
+            const session = JSON.parse(sessionData);
+            socket.userId = session.userId;
+            socket.userRole = session.role;
+            socket.userName = session.fullName;
+            socket.reconnectCount = (socket.reconnectCount || 0) + 1;
+          }
         } else if (data.userId) {
           // For testing purposes, allow direct userId authentication
           const user = await storage.getUser(data.userId);
@@ -85,52 +282,111 @@ export async function setupWebSocketServer(server: HTTPServer) {
         }
 
         if (socket.userId) {
-          // Track user connection
-          onlineUsers.set(socket.userId, socket.id);
+          connectionManager.addConnection(socket);
 
           // Join role-based rooms
           socket.join(`role_${socket.userRole}`);
           socket.join(`user_${socket.userId}`);
 
           if (socket.userRole === 'ADMIN') {
-            adminConnections.add(socket.id);
             socket.join('admin_monitoring');
+            socket.join('admin_dashboard');
           }
+
+          // Send queued messages
+          const queuedMessages = await connectionManager.getQueuedMessages(socket.userId);
+          queuedMessages.forEach(message => {
+            socket.emit(message.type, message.data);
+          });
+
+          // Generate reconnection token
+          const reconnectToken = require('crypto').randomBytes(32).toString('hex');
+          await redis.setex(`session:${reconnectToken}`, 3600, JSON.stringify({
+            userId: socket.userId,
+            role: socket.userRole,
+            fullName: socket.userName
+          }));
 
           socket.emit('authenticated', {
             userId: socket.userId,
             role: socket.userRole,
-            socketId: socket.id
+            socketId: socket.id,
+            reconnectToken,
+            serverTime: Date.now(),
+            queuedMessagesCount: queuedMessages.length
           });
 
-          console.log(`User ${socket.userId} (${socket.userRole}) authenticated`);
+          console.log(`User ${socket.userId} (${socket.userRole}) authenticated with ${socket.reconnectCount || 0} reconnects`);
+
+          // Emit user online status
+          socket.broadcast.emit('user_status_change', {
+            userId: socket.userId,
+            isOnline: true,
+            timestamp: Date.now()
+          });
+
+          // Store user online status in Redis
+          await redis.setex(`user:online:${socket.userId}`, 300, socket.id); // 5 minutes TTL
         }
       } catch (error) {
         console.error('Authentication error:', error);
-        socket.emit('auth_error', { message: 'Invalid authentication' });
+        socket.emit('auth_error', { 
+          message: 'Invalid authentication',
+          code: 'AUTH_FAILED',
+          canRetry: true
+        });
       }
     });
 
-    // Real-time order status updates
+    // Enhanced heartbeat with connection quality metrics
+    socket.on('pong', (data: { timestamp: number; clientTime?: number }) => {
+      socket.lastActivity = Date.now();
+      const latency = Date.now() - data.timestamp;
+      
+      socket.emit('heartbeat_ack', {
+        serverTime: Date.now(),
+        latency,
+        quality: latency < 100 ? 'excellent' : latency < 300 ? 'good' : 'poor'
+      });
+    });
+
+    // Connection quality monitoring
+    socket.on('connection_quality', (data: { 
+      networkType?: string;
+      effectiveType?: string;
+      downlink?: number;
+      rtt?: number;
+    }) => {
+      // Store connection quality metrics
+      redis.hset(`connection:${socket.id}`, {
+        ...data,
+        timestamp: Date.now()
+      });
+    });
+
+    // Enhanced real-time order status updates with reliability
     socket.on('order_status_update', async (data: { 
       orderId: string; 
       status: string; 
       location?: any;
       driverId?: number;
       notes?: string;
+      reliability?: 'high' | 'medium' | 'low';
     }) => {
       try {
         if (!socket.userId) {
-          socket.emit('error', { message: 'Authentication required' });
+          socket.emit('error', { 
+            message: 'Authentication required',
+            code: 'AUTH_REQUIRED',
+            action: 'order_status_update'
+          });
           return;
         }
 
         const orderTracking = await storage.getOrderTracking(data.orderId);
         if (orderTracking) {
-          // Update order status in database
           await storage.updateOrderTracking(data.orderId, data.status, data.location);
 
-          // Broadcast to all parties involved in the order
           const updateData = {
             orderId: data.orderId,
             status: data.status,
@@ -138,57 +394,105 @@ export async function setupWebSocketServer(server: HTTPServer) {
             driverId: data.driverId,
             notes: data.notes,
             timestamp: Date.now(),
-            updatedBy: socket.userId
+            updatedBy: socket.userId,
+            reliability: data.reliability || 'medium'
           };
 
+          // Broadcast with acknowledgment for critical updates
+          const isCritical = ['delivered', 'cancelled', 'emergency'].includes(data.status.toLowerCase());
+          
           // Notify customer
           if (orderTracking.buyerId) {
-            io.to(`user_${orderTracking.buyerId}`).emit('order_update', updateData);
+            const customerSockets = connectionManager.getConnectionsByUser(orderTracking.buyerId);
+            if (customerSockets.size > 0) {
+              customerSockets.forEach(socketId => {
+                const targetSocket = connectionManager.metrics.activeConnections.get(socketId);
+                if (targetSocket) {
+                  if (isCritical) {
+                    targetSocket.emit('order_update_critical', updateData, (ack: any) => {
+                      console.log(`Critical order update acknowledged by customer ${orderTracking.buyerId}`);
+                    });
+                  } else {
+                    targetSocket.emit('order_update', updateData);
+                  }
+                }
+              });
+            } else {
+              // Queue message for offline customer
+              await connectionManager.queueMessage(orderTracking.buyerId, {
+                type: 'order_update',
+                data: updateData,
+                priority: isCritical ? 'high' : 'normal'
+              });
+            }
           }
 
-          // Notify merchant
-          if (orderTracking.sellerId) {
-            io.to(`user_${orderTracking.sellerId}`).emit('order_update', updateData);
-          }
+          // Broadcast to Redis for multi-server scaling
+          await redisPub.publish('websocket:broadcast', JSON.stringify({
+            event: 'order_status_global_update',
+            payload: updateData
+          }));
 
-          // Notify driver if different from updater
-          if (data.driverId && data.driverId !== socket.userId) {
-            io.to(`user_${data.driverId}`).emit('order_update', updateData);
-          }
-
-          // Broadcast to order room
-          io.to(`order_${data.orderId}`).emit('order_status_changed', updateData);
-
-          // Notify admins
-          adminConnections.forEach(adminSocketId => {
-            io.to(adminSocketId).emit('admin_order_update', updateData);
+          // Notify admins with enhanced metrics
+          io.to('admin_monitoring').emit('admin_order_update', {
+            ...updateData,
+            connectionMetrics: connectionManager.getMetrics(),
+            processingTime: Date.now() - (data as any).clientTimestamp || 0
           });
         }
       } catch (error) {
         console.error('Order status update error:', error);
-        socket.emit('error', { message: 'Failed to update order status' });
+        socket.emit('error', { 
+          message: 'Failed to update order status',
+          code: 'ORDER_UPDATE_FAILED',
+          orderId: data.orderId,
+          canRetry: true
+        });
       }
     });
 
-    // Real-time location updates
+    // Enhanced location tracking with optimization
     socket.on('location_update', async (data: {
       latitude: number;
       longitude: number;
       orderId?: string;
       heading?: number;
       speed?: number;
+      accuracy?: number;
+      altitude?: number;
+      timestamp?: number;
     }) => {
       try {
         if (!socket.userId || socket.userRole !== 'DRIVER') {
-          socket.emit('error', { message: 'Driver authentication required' });
+          socket.emit('error', { 
+            message: 'Driver authentication required',
+            code: 'DRIVER_AUTH_REQUIRED'
+          });
           return;
         }
 
-        // Update driver location in database
-        await storage.updateDriverLocation(socket.userId, {
-          latitude: data.latitude.toString(),
-          longitude: data.longitude.toString()
+        // Validate location data
+        if (Math.abs(data.latitude) > 90 || Math.abs(data.longitude) > 180) {
+          socket.emit('error', {
+            message: 'Invalid coordinates',
+            code: 'INVALID_LOCATION'
+          });
+          return;
+        }
+
+        // Update driver location with Redis for fast access
+        const locationKey = `location:driver:${socket.userId}`;
+        await redis.hset(locationKey, {
+          latitude: data.latitude,
+          longitude: data.longitude,
+          heading: data.heading || 0,
+          speed: data.speed || 0,
+          accuracy: data.accuracy || 0,
+          altitude: data.altitude || 0,
+          timestamp: data.timestamp || Date.now(),
+          lastUpdate: Date.now()
         });
+        await redis.expire(locationKey, 300); // 5 minutes TTL
 
         const locationData = {
           driverId: socket.userId,
@@ -196,263 +500,183 @@ export async function setupWebSocketServer(server: HTTPServer) {
           longitude: data.longitude,
           heading: data.heading,
           speed: data.speed,
-          timestamp: Date.now()
+          accuracy: data.accuracy,
+          timestamp: data.timestamp || Date.now()
         };
 
         // If orderId provided, update specific order tracking
         if (data.orderId) {
           const orderTracking = await storage.getOrderTracking(data.orderId);
           if (orderTracking) {
-            // Calculate ETA (simplified calculation)
             let etaMinutes = null;
+            let distance = null;
+            
             if (orderTracking.deliveryLatitude && orderTracking.deliveryLongitude) {
-              const distance = calculateDistance(
+              distance = calculateDistance(
                 data.latitude, 
                 data.longitude,
                 parseFloat(orderTracking.deliveryLatitude),
                 parseFloat(orderTracking.deliveryLongitude)
               );
-              etaMinutes = Math.round((distance / 30) * 60); // 30 km/h average
+              
+              // Dynamic ETA calculation based on speed and traffic
+              const avgSpeed = data.speed && data.speed > 5 ? data.speed : 25; // km/h
+              etaMinutes = Math.round((distance / avgSpeed) * 60);
             }
 
             const trackingUpdate = {
               ...locationData,
               orderId: data.orderId,
               eta: etaMinutes ? `${etaMinutes} minutes` : null,
-              distance: orderTracking.deliveryLatitude ? 
-                calculateDistance(
-                  data.latitude, data.longitude,
-                  parseFloat(orderTracking.deliveryLatitude),
-                  parseFloat(orderTracking.deliveryLongitude)
-                ).toFixed(1) + ' km' : null
+              distance: distance ? `${distance.toFixed(1)} km` : null,
+              estimatedArrival: etaMinutes ? new Date(Date.now() + etaMinutes * 60000).toISOString() : null
             };
 
-            // Notify customer
+            // Notify customer and merchant with optimized delivery
+            const notifications = [];
+            
             if (orderTracking.buyerId) {
-              io.to(`user_${orderTracking.buyerId}`).emit('driver_location_update', trackingUpdate);
+              notifications.push(
+                connectionManager.getConnectionsByUser(orderTracking.buyerId)
+              );
+            }
+            
+            if (orderTracking.sellerId) {
+              notifications.push(
+                connectionManager.getConnectionsByUser(orderTracking.sellerId)
+              );
             }
 
-            // Notify merchant
-            if (orderTracking.sellerId) {
-              io.to(`user_${orderTracking.sellerId}`).emit('driver_location_update', trackingUpdate);
-            }
+            notifications.forEach(socketSet => {
+              socketSet.forEach(socketId => {
+                const targetSocket = connectionManager.metrics.activeConnections.get(socketId);
+                if (targetSocket) {
+                  targetSocket.emit('driver_location_update', trackingUpdate);
+                }
+              });
+            });
 
             // Update order room
             io.to(`order_${data.orderId}`).emit('driver_location_update', trackingUpdate);
           }
         }
 
-        // Broadcast to admin monitoring
-        io.to('admin_monitoring').emit('driver_location_update', locationData);
+        // Broadcast to admin monitoring with connection metrics
+        io.to('admin_monitoring').emit('driver_location_update', {
+          ...locationData,
+          onlineDrivers: connectionManager.getConnectionsByRole('DRIVER').size,
+          totalConnections: connectionManager.getMetrics().activeConnections
+        });
 
       } catch (error) {
         console.error('Location update error:', error);
-        socket.emit('error', { message: 'Failed to update location' });
-      }
-    });
-
-    // Chat system events
-    socket.on('join_chat_room', async (data: { roomId: string; roomType: string }) => {
-      try {
-        if (!socket.userId) {
-          socket.emit('error', { message: 'Authentication required' });
-          return;
-        }
-
-        socket.join(data.roomId);
-
-        // Track room participants
-        if (!roomParticipants.has(data.roomId)) {
-          roomParticipants.set(data.roomId, new Set());
-        }
-        roomParticipants.get(data.roomId)!.add(socket.userId);
-
-        // Notify others in room
-        socket.to(data.roomId).emit('user_joined_chat', {
-          userId: socket.userId,
-          userName: socket.userName,
-          timestamp: Date.now()
-        });
-
-        socket.emit('chat_room_joined', {
-          roomId: data.roomId,
-          participants: Array.from(roomParticipants.get(data.roomId) || [])
-        });
-
-        console.log(`User ${socket.userId} joined chat room ${data.roomId}`);
-      } catch (error) {
-        console.error('Join chat room error:', error);
-        socket.emit('error', { message: 'Failed to join chat room' });
-      }
-    });
-
-    socket.on('send_chat_message', async (data: {
-      roomId: string;
-      message: string;
-      messageType?: string;
-      attachments?: any[];
-    }) => {
-      try {
-        if (!socket.userId) {
-          socket.emit('error', { message: 'Authentication required' });
-          return;
-        }
-
-        const messageData = {
-          id: `msg_${Date.now()}_${socket.userId}`,
-          roomId: data.roomId,
-          senderId: socket.userId,
-          senderName: socket.userName,
-          senderRole: socket.userRole,
-          message: data.message,
-          messageType: data.messageType || 'TEXT',
-          attachments: data.attachments || [],
-          timestamp: Date.now()
-        };
-
-        // Save message to database (if implemented)
-        try {
-          await storage.sendMessage({
-            id: messageData.id,
-            conversationId: data.roomId,
-            senderId: socket.userId,
-            content: data.message,
-            messageType: (data.messageType || 'TEXT') as any
-          });
-        } catch (error) {
-          console.error('Failed to save message:', error);
-        }
-
-        // Broadcast to room
-        io.to(data.roomId).emit('chat_message_received', messageData);
-
-        console.log(`Message sent in room ${data.roomId} by user ${socket.userId}`);
-      } catch (error) {
-        console.error('Send chat message error:', error);
-        socket.emit('error', { message: 'Failed to send message' });
-      }
-    });
-
-    socket.on('typing_start', (data: { roomId: string }) => {
-      if (socket.userId) {
-        socket.to(data.roomId).emit('user_typing', {
-          userId: socket.userId,
-          userName: socket.userName,
-          isTyping: true
+        socket.emit('error', { 
+          message: 'Failed to update location',
+          code: 'LOCATION_UPDATE_FAILED',
+          canRetry: true
         });
       }
     });
 
-    socket.on('typing_stop', (data: { roomId: string }) => {
+    // Enhanced disconnect handling
+    socket.on('disconnect', async (reason: string) => {
+      console.log(`WebSocket disconnected: ${socket.id}, reason: ${reason}`);
+      
       if (socket.userId) {
-        socket.to(data.roomId).emit('user_typing', {
-          userId: socket.userId,
-          userName: socket.userName,
-          isTyping: false
-        });
-      }
-    });
-
-    // Notification system
-    socket.on('send_notification', async (data: {
-      targetUserId?: number;
-      targetRole?: string;
-      title: string;
-      message: string;
-      type: string;
-      orderId?: string;
-    }) => {
-      try {
-        const notificationData = {
-          id: Date.now(),
-          title: data.title,
-          message: data.message,
-          type: data.type,
-          orderId: data.orderId,
-          timestamp: Date.now(),
-          senderId: socket.userId
-        };
-
-        // Send to specific user
-        if (data.targetUserId) {
-          io.to(`user_${data.targetUserId}`).emit('notification', notificationData);
-        }
-
-        // Send to all users of a specific role
-        if (data.targetRole) {
-          io.to(`role_${data.targetRole}`).emit('notification', notificationData);
-        }
-
-        socket.emit('notification_sent', { success: true });
-      } catch (error) {
-        console.error('Send notification error:', error);
-        socket.emit('error', { message: 'Failed to send notification' });
-      }
-    });
-
-    // Order tracking subscription
-    socket.on('subscribe_order_tracking', (orderId: string) => {
-      if (socket.userId) {
-        socket.join(`order_${orderId}`);
-        console.log(`User ${socket.userId} subscribed to order tracking for ${orderId}`);
-      }
-    });
-
-    socket.on('unsubscribe_order_tracking', (orderId: string) => {
-      if (socket.userId) {
-        socket.leave(`order_${orderId}`);
-        console.log(`User ${socket.userId} unsubscribed from order tracking for ${orderId}`);
-      }
-    });
-
-    // Heartbeat/Ping-Pong
-    socket.on('ping', () => {
-      socket.emit('pong', { timestamp: Date.now() });
-    });
-
-    socket.on('disconnect', () => {
-      console.log('WebSocket disconnected:', socket.id);
-
-      if (socket.userId) {
-        // Remove from tracking
-        onlineUsers.delete(socket.userId);
-        adminConnections.delete(socket.id);
-
-        // Clean up room participants
-        roomParticipants.forEach((participants, roomId) => {
-          if (participants.has(socket.userId!)) {
-            participants.delete(socket.userId!);
-            // Notify others in room
-            socket.to(roomId).emit('user_left_chat', {
+        connectionManager.removeConnection(socket);
+        
+        // Update user offline status in Redis
+        await redis.del(`user:online:${socket.userId}`);
+        
+        // Broadcast user offline status with delay to handle quick reconnections
+        setTimeout(async () => {
+          if (!connectionManager.isUserOnline(socket.userId!)) {
+            socket.broadcast.emit('user_status_change', {
               userId: socket.userId,
-              userName: socket.userName,
-              timestamp: Date.now()
+              isOnline: false,
+              timestamp: Date.now(),
+              lastSeen: socket.lastActivity
             });
           }
-        });
+        }, 5000); // 5 second delay
+      }
 
-        // Broadcast user offline status
-        io.emit('user_status_change', {
-          userId: socket.userId,
-          isOnline: false,
-          timestamp: Date.now()
-        });
+      // Clean up connection quality metrics
+      if (redis) {
+        redis.del(`connection:${socket.id}`);
       }
     });
 
-    // Error handling
+    // Error handling with detailed logging
     socket.on('error', (error) => {
-      console.error(`WebSocket error for ${socket.id}:`, error);
+      console.error(`WebSocket error for ${socket.id}:`, {
+        error: error.message,
+        userId: socket.userId,
+        userRole: socket.userRole,
+        connectionTime: socket.connectionTime ? Date.now() - socket.connectionTime : 0,
+        reconnectCount: socket.reconnectCount
+      });
+
+      // Report to admin monitoring
+      io.to('admin_monitoring').emit('websocket_error', {
+        socketId: socket.id,
+        userId: socket.userId,
+        error: error.message,
+        timestamp: Date.now()
+      });
     });
 
-    // Send connection acknowledgment
+    // Send connection acknowledgment with server metrics
     socket.emit(MessageType.CONNECTION_ACK, {
       socketId: socket.id,
-      timestamp: Date.now(),
-      message: 'Connected to BrillPrime WebSocket server'
+      serverTime: Date.now(),
+      message: 'Connected to BrillPrime WebSocket server',
+      serverMetrics: {
+        activeConnections: connectionManager.getMetrics().activeConnections,
+        serverLoad: process.cpuUsage(),
+        memory: process.memoryUsage()
+      }
     });
   });
 
-  console.log('WebSocket server initialized successfully');
+  // Admin endpoint to get connection metrics
+  io.of('/admin').on('connection', (socket) => {
+    socket.emit('connection_metrics', connectionManager.getMetrics());
+    
+    socket.on('get_metrics', () => {
+      socket.emit('connection_metrics', connectionManager.getMetrics());
+    });
+    
+    socket.on('disconnect_user', async (userId: number) => {
+      const userSockets = connectionManager.getConnectionsByUser(userId);
+      userSockets.forEach(socketId => {
+        const userSocket = connectionManager.metrics.activeConnections.get(socketId);
+        if (userSocket) {
+          userSocket.disconnect();
+        }
+      });
+    });
+  });
+
+  // Periodic metrics broadcast to admins
+  setInterval(() => {
+    io.to('admin_monitoring').emit('system_metrics_update', {
+      ...connectionManager.getMetrics(),
+      timestamp: Date.now(),
+      memory: process.memoryUsage(),
+      uptime: process.uptime()
+    });
+  }, 30000); // Every 30 seconds
+
+  console.log('Enhanced WebSocket server initialized successfully');
+  
+  // Cleanup on server shutdown
+  process.on('SIGTERM', () => {
+    connectionManager.destroy();
+    redis.disconnect();
+    redisPub.disconnect();
+    redisSub.disconnect();
+  });
+
   return io;
 }

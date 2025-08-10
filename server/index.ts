@@ -1,6 +1,8 @@
 
 import express from 'express';
 import session from 'express-session';
+import RedisStore from 'connect-redis';
+import { Redis } from 'ioredis';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -8,6 +10,11 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import { validateEnvironment } from './env-validation';
+import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
+import { xssProtection, csrfProtection } from './middleware/validation';
+import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
+import { messageQueue } from './services/messageQueue';
+import { pushNotificationService } from './services/pushNotifications';
 
 // Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
@@ -144,6 +151,11 @@ io.on('connection', (socket) => {
   });
 });
 
+// Security middleware
+app.use(xssProtection);
+app.use(generalLimiter);
+app.use(responseTimeMiddleware);
+
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -155,19 +167,56 @@ app.use(cors({
   credentials: true
 }));
 
-// Enhanced session configuration
-app.use(session({
+// Redis client for session storage
+const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
+  retryDelayOnFailover: 100,
+  maxRetriesPerRequest: 3,
+  lazyConnect: true
+});
+
+// Handle Redis connection
+redis.on('connect', () => {
+  console.log('✅ Redis connected for session storage');
+});
+
+redis.on('error', (err) => {
+  console.error('❌ Redis session store error:', err);
+});
+
+// Enhanced session configuration with Redis
+const sessionConfig = {
+  store: new RedisStore({ 
+    client: redis,
+    prefix: 'sess:',
+    ttl: 24 * 60 * 60 // 24 hours
+  }),
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
+  rolling: true, // Reset expiration on activity
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   },
-  name: 'brillprime.sid'
-}));
+  name: 'brillprime.sid',
+  genid: () => {
+    // Generate secure session ID
+    return require('crypto').randomBytes(32).toString('hex');
+  }
+};
+
+app.use(session(sessionConfig));
+
+// CSRF token generation
+app.use((req, res, next) => {
+  if (!req.session.csrfToken) {
+    req.session.csrfToken = require('crypto').randomBytes(32).toString('hex');
+  }
+  res.locals.csrfToken = req.session.csrfToken;
+  next();
+});
 
 // Enhanced request logging
 app.use((req, res, next) => {
@@ -215,8 +264,13 @@ app.get('/api/ws-test', (req, res) => {
   });
 });
 
-// API Routes with enhanced error handling
+// API Routes with enhanced error handling and specific rate limiting
 const apiRouter = express.Router();
+
+// Apply specific rate limiters
+apiRouter.use('/auth', authLimiter);
+apiRouter.use('/payments', paymentLimiter);
+apiRouter.use('/wallet/fund', paymentLimiter);
 
 // Centralized error handling for API routes
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
