@@ -314,5 +314,79 @@ export const storage = {
       console.error('Error getting products:', error);
       return [];
     }
+  },
+
+  // Real-time support ticket management
+  async createSupportTicket(ticketData: any) {
+    try {
+      const [ticket] = await db.insert(supportTickets).values(ticketData).returning();
+      return ticket;
+    } catch (error) {
+      console.error('Error creating support ticket:', error);
+      throw error;
+    }
+  },
+
+  async getSupportTickets(filters: any = {}) {
+    try {
+      let query = db.select().from(supportTickets);
+      
+      if (filters.status) {
+        query = query.where(eq(supportTickets.status, filters.status));
+      }
+      
+      if (filters.priority) {
+        query = query.where(eq(supportTickets.priority, filters.priority));
+      }
+
+      if (filters.assignedTo) {
+        query = query.where(eq(supportTickets.assignedTo, filters.assignedTo));
+      }
+
+      const tickets = await query.orderBy(desc(supportTickets.createdAt));
+      return tickets;
+    } catch (error) {
+      console.error('Error getting support tickets:', error);
+      return [];
+    }
+  },
+
+  async updateSupportTicket(ticketId: number, updates: any) {
+    try {
+      const [ticket] = await db.update(supportTickets)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(supportTickets.id, ticketId))
+        .returning();
+      return ticket;
+    } catch (error) {
+      console.error('Error updating support ticket:', error);
+      throw error;
+    }
+  },
+
+  // Real-time notification system
+  async getNotifications(userId: number, limit: number = 10) {
+    try {
+      const userNotifications = await db.select()
+        .from(notifications)
+        .where(eq(notifications.userId, userId))
+        .orderBy(desc(notifications.createdAt))
+        .limit(limit);
+
+      return userNotifications;
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      return [];
+    }
+  },
+
+  async createNotification(notificationData: any) {
+    try {
+      const [notification] = await db.insert(notifications).values(notificationData).returning();
+      return notification;
+    } catch (error) {
+      console.error('Error creating notification:', error);
+      throw error;
+    }
   }
 };

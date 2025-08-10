@@ -1,279 +1,166 @@
-
-import { storage } from './storage.js';
-import { initializeDatabase } from './init-db.js';
-
-async function seedDatabase() {
-  try {
-    console.log('Initializing database...');
-    await initializeDatabase();
-    
-    console.log('Seeding test data...');
-    
-    // Create test users
-    const consumer = await storage.createUser({
-      email: 'consumer@test.com',
-      password: 'password123',
-      fullName: 'Test Consumer',
-      phone: '+2348012345678',
-      role: 'CONSUMER'
-    });
-
-    const merchant = await storage.createUser({
-      email: 'merchant@test.com',
-      password: 'password123',
-      fullName: 'Test Merchant',
-      phone: '+2348012345679',
-      role: 'MERCHANT'
-    });
-
-    const driver = await storage.createUser({
-      email: 'driver@test.com',
-      password: 'password123',
-      fullName: 'Test Driver',
-      phone: '+2348012345680',
-      role: 'DRIVER'
-    });
-
-    const admin = await storage.createUser({
-      email: 'admin@test.com',
-      password: 'password123',
-      fullName: 'Test Admin',
-      phone: '+2348012345681',
-      role: 'ADMIN'
-    });
-
-    // Create test orders
-    const order1 = await storage.createOrder({
-      customerId: consumer.id,
-      merchantId: merchant.id,
-      orderType: 'PRODUCT',
-      totalAmount: '25.50',
-      deliveryAddress: '123 Test Street, Lagos',
-      status: 'PENDING',
-      orderData: {
-        items: [
-          { name: 'Test Product', quantity: 2, price: 12.75 }
-        ]
-      }
-    });
-
-    const order2 = await storage.createOrder({
-      customerId: consumer.id,
-      orderType: 'FUEL',
-      totalAmount: '50.00',
-      deliveryAddress: '456 Test Avenue, Lagos',
-      status: 'IN_PROGRESS',
-      orderData: {
-        fuelType: 'PMS',
-        quantity: 20,
-        location: { lat: 6.5244, lng: 3.3792 }
-      }
-    });
-
-    // Create test transactions
-    await storage.createTransaction({
-      orderId: order1.id,
-      userId: consumer.id,
-      amount: '25.50',
-      paymentMethod: 'CARD',
-      paymentStatus: 'COMPLETED',
-      paymentGatewayRef: 'paystack_ref_123'
-    });
-
-    // Create test notifications
-    await storage.createNotification({
-      userId: consumer.id,
-      title: 'Order Confirmed',
-      message: 'Your order has been confirmed and is being prepared.',
-      type: 'ORDER'
-    });
-
-    await storage.createNotification({
-      userId: merchant.id,
-      title: 'New Order',
-      message: 'You have received a new order.',
-      type: 'ORDER'
-    });
-
-    console.log('Test data seeded successfully!');
-    console.log('Test accounts created:');
-    console.log('Consumer: consumer@test.com / password123');
-    console.log('Merchant: merchant@test.com / password123');
-    console.log('Driver: driver@test.com / password123');
-    console.log('Admin: admin@test.com / password123');
-
-  } catch (error) {
-    console.error('Error seeding database:', error);
-  } finally {
-    process.exit(0);
-  }
-}
-
-if (require.main === module) {
-  seedDatabase();
-}
-
-export default seedDatabase;
-import { db, dbOperations } from './db';
-import { users, products, categories } from '../shared/schema';
+import { db } from './db';
+import { 
+  users, 
+  products, 
+  categories, 
+  orders,
+  transactions,
+  merchantProfiles,
+  driverProfiles,
+  notifications,
+  supportTickets
+} from '../shared/schema';
 import bcrypt from 'bcrypt';
 
-export async function seedDatabase() {
+async function seedDatabase() {
+  console.log('🌱 Starting database seeding...');
+
   try {
-    console.log('🌱 Starting database seeding...');
+    // Create sample categories
+    const sampleCategories = [
+      { name: 'Fuel & Energy', description: 'Petrol, Diesel, Gas and Energy products', icon: 'fuel' },
+      { name: 'Food & Beverages', description: 'Fresh food, snacks and drinks', icon: 'food' },
+      { name: 'Electronics', description: 'Phones, computers and accessories', icon: 'electronics' },
+      { name: 'Fashion', description: 'Clothing, shoes and accessories', icon: 'fashion' },
+      { name: 'Home & Garden', description: 'Furniture, appliances and garden supplies', icon: 'home' }
+    ];
 
-    // Create sample users
-    const hashedPassword = await bcrypt.hash('password123', 12);
+    await db.insert(categories).values(sampleCategories).onConflictDoNothing();
 
-    // Sample consumer
-    const consumer = await dbOperations.createUser({
-      email: 'consumer@test.com',
+    // Create default admin user
+    const hashedPassword = await bcrypt.hash('admin123', 10);
+    const adminUser = {
+      email: 'admin@brillprime.com',
       password: hashedPassword,
-      fullName: 'John Consumer',
-      phone: '+234701234567',
-      role: 'CONSUMER',
+      fullName: 'System Administrator',
+      phone: '+2348000000000',
+      role: 'ADMIN' as const,
       isVerified: true,
       isActive: true
-    });
-
-    // Sample merchant
-    const merchant = await dbOperations.createUser({
-      email: 'merchant@test.com', 
-      password: hashedPassword,
-      fullName: 'Fresh Foods Ltd',
-      phone: '+234701234568',
-      role: 'MERCHANT',
-      isVerified: true,
-      isActive: true
-    });
-
-    // Sample driver
-    const driver = await dbOperations.createUser({
-      email: 'driver@test.com',
-      password: hashedPassword, 
-      fullName: 'Mike Driver',
-      phone: '+234701234569',
-      role: 'DRIVER',
-      isVerified: true,
-      isActive: true
-    });
-
-    console.log('✅ Sample users created');
-
-    // Create sample products
-    await db.insert(products).values([
-      {
-        name: 'Rice (50kg bag)',
-        description: 'Premium quality rice from local farmers',
-        price: '45000',
-        unit: 'bag',
-        categoryName: 'Grains',
-        sellerId: merchant.id,
-        images: [],
-        rating: 4.5,
-        reviewCount: 23,
-        inStock: true,
-        stockLevel: 50,
-        isActive: true,
-        lowStockThreshold: 10
-      },
-      {
-        name: 'Palm Oil (5L)',
-        description: 'Pure red palm oil',
-        price: '8500',
-        unit: 'bottle',
-        categoryName: 'Oils',
-        sellerId: merchant.id,
-        images: [],
-        rating: 4.2,
-        reviewCount: 15,
-        inStock: true,
-        stockLevel: 30,
-        isActive: true,
-        lowStockThreshold: 5
-      },
-      {
-        name: 'Beans (50kg bag)',
-        description: 'Quality brown beans',
-        price: '38000',
-        unit: 'bag',
-        categoryName: 'Grains',
-        sellerId: merchant.id,
-        images: [],
-        rating: 4.0,
-        reviewCount: 12,
-        inStock: true,
-        stockLevel: 25,
-        isActive: true,
-        lowStockThreshold: 8
-      },
-      {
-        name: 'Tomatoes (Crate)',
-        description: 'Fresh tomatoes',
-        price: '15000',
-        unit: 'crate',
-        categoryName: 'Vegetables',
-        sellerId: merchant.id,
-        images: [],
-        rating: 3.8,
-        reviewCount: 8,
-        inStock: true,
-        stockLevel: 20,
-        isActive: true,
-        lowStockThreshold: 5
-      }
-    ]);
-
-    console.log('✅ Sample products created');
-
-    // Create a sample order
-    const order = await dbOperations.createOrder({
-      customerId: consumer.id,
-      merchantId: merchant.id,
-      orderType: 'PRODUCT',
-      totalAmount: '53000',
-      deliveryAddress: '123 Lagos Street, Ikeja, Lagos',
-      orderData: {
-        items: [
-          { productId: 1, productName: 'Rice (50kg bag)', quantity: 1, price: 45000 },
-          { productId: 2, productName: 'Palm Oil (5L)', quantity: 1, price: 8500 }
-        ]
-      },
-      status: 'PENDING'
-    });
-
-    console.log('✅ Sample order created');
-
-    // Create sample notifications
-    await dbOperations.createNotification({
-      userId: consumer.id,
-      title: 'Welcome to Brill Prime!',
-      message: 'Your account has been created successfully. Start ordering now!',
-      type: 'SYSTEM',
-      isRead: false
-    });
-
-    await dbOperations.createNotification({
-      userId: merchant.id,
-      title: 'New Order Received',
-      message: `You have received a new order ${order.orderNumber}`,
-      type: 'ORDER',
-      isRead: false,
-      metadata: { orderId: order.id }
-    });
-
-    console.log('✅ Sample notifications created');
-    console.log('🌱 Database seeding completed successfully!');
-
-    return {
-      consumer,
-      merchant,
-      driver,
-      order
     };
 
+    await db.insert(users).values(adminUser).onConflictDoNothing();
+
+    // Create sample test users
+    const testPassword = await bcrypt.hash('test123', 10);
+
+    const testUsers = [
+      {
+        email: 'consumer@test.com',
+        password: testPassword,
+        fullName: 'John Consumer',
+        phone: '+2348111111111',
+        role: 'CONSUMER' as const,
+        isVerified: true,
+        isActive: true
+      },
+      {
+        email: 'merchant@test.com',
+        password: testPassword,
+        fullName: 'Jane Merchant',
+        phone: '+2348222222222',
+        role: 'MERCHANT' as const,
+        isVerified: true,
+        isActive: true
+      },
+      {
+        email: 'driver@test.com',
+        password: testPassword,
+        fullName: 'Mike Driver',
+        phone: '+2348333333333',
+        role: 'DRIVER' as const,
+        isVerified: true,
+        isActive: true
+      }
+    ];
+
+    const createdUsers = await db.insert(users).values(testUsers).onConflictDoNothing().returning();
+
+    // Create sample merchant profile
+    if (createdUsers.length > 0) {
+      const merchantUser = createdUsers.find(u => u.role === 'MERCHANT');
+      if (merchantUser) {
+        const merchantProfile = {
+          userId: merchantUser.id,
+          businessName: 'Lagos Fuel Station',
+          businessAddress: '45 Allen Avenue, Ikeja, Lagos',
+          businessType: 'FUEL_STATION',
+          isOpen: true,
+          rating: '4.7',
+          totalOrders: 156,
+          revenue: '2450000'
+        };
+        await db.insert(merchantProfiles).values(merchantProfile).onConflictDoNothing();
+      }
+
+      // Create sample driver profile
+      const driverUser = createdUsers.find(u => u.role === 'DRIVER');
+      if (driverUser) {
+        const driverProfile = {
+          userId: driverUser.id,
+          vehicleType: 'Fuel Truck',
+          vehicleModel: 'Isuzu NPR',
+          plateNumber: 'LAG-123-ABC',
+          licenseNumber: 'DL123456789',
+          isAvailable: true,
+          rating: '4.8',
+          totalTrips: 156,
+          earnings: '85500'
+        };
+        await db.insert(driverProfiles).values(driverProfile).onConflictDoNothing();
+      }
+    }
+
+    // Create sample notifications for test users
+    if (createdUsers.length > 0) {
+      const consumerUser = createdUsers.find(u => u.role === 'CONSUMER');
+      if (consumerUser) {
+        const sampleNotifications = [
+          {
+            userId: consumerUser.id,
+            title: 'Welcome to Brill Prime',
+            message: 'Your account has been created successfully. Start exploring our services!',
+            type: 'info',
+            isRead: false
+          },
+          {
+            userId: consumerUser.id,
+            title: 'Fuel Order Delivered',
+            message: 'Your fuel order #FO001 has been delivered successfully',
+            type: 'success',
+            isRead: true
+          }
+        ];
+        await db.insert(notifications).values(sampleNotifications).onConflictDoNothing();
+      }
+    }
+
+    // Create sample support ticket
+    const sampleTicket = {
+      ticketNumber: 'SP' + Date.now().toString().slice(-6),
+      userId: createdUsers[0]?.id || 1,
+      userRole: 'CONSUMER',
+      name: 'John Consumer',
+      email: 'consumer@test.com',
+      subject: 'Fuel delivery delay',
+      message: 'My fuel order has been delayed for over 2 hours. Please help resolve this issue.',
+      status: 'OPEN',
+      priority: 'HIGH'
+    };
+
+    await db.insert(supportTickets).values(sampleTicket).onConflictDoNothing();
+
+    console.log('✅ Database seeded successfully!');
+    console.log('Sample data includes:');
+    console.log('- 5 product categories');
+    console.log('- Admin user (admin@brillprime.com / admin123)');
+    console.log('- Test users (consumer@test.com, merchant@test.com, driver@test.com / test123)');
+    console.log('- Merchant and driver profiles');
+    console.log('- Sample notifications');
+    console.log('- Sample support ticket');
+
   } catch (error) {
-    console.error('❌ Database seeding failed:', error);
+    console.error('❌ Error seeding database:', error);
     throw error;
   }
 }
@@ -282,7 +169,7 @@ export async function seedDatabase() {
 if (require.main === module) {
   seedDatabase()
     .then(() => {
-      console.log('Seeding completed');
+      console.log('Seeding completed successfully');
       process.exit(0);
     })
     .catch((error) => {
@@ -290,3 +177,5 @@ if (require.main === module) {
       process.exit(1);
     });
 }
+
+export { seedDatabase };

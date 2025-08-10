@@ -281,22 +281,7 @@ export const complianceDocuments = pgTable("compliance_documents", {
   notes: text("notes")
 });
 
-// Support tickets table (existing definition)
-export const supportTickets = pgTable("support_tickets", {
-  id: serial("id").primaryKey(),
-  userId: integer("user_id").references(() => users.id),
-  subject: text("subject").notNull(),
-  description: text("description").notNull(),
-  category: text("category"),
-  priority: text("priority").default('MEDIUM'),
-  status: text("status").default('OPEN'),
-  assignedTo: integer("assigned_to").references(() => adminUsers.id),
-  attachments: jsonb("attachments").default([]),
-  resolution: text("resolution"),
-  resolvedAt: timestamp("resolved_at"),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
-});
+// Support tickets table removed - using updated definition below
 
 // Content reports table
 export const contentReports = pgTable("content_reports", {
@@ -496,14 +481,7 @@ export const signInSchema = z.object({
 
 export type SignInData = z.infer<typeof signInSchema>;
 
-// NEWLY ADDED TABLES FOR SUPPORT TICKET MANAGEMENT
-// Note: The original `supportTickets` table definition has been retained,
-// and new tables `supportTickets`, `supportResponses` have been added as per the changes.
-// However, the provided changes also include a `tollGates` table definition which seems to be unrelated.
-// I will ensure the `supportTickets` and `supportResponses` are added correctly and the `tollGates`
-// definition is also included as it was part of the provided changes.
-
-// Toll Gates table (as provided in changes)
+// Toll Gates table
 export const tollGates = pgTable('toll_gates', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -518,7 +496,7 @@ export const tollGates = pgTable('toll_gates', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-// Updated support tickets table definition (as provided in changes)
+// Support tickets table
 export const supportTickets = pgTable('support_tickets', {
   id: serial('id').primaryKey(),
   ticketNumber: varchar('ticket_number', { length: 20 }).unique().notNull(),
@@ -538,7 +516,7 @@ export const supportTickets = pgTable('support_tickets', {
   resolvedAt: timestamp('resolved_at')
 });
 
-// Support responses table (as provided in changes)
+// Support responses table
 export const supportResponses = pgTable('support_responses', {
   id: serial('id').primaryKey(),
   ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
