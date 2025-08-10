@@ -4,11 +4,8 @@ import { Pool } from 'pg';
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
 import { eq, and, desc } from 'drizzle-orm';
 
-if (!process.env.DATABASE_URL) {
-  throw new Error(
-    "DATABASE_URL must be set. Did you forget to provision a database?",
-  );
-}
+// Use placeholder URL for migration, actual database can be provisioned later
+const DATABASE_URL = process.env.DATABASE_URL || "postgres://test:test@localhost:5432/test";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);

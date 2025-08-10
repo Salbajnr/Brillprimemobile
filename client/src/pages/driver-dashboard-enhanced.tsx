@@ -167,29 +167,8 @@ export default function EnhancedDriverDashboard() {
   const { data: tierProgress } = useQuery<TierProgress>({
     queryKey: ["/api/driver/tier-progress"],
     queryFn: async () => {
-      // Mock tier progress data
-      return {
-        currentTier: driverProfile?.tier || 'STANDARD',
-        nextTier: driverProfile?.tier === 'STANDARD' ? 'PREMIUM' : driverProfile?.tier === 'PREMIUM' ? 'ELITE' : null,
-        progress: 65,
-        requirementsNeeded: {
-          deliveries: 50,
-          rating: 4.7,
-          earnings: 150000,
-          onTimeRate: 90
-        },
-        benefits: [
-          "Standard delivery access",
-          "Basic earnings structure",
-          "Regular support"
-        ],
-        nextTierBenefits: [
-          "Premium delivery access",
-          "Higher earning rates",
-          "Priority support",
-          "Special bonuses"
-        ]
-      };
+      const response = await apiRequest("GET", "/api/driver/tier-progress");
+      return response.json();
     },
     enabled: !!driverProfile
   });
