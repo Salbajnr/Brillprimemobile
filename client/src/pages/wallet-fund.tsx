@@ -50,31 +50,34 @@ export default function WalletFund() {
     const amount = getFinalAmount();
     if (amount > 0 && selectedPaymentMethod) {
       try {
-        // Integrate with Paystack payment gateway
-        const response = await fetch('/api/payments/initialize', {
+        setIsLoading(true);
+        
+        // Initialize payment with real Paystack integration
+        const response = await fetch('/api/wallet/fund', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
+          credentials: 'include',
           body: JSON.stringify({
-            amount: amount * 100, // Convert to kobo
-            email: 'user@example.com', // Get from user context
-            paymentMethod: selectedPaymentMethod,
-            purpose: 'WALLET_FUNDING'
+            amount,
+            paymentMethod: selectedPaymentMethod
           }),
         });
 
-        if (response.ok) {
-          const { authorization_url } = await response.json();
+        const result = await response.json();
+
+        if (result.success && result.authorization_url) {
           // Redirect to Paystack payment page
-          window.location.href = authorization_url;
+          window.location.href = result.authorization_url;
         } else {
-          throw new Error('Payment initialization failed');
+          throw new Error(result.message || 'Payment initialization failed');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Payment error:', error);
-        // Show error toast to user
-        alert('Payment failed. Please try again.');
+        alert(error.message || 'Payment failed. Please try again.');
+      } finally {
+        setIsLoading(false);
       }
     }
   };

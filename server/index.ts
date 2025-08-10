@@ -13,6 +13,10 @@ import { setupAuth, requireAuth } from "./middleware/auth";
 import { liveChatHandler } from "./websocket/live-system-handler";
 import paymentsRouter from "./routes/payments";
 import { validateEnvironment } from "./env-validation";
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+import * as fs from 'fs';
+
 
 // Validate environment variables on startup
 const env = validateEnvironment();
@@ -27,7 +31,6 @@ const server = createServer(app);
 setupWebSocket(server);
 
 // Security middleware
-import { setupAuth, requireAuth } from "./middleware/auth";
 import { sanitizeInput, securityLogger } from "./middleware/validation";
 import { apiLimiter, authLimiter } from "./middleware/rateLimiter";
 import helmet from "helmet";
@@ -334,7 +337,10 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
   }
 });
 
-// Import and register all route modules
+// Import routes
+import paymentsRouter from "./routes/payments";
+import escrowRouter from "./routes/escrow";
+import productsRouter from "./routes/products";
 import adminRoutes from "./admin/routes.js";
 import merchantRoutes from "./routes/merchant.js";
 import driverRoutes from "./routes/driver.js";
