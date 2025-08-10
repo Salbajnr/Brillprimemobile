@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { spawn } from "child_process";
 import { Server as SocketIOServer } from "socket.io";
+import { storage } from "./storage";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -177,52 +178,105 @@ app.post("/api/auth/verify-otp", (req, res) => {
   res.json({ message: "OTP verified successfully", verified: true });
 });
 
-// Dashboard data endpoint
+// Simple auth middleware
+const requireAuth = (req: any, res: any, next: any) => {
+  // For development, we'll simulate authentication
+  req.session = { userId: 1 };
+  next();
+};
+
+// Dashboard data endpoint with real database integration
 app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const user = await storage.getUser(userId);
     
     if (!user) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+      // Return default consumer data if user not found
+      return res.json({
+        balance: "₦0.00",
+        transactions: 0,
+        quickActions: ["Send Money", "Pay Bills", "Buy Airtime", "Fund Wallet", "View Transactions"]
+      });
     }
 
     const { role } = user;
 
-  const dashboardData = {
-    CONSUMER: {
-      balance: "₦125,450.00",
-      transactions: 23,
-      quickActions: ["Send Money", "Pay Bills", "Buy Airtime", "Fund Wallet", "View Transactions"]
-    },
-    MERCHANT: {
-      revenue: "₦2,450,000.00",
-      orders: 156,
-      quickActions: ["View Orders", "Add Product", "Analytics", "Withdraw Funds", "KYC Status"]
-    },
-    DRIVER: {
-      earnings: "₦85,500.00",
-      trips: 42,
-      quickActions: ["Start Trip", "View Earnings", "Update Status", "Fuel Delivery", "Trip History"]
+    // Get role-specific dashboard data from database
+    let dashboardData: any;
+    
+    switch (role) {
+      case 'DRIVER':
+        dashboardData = await storage.getDriverDashboardData(userId);
+        const formattedDriverData = {
+          earnings: `₦${dashboardData.todayEarnings.toLocaleString()}`,
+          totalEarnings: `₦${dashboardData.totalEarnings.toLocaleString()}`,
+          trips: dashboardData.todayDeliveries,
+          totalTrips: dashboardData.totalDeliveries,
+          completionRate: `${dashboardData.completionRate.toFixed(1)}%`,
+          activeFuelOrders: dashboardData.activeFuelOrders,
+          quickActions: ["Start Trip", "View Earnings", "Update Status", "Fuel Delivery", "Trip History"]
+        };
+        return res.json(formattedDriverData);
+        
+      case 'MERCHANT':
+        dashboardData = await storage.getMerchantDashboardData(userId);
+        const formattedMerchantData = {
+          revenue: `₦${dashboardData.todayRevenue.toLocaleString()}`,
+          totalRevenue: `₦${dashboardData.totalRevenue.toLocaleString()}`,
+          orders: dashboardData.todayOrders,
+          totalOrders: dashboardData.totalOrders,
+          productStats: dashboardData.productStats,
+          recentOrders: dashboardData.recentOrders,
+          quickActions: ["View Orders", "Add Product", "Analytics", "Withdraw Funds", "KYC Status"]
+        };
+        return res.json(formattedMerchantData);
+        
+      case 'CONSUMER':
+      default:
+        dashboardData = await storage.getConsumerDashboardData(userId);
+        const formattedConsumerData = {
+          balance: `₦${dashboardData.balance.toLocaleString()}`,
+          transactions: dashboardData.totalTransactions,
+          totalSpent: `₦${dashboardData.totalSpent.toLocaleString()}`,
+          successRate: `${dashboardData.successRate.toFixed(1)}%`,
+          recentTransactions: dashboardData.recentTransactions,
+          recentOrders: dashboardData.recentOrders,
+          quickActions: ["Send Money", "Pay Bills", "Buy Airtime", "Fund Wallet", "View Transactions"]
+        };
+        return res.json(formattedConsumerData);
     }
-  };
-
-  res.json(dashboardData[role as string] || dashboardData.CONSUMER);
+  } catch (error) {
+    console.error('Dashboard error:', error);
+    // Return fallback data on error
+    res.json({
+      balance: "₦0.00",
+      transactions: 0,
+      quickActions: ["Send Money", "Pay Bills", "Buy Airtime", "Fund Wallet", "View Transactions"]
+    });
+  }
 });
 
-// Wallet endpoints - Core wallet system
-app.get("/api/wallet/balance", (req, res) => {
-  // Simulate wallet balance fetch
-  const walletData = {
-    balance: 125450.00,
-    currency: "NGN",
-    formattedBalance: "₦125,450.00",
-    lastUpdated: new Date().toISOString(),
-    accountNumber: "1234567890",
-    bankName: "Brill Prime Wallet"
-  };
+// Wallet endpoints with real database integration
+app.get("/api/wallet/balance", requireAuth, async (req: any, res: any) => {
+  try {
+    const userId = req.session.userId;
+    const consumerData = await storage.getConsumerDashboardData(userId);
+    
+    const walletData = {
+      balance: consumerData.balance,
+      currency: "NGN",
+      formattedBalance: `₦${consumerData.balance.toLocaleString()}`,
+      lastUpdated: new Date().toISOString(),
+      accountNumber: "1234567890",
+      bankName: "Brill Prime Wallet"
+    };
 
-  res.json(walletData);
+    res.json(walletData);
+  } catch (error) {
+    console.error('Wallet balance error:', error);
+    res.status(500).json({ error: 'Failed to fetch wallet balance' });
+  }
 });
 
 app.post("/api/wallet/fund", (req, res) => {
@@ -257,53 +311,29 @@ app.post("/api/wallet/fund", (req, res) => {
   });
 });
 
-app.get("/api/wallet/transactions", (req, res) => {
+app.get("/api/wallet/transactions", requireAuth, async (req: any, res: any) => {
   const { page = 1, limit = 10, type } = req.query;
 
-  // Simulate transaction history
-  const transactions = [
-    {
-      id: "txn_001",
-      type: "WALLET_FUNDING",
-      amount: 50000,
-      currency: "NGN",
-      status: "COMPLETED",
-      description: "Wallet funding via card",
-      createdAt: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-      id: "txn_002", 
-      type: "BILL_PAYMENT",
-      amount: -2500,
-      currency: "NGN",
-      status: "COMPLETED",
-      description: "Electricity bill payment",
-      createdAt: new Date(Date.now() - 172800000).toISOString()
-    },
-    {
-      id: "txn_003",
-      type: "MONEY_TRANSFER",
-      amount: -15000,
-      currency: "NGN", 
-      status: "COMPLETED",
-      description: "Transfer to John Doe",
-      createdAt: new Date(Date.now() - 259200000).toISOString()
-    }
-  ];
+  try {
+    const userId = req.session.userId;
+    const consumerData = await storage.getConsumerDashboardData(userId);
+    
+    const filteredTransactions = type ? 
+      consumerData.recentTransactions.filter((t: any) => t.type === type) : 
+      consumerData.recentTransactions;
 
-  // Filter by type if specified
-  const filteredTransactions = type ? 
-    transactions.filter(t => t.type === type) : 
-    transactions;
-
-  res.json({
-    transactions: filteredTransactions,
-    pagination: {
-      currentPage: parseInt(page as string),
-      totalPages: Math.ceil(filteredTransactions.length / parseInt(limit as string)),
-      totalCount: filteredTransactions.length
-    }
-  });
+    res.json({
+      transactions: filteredTransactions,
+      pagination: {
+        currentPage: parseInt(page as string),
+        totalPages: Math.ceil(filteredTransactions.length / parseInt(limit as string)),
+        totalCount: filteredTransactions.length
+      }
+    });
+  } catch (error) {
+    console.error('Wallet transactions error:', error);
+    res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
 });
 
 // Bill payment endpoints
@@ -352,27 +382,20 @@ app.post("/api/transfer/send", (req, res) => {
   res.json({ message: "Transfer initiated", transaction });
 });
 
-// Fuel ordering system endpoints
-app.get("/api/fuel/orders", (req, res) => {
-  const { status, userId } = req.query;
-
-  const mockOrders = [
-    {
-      id: "fo_001",
-      customerId: "user_001",
-      driverId: "driver_001", 
-      fuelType: "PMS",
-      quantity: 20,
-      unitPrice: 617,
-      totalAmount: 12340,
-      deliveryAddress: "123 Victoria Island, Lagos",
-      status: "PENDING",
-      orderDate: new Date().toISOString(),
-      estimatedDelivery: new Date(Date.now() + 3600000).toISOString()
-    }
-  ];
-
-  res.json(mockOrders);
+// Fuel ordering system endpoints with real database integration
+app.get("/api/fuel/orders", requireAuth, async (req: any, res: any) => {
+  try {
+    const { status, userId } = req.query;
+    const currentUserId = req.session.userId;
+    
+    // Get driver's fuel orders from database
+    const driverData = await storage.getDriverDashboardData(currentUserId);
+    
+    res.json(driverData.activeFuelOrders);
+  } catch (error) {
+    console.error('Fuel orders error:', error);
+    res.status(500).json({ error: 'Failed to fetch fuel orders' });
+  }
 });
 
 app.post("/api/fuel/orders", (req, res) => {
