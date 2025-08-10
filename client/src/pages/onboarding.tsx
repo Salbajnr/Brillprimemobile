@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
-import { ProgressIndicator } from "@/components/ui/progress-indicator";
-import { Button } from "@/components/ui/button";
+import { ProgressIndicator } from "../components/ui/progress-indicator";
+import { Button } from "../components/ui/button";
 import onboardingImg1 from "../assets/images/onboarding_img1.png";
 import onboardingImg2 from "../assets/images/onboarding_img2.png";
 import onboardingImg3 from "../assets/images/onboarding_img3.png";

@@ -35,5 +35,7 @@ export function useAuth() {
     setUser(null);
   };
 
-  return { user, isLoading, login, logout };
+  const isAuthenticated = () => !!user;
+
+  return { user, isLoading, login, logout, isAuthenticated };
 }

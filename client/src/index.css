@@ -7,10 +7,14 @@
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
-
+  /* Brillprime Brand Colors */
+  --brill-primary: #4682b4;
+  --brill-secondary: #0b1a51;
+  --brill-active: #010e42;
+  --brill-text: #131313;
+  --brill-text-light: #6b7280;
+  --brill-white: #ffffff;
+  
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -20,14 +24,30 @@
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #ffffff;
+  color: var(--brill-text);
 }
 
 #root {
-  max-width: 1280px;
-  margin: 0 auto;
-  text-align: center;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Brillprime Custom Styles */
+.gradient-bg {
+  background: linear-gradient(135deg, var(--brill-primary) 0%, var(--brill-secondary) 100%);
+}
+
+.rounded-brill {
+  border-radius: 12px;
+}
+
+.btn-scale {
+  transition: transform 0.1s ease-in-out;
+}
+
+.btn-scale:active {
+  transform: scale(0.98);
 }
