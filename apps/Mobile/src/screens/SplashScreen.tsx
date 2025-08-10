@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import {
   View,
@@ -47,12 +46,12 @@ const SplashScreen: React.FC = () => {
         } else {
           navigation.navigate('Onboarding' as never);
         }
-      }, 2000);
+      }, 5000);
     } catch (error) {
       console.error('Error checking auth status:', error);
       setTimeout(() => {
         navigation.navigate('Onboarding' as never);
-      }, 2000);
+      }, 5000);
     }
   };
 
