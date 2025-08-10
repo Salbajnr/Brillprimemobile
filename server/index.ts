@@ -6,6 +6,11 @@ import fs from "fs";
 import { fileURLToPath } from "url";
 import { createServer } from "http";
 import { setupWebSocket } from "./websocket.js";
+import { db, dbOperations } from "./db";
+import { initializeDatabase } from "./init-db";
+import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
+
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -57,11 +62,164 @@ app.get("/api/health", (req, res) => {
 });
 
 // Basic user endpoint
-app.get("/api/users", (req, res) => {
-  res.json([
-    { id: "1", name: "Test User", role: "CONSUMER" },
-    { id: "2", name: "Test Merchant", role: "MERCHANT" }
-  ]);
+app.get("/api/users", async (req, res) => {
+  try {
+    const users = await dbOperations.getAllUsers();
+    res.json(users.map(user => ({ id: user.id, name: user.fullName, role: user.role })));
+  } catch (error) {
+    console.error("Error fetching users:", error);
+    res.status(500).json({ error: "Failed to fetch users" });
+  }
+});
+
+// Authentication endpoints
+app.post("/api/auth/signup", async (req, res) => {
+  try {
+    const { email, password, fullName, phone, role = 'CONSUMER' } = req.body;
+
+    if (!email || !password || !fullName) {
+      return res.status(400).json({ success: false, error: "Missing required fields" });
+    }
+
+    // Check if user already exists
+    const existingUser = await dbOperations.getUserByEmail(email);
+    if (existingUser) {
+      return res.status(400).json({ success: false, error: "User already exists" });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    // Create user in database
+    const user = await dbOperations.createUser({
+      email,
+      password: hashedPassword,
+      fullName,
+      phone,
+      role,
+      isVerified: false,
+      isActive: true
+    });
+
+    // Store in session
+    req.session.userId = user.id;
+    req.session.user = user;
+
+    res.json({ success: true, user: { ...user, password: undefined }, requiresVerification: true });
+  } catch (error) {
+    console.error("Signup error:", error);
+    res.status(500).json({ success: false, error: "Signup failed" });
+  }
+});
+
+app.post("/api/auth/signin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({ success: false, error: "Email and password required" });
+    }
+
+    // Get user from database
+    const user = await dbOperations.getUserByEmail(email);
+    if (!user) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    }
+
+    // Verify password
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ success: false, error: "Invalid credentials" });
+    }
+
+    // Check if account is active
+    if (!user.isActive) {
+      return res.status(403).json({ success: false, error: "Account is deactivated" });
+    }
+
+    req.session.userId = user.id;
+    req.session.user = user;
+
+    res.json({ success: true, user: { ...user, password: undefined } });
+  } catch (error) {
+    console.error("Signin error:", error);
+    res.status(500).json({ success: false, error: "Signin failed" });
+  }
+});
+
+// Logout endpoint
+app.post("/api/auth/logout", (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ message: "Could not log out" });
+    }
+    res.clearCookie("connect.sid"); // Clear session cookie
+    res.json({ message: "Logged out successfully" });
+  });
+});
+
+// Get current user endpoint
+app.get("/api/auth/me", (req, res) => {
+  if (req.session.user) {
+    return res.json({ user: { ...req.session.user, password: undefined } });
+  }
+  res.status(401).json({ message: "Not authenticated" });
+});
+
+
+// Dashboard endpoint
+app.get("/api/dashboard", async (req, res) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ message: "Authentication required" });
+  }
+
+  try {
+    const userId = req.session.userId;
+    const user = await dbOperations.getUserById(userId);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Get user orders
+    const orders = await dbOperations.getOrdersByUserId(userId, user.role);
+
+    // Get user transactions
+    const transactions = await dbOperations.getTransactionsByUserId(userId);
+
+    // Get user notifications
+    const notifications = await dbOperations.getNotificationsByUserId(userId);
+
+    // Calculate stats
+    const completedOrders = orders.filter(order => order.status === 'DELIVERED');
+    const pendingOrders = orders.filter(order => ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(order.status));
+    const totalSpent = transactions
+      .filter(tx => tx.paymentStatus === 'COMPLETED')
+      .reduce((sum, tx) => sum + parseFloat(tx.amount), 0);
+
+    const dashboard = {
+      user: { ...user, password: undefined },
+      stats: {
+        totalOrders: orders.length,
+        pendingOrders: pendingOrders.length,
+        completedOrders: completedOrders.length,
+        totalSpent
+      },
+      recentOrders: orders.slice(0, 5).map(order => ({
+        id: order.orderNumber,
+        type: order.orderType,
+        status: order.status,
+        amount: parseFloat(order.totalAmount),
+        date: order.createdAt
+      })),
+      notifications: notifications.slice(0, 10)
+    };
+
+    res.json(dashboard);
+  } catch (error) {
+    console.error("Dashboard error:", error);
+    res.status(500).json({ message: "Failed to fetch dashboard data" });
+  }
 });
 
 // Import and register all route modules
@@ -801,9 +959,29 @@ app.use((err, req, res, next) => {
   res.status(status).json({ message });
 });
 
-// Start server - Replit expects port 5000 for workflows
-const port = 5000;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`[${new Date().toLocaleTimeString()}] Brill Prime server running on port ${port}`);
-  console.log(`API endpoints: /api/health, /api/users`);
+// Function to initialize the application and database
+async function initApp() {
+  try {
+    await initializeDatabase();
+    console.log("Database initialized successfully.");
+  } catch (error) {
+    console.error("Failed to initialize database:", error);
+    // Exit the process if the database cannot be initialized
+    process.exit(1);
+  }
+}
+
+// Start server with database initialization
+initApp().then(() => {
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, "0.0.0.0", () => {
+    console.log(`[${new Date().toLocaleTimeString()}] Brill Prime server running on port ${PORT}`);
+    console.log("API endpoints available:");
+    console.log("  - GET  /api/health");
+    console.log("  - GET  /api/users");
+    console.log("  - POST /api/auth/signup");
+    console.log("  - POST /api/auth/signin");
+    console.log("  - POST /api/auth/verify-otp");
+    console.log("  - GET  /api/dashboard");
+  });
 });
