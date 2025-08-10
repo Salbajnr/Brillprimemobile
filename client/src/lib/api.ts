@@ -437,7 +437,7 @@ class ApiClient {
   // Admin specific
   async getSystemMetrics(): Promise<any> {
     const response = await fetch('/api/admin/metrics', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -449,7 +449,7 @@ class ApiClient {
 
   async getAllUsers(): Promise<any> {
     const response = await fetch('/api/admin/users', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -461,7 +461,7 @@ class ApiClient {
 
   async getAllTransactions(): Promise<any> {
     const response = await fetch('/api/admin/transactions', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -473,8 +473,8 @@ class ApiClient {
 
   // Support
   async getSupportTickets(): Promise<any> {
-    const response = await fetch('/api/support/tickets', {
-      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    const response = await fetch('/api/support/my-tickets', {
+      credentials: 'include',
     });
 
     if (!response.ok) {
@@ -485,17 +485,34 @@ class ApiClient {
   }
 
   async createSupportTicket(ticketData: any): Promise<any> {
-    const response = await fetch('/api/support/tickets', {
+    const response = await fetch('/api/support/submit', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${localStorage.getItem('token')}`
       },
+      credentials: 'include',
       body: JSON.stringify(ticketData),
     });
 
     if (!response.ok) {
       throw new Error('Failed to create support ticket');
+    }
+
+    return response.json();
+  }
+
+  async getSupportTicketByNumber(ticketNumber: string, email?: string): Promise<any> {
+    let url = `/api/support/tickets/${ticketNumber}`;
+    if (email) {
+      url += `?email=${encodeURIComponent(email)}`;
+    }
+    
+    const response = await fetch(url, {
+      credentials: 'include',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch support ticket');
     }
 
     return response.json();

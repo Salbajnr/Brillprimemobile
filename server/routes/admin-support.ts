@@ -1,8 +1,7 @@
-
 import { Router } from 'express';
 import { db } from '../db';
-import { supportTickets, users, supportResponses } from '../schema';
-import { eq, desc, and, like, count, or } from 'drizzle-orm';
+import { supportTickets, supportResponses, users } from '../../shared/schema';
+import { eq, desc, count, and, or, like } from 'drizzle-orm';
 import { adminAuth } from '../middleware/auth';
 
 const router = Router();
@@ -173,7 +172,7 @@ router.post('/tickets/:ticketId/respond', adminAuth, async (req, res) => {
         status, 
         updatedAt: new Date() 
       };
-      
+
       if (status === 'RESOLVED' || status === 'CLOSED') {
         updates.resolvedAt = new Date();
       }

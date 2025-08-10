@@ -9,6 +9,9 @@ import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
 import supportRoutes from "./routes/support";
 import adminSupportRoutes from "./routes/admin-support";
+import { db } from './db.js';
+import { notifications, users } from '../shared/schema.js';
+import { eq, desc, count } from 'drizzle-orm';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -196,7 +199,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const user = await storage.getUser(userId);
-    
+
     if (!user) {
       // Return default consumer data if user not found
       return res.json({
@@ -210,7 +213,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
 
     // Get role-specific dashboard data from database
     let dashboardData: any;
-    
+
     switch (role) {
       case 'DRIVER':
         dashboardData = await storage.getDriverDashboardData(userId);
@@ -224,7 +227,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
           quickActions: ["Start Trip", "View Earnings", "Update Status", "Fuel Delivery", "Trip History"]
         };
         return res.json(formattedDriverData);
-        
+
       case 'MERCHANT':
         dashboardData = await storage.getMerchantDashboardData(userId);
         const formattedMerchantData = {
@@ -237,7 +240,7 @@ app.get("/api/dashboard", requireAuth, async (req: any, res: any) => {
           quickActions: ["View Orders", "Add Product", "Analytics", "Withdraw Funds", "KYC Status"]
         };
         return res.json(formattedMerchantData);
-        
+
       case 'CONSUMER':
       default:
         dashboardData = await storage.getConsumerDashboardData(userId);
@@ -268,7 +271,7 @@ app.get("/api/wallet/balance", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const consumerData = await storage.getConsumerDashboardData(userId);
-    
+
     const walletData = {
       balance: consumerData.balance,
       currency: "NGN",
@@ -323,7 +326,7 @@ app.get("/api/wallet/transactions", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const consumerData = await storage.getConsumerDashboardData(userId);
-    
+
     const filteredTransactions = type ? 
       consumerData.recentTransactions.filter((t: any) => t.type === type) : 
       consumerData.recentTransactions;
@@ -393,10 +396,10 @@ app.get("/api/fuel/orders", requireAuth, async (req: any, res: any) => {
   try {
     const { status, userId } = req.query;
     const currentUserId = req.session.userId;
-    
+
     // Get driver's fuel orders from database
     const driverData = await storage.getDriverDashboardData(currentUserId);
-    
+
     res.json(driverData.activeFuelOrders);
   } catch (error) {
     console.error('Fuel orders error:', error);
@@ -498,7 +501,7 @@ app.get("/api/merchant/analytics", requireAuth, async (req: any, res: any) => {
   try {
     const userId = req.session.userId;
     const { range = '30d' } = req.query;
-    
+
     // Mock analytics data - in production this would come from database
     const analytics = {
       revenue: {
@@ -650,38 +653,42 @@ app.get("/api/admin/stats", (req, res) => {
   res.json(stats);
 });
 
-app.get("/api/admin/users", (req, res) => {
-  const { role, status, page = 1 } = req.query;
+app.get("/api/admin/users", async (req, res) => {
+  try {
+    const { page = 1, limit = 10, role, status } = req.query;
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-  const mockUsers = [
-    {
-      id: "user_001",
-      email: "user@example.com",
-      fullName: "John Consumer",
-      role: "CONSUMER",
-      status: "ACTIVE",
-      joinDate: "2024-01-15",
-      lastActive: new Date().toISOString()
-    },
-    {
-      id: "merchant_001", 
-      email: "merchant@example.com",
-      fullName: "Jane Merchant",
-      role: "MERCHANT",
-      status: "ACTIVE",
-      joinDate: "2024-02-01",
-      lastActive: new Date().toISOString()
-    }
-  ];
+    let query = db.select().from(users);
 
-  res.json({
-    users: mockUsers,
-    pagination: {
-      currentPage: parseInt(page as string),
-      totalPages: 1,
-      totalCount: mockUsers.length
+    if (role) {
+      query = query.where(eq(users.role, role as string));
     }
-  });
+
+    const allUsers = await query.limit(parseInt(limit as string)).offset(offset);
+    const totalCount = await db.select({ count: count() }).from(users);
+
+    const formattedUsers = allUsers.map(user => ({
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      status: user.isVerified ? "ACTIVE" : "PENDING",
+      joinDate: user.createdAt?.toISOString().split('T')[0] || new Date().toISOString().split('T')[0],
+      lastActive: user.updatedAt?.toISOString() || new Date().toISOString()
+    }));
+
+    res.json({
+      users: formattedUsers,
+      pagination: {
+        currentPage: parseInt(page as string),
+        totalPages: Math.ceil(totalCount[0].count / parseInt(limit as string)),
+        totalCount: totalCount[0].count
+      }
+    });
+  } catch (error) {
+    console.error('Get admin users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get users' });
+  }
 });
 
 // Notification endpoints
