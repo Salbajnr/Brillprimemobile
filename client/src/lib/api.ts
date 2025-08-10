@@ -1,4 +1,3 @@
-
 export interface User {
   id: number;
   userId?: string;
@@ -76,17 +75,17 @@ class ApiClient {
   private baseUrl: string;
 
   constructor() {
-    this.baseUrl = import.meta.env.PROD 
-      ? window.location.origin 
+    this.baseUrl = import.meta.env.PROD
+      ? window.location.origin
       : 'http://localhost:5000';
   }
 
   private async request<T>(
-    endpoint: string, 
+    endpoint: string,
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     const url = `${this.baseUrl}/api${endpoint}`;
-    
+
     const config: RequestInit = {
       headers: {
         'Content-Type': 'application/json',
@@ -239,6 +238,266 @@ class ApiClient {
 
     // Return cleanup function
     return () => clearInterval(pollInterval);
+  }
+
+  // Fuel Orders
+  async createFuelOrder(orderData: any): Promise<any> {
+    const response = await fetch('/api/fuel-orders', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(orderData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create fuel order');
+    }
+
+    return response.json();
+  }
+
+  async getFuelOrders(): Promise<any> {
+    const response = await fetch('/api/fuel-orders', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch fuel orders');
+    }
+
+    return response.json();
+  }
+
+  async trackFuelOrder(orderId: string): Promise<any> {
+    const response = await fetch(`/api/fuel-orders/${orderId}/track`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to track fuel order');
+    }
+
+    return response.json();
+  }
+
+  // Payments
+  async initializePayment(paymentData: any): Promise<any> {
+    const response = await fetch('/api/payments/initialize', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(paymentData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to initialize payment');
+    }
+
+    return response.json();
+  }
+
+  async verifyPayment(reference: string): Promise<any> {
+    const response = await fetch(`/api/payments/verify/${reference}`, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to verify payment');
+    }
+
+    return response.json();
+  }
+
+  // Toll Payments
+  async payToll(tollData: any): Promise<any> {
+    const response = await fetch('/api/toll-payments', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(tollData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to process toll payment');
+    }
+
+    return response.json();
+  }
+
+  // Wallet
+  async getWalletBalance(): Promise<any> {
+    const response = await fetch('/api/wallet/balance', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch wallet balance');
+    }
+
+    return response.json();
+  }
+
+  async fundWallet(amount: number): Promise<any> {
+    const response = await fetch('/api/wallet/fund', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify({ amount }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fund wallet');
+    }
+
+    return response.json();
+  }
+
+  // Driver specific
+  async getDeliveryRequests(): Promise<any> {
+    const response = await fetch('/api/driver/delivery-requests', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch delivery requests');
+    }
+
+    return response.json();
+  }
+
+  async acceptDelivery(deliveryId: string): Promise<any> {
+    const response = await fetch(`/api/driver/delivery-requests/${deliveryId}/accept`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to accept delivery');
+    }
+
+    return response.json();
+  }
+
+  async updateDriverLocation(location: { latitude: number; longitude: number }): Promise<any> {
+    const response = await fetch('/api/driver/location', {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(location),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update location');
+    }
+
+    return response.json();
+  }
+
+  // Merchant specific
+  async getProducts(): Promise<any> {
+    const response = await fetch('/api/products', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch products');
+    }
+
+    return response.json();
+  }
+
+  async addProduct(productData: any): Promise<any> {
+    const response = await fetch('/api/products', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(productData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to add product');
+    }
+
+    return response.json();
+  }
+
+  // Admin specific
+  async getSystemMetrics(): Promise<any> {
+    const response = await fetch('/api/admin/metrics', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch system metrics');
+    }
+
+    return response.json();
+  }
+
+  async getAllUsers(): Promise<any> {
+    const response = await fetch('/api/admin/users', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch users');
+    }
+
+    return response.json();
+  }
+
+  async getAllTransactions(): Promise<any> {
+    const response = await fetch('/api/admin/transactions', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch transactions');
+    }
+
+    return response.json();
+  }
+
+  // Support
+  async getSupportTickets(): Promise<any> {
+    const response = await fetch('/api/support/tickets', {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch support tickets');
+    }
+
+    return response.json();
+  }
+
+  async createSupportTicket(ticketData: any): Promise<any> {
+    const response = await fetch('/api/support/tickets', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${localStorage.getItem('token')}`
+      },
+      body: JSON.stringify(ticketData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create support ticket');
+    }
+
+    return response.json();
   }
 }
 

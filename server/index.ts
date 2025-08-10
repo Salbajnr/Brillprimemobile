@@ -378,6 +378,8 @@ import adminMerchantKycRoutes from "./routes/admin-merchant-kyc.ts";
 import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination.ts";
 import locationRecommendationsRoutes from "./routes/location-recommendations.ts";
 import testRealtimeRoutes from "./routes/test-realtime.ts";
+import dashboardRoutes from './routes/dashboard';
+import walletRoutes from './routes/wallet';
 
 // Register route modules with proper prefixes
 app.use("/api/admin", adminRoutes);
@@ -409,6 +411,8 @@ app.use("/api/admin-merchant-kyc", adminMerchantKycRoutes);
 app.use("/api/driver-merchant", driverMerchantCoordinationRoutes);
 app.use("/api/location-recommendations", locationRecommendationsRoutes);
 app.use("/api/test-realtime", testRealtimeRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/wallet', walletRoutes);
 
 
 // Serve static files in production
