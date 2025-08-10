@@ -23,6 +23,10 @@ import RealTimeTrackingPage from "@/pages/real-time-tracking";
 import NotFound from "@/pages/not-found";
 import WalletFund from "./pages/wallet-fund";
 import WalletFundCallback from "./pages/wallet-fund-callback";
+import WalletTransactions from "./pages/wallet-transactions";
+import WalletBalance from "./pages/wallet-balance";
+import BillsPayment from "./pages/bills-payment";
+import MoneyTransfer from "./pages/money-transfer";
 
 function App() {
   return (
@@ -47,6 +51,10 @@ function App() {
               <Route path="/real-time-tracking" component={RealTimeTrackingPage} />
               <Route path="/wallet-fund" component={WalletFund} />
               <Route path="/wallet-fund/callback" component={WalletFundCallback} />
+              <Route path="/wallet/transactions" component={WalletTransactions} />
+              <Route path="/wallet" component={WalletBalance} />
+              <Route path="/bills" component={BillsPayment} />
+              <Route path="/transfer" component={MoneyTransfer} />
               <Route component={NotFound} />
             </Switch>
           </div>

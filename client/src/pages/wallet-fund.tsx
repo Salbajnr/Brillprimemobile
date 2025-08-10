@@ -53,7 +53,7 @@ export default function WalletFund() {
       try {
         setIsLoading(true);
         
-        // Initialize payment with real Paystack integration
+        // Initialize payment with wallet funding API
         const response = await fetch('/api/wallet/fund', {
           method: 'POST',
           headers: {
@@ -62,15 +62,17 @@ export default function WalletFund() {
           credentials: 'include',
           body: JSON.stringify({
             amount,
-            paymentMethod: selectedPaymentMethod
+            paymentMethod: selectedPaymentMethod,
+            reference: `fund_${Date.now()}`
           }),
         });
 
         const result = await response.json();
 
-        if (result.success && result.authorization_url) {
-          // Redirect to Paystack payment page
-          window.location.href = result.authorization_url;
+        if (response.ok) {
+          // Show success message and redirect
+          alert(`Wallet funding initiated! Amount: ${formatCurrency(amount)}`);
+          setLocation('/wallet-fund/callback?status=success&amount=' + amount);
         } else {
           throw new Error(result.message || 'Payment initialization failed');
         }

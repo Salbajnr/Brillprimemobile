@@ -4,7 +4,7 @@ import { insertFuelOrderSchema } from "../../shared/schema";
 import { Request, Response } from 'express';
 import { z } from 'zod';
 import { db } from '../db';
-import { fuelOrders, users, driverProfiles } from '@shared/schema';
+import { fuelOrders, users, driverProfiles } from '../../shared/schema';
 import { eq, and, desc, isNull, ne } from 'drizzle-orm';
 import { orderBroadcastingService } from '../services/order-broadcasting';
 

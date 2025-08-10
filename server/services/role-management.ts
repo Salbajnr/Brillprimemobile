@@ -1,7 +1,6 @@
 import { db } from "../db";
-import { roleApplications, userRoles, users, adminUsers } from "@shared/schema";
+import { users, adminUsers } from "../../shared/schema";
 import { eq, and, desc } from "drizzle-orm";
-import type { InsertRoleApplication, InsertUserRole } from "@shared/schema";
 
 export class RoleManagementService {
   // Apply for a new role

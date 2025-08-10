@@ -1,7 +1,7 @@
 import { storage } from '../storage';
 import { paystackService } from './paystack';
 import { db } from '../db';
-import { transactions, wallets } from '@shared/schema';
+import { transactions, wallets } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 
 export interface PaymentInitiationParams {
