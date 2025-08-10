@@ -15,19 +15,29 @@ export default function RealTimeOrderTracking() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate fetching orders
-    const mockOrders: Order[] = [
-      {
-        id: "fo_001",
-        status: "IN_TRANSIT",
-        driverName: "Ahmed Musa",
-        estimatedArrival: new Date(Date.now() + 1800000).toISOString(),
-        completionPercentage: 65
+    const fetchActiveOrders = async () => {
+      try {
+        const response = await fetch('/api/orders/active');
+        if (response.ok) {
+          const data = await response.json();
+          setOrders(data.orders || []);
+        } else {
+          console.error('Failed to fetch active orders');
+          setOrders([]);
+        }
+      } catch (error) {
+        console.error('Error fetching orders:', error);
+        setOrders([]);
+      } finally {
+        setLoading(false);
       }
-    ]
+    };
+
+    fetchActiveOrders();
     
-    setOrders(mockOrders)
-    setLoading(false)
+    // Set up real-time updates
+    const interval = setInterval(fetchActiveOrders, 30000);
+    return () => clearInterval(interval);
   }, [])
 
   if (loading) {

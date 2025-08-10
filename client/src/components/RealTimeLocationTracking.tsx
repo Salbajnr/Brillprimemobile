@@ -14,28 +14,27 @@ export default function RealTimeLocationTracking() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Simulate real-time location updates
-    const mockLocation: LocationData = {
-      lat: 6.5244,
-      lng: 3.3792,
-      address: "Victoria Island, Lagos",
-      lastUpdate: new Date().toISOString()
-    }
+    const fetchDriverLocation = async () => {
+      try {
+        const response = await fetch('/api/drivers/location/current');
+        if (response.ok) {
+          const data = await response.json();
+          setDriverLocation(data.location);
+        } else {
+          console.error('Failed to fetch driver location');
+        }
+      } catch (error) {
+        console.error('Error fetching location:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDriverLocation();
     
-    setDriverLocation(mockLocation)
-    setLoading(false)
-
-    // Simulate location updates every 30 seconds
-    const interval = setInterval(() => {
-      setDriverLocation(prev => prev ? {
-        ...prev,
-        lat: prev.lat + (Math.random() - 0.5) * 0.001,
-        lng: prev.lng + (Math.random() - 0.5) * 0.001,
-        lastUpdate: new Date().toISOString()
-      } : null)
-    }, 30000)
-
-    return () => clearInterval(interval)
+    // Set up real-time location updates every 10 seconds
+    const interval = setInterval(fetchDriverLocation, 10000);
+    return () => clearInterval(interval);
   }, [])
 
   if (loading || !driverLocation) {
