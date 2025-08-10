@@ -1,4 +1,3 @@
-
 import type { Express } from "express";
 import { storage } from "../storage";
 import { requireAuth } from "../middleware/auth";
@@ -30,7 +29,7 @@ export function registerEscrowManagementRoutes(app: Express) {
   app.get("/api/admin/escrow", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { status, limit, offset } = escrowFilterSchema.parse(req.query);
-      
+
       const escrowTransactions = await storage.getEscrowTransactions({
         status,
         limit,
@@ -69,9 +68,9 @@ export function registerEscrowManagementRoutes(app: Express) {
   app.get("/api/admin/escrow/:escrowId", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { escrowId } = req.params;
-      
+
       const escrowTransaction = await storage.getEscrowTransactionDetails(parseInt(escrowId));
-      
+
       if (!escrowTransaction) {
         return res.status(404).json({
           success: false,
@@ -124,7 +123,7 @@ export function registerEscrowManagementRoutes(app: Express) {
       }
 
       let resolutionResult;
-      
+
       switch (action) {
         case 'refund':
           resolutionResult = await storage.processEscrowRefund(
@@ -134,7 +133,7 @@ export function registerEscrowManagementRoutes(app: Express) {
             adminId
           );
           break;
-          
+
         case 'release':
           resolutionResult = await storage.releaseEscrowToSeller(
             escrowId,
@@ -142,7 +141,7 @@ export function registerEscrowManagementRoutes(app: Express) {
             adminId
           );
           break;
-          
+
         case 'partial':
           if (!partialAmount) {
             return res.status(400).json({
@@ -162,7 +161,7 @@ export function registerEscrowManagementRoutes(app: Express) {
       // Real-time notifications
       if (global.io) {
         const io = global.io;
-        
+
         // Notify buyer
         io.to(`user_${escrowTransaction.buyerId}`).emit('escrow_dispute_resolved', {
           escrowId,
@@ -236,7 +235,7 @@ export function registerEscrowManagementRoutes(app: Express) {
       // Real-time notifications
       if (global.io) {
         const io = global.io;
-        
+
         // Notify seller
         io.to(`user_${escrowTransaction.sellerId}`).emit('escrow_released', {
           escrowId,
@@ -280,7 +279,7 @@ export function registerEscrowManagementRoutes(app: Express) {
   app.get("/api/admin/escrow/analytics", requireAuth, requireAdmin, async (req, res) => {
     try {
       const analytics = await storage.getEscrowAnalytics();
-      
+
       res.json({
         success: true,
         data: analytics
@@ -299,9 +298,9 @@ export function registerEscrowManagementRoutes(app: Express) {
   app.get("/api/admin/escrow/:escrowId/evidence", requireAuth, requireAdmin, async (req, res) => {
     try {
       const { escrowId } = req.params;
-      
+
       const evidence = await storage.getDisputeEvidence(parseInt(escrowId));
-      
+
       res.json({
         success: true,
         data: evidence

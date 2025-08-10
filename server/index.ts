@@ -870,7 +870,7 @@ app.get("/api/notifications", requireAuth, async (req: any, res: any) => {
     const { read, limit = 10 } = req.query;
 
     const userNotifications = await storage.getNotifications(userId, parseInt(limit as string));
-    
+
     const filteredNotifications = read !== undefined 
       ? userNotifications.filter(n => n.isRead === (read === 'true'))
       : userNotifications;
