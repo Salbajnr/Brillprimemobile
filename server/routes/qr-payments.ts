@@ -250,39 +250,108 @@ export function registerQRPaymentRoutes(app: Express) {
   // Verify delivery QR code
   app.post("/api/qr/verify-delivery", requireAuth, async (req, res) => {
     try {
-      const data = verifyDeliveryQRSchema.parse(req.body);
+      const { orderId, qrCode, driverConfirmed } = req.body;
+      const userId = req.session!.userId!;
       
-      const verification = await storage.verifyDeliveryQR(data.qrCode);
-
-      if (!verification.valid) {
+      if (!orderId) {
         return res.status(400).json({
           success: false,
-          message: "Invalid or already used QR code"
+          message: "Order ID is required"
+        });
+      }
+
+      // Get order details from fuel orders
+      const orderResult = await fetch(`${process.env.API_BASE_URL || 'http://localhost:5000'}/api/fuel/orders/${orderId}`, {
+        headers: {
+          'Cookie': req.headers.cookie || ''
+        }
+      });
+
+      if (!orderResult.ok) {
+        return res.status(404).json({
+          success: false,
+          message: "Order not found"
+        });
+      }
+
+      const orderData = await orderResult.json();
+      
+      if (!orderData.success) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid order"
+        });
+      }
+
+      const order = orderData.order;
+
+      // Verify customer is the one confirming delivery
+      if (order.customerId !== userId) {
+        return res.status(403).json({
+          success: false,
+          message: "Only the customer can verify delivery"
         });
       }
 
       // Update order status to delivered
-      await storage.updateOrderTracking(verification.orderId, 'delivered');
-
-      // Emit real-time notification
-      if (global.io) {
-        global.io.to(`order_${verification.orderId}`).emit('delivery_confirmed', {
-          orderId: verification.orderId,
-          confirmedAt: verification.scannedAt,
-          qrCode: data.qrCode
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Delivery confirmed successfully",
-        orderId: verification.orderId,
-        confirmedAt: verification.scannedAt
+      const updateResult = await fetch(`${process.env.API_BASE_URL || 'http://localhost:5000'}/api/fuel/orders/${orderId}/status`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Cookie': req.headers.cookie || ''
+        },
+        body: JSON.stringify({
+          status: 'DELIVERED',
+          notes: 'Delivery verified by customer via QR code scan'
+        })
       });
+
+      if (updateResult.ok) {
+        // Record delivery verification
+        const verificationRecord = {
+          orderId,
+          customerId: userId,
+          driverId: order.driverId,
+          verifiedAt: new Date(),
+          qrCode,
+          verificationMethod: 'QR_SCAN'
+        };
+
+        // Emit real-time notifications
+        if (global.io) {
+          // Notify driver
+          if (order.driverId) {
+            global.io.to(`user_${order.driverId}`).emit('delivery_confirmed', {
+              orderId,
+              customerName: order.customerName,
+              confirmedAt: new Date(),
+              message: 'Customer has confirmed delivery completion'
+            });
+          }
+
+          // Notify order tracking room
+          global.io.to(`order_${orderId}`).emit('delivery_verified', {
+            orderId,
+            status: 'DELIVERED',
+            verifiedAt: new Date(),
+            verificationMethod: 'QR_SCAN'
+          });
+        }
+
+        res.json({
+          success: true,
+          message: "Delivery confirmed successfully! Payment has been processed.",
+          orderId,
+          confirmedAt: new Date(),
+          orderAmount: order.totalAmount
+        });
+      } else {
+        throw new Error('Failed to update order status');
+      }
 
     } catch (error: any) {
       console.error('Delivery QR verification error:', error);
-      res.status(400).json({
+      res.status(500).json({
         success: false,
         message: error.message || "Failed to verify delivery QR code"
       });

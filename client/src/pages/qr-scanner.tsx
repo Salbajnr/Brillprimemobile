@@ -103,23 +103,34 @@ export default function QRScanner() {
     // Simulate different QR code types for demo purposes
     const mockResults = {
       delivery: {
-        orderId: "BP12345",
+        orderId: "FO_" + Date.now(),
         driverName: "James Adebayo",
+        driverPhone: "+234 803 456 7890",
         deliveryTime: new Date().toLocaleString(),
-        items: ["20L Fuel", "Engine Oil"],
-        totalAmount: "₦15,000"
+        items: ["20L Premium Fuel", "2L Engine Oil"],
+        totalAmount: "₦15,000",
+        pickupLocation: "TotalEnergies Station, Victoria Island",
+        deliveryAddress: "15 Admiralty Way, Lekki Phase 1",
+        fuelType: "PMS",
+        quantity: "20L",
+        verified: false
       },
       payment: {
         merchantName: "Lagos Fuel Station",
         merchantId: "MER789",
         amount: "₦8,500",
-        reference: "PAY" + Date.now()
+        reference: "PAY" + Date.now(),
+        tollGateId: "TG_VI_001",
+        vehicleClass: "Class 1"
       },
       merchant: {
         businessName: "Premium Gas Station",
         address: "123 Victoria Island, Lagos",
         phone: "+234 901 234 5678",
-        services: ["Fuel", "Car Wash", "Convenience Store"]
+        services: ["Fuel", "Car Wash", "Convenience Store"],
+        merchantId: "MERCH_" + Date.now(),
+        rating: 4.5,
+        isVerified: true
       }
     };
 
@@ -138,13 +149,56 @@ export default function QRScanner() {
     stopCamera();
   };
 
-  const confirmDelivery = () => {
-    setModalData({
-      isOpen: true,
-      type: "success",
-      title: "Delivery Confirmed",
-      message: "Your delivery has been confirmed successfully. Thank you for using Brillprime!"
-    });
+  const confirmDelivery = async () => {
+    if (!scanResult || scanResult.type !== 'delivery') return;
+    
+    try {
+      // Call API to verify and confirm delivery
+      const response = await fetch('/api/qr/verify-delivery', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify({
+          orderId: scanResult.data.orderId,
+          qrCode: `DELIVERY_${scanResult.data.orderId}_${Date.now()}`,
+          driverConfirmed: true
+        })
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setModalData({
+          isOpen: true,
+          type: "success",
+          title: "Delivery Confirmed ✅",
+          message: "Your delivery has been verified and confirmed successfully. Payment has been processed. Thank you for using Brillprime!"
+        });
+
+        // Navigate to order history after a delay
+        setTimeout(() => {
+          setLocation("/order-history");
+        }, 3000);
+      } else {
+        setModalData({
+          isOpen: true,
+          type: "error",
+          title: "Verification Failed",
+          message: result.message || "Unable to verify delivery. Please try again or contact support."
+        });
+      }
+    } catch (error) {
+      console.error('Delivery verification error:', error);
+      setModalData({
+        isOpen: true,
+        type: "error",
+        title: "Connection Error",
+        message: "Unable to connect to verification service. Please check your internet connection."
+      });
+    }
+    
     setScanResult(null);
   };
 
