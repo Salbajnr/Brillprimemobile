@@ -121,7 +121,7 @@ export class AuthAPI {
     }
 
     const result = await response.json();
-    
+
     // Store token if provided
     if (result.token) {
       localStorage.setItem('token', result.token);
@@ -164,4 +164,60 @@ export class AuthAPI {
   }
 }
 
-export const authAPI = new AuthAPI();
+const verifyOtp = async (data: { email: string; otp: string }) => {
+  const response = await fetch('/api/auth/verify-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'OTP verification failed');
+  }
+
+  return response.json();
+};
+
+const resendOtp = async (email: string) => {
+  const response = await fetch('/api/auth/resend-otp', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Failed to resend OTP');
+  }
+
+  return response.json();
+};
+
+const socialLogin = async (provider: string, profile?: any) => {
+  const response = await fetch('/api/auth/social-login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ provider, profile }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.message || 'Social login failed');
+  }
+
+  return response.json();
+};
+
+
+export const authAPI = {
+  signUp: new AuthAPI().signUp,
+  signIn: new AuthAPI().signIn,
+  verifyOTP: new AuthAPI().verifyOTP,
+  signOut: new AuthAPI().signOut,
+  getToken: new AuthAPI().getToken,
+  isAuthenticated: new AuthAPI().isAuthenticated,
+  verifyOtp,
+  resendOtp,
+  socialLogin
+};

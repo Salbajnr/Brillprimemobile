@@ -23,6 +23,7 @@ import compression from 'compression';
 
 // Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
+import socialAuthRoutes from './routes/social-auth';
 import paymentsRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
 import { registerProductRoutes } from './routes/products';
@@ -262,7 +263,7 @@ app.get('/api/health', healthCheck);
 app.get('/api/health/detailed', async (req, res) => {
   const cacheHealth = await cacheService.healthCheck();
   const dbConnPool = await queryOptimizer.getConnectionPoolStats();
-  
+
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
@@ -322,6 +323,7 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 
 // Apply async error handling to all routes
 apiRouter.use('/auth', authRoutes);
+apiRouter.use('/auth', socialAuthRoutes);
 apiRouter.use('/payments', paymentsRoutes);
 apiRouter.use('/wallet', walletRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
@@ -512,20 +514,20 @@ server.listen(PORT, '0.0.0.0', async () => {
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
-  
+
   // Initialize performance services
   console.log('🚀 Initializing performance optimizations...');
-  
+
   // Start cache warming
   await cacheService.warmCache();
-  
+
   // Start query optimizer maintenance
   queryOptimizer.startMaintenance();
-  
+
   // Log initial performance metrics
   const cacheHealth = await cacheService.healthCheck();
   console.log(`💾 Cache service: ${cacheHealth ? 'Connected' : 'Disconnected'}`);
-  
+
   console.log('✅ Performance optimizations initialized');
 
   // Real-time system health monitoring

@@ -13,28 +13,68 @@ interface EmailConfig {
 
 class EmailService {
   private transporter: nodemailer.Transporter;
+  private isInitialized = false;
 
   constructor() {
-    // For development, we'll use a mock email service
-    // In production, configure with your actual email provider (Gmail, SendGrid, etc.)
-    this.transporter = nodemailer.createTransport({
-      host: process.env.EMAIL_HOST || 'smtp.ethereal.email',
-      port: parseInt(process.env.EMAIL_PORT || '587'),
-      secure: false,
-      auth: {
-        user: process.env.EMAIL_USER || 'test@example.com',
-        pass: process.env.EMAIL_PASS || 'testpassword'
-      }
-    });
+    this.initializeTransporter();
+  }
 
-    // For development, create a test account if no credentials provided
-    if (!process.env.EMAIL_USER) {
-      this.createTestAccount();
+  private async initializeTransporter() {
+    try {
+      // Check for production email configuration first
+      if (process.env.EMAIL_SERVICE === 'gmail' && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        this.transporter = nodemailer.createTransport({
+          service: 'gmail',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS // Use app password for Gmail
+          }
+        });
+        console.log('Gmail transporter initialized');
+      } else if (process.env.SENDGRID_API_KEY) {
+        // SendGrid configuration
+        this.transporter = nodemailer.createTransport({
+          host: 'smtp.sendgrid.net',
+          port: 587,
+          secure: false,
+          auth: {
+            user: 'apikey',
+            pass: process.env.SENDGRID_API_KEY
+          }
+        });
+        console.log('SendGrid transporter initialized');
+      } else if (process.env.EMAIL_HOST && process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+        // Custom SMTP configuration
+        this.transporter = nodemailer.createTransport({
+          host: process.env.EMAIL_HOST,
+          port: parseInt(process.env.EMAIL_PORT || '587'),
+          secure: process.env.EMAIL_PORT === '465',
+          auth: {
+            user: process.env.EMAIL_USER,
+            pass: process.env.EMAIL_PASS
+          },
+          tls: {
+            rejectUnauthorized: false
+          }
+        });
+        console.log('Custom SMTP transporter initialized');
+      } else {
+        // Fallback to Ethereal for development
+        await this.createTestAccount();
+      }
+
+      // Verify connection
+      await this.verifyConnection();
+      this.isInitialized = true;
+    } catch (error) {
+      console.error('Failed to initialize email transporter:', error);
+      await this.createTestAccount();
     }
   }
 
   private async createTestAccount() {
     try {
+      console.log('Creating test email account for development...');
       const testAccount = await nodemailer.createTestAccount();
       this.transporter = nodemailer.createTransport({
         host: 'smtp.ethereal.email',
@@ -45,9 +85,18 @@ class EmailService {
           pass: testAccount.pass
         }
       });
-      console.log('Test email account created:', testAccount.user);
+      console.log('✅ Test email account created:', testAccount.user);
+      console.log('📧 Email preview will be available at: https://ethereal.email');
+      this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to create test email account:', error);
+      console.error('❌ Failed to create test email account:', error);
+      // Create a minimal transporter for testing
+      this.transporter = nodemailer.createTransport({
+        streamTransport: true,
+        newline: 'unix',
+        buffer: true
+      });
+      this.isInitialized = true;
     }
   }
 
@@ -57,6 +106,9 @@ class EmailService {
 
   async sendOTP(email: string, otpCode: string, userName?: string): Promise<boolean> {
     try {
+      if (!this.isInitialized) {
+        throw new Error('Email service not initialized.');
+      }
       if (!this.isValidEmail(email)) {
         throw new Error('Invalid email address format');
       }
@@ -77,14 +129,17 @@ class EmailService {
       }
 
       return true;
-    } catch (error) {
-      console.error('Failed to send OTP email:', error);
+    } catch (error: any) {
+      console.error('Failed to send OTP email:', error.message);
       return false;
     }
   }
 
   async sendPasswordResetEmail(email: string, resetToken: string, userName?: string): Promise<boolean> {
     try {
+      if (!this.isInitialized) {
+        throw new Error('Email service not initialized.');
+      }
       if (!this.isValidEmail(email)) {
         throw new Error('Invalid email address format');
       }
@@ -106,8 +161,8 @@ class EmailService {
       }
 
       return true;
-    } catch (error) {
-      console.error('Failed to send password reset email:', error);
+    } catch (error: any) {
+      console.error('Failed to send password reset email:', error.message);
       return false;
     }
   }
@@ -125,20 +180,20 @@ class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { text-align: center; margin-bottom: 30px; }
           .logo { color: #8B5CF6; font-size: 24px; font-weight: bold; }
-          .otp-box { 
-            background: #f8f9fa; 
-            border: 2px solid #8B5CF6; 
-            border-radius: 10px; 
-            padding: 20px; 
-            text-align: center; 
-            margin: 20px 0; 
+          .otp-box {
+            background: #f8f9fa;
+            border: 2px solid #8B5CF6;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin: 20px 0;
           }
-          .otp-code { 
-            font-size: 32px; 
-            font-weight: bold; 
-            color: #8B5CF6; 
-            letter-spacing: 5px; 
-            margin: 10px 0; 
+          .otp-code {
+            font-size: 32px;
+            font-weight: bold;
+            color: #8B5CF6;
+            letter-spacing: 5px;
+            margin: 10px 0;
           }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
@@ -185,14 +240,14 @@ class EmailService {
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
           .header { text-align: center; margin-bottom: 30px; }
           .logo { color: #8B5CF6; font-size: 24px; font-weight: bold; }
-          .button { 
-            display: inline-block; 
-            background: #8B5CF6; 
-            color: white; 
-            padding: 12px 24px; 
-            text-decoration: none; 
-            border-radius: 6px; 
-            margin: 20px 0; 
+          .button {
+            display: inline-block;
+            background: #8B5CF6;
+            color: white;
+            padding: 12px 24px;
+            text-decoration: none;
+            border-radius: 6px;
+            margin: 20px 0;
           }
           .footer { text-align: center; margin-top: 30px; color: #666; font-size: 12px; }
         </style>
@@ -230,12 +285,16 @@ class EmailService {
   }
 
   async verifyConnection(): Promise<boolean> {
+    if (!this.transporter) {
+      console.error('Email transporter not available for verification.');
+      return false;
+    }
     try {
       await this.transporter.verify();
       console.log('Email service connection verified');
       return true;
-    } catch (error) {
-      console.error('Email service connection failed:', error);
+    } catch (error: any) {
+      console.error('Email service connection failed:', error.message);
       return false;
     }
   }
