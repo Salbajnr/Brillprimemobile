@@ -68,10 +68,19 @@ Unified full-stack React application adapted for Replit environment from complex
 
 **TODO - Feature Completion Priority:**
 
+**CURRENT: Wallet System (In Progress)**
+- [x] Wallet balance endpoint implemented
+- [x] Basic wallet funding backend 
+- [ ] Complete Paystack integration for wallet funding
+- [ ] Fix wallet funding frontend issues (missing isLoading state)
+- [ ] Add wallet transaction history
+- [ ] Implement wallet withdrawal with bank account setup
+- [ ] Add wallet funding success/failure callbacks
+
 **Phase 1: Core Backend Integration**
-- [ ] Complete API endpoints connection to frontend pages
-- [ ] Implement proper error handling and loading states
-- [ ] Connect WebSocket real-time features to backend
+- [ ] Complete fuel ordering system with real payment processing
+- [ ] Connect real-time tracking to orders
+- [ ] Implement proper error handling and loading states across all pages
 - [ ] Complete payment processing workflows
 - [ ] Implement database CRUD operations for all entities
 

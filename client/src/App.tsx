@@ -1,4 +1,3 @@
-
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -22,6 +21,8 @@ import ProfilePage from "@/pages/profile";
 import NotificationsPage from "@/pages/notifications";
 import RealTimeTrackingPage from "@/pages/real-time-tracking";
 import NotFound from "@/pages/not-found";
+import WalletFund from "./pages/wallet-fund";
+import WalletFundCallback from "./pages/wallet-fund-callback";
 
 function App() {
   return (
@@ -44,6 +45,8 @@ function App() {
               <Route path="/profile" component={ProfilePage} />
               <Route path="/notifications" component={NotificationsPage} />
               <Route path="/real-time-tracking" component={RealTimeTrackingPage} />
+              <Route path="/wallet-fund" component={WalletFund} />
+              <Route path="/wallet-fund/callback" component={WalletFundCallback} />
               <Route component={NotFound} />
             </Switch>
           </div>

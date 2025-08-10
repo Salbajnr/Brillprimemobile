@@ -15,6 +15,7 @@ export default function WalletFund() {
   const [selectedAmount, setSelectedAmount] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const paymentMethods = [
     {
