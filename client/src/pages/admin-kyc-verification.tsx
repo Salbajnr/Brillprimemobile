@@ -2,6 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { KycReviewModal } from '../components/kyc-review-modal';
 import { BatchKycActions } from '../components/batch-kyc-actions';
 
+interface MerchantKycSubmission {
+  id: string;
+  merchantId: string;
+  businessName: string;
+  merchantEmail: string;
+  documents: any[];
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
+interface MerchantKycStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
 interface KycDocument {
   id: string;
   userId: string;
@@ -22,6 +41,13 @@ export function AdminKYCVerification() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [merchantKycSubmissions, setMerchantKycSubmissions] = useState<MerchantKycSubmission[]>([]);
+  const [merchantKycStats, setMerchantKycStats] = useState<MerchantKycStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
+  });
 
   useEffect(() => {
     fetchDocuments();
@@ -140,6 +166,48 @@ export function AdminKYCVerification() {
   });
 
   const pendingCount = documents.filter(doc => doc.status === 'PENDING').length;
+
+  const handleDocumentReview = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch(`/api/admin/kyc/documents/${id}/review`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action, reason }),
+      });
+
+      if (response.ok) {
+        await fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Failed to review document:', error);
+    }
+  };
+
+  const handleBatchAction = async (action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch('/api/admin/kyc/batch-review', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          documentIds: selectedDocuments, 
+          action, 
+          reason 
+        }),
+      });
+
+      if (response.ok) {
+        await fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Batch action failed:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -351,6 +419,70 @@ export function AdminKYCVerification() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold">KYC Document Verification</h1>
+          <div className="flex gap-2">
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-3 py-2 border rounded"
+            >
+              <option value="all">All Documents</option>
+              <option value="PENDING">Pending</option>
+              <option value="APPROVED">Approved</option>
+              <option value="REJECTED">Rejected</option>
+            </select>
+          </div>
+        </div>
+
+        <BatchKycActions
+          selectedDocuments={selectedDocuments}
+          onBatchAction={handleBatchAction}
+          onClearSelection={() => setSelectedDocuments([])}
+        />
+
+        <div className="grid gap-4">
+          {loading ? (
+            <div className="text-center py-8">Loading documents...</div>
+          ) : filteredDocuments.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">No documents found</div>
+          ) : (
+            filteredDocuments.map((document) => (
+              <div key={document.id} className="bg-white p-4 rounded-lg border">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold">{document.userName}</h3>
+                    <p className="text-sm text-gray-600">{document.userEmail}</p>
+                    <p className="text-sm">Type: {document.documentType}</p>
+                    <p className="text-sm">Status: {document.status}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="checkbox"
+                      checked={selectedDocuments.includes(document.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedDocuments([...selectedDocuments, document.id]);
+                        } else {
+                          setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => setSelectedDocument(document)}
+                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
+                    >
+                      Review
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
 
       {selectedDocument && (
