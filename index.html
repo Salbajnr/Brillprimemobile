@@ -1,14 +1,570 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Brillprime - Financial Solutions</title>
-    <meta name="description" content="Comprehensive financial services platform with web, native mobile, and admin applications for Nigeria.">
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/client/src/main.tsx"></script>
-  </body>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background-color: #ffffff;
+            color: #1f2937;
+        }
+        
+        .splash-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            max-width: 28rem;
+            margin: 0 auto;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .logo-container {
+            width: 12rem;
+            height: 12rem;
+            background-color: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            animation: pulse 2s infinite;
+        }
+        
+        .logo-text {
+            color: white;
+            font-size: 4rem;
+            font-weight: bold;
+        }
+        
+        .title-section {
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+        
+        .main-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .loading-dots {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 2rem;
+        }
+        
+        .dot {
+            width: 0.75rem;
+            height: 0.75rem;
+            background-color: #2563eb;
+            border-radius: 50%;
+            animation: bounce 1s infinite;
+        }
+        
+        .dot:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .dot:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+            50% {
+                transform: scale(1.05);
+                opacity: 0.8;
+            }
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+        
+        @keyframes bounce {
+            0%, 20%, 53%, 80%, 100% {
+                transform: translate3d(0,0,0);
+            }
+            40%, 43% {
+                transform: translate3d(0, -30px, 0);
+            }
+            70% {
+                transform: translate3d(0, -15px, 0);
+            }
+            90% {
+                transform: translate3d(0, -4px, 0);
+            }
+        }
+        
+        .page-container {
+            max-width: 28rem;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 1.5rem;
+        }
+        
+        .center-content {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        
+        .small-logo {
+            width: 6rem;
+            height: 6rem;
+            background-color: #2563eb;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .small-logo-text {
+            color: white;
+            font-size: 1.875rem;
+            font-weight: bold;
+        }
+        
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+        }
+        
+        .page-description {
+            color: #6b7280;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+        
+        .feature-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .feature-item {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            text-align: center;
+        }
+        
+        .feature-item.blue {
+            background-color: #dbeafe;
+        }
+        
+        .feature-item.green {
+            background-color: #d1fae5;
+        }
+        
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .feature-desc {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .btn {
+            width: 100%;
+            background-color: #2563eb;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .btn:hover {
+            background-color: #1d4ed8;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .role-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .role-card {
+            width: 100%;
+            padding: 1rem;
+            border: 2px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: left;
+        }
+        
+        .role-card:hover {
+            border-color: #93c5fd;
+        }
+        
+        .role-card.selected {
+            border-color: #2563eb;
+            background-color: #dbeafe;
+        }
+        
+        .role-content {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .role-icon {
+            font-size: 1.5rem;
+        }
+        
+        .role-info h3 {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+        
+        .role-info p {
+            color: #6b7280;
+            font-size: 0.875rem;
+        }
+        
+        .dashboard-container {
+            max-width: 28rem;
+            margin: 0 auto;
+            min-height: 100vh;
+            background: #f9fafb;
+            padding: 1.5rem;
+        }
+        
+        .dashboard-card {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .dashboard-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        
+        .dashboard-subtitle {
+            color: #6b7280;
+            margin-bottom: 1.5rem;
+        }
+        
+        .action-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        .action-btn {
+            width: 100%;
+            color: white;
+            padding: 0.75rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        
+        .action-btn.blue {
+            background-color: #2563eb;
+        }
+        
+        .action-btn.gray {
+            background-color: #6b7280;
+        }
+        
+        .action-btn.green {
+            background-color: #16a34a;
+        }
+        
+        .action-btn:hover {
+            opacity: 0.9;
+        }
+        
+        .status-card {
+            background: #f9fafb;
+            border-radius: 0.5rem;
+            padding: 1rem;
+        }
+        
+        .status-title {
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-text {
+            color: #6b7280;
+        }
+        
+        .status-success {
+            color: #16a34a;
+        }
+        
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <!-- Splash Screen -->
+        <div id="splash" class="splash-container">
+            <div class="logo-container">
+                <div class="logo-text">B</div>
+            </div>
+            <div class="title-section">
+                <h1 class="main-title">Brillprime</h1>
+                <p class="subtitle">Financial Solutions</p>
+            </div>
+            <div class="loading-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </div>
+        
+        <!-- Onboarding Screen -->
+        <div id="onboarding" class="page-container hidden">
+            <div class="center-content">
+                <div class="small-logo">
+                    <div class="small-logo-text">B</div>
+                </div>
+                <h1 class="page-title">Welcome to Brillprime</h1>
+                <p class="page-description">
+                    Your trusted financial partner for secure transactions and seamless money management in Nigeria.
+                </p>
+            </div>
+            
+            <div class="feature-list">
+                <div class="feature-item blue">
+                    <h3 class="feature-title">Smart Financial Management</h3>
+                    <p class="feature-desc">Track expenses and manage accounts with advanced analytics</p>
+                </div>
+                <div class="feature-item green">
+                    <h3 class="feature-title">Bank-Level Security</h3>
+                    <p class="feature-desc">End-to-end encryption and biometric authentication</p>
+                </div>
+            </div>
+            
+            <button class="btn" onclick="completeOnboarding()">Get Started</button>
+        </div>
+        
+        <!-- Role Selection Screen -->
+        <div id="roleSelection" class="page-container hidden">
+            <div class="center-content">
+                <div class="small-logo">
+                    <div class="small-logo-text">B</div>
+                </div>
+                <h1 class="page-title">Choose Your Role</h1>
+                <p class="page-description">Select how you'll be using Brillprime</p>
+            </div>
+            
+            <div class="role-list">
+                <div class="role-card" onclick="selectRole('CONSUMER', this)">
+                    <div class="role-content">
+                        <span class="role-icon">👤</span>
+                        <div class="role-info">
+                            <h3>Consumer</h3>
+                            <p>Send money, pay bills, and manage finances</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="role-card" onclick="selectRole('MERCHANT', this)">
+                    <div class="role-content">
+                        <span class="role-icon">🏪</span>
+                        <div class="role-info">
+                            <h3>Merchant</h3>
+                            <p>Accept payments and manage your business</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="role-card" onclick="selectRole('DRIVER', this)">
+                    <div class="role-content">
+                        <span class="role-icon">🚗</span>
+                        <div class="role-info">
+                            <h3>Driver</h3>
+                            <p>Deliver orders and earn money</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <button id="continueBtn" class="btn" onclick="continueToDashboard()" disabled>Continue</button>
+        </div>
+        
+        <!-- Dashboard Screen -->
+        <div id="dashboard" class="dashboard-container hidden">
+            <div class="dashboard-card">
+                <h1 id="dashboardTitle" class="dashboard-title">Dashboard</h1>
+                <p class="dashboard-subtitle">Welcome to Brillprime Financial Solutions</p>
+                
+                <div class="action-list">
+                    <button class="action-btn blue">Send Money</button>
+                    <button class="action-btn gray">Pay Bills</button>
+                    <button class="action-btn green">View Transactions</button>
+                </div>
+
+                <div class="status-card">
+                    <h3 class="status-title">System Status</h3>
+                    <p id="statusText" class="status-text">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedRole = null;
+        
+        // Initialize the app
+        function initApp() {
+            console.log('Brillprime app initializing...');
+            
+            // Show splash screen for 3 seconds
+            setTimeout(() => {
+                console.log('Splash timeout complete');
+                const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+                
+                if (hasSeenOnboarding) {
+                    console.log('User has seen onboarding, showing role selection');
+                    showRoleSelection();
+                } else {
+                    console.log('First time user, showing onboarding');
+                    showOnboarding();
+                }
+            }, 3000);
+            
+            // Load API status
+            loadApiStatus();
+        }
+        
+        function showOnboarding() {
+            document.getElementById('splash').classList.add('hidden');
+            document.getElementById('onboarding').classList.remove('hidden');
+        }
+        
+        function completeOnboarding() {
+            localStorage.setItem('hasSeenOnboarding', 'true');
+            showRoleSelection();
+        }
+        
+        function showRoleSelection() {
+            document.getElementById('splash').classList.add('hidden');
+            document.getElementById('onboarding').classList.add('hidden');
+            document.getElementById('roleSelection').classList.remove('hidden');
+        }
+        
+        function selectRole(role, element) {
+            console.log('Selected role:', role);
+            selectedRole = role;
+            
+            // Remove selected class from all cards
+            document.querySelectorAll('.role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            
+            // Add selected class to clicked card
+            element.classList.add('selected');
+            
+            // Enable continue button
+            document.getElementById('continueBtn').disabled = false;
+        }
+        
+        function continueToDashboard() {
+            if (!selectedRole) return;
+            
+            localStorage.setItem('selectedRole', selectedRole);
+            
+            // Update dashboard title based on role
+            const dashboardTitle = document.getElementById('dashboardTitle');
+            switch(selectedRole) {
+                case 'CONSUMER':
+                    dashboardTitle.textContent = 'Consumer Portal';
+                    break;
+                case 'MERCHANT':
+                    dashboardTitle.textContent = 'Merchant Dashboard';
+                    break;
+                case 'DRIVER':
+                    dashboardTitle.textContent = 'Driver Hub';
+                    break;
+            }
+            
+            showDashboard();
+        }
+        
+        function showDashboard() {
+            document.getElementById('roleSelection').classList.add('hidden');
+            document.getElementById('dashboard').classList.remove('hidden');
+        }
+        
+        function loadApiStatus() {
+            fetch('/api/users')
+                .then(response => response.json())
+                .then(data => {
+                    const statusText = document.getElementById('statusText');
+                    if (statusText) {
+                        statusText.textContent = `API Connected - ${data.length} users loaded`;
+                        statusText.classList.add('status-success');
+                    }
+                })
+                .catch(error => {
+                    const statusText = document.getElementById('statusText');
+                    if (statusText) {
+                        statusText.textContent = 'Error connecting to API';
+                        statusText.classList.add('status-error');
+                    }
+                    console.error('API Error:', error);
+                });
+        }
+        
+        // Start the app when DOM is loaded
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+        
+        console.log('Brillprime script loaded');
+    </script>
+</body>
 </html>
