@@ -10,13 +10,13 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../hooks/use-auth";
 import { useNotifications } from "../hooks/use-notifications";
 import { NotificationDropdown } from "../components/ui/notification-dropdown";
-import logo from "../assets/images/logo.png";
-import scanIcon from "../assets/images/scan_qr_code_white.png";
-import orderFuelIcon from "../assets/images/order_fuel_icon.png";
-import purchaseTollIcon from "../assets/images/purchase_toll_gate_white.png";
-import viewCartIcon from "../assets/images/view_cart.png";
-import masterCardLogo from "../assets/images/master_card_logo.png";
-import visaCardLogo from "../assets/images/visa_card_logo.png";
+import logo from "@assets/images/logo.png";
+import scanIcon from "@assets/images/scan_qr_code_white.png";
+import orderFuelIcon from "@assets/images/order_fuel_icon.png";
+import purchaseTollIcon from "@assets/images/purchase_toll_gate_white.png";
+import viewCartIcon from "@assets/images/view_cart.png";
+import masterCardLogo from "@assets/images/master_card_logo.png";
+import visaCardLogo from "@assets/images/visa_card_logo.png";
 
 interface QuickAction {
   id: string;
