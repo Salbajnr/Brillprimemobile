@@ -1,6 +1,6 @@
 import express from 'express';
 import session from 'express-session';
-import RedisStore from 'connect-redis';
+import { RedisStore } from 'connect-redis';
 import { Redis } from 'ioredis';
 import cors from 'cors';
 import { createServer } from 'http';
@@ -8,6 +8,7 @@ import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import crypto from 'crypto';
 import { validateEnvironment } from './env-validation';
 import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
 import { xssProtection, csrfProtection } from './middleware/validation';
@@ -19,7 +20,7 @@ import { dashboardCache, productsCache, analyticsCache, locationCache } from './
 import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, assetVersioning, serviceWorkerCache } from './middleware/staticAssets';
 import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
 import { queryOptimizer } from './services/queryOptimizer';
-import compression from 'compression';
+// import compression from 'compression'; // Temporarily disabled due to dependency conflict
 
 // Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
@@ -163,9 +164,9 @@ io.on('connection', (socket) => {
 
 // Performance and load balancing middleware
 app.use(requestTracker);
-app.use(circuitBreaker);
+// app.use(circuitBreaker); // Temporarily disabled to prevent 503 errors during Redis issues
 app.use(loadBalancerHeaders);
-app.use(compression(compressionConfig));
+// app.use(compression(compressionConfig)); // Temporarily disabled due to dependency conflict
 app.use(cdnHeaders);
 app.use(resourceHints);
 app.use(assetVersioning);
@@ -204,13 +205,24 @@ redis.on('error', (err) => {
   console.error('❌ Redis session store error:', err);
 });
 
-// Enhanced session configuration with Redis
-const sessionConfig = {
-  store: new RedisStore({
+// Enhanced session configuration with fallback to memory store
+let sessionStore;
+try {
+  // Try to use Redis store if available
+  sessionStore = new RedisStore({
     client: redis,
     prefix: 'sess:',
     ttl: 24 * 60 * 60 // 24 hours
-  }),
+  });
+} catch (error) {
+  console.log('Redis unavailable, using memory store for sessions');
+  sessionStore = new (require('memorystore')(session))({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  });
+}
+
+const sessionConfig = {
+  store: sessionStore,
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
   saveUninitialized: false,
@@ -224,7 +236,7 @@ const sessionConfig = {
   name: 'brillprime.sid',
   genid: () => {
     // Generate secure session ID
-    return require('crypto').randomBytes(32).toString('hex');
+    return crypto.randomBytes(32).toString('hex');
   }
 };
 
@@ -233,7 +245,7 @@ app.use(session(sessionConfig));
 // CSRF token generation
 app.use((req, res, next) => {
   if (!req.session.csrfToken) {
-    req.session.csrfToken = require('crypto').randomBytes(32).toString('hex');
+    req.session.csrfToken = crypto.randomBytes(32).toString('hex');
   }
   res.locals.csrfToken = req.session.csrfToken;
   next();

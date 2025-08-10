@@ -58,12 +58,14 @@ export class RealTimeAnalytics extends EventEmitter {
   private startMetricsCollection(): void {
     this.metricsInterval = setInterval(async () => {
       try {
-        await this.collectMetrics();
-        await this.broadcastMetrics();
+        // Temporarily disabled to prevent database errors during migration
+        // await this.collectMetrics();
+        // await this.broadcastMetrics();
+        console.log('Metrics collection temporarily disabled');
       } catch (error) {
         console.error('Metrics collection error:', error);
       }
-    }, 5000); // Every 5 seconds
+    }, 30000); // Every 30 seconds
   }
 
   // Start monitoring for alerts

@@ -285,13 +285,9 @@ export const securityLogger = () => {
     next();
   };
 };
-import { Request, Response, NextFunction } from 'express';
-import { z } from 'zod';
-import DOMPurify from 'isomorphic-dompurify';
-import validator from 'validator';
 
-// Common validation schemas
-export const commonSchemas = {
+// Additional validation schemas for enhanced security
+export const enhancedCommonSchemas = {
   email: z.string().email().max(255),
   phone: z.string().regex(/^(\+234|0)[789]\d{9}$/, 'Invalid Nigerian phone number'),
   password: z.string().min(8).max(128).regex(
