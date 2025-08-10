@@ -1,200 +1,143 @@
-
 import { Request, Response, NextFunction } from 'express';
-import { z, ZodError, ZodSchema } from 'zod';
+import { z } from 'zod';
 import rateLimit from 'express-rate-limit';
-import { body, validationResult, ValidationChain } from 'express-validator';
+import DOMPurify from 'isomorphic-dompurify';
 
-// Enhanced validation middleware with better error handling
-export function validateSchema<T>(schema: ZodSchema<T>) {
+// Sanitize input middleware
+export const sanitizeInput = () => {
   return (req: Request, res: Response, next: NextFunction) => {
-    try {
-      const validatedData = schema.parse(req.body);
-      req.body = validatedData;
-      next();
-    } catch (error) {
-      if (error instanceof ZodError) {
-        const errorMessages = error.errors.map(err => ({
-          field: err.path.join('.'),
-          message: err.message,
-          code: err.code
-        }));
-        
-        return res.status(400).json({
-          success: false,
-          error: 'Validation failed',
-          details: errorMessages
-        });
+    const sanitizeObject = (obj: any): any => {
+      if (typeof obj === 'string') {
+        return DOMPurify.sanitize(obj);
       }
-      
-      return res.status(500).json({
-        success: false,
-        error: 'Internal validation error'
-      });
-    }
-  };
-}
+      if (Array.isArray(obj)) {
+        return obj.map(sanitizeObject);
+      }
+      if (typeof obj === 'object' && obj !== null) {
+        const sanitized: any = {};
+        for (const [key, value] of Object.entries(obj)) {
+          sanitized[key] = sanitizeObject(value);
+        }
+        return sanitized;
+      }
+      return obj;
+    };
 
-// Query parameter validation
-export function validateQuery<T>(schema: ZodSchema<T>) {
+    req.body = sanitizeObject(req.body);
+    req.query = sanitizeObject(req.query);
+    req.params = sanitizeObject(req.params);
+
+    next();
+  };
+};
+
+// Schema validation middleware
+export const validateSchema = (schema: z.ZodSchema) => {
   return (req: Request, res: Response, next: NextFunction) => {
     try {
-      const validatedQuery = schema.parse(req.query);
-      req.query = validatedQuery as any;
+      req.body = schema.parse(req.body);
       next();
     } catch (error) {
-      if (error instanceof ZodError) {
+      if (error instanceof z.ZodError) {
         return res.status(400).json({
           success: false,
-          error: 'Invalid query parameters',
-          details: error.errors
+          message: 'Validation failed',
+          errors: error.errors.map(err => ({
+            field: err.path.join('.'),
+            message: err.message
+          }))
         });
       }
       next(error);
     }
   };
-}
+};
 
-// Express-validator middleware wrapper
-export function validateFields(validations: ValidationChain[]) {
-  return async (req: Request, res: Response, next: NextFunction) => {
-    await Promise.all(validations.map(validation => validation.run(req)));
-    
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({
-        success: false,
-        error: 'Validation failed',
-        details: errors.array()
-      });
-    }
-    
-    next();
-  };
-}
-
-// Sanitization middleware
-export function sanitizeInput() {
-  return (req: Request, res: Response, next: NextFunction) => {
-    const sanitizeValue = (value: any): any => {
-      if (typeof value === 'string') {
-        // Remove potentially dangerous characters
-        return value
-          .trim()
-          .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-          .replace(/javascript:/gi, '')
-          .replace(/on\w+\s*=/gi, '');
-      }
-      
-      if (Array.isArray(value)) {
-        return value.map(sanitizeValue);
-      }
-      
-      if (typeof value === 'object' && value !== null) {
-        const sanitized: any = {};
-        for (const [key, val] of Object.entries(value)) {
-          sanitized[key] = sanitizeValue(val);
-        }
-        return sanitized;
-      }
-      
-      return value;
-    };
-
-    req.body = sanitizeValue(req.body);
-    req.query = sanitizeValue(req.query);
-    req.params = sanitizeValue(req.params);
-    
-    next();
-  };
-}
-
-// File upload validation
-export function validateFileUpload(options: {
+// File upload validation middleware
+export const validateFileUpload = (options: {
   maxSize?: number;
   allowedTypes?: string[];
   maxFiles?: number;
-}) {
+}) => {
   return (req: Request, res: Response, next: NextFunction) => {
-    const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-    
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | Express.Multer.File[];
+
     if (!files) {
       return next();
     }
-    
-    const allFiles = Object.values(files).flat();
-    
+
+    let fileArray: Express.Multer.File[] = [];
+
+    if (Array.isArray(files)) {
+      fileArray = files;
+    } else {
+      fileArray = Object.values(files).flat();
+    }
+
     // Check file count
-    if (options.maxFiles && allFiles.length > options.maxFiles) {
+    if (options.maxFiles && fileArray.length > options.maxFiles) {
       return res.status(400).json({
         success: false,
-        error: `Maximum ${options.maxFiles} files allowed`
+        message: `Maximum ${options.maxFiles} files allowed`
       });
     }
-    
-    // Check each file
-    for (const file of allFiles) {
+
+    // Validate each file
+    for (const file of fileArray) {
       // Check file size
       if (options.maxSize && file.size > options.maxSize) {
         return res.status(400).json({
           success: false,
-          error: `File ${file.originalname} exceeds maximum size of ${options.maxSize} bytes`
+          message: `File ${file.originalname} exceeds maximum size of ${options.maxSize} bytes`
         });
       }
-      
+
       // Check file type
       if (options.allowedTypes && !options.allowedTypes.includes(file.mimetype)) {
         return res.status(400).json({
           success: false,
-          error: `File type ${file.mimetype} is not allowed`
+          message: `File type ${file.mimetype} not allowed`
         });
       }
     }
-    
+
     next();
   };
-}
+};
 
-// Rate limiting with validation
-export const createRateLimit = (options: {
-  windowMs: number;
-  max: number;
-  message?: string;
-}) => {
+// Rate limiting middleware
+export const createRateLimit = (windowMs: number, max: number) => {
   return rateLimit({
-    windowMs: options.windowMs,
-    max: options.max,
+    windowMs,
+    max,
     message: {
       success: false,
-      error: options.message || 'Too many requests, please try again later'
+      message: 'Too many requests, please try again later'
     },
     standardHeaders: true,
     legacyHeaders: false
   });
 };
 
-// Common validation schemas
+// Input validation schemas
 export const commonSchemas = {
   pagination: z.object({
-    page: z.coerce.number().min(1).default(1),
-    limit: z.coerce.number().min(1).max(100).default(20),
-    offset: z.coerce.number().min(0).optional()
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20)
   }),
-  
-  location: z.object({
-    latitude: z.number().min(-90).max(90),
-    longitude: z.number().min(-180).max(180)
+
+  coordinates: z.object({
+    lat: z.number().min(-90).max(90),
+    lng: z.number().min(-180).max(180)
   }),
-  
-  id: z.object({
-    id: z.coerce.number().positive()
-  }),
-  
-  uuid: z.object({
-    id: z.string().uuid()
-  }),
-  
-  search: z.object({
-    q: z.string().min(1).max(100).trim(),
-    type: z.enum(['all', 'merchants', 'products', 'users']).default('all')
-  })
+
+  mongoId: z.string().regex(/^[0-9a-fA-F]{24}$/, 'Invalid ID format'),
+
+  phoneNumber: z.string().regex(/^(\+234|0)[789]\d{9}$/, 'Invalid Nigerian phone number'),
+
+  email: z.string().email('Invalid email address'),
+
+  password: z.string()
+    .min(8, 'Password must be at least 8 characters')
+    .regex(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/, 'Password must contain uppercase, lowercase, and number'),
 };

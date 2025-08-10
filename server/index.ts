@@ -1,16 +1,29 @@
 import express from "express";
+import session from "express-session";
+import cors from "cors";
 import path from "path";
-import { fileURLToPath } from "url";
 import fs from "fs";
-import { build } from "esbuild";
+import { fileURLToPath } from "url";
+import { createServer } from "http";
+import { setupWebSocket } from "./websocket.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = createServer(app);
+
+// Setup WebSocket
+setupWebSocket(server);
+
+// Middleware
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:3000", "https://*.replit.dev"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
 // Simple logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -23,11 +36,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// Basic API routes
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret-key",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, 
+    maxAge: 1000 * 60 * 60 * 24 * 7 
+  }
+}));
+
+// Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    version: "1.0.0"
+  });
 });
 
+// Basic user endpoint
 app.get("/api/users", (req, res) => {
   res.json([
     { id: "1", name: "Test User", role: "CONSUMER" },
@@ -35,11 +64,74 @@ app.get("/api/users", (req, res) => {
   ]);
 });
 
+// Import and register all route modules
+import adminRoutes from "./admin/routes.js";
+import merchantRoutes from "./routes/merchant.js";
+import driverRoutes from "./routes/driver.js";
+import tollPaymentsRoutes from "./routes/toll-payments.js";
+import verificationRoutes from "./routes/verification.js";
+import paymentRoutes from "./routes/payments.js";
+import productsRoutes from "./routes/products.js";
+import fuelOrdersRoutes from "./routes/fuel-orders.js";
+import qrPaymentsRoutes from "./routes/qr-payments.js";
+import liveChatRoutes from "./routes/live-chat.js";
+import analyticsRoutes from "./routes/analytics.js";
+import escrowRoutes from "./routes/escrow-management.js";
+import orderStatusRoutes from "./routes/order-status.js";
+import realTimeTrackingRoutes from "./routes/real-time-tracking.js";
+import secureTransactionsRoutes from "./routes/secure-transactions.js";
+import vendorFeedRoutes from "./routes/vendor-feed.js";
+import ratingsReviewsRoutes from "./routes/ratings-reviews.js";
+import liveSystemRoutes from "./routes/live-system.js";
+import merchantKycRoutes from "./routes/merchant-kyc.js";
+import roleManagementRoutes from "./routes/role-management.js";
+import simpleVerificationRoutes from "./routes/simple-verification.js";
+import fileSyncRoutes from "./routes/file-sync.js";
+import errorLoggingRoutes from "./routes/error-logging.js";
+import analyticsLoggingRoutes from "./routes/analytics-logging.js";
+import adminOversightRoutes from "./routes/admin-oversight.js";
+import adminMerchantKycRoutes from "./routes/admin-merchant-kyc.js";
+import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination.js";
+import locationRecommendationsRoutes from "./routes/location-recommendations.js";
+import testRealtimeRoutes from "./routes/test-realtime.js";
+
+// Register route modules with proper prefixes
+app.use("/api/admin", adminRoutes);
+app.use("/api/merchant", merchantRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/toll", tollPaymentsRoutes);
+app.use("/api/verification", verificationRoutes);
+app.use("/api/payments", paymentRoutes);
+app.use("/api/products", productsRoutes);
+app.use("/api/fuel-orders", fuelOrdersRoutes);
+app.use("/api/qr-payments", qrPaymentsRoutes);
+app.use("/api/chat", liveChatRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/escrow", escrowRoutes);
+app.use("/api/order-status", orderStatusRoutes);
+app.use("/api/tracking", realTimeTrackingRoutes);
+app.use("/api/secure-transactions", secureTransactionsRoutes);
+app.use("/api/vendor-feed", vendorFeedRoutes);
+app.use("/api/ratings", ratingsReviewsRoutes);
+app.use("/api/live-system", liveSystemRoutes);
+app.use("/api/merchant-kyc", merchantKycRoutes);
+app.use("/api/roles", roleManagementRoutes);
+app.use("/api/simple-verification", simpleVerificationRoutes);
+app.use("/api/file-sync", fileSyncRoutes);
+app.use("/api/error-logging", errorLoggingRoutes);
+app.use("/api/analytics-logging", analyticsLoggingRoutes);
+app.use("/api/admin-oversight", adminOversightRoutes);
+app.use("/api/admin-merchant-kyc", adminMerchantKycRoutes);
+app.use("/api/driver-merchant", driverMerchantCoordinationRoutes);
+app.use("/api/location-recommendations", locationRecommendationsRoutes);
+app.use("/api/test-realtime", testRealtimeRoutes);
+
+
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../dist")));
+  app.use(express.static(path.join(__dirname, "../client/dist")));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../dist/index.html"));
+    res.sendFile(path.join(__dirname, "../client/dist/index.html"));
   });
 } else {
   // Development mode - build and serve the client
@@ -540,7 +632,7 @@ if (process.env.NODE_ENV === "production") {
               
               // Auto-focus next input
               if (value && index < 5) {
-                const nextInput = document.getElementById(\`otp-\${index + 1}\`);
+                const nextInput = document.getElementById(`otp-${index + 1}`);
                 if (nextInput) nextInput.focus();
               }
             }
@@ -586,7 +678,7 @@ if (process.env.NODE_ENV === "production") {
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      id={\`otp-\${index}\`}
+                      id={`otp-${index}`}
                       type="text"
                       maxLength="1"
                       value={digit}
