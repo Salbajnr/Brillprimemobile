@@ -48,7 +48,7 @@ export default function SplashPage() {
       <div className="flex flex-col items-center justify-center">
         <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 bg-white rounded-full flex items-center justify-center shadow-2xl animate-pulse">
           <img 
-            src={logo} 
+            src={logoImage} 
             alt="Brillprime Logo" 
             className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-contain animate-bounce"
             style={{ animationDuration: '2s' }}
