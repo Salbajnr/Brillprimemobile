@@ -38,6 +38,8 @@ import driverLocationRoutes from "./routes/driver-location";
 import paystackWebhooksRoutes from "./routes/paystack-webhooks";
 import escrowManagementRoutes from "./routes/escrow-management";
 import withdrawalSystemRoutes from "./routes/withdrawal-system";
+import enhancedVerificationRoutes from "./routes/enhanced-verification";
+import mfaAuthenticationRoutes from "./routes/mfa-authentication";
 
 // Import services
 import { initializeWebSocket } from "./websocket";
@@ -118,6 +120,8 @@ app.use("/api/drivers/location", driverLocationRoutes);
 app.use("/api/webhooks/paystack", paystackWebhooksRoutes);
 app.use("/api/escrow-management", escrowManagementRoutes);
 app.use("/api/withdrawal", withdrawalSystemRoutes);
+app.use("/api/verification-enhanced", enhancedVerificationRoutes);
+app.use("/api/mfa", mfaAuthenticationRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
