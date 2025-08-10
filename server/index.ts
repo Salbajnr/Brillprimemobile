@@ -1,16 +1,28 @@
 import express from "express";
+import session from "express-session";
+import cors from "cors";
 import path from "path";
 import { fileURLToPath } from "url";
-import fs from "fs";
-import { build } from "esbuild";
+import { createServer } from "http";
+import { setupWebSocket } from "./websocket.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
+const server = createServer(app);
+
+// Setup WebSocket
+setupWebSocket(server);
+
+// Middleware
+app.use(cors({
+  origin: ["http://localhost:5173", "http://localhost:3000", "https://*.replit.dev"],
+  credentials: true
+}));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
 // Simple logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -23,11 +35,27 @@ app.use((req, res, next) => {
   next();
 });
 
-// Basic API routes
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || "dev-secret-key",
+  resave: false,
+  saveUninitialized: false,
+  cookie: { 
+    secure: false, 
+    maxAge: 1000 * 60 * 60 * 24 * 7 
+  }
+}));
+
+// Health check endpoint
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", timestamp: new Date().toISOString() });
+  res.json({ 
+    status: "OK", 
+    timestamp: new Date().toISOString(),
+    version: "1.0.0"
+  });
 });
 
+// Basic user endpoint
 app.get("/api/users", (req, res) => {
   res.json([
     { id: "1", name: "Test User", role: "CONSUMER" },
@@ -36,24 +64,26 @@ app.get("/api/users", (req, res) => {
 });
 
 // Import and register all route modules
-import adminRoutes from "./admin/routes";
-import merchantRoutes from "./routes/merchant";
-import driverRoutes from "./routes/driver";
-import verificationRoutes from "./routes/verification";
-import tollPaymentsRoutes from "./routes/toll-payments";
+import adminRoutes from "./admin/routes.js";
+import merchantRoutes from "./routes/merchant.js";
+import driverRoutes from "./routes/driver.js";
+import tollPaymentsRoutes from "./routes/toll-payments.js";
+import verificationRoutes from "./routes/verification.js";
 
-// Register route modules
+
+// Register route modules with proper prefixes
 app.use("/api/admin", adminRoutes);
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/driver", driverRoutes);
-app.use("/api/verification", verificationRoutes);
 app.use("/api/toll", tollPaymentsRoutes);
+app.use("/api/verification", verificationRoutes);
+
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {
-  app.use(express.static(path.join(__dirname, "../dist")));
+  app.use(express.static(path.join(__dirname, "../client/dist")));
   app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../dist/index.html"));
+    res.sendFile(path.join(__dirname, "../client/dist/index.html"));
   });
 } else {
   // Development mode - build and serve the client
@@ -554,7 +584,7 @@ if (process.env.NODE_ENV === "production") {
               
               // Auto-focus next input
               if (value && index < 5) {
-                const nextInput = document.getElementById(\`otp-\${index + 1}\`);
+                const nextInput = document.getElementById(`otp-${index + 1}`);
                 if (nextInput) nextInput.focus();
               }
             }
@@ -600,7 +630,7 @@ if (process.env.NODE_ENV === "production") {
                   {otp.map((digit, index) => (
                     <input
                       key={index}
-                      id={\`otp-\${index}\`}
+                      id={`otp-${index}`}
                       type="text"
                       maxLength="1"
                       value={digit}

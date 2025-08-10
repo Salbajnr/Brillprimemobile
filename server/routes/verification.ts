@@ -1,8 +1,13 @@
-import { Request, Response } from "express";
+
+import { Request, Response, Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { storage } from "../storage";
+import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation';
+import { z } from 'zod';
+
+const router = Router();
 
 // Configure multer for file uploads
 const upload = multer({
@@ -35,9 +40,6 @@ const upload = multer({
   }
 });
 
-import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation';
-import { z } from 'zod';
-
 const verificationDataSchema = z.object({
   licenseNumber: z.string().min(3).max(50).optional(),
   licenseExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -65,14 +67,20 @@ const submitVerificationSchema = z.object({
   })
 });
 
-export const submitIdentityVerification = [
+const verifyOTPSchema = z.object({
+  userId: z.coerce.number().positive(),
+  otpCode: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits')
+});
+
+// Submit identity verification
+router.post('/identity-verification', 
   sanitizeInput(),
   upload.fields([
     { name: 'faceImage', maxCount: 1 },
     { name: 'licenseImage', maxCount: 1 }
   ]),
   validateFileUpload({
-    maxSize: 5 * 1024 * 1024, // 5MB
+    maxSize: 5 * 1024 * 1024,
     allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
     maxFiles: 2
   }),
@@ -119,17 +127,15 @@ export const submitIdentityVerification = [
       
       // Handle phone verification for consumers
       if (role === 'CONSUMER' && parsedData.phoneVerification) {
-        // Generate OTP for phone verification
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         await storage.createPhoneVerification({
           userId: parseInt(userId),
           phoneNumber: req.user?.phone || '',
           otpCode,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000), // 10 minutes
+          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
           isVerified: false
         });
         
-        // In a real application, send SMS with OTP code
         console.log(`Phone verification OTP for ${req.user?.phone}: ${otpCode}`);
       }
       
@@ -147,9 +153,10 @@ export const submitIdentityVerification = [
       });
     }
   }
-];
+);
 
-export const getVerificationStatus = async (req: Request, res: Response) => {
+// Get verification status
+router.get('/status/:userId', async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     
@@ -171,14 +178,10 @@ export const getVerificationStatus = async (req: Request, res: Response) => {
       message: 'Failed to get verification status'
     });
   }
-};
-
-const verifyOTPSchema = z.object({
-  userId: z.coerce.number().positive(),
-  otpCode: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits')
 });
 
-export const verifyPhoneOTP = [
+// Verify phone OTP
+router.post('/verify-phone-otp',
   sanitizeInput(),
   validateSchema(verifyOTPSchema),
   async (req: Request, res: Response) => {
@@ -188,7 +191,6 @@ export const verifyPhoneOTP = [
       const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
     
       if (phoneVerification) {
-        // Update user phone verification status
         await storage.updateUser(parseInt(userId), { isPhoneVerified: true });
         
         res.json({
@@ -210,14 +212,6 @@ export const verifyPhoneOTP = [
       });
     }
   }
-];
-
-// Export router with routes
-import { Router } from 'express';
-const router = Router();
-
-router.post('/identity-verification', submitIdentityVerification);
-router.get('/status/:userId', getVerificationStatus);
-router.post('/verify-phone-otp', verifyPhoneOTP);
+);
 
 export default router;
