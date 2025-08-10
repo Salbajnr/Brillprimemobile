@@ -119,12 +119,18 @@ export function useWebSocket(): WebSocketHookReturn {
 export function useOrderUpdates() {
   const { socket, connected, on, off } = useWebSocket();
   const [orders, setOrders] = useState<any[]>([]);
+  const [orderUpdates, setOrderUpdates] = useState<Record<string, any>>({});
 
   useEffect(() => {
     if (!connected) return;
 
     const handleOrderUpdate = (data: any) => {
       console.log('Order update received:', data);
+      setOrderUpdates(prev => ({
+        ...prev,
+        [data.orderId]: data
+      }));
+      
       setOrders(prev => 
         prev.map(order => 
           order.id === data.orderId 
@@ -139,16 +145,32 @@ export function useOrderUpdates() {
       setOrders(prev => [data, ...prev]);
     };
 
+    const handleOrderStatusChanged = (data: any) => {
+      console.log('Order status changed:', data);
+      setOrderUpdates(prev => ({
+        ...prev,
+        [data.orderId]: data
+      }));
+    };
+
     on('order_update', handleOrderUpdate);
     on('new_order', handleNewOrder);
+    on('order_status_changed', handleOrderStatusChanged);
 
     return () => {
       off('order_update', handleOrderUpdate);
       off('new_order', handleNewOrder);
+      off('order_status_changed', handleOrderStatusChanged);
     };
   }, [connected, on, off]);
 
-  return { orders, setOrders };
+  return { 
+    orders, 
+    setOrders, 
+    orderUpdates, 
+    connected,
+    connectionError: !connected ? 'WebSocket disconnected' : null
+  };
 }
 
 export function useDriverTracking(orderId?: string) {
