@@ -28,8 +28,8 @@ const disputeEscrowSchema = z.object({
   evidence: z.string().optional()
 });
 
-// Create escrow transaction
-router.post("/escrow/create", requireAuth, async (req, res) => {
+// Create escrow transaction automatically for orders
+router.post("/create", requireAuth, async (req, res) => {
   try {
     const buyerId = req.session!.userId!;
     const { orderId, sellerId, amount, description } = createEscrowSchema.parse(req.body);
@@ -106,7 +106,7 @@ router.post("/escrow/create", requireAuth, async (req, res) => {
 });
 
 // Release escrow funds
-router.post("/escrow/release", requireAuth, async (req, res) => {
+router.post("/release", requireAuth, async (req, res) => {
   try {
     const userId = req.session!.userId!;
     const { escrowId, releaseType, amount } = releaseEscrowSchema.parse(req.body);

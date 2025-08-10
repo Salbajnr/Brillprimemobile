@@ -211,45 +211,103 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
       return res.status(400).json({ error: 'Invalid amount' });
     }
 
+    if (!bankDetails || !bankDetails.accountNumber || !bankDetails.bankCode) {
+      return res.status(400).json({ error: 'Bank details required' });
+    }
+
     // Get wallet
-    const wallet = await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
+    const [wallet] = await db.select().from(wallets).where(eq(wallets.userId, userId)).limit(1);
     
-    if (!wallet.length) {
+    if (!wallet) {
       return res.status(404).json({ error: 'Wallet not found' });
     }
 
-    const currentBalance = wallet[0].balance || 0;
+    const currentBalance = parseFloat(wallet.balance);
 
     if (currentBalance < amount) {
       return res.status(400).json({ error: 'Insufficient balance' });
     }
 
+    // Validate bank account
+    const accountValidation = await paystackService.resolveAccountNumber(
+      bankDetails.accountNumber,
+      bankDetails.bankCode
+    );
+
+    if (!accountValidation.success) {
+      return res.status(400).json({ error: 'Invalid bank account details' });
+    }
+
+    // Create transfer recipient
+    const recipientResult = await paystackService.createTransferRecipient({
+      type: 'nuban',
+      name: accountValidation.account_name,
+      account_number: bankDetails.accountNumber,
+      bank_code: bankDetails.bankCode,
+      currency: 'NGN'
+    });
+
+    if (!recipientResult.success) {
+      return res.status(400).json({ error: 'Failed to create transfer recipient' });
+    }
+
     const newBalance = currentBalance - amount;
+    const withdrawalRef = `WITHDRAW_${Date.now()}_${userId}`;
 
     // Update wallet balance
     await db.update(wallets)
       .set({ 
-        balance: newBalance,
-        updatedAt: new Date()
+        balance: newBalance.toString(),
+        lastUpdated: new Date()
       })
       .where(eq(wallets.userId, userId));
 
     // Record transaction
-    await db.insert(transactions).values({
+    const [transaction] = await db.insert(transactions).values({
       userId,
-      type: 'DEBIT',
-      amount,
+      type: 'WITHDRAWAL',
       status: 'PENDING',
-      description: 'Wallet withdrawal',
-      reference: `WITHDRAW_${Date.now()}_${userId}`,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      amount: amount.toString(),
+      netAmount: amount.toString(),
+      currency: 'NGN',
+      description: `Wallet withdrawal to ${accountValidation.account_name}`,
+      paystackReference: withdrawalRef,
+      metadata: {
+        bankDetails: {
+          accountNumber: bankDetails.accountNumber,
+          bankCode: bankDetails.bankCode,
+          accountName: accountValidation.account_name
+        },
+        recipientCode: recipientResult.recipient_code
+      },
+      initiatedAt: new Date()
+    }).returning();
+
+    // Initiate transfer
+    const transferResult = await paystackService.initiateTransfer({
+      source: 'balance',
+      amount: amount * 100, // Convert to kobo
+      recipient: recipientResult.recipient_code,
+      reason: 'Wallet withdrawal',
+      reference: withdrawalRef
     });
+
+    if (transferResult.success) {
+      await db.update(transactions)
+        .set({
+          status: 'PROCESSING',
+          paystackTransactionId: transferResult.transfer_code,
+          updatedAt: new Date()
+        })
+        .where(eq(transactions.id, transaction.id));
+    }
 
     res.json({
       success: true,
       data: { 
         balance: newBalance,
+        transactionId: transaction.id,
+        reference: withdrawalRef,
         message: 'Withdrawal request submitted successfully' 
       }
     });
@@ -257,6 +315,55 @@ router.post('/withdraw', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Wallet withdrawal error:', error);
     res.status(500).json({ error: 'Failed to process withdrawal' });
+  }
+});
+
+// Get available banks
+router.get('/banks', authenticateToken, async (req, res) => {
+  try {
+    const banksResult = await paystackService.getBanks();
+    
+    if (!banksResult.success) {
+      return res.status(500).json({ error: 'Failed to fetch banks' });
+    }
+
+    res.json({
+      success: true,
+      data: banksResult.data
+    });
+
+  } catch (error) {
+    console.error('Get banks error:', error);
+    res.status(500).json({ error: 'Failed to fetch banks' });
+  }
+});
+
+// Validate bank account
+router.post('/validate-account', authenticateToken, async (req, res) => {
+  try {
+    const { accountNumber, bankCode } = req.body;
+
+    if (!accountNumber || !bankCode) {
+      return res.status(400).json({ error: 'Account number and bank code required' });
+    }
+
+    const validationResult = await paystackService.resolveAccountNumber(accountNumber, bankCode);
+    
+    if (!validationResult.success) {
+      return res.status(400).json({ error: 'Invalid account details' });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        accountName: validationResult.account_name,
+        accountNumber: validationResult.account_number
+      }
+    });
+
+  } catch (error) {
+    console.error('Account validation error:', error);
+    res.status(500).json({ error: 'Failed to validate account' });
   }
 });
 
