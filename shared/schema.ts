@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, uuid, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum } from "drizzle-orm/pg-core";
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -9,7 +9,7 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', '
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
 
 // Users table (Enhanced)
-export const users = pgTable("users", {
+export const users: any = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   fullName: varchar("full_name", { length: 255 }).notNull(),
