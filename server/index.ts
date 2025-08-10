@@ -42,11 +42,11 @@ if (process.env.NODE_ENV === "production") {
   });
 } else {
   // Development mode - serve React client
-  // First serve the client build if it exists
   const clientBuildPath = path.join(__dirname, "../client/dist");
   const clientHtmlPath = path.join(clientBuildPath, "index.html");
   
-  // Check if client build exists
+  // Also serve static assets from client/src/assets during development
+  app.use('/src/assets', express.static(path.join(__dirname, '../client/src/assets')));
   
   if (fs.existsSync(clientHtmlPath)) {
     console.log('Serving React client from build directory');
@@ -59,7 +59,7 @@ if (process.env.NODE_ENV === "production") {
     });
   } else {
     console.log('Client build not found, serving HTML fallback');
-    // Fallback to HTML version
+    // Fallback to HTML version but still serve assets
     app.use(express.static(path.join(__dirname, "..")));
     app.get("*", (req, res) => {
       if (req.path.startsWith("/api")) {

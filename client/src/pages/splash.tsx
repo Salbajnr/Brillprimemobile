@@ -1,7 +1,8 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useAuth } from "../hooks/use-auth-simple";
-import logo from "@assets/images/logo.png";
+// Using direct path to avoid import issues during development
+const logo = "/src/assets/images/logo.png";
 
 export default function SplashPage() {
   const [, setLocation] = useLocation();

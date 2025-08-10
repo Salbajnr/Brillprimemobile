@@ -3,9 +3,10 @@ import { useLocation } from "wouter";
 import { ArrowRight } from "lucide-react";
 import { ProgressIndicator } from "../components/ui/progress-indicator";
 import { Button } from "../components/ui/button";
-import onboardingImg1 from "@assets/images/onboarding_img1.png";
-import onboardingImg2 from "@assets/images/onboarding_img2.png";
-import onboardingImg3 from "@assets/images/onboarding_img3.png";
+// Using direct paths to avoid import issues during development
+const onboardingImg1 = "/src/assets/images/onboarding_img1.png";
+const onboardingImg2 = "/src/assets/images/onboarding_img2.png";
+const onboardingImg3 = "/src/assets/images/onboarding_img3.png";
 
 const onboardingData = [
   {

@@ -3,7 +3,8 @@ import { useLocation } from "wouter";
 import { Button } from "../components/ui/button";
 import { RoleCard } from "../components/ui/role-card";
 import { useAuth } from "../hooks/use-auth";
-import signUpLogo from "@assets/images/sign_up_option_logo.png";
+// Using direct path to avoid import issues during development
+const signUpLogo = "/src/assets/images/sign_up_option_logo.png";
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
