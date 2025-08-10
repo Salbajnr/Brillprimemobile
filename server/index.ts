@@ -14,6 +14,12 @@ import { xssProtection, csrfProtection } from './middleware/validation';
 import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
 import { messageQueue } from './services/messageQueue';
 import { pushNotificationService } from './services/pushNotifications';
+import { cacheService } from './services/cache';
+import { dashboardCache, productsCache, analyticsCache, locationCache } from './middleware/cacheMiddleware';
+import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, assetVersioning, serviceWorkerCache } from './middleware/staticAssets';
+import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
+import { queryOptimizer } from './services/queryOptimizer';
+import compression from 'compression';
 
 // Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
@@ -154,8 +160,19 @@ io.on('connection', (socket) => {
   });
 });
 
+// Performance and load balancing middleware
+app.use(requestTracker);
+app.use(circuitBreaker);
+app.use(loadBalancerHeaders);
+app.use(compression(compressionConfig));
+app.use(cdnHeaders);
+app.use(resourceHints);
+app.use(assetVersioning);
+app.use(serviceWorkerCache);
+
 // Security middleware
 app.use(xssProtection);
+app.use(adaptiveRateLimit);
 app.use(generalLimiter);
 app.use(responseTimeMiddleware);
 
@@ -238,14 +255,31 @@ app.use((req, res, next) => {
   next();
 });
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+// Health check endpoints
+app.get('/api/health', healthCheck);
+
+// Detailed health check for load balancer
+app.get('/api/health/detailed', async (req, res) => {
+  const cacheHealth = await cacheService.healthCheck();
+  const dbConnPool = await queryOptimizer.getConnectionPoolStats();
+  
   res.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
+    cache: cacheHealth,
+    database: dbConnPool,
     version: process.env.npm_package_version || '1.0.0'
+  });
+});
+
+// Performance metrics endpoint
+app.get('/api/metrics', (req, res) => {
+  const queryStats = queryOptimizer.getQueryStats();
+  res.json({
+    queries: queryStats,
+    timestamp: new Date().toISOString()
   });
 });
 
@@ -270,10 +304,16 @@ app.get('/api/ws-test', (req, res) => {
 // API Routes with enhanced error handling and specific rate limiting
 const apiRouter = express.Router();
 
-// Apply specific rate limiters
+// Apply specific rate limiters and caching
 apiRouter.use('/auth', authLimiter);
 apiRouter.use('/payments', paymentLimiter);
 apiRouter.use('/wallet/fund', paymentLimiter);
+
+// Apply caching middleware to appropriate routes
+apiRouter.use('/analytics', analyticsCache);
+apiRouter.use('/dashboard', dashboardCache);
+apiRouter.use('/products', productsCache);
+apiRouter.use('/drivers/location', locationCache);
 
 // Centralized error handling for API routes
 const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
@@ -355,7 +395,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
+  app.use(staticAssetsMiddleware());
 
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
@@ -466,12 +506,27 @@ if (process.env.NODE_ENV === 'production') {
 // Enhanced server startup
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 BrillPrime server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
+  
+  // Initialize performance services
+  console.log('🚀 Initializing performance optimizations...');
+  
+  // Start cache warming
+  await cacheService.warmCache();
+  
+  // Start query optimizer maintenance
+  queryOptimizer.startMaintenance();
+  
+  // Log initial performance metrics
+  const cacheHealth = await cacheService.healthCheck();
+  console.log(`💾 Cache service: ${cacheHealth ? 'Connected' : 'Disconnected'}`);
+  
+  console.log('✅ Performance optimizations initialized');
 
   // Real-time system health monitoring
   setInterval(() => {
