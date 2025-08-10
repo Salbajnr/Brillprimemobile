@@ -795,7 +795,7 @@ if (process.env.NODE_ENV === "production") {
 }
 
 // Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
   res.status(status).json({ message });
