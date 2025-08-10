@@ -37,7 +37,7 @@ export default function SplashPage() {
           setLocation("/onboarding");
         }
       }
-    }, 5000); // Show splash for 5 seconds as requested
+    }, 5000); // Show splash for 5 seconds
 
     return () => clearTimeout(timer);
   }, [setLocation, user, isAuthenticated]);

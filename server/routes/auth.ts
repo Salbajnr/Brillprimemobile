@@ -153,4 +153,121 @@ router.get('/me', (req, res) => {
   });
 });
 
+// OTP verification endpoint
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = z.object({
+      email: z.string().email(),
+      otp: z.string().length(5)
+    }).parse(req.body);
+
+    // Get user by email
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // For development, accept any 5-digit code
+    if (process.env.NODE_ENV === 'development' && otp.length === 5) {
+      // Mark user as verified
+      await db
+        .update(users)
+        .set({ isVerified: true })
+        .where(eq(users.id, user.id));
+
+      // Create session
+      req.session.userId = user.id;
+      req.session.user = {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      };
+
+      return res.json({
+        success: true,
+        message: 'Email verified successfully',
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        }
+      });
+    }
+
+    // In production, implement proper OTP validation
+    // This would check against stored OTP and expiry time
+    
+    res.status(400).json({
+      success: false,
+      message: 'Invalid or expired verification code'
+    });
+
+  } catch (error) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'OTP verification failed'
+    });
+  }
+});
+
+// Resend OTP endpoint
+router.post('/resend-otp', async (req, res) => {
+  try {
+    const { email } = z.object({
+      email: z.string().email()
+    }).parse(req.body);
+
+    // Get user by email
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Generate new OTP
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    
+    // Send OTP email
+    const { emailService } = await import('../services/email');
+    const emailSent = await emailService.sendOTP(email, otpCode, user.fullName);
+
+    if (emailSent) {
+      res.json({
+        success: true,
+        message: 'Verification code sent successfully'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        message: 'Failed to send verification code'
+      });
+    }
+
+  } catch (error) {
+    console.error('Resend OTP error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to resend verification code'
+    });
+  }
+});
+
 export default router;
