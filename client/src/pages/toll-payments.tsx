@@ -169,8 +169,6 @@ export default function TollPayments() {
       trafficStatus: "heavy",
       queueTime: "10-15 minutes"
     }
-  ];rs"
-    }
   ];
 
   const [tollGates] = useState<TollGate[]>([

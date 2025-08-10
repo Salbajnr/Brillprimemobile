@@ -1,28 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Route, Switch, useLocation } from 'wouter';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
-const queryClient = new QueryClient();
+// Simple auth hook
+function useAuth() {
+  const [user] = useState(null);
+  const isAuthenticated = () => false;
+  return { user, isAuthenticated };
+}
 
-// Splash Screen Component
+// Splash Screen Component  
 function SplashPage() {
   const [, setLocation] = useLocation();
+  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Check if user has seen onboarding before
-      const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
-      if (hasSeenOnboarding) {
-        // Returning user → Role Selection
-        setLocation("/role-selection");
+      console.log("Splash navigation - User:", user, "Authenticated:", isAuthenticated());
+      // Check user authentication state after splash screen
+      if (isAuthenticated() && user) {
+        // Direct role-based navigation
+        if (user.role === "CONSUMER") {
+          setLocation("/consumer-home");
+        } else if (user.role === "MERCHANT") {
+          setLocation("/merchant-dashboard");
+        } else if (user.role === "DRIVER") {
+          setLocation("/driver-dashboard");
+        } else {
+          setLocation("/dashboard");
+        }
       } else {
-        // First-time user → Onboarding
-        setLocation("/onboarding");
+        // Check if user has seen onboarding before
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        if (hasSeenOnboarding) {
+          setLocation("/role-selection");
+        } else {
+          setLocation("/onboarding");
+        }
       }
     }, 3000); // Show splash for 3 seconds
 
     return () => clearTimeout(timer);
-  }, [setLocation]);
+  }, [setLocation, user, isAuthenticated]);
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden">
@@ -226,22 +244,23 @@ function DashboardPage() {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-background">
-        <Switch>
-          <Route path="/" component={SplashPage} />
-          <Route path="/onboarding" component={OnboardingPage} />
-          <Route path="/role-selection" component={RoleSelectionPage} />
-          <Route path="/dashboard" component={DashboardPage} />
-          <Route>
-            <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
+    <div className="min-h-screen">
+      <Switch>
+        <Route path="/" component={SplashPage} />
+        <Route path="/onboarding" component={OnboardingPage} />
+        <Route path="/role-selection" component={RoleSelectionPage} />
+        <Route path="/dashboard" component={DashboardPage} />
+        <Route path="/consumer-home" component={DashboardPage} />
+        <Route path="/merchant-dashboard" component={DashboardPage} />
+        <Route path="/driver-dashboard" component={DashboardPage} />
+        <Route>
+          <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6 text-center">
               <h1 className="text-2xl font-bold text-gray-900 mb-2">Page Not Found</h1>
               <p className="text-gray-600">The page you're looking for doesn't exist.</p>
             </div>
           </Route>
-        </Switch>
-      </div>
-    </QueryClientProvider>
+      </Switch>
+    </div>
   );
 }
 
