@@ -21,6 +21,8 @@ declare module 'express-session' {
     lastActivity?: number;
     ipAddress?: string;
     userAgent?: string;
+    mfaVerified?: boolean;
+    mfaVerifiedAt?: number;
   }
 }
 
@@ -43,9 +45,9 @@ declare global {
 }
 
 // JWT Secret from environment
-const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY;
-if (!JWT_SECRET) {
-  throw new Error('JWT_SECRET must be set in environment variables');
+const JWT_SECRET = process.env.JWT_SECRET || process.env.JWT_SECRET_KEY || 'default-development-secret-key';
+if (process.env.NODE_ENV === 'production' && (JWT_SECRET === 'default-development-secret-key' || !JWT_SECRET)) {
+  throw new Error('JWT_SECRET must be set in environment variables for production');
 }
 
 // Session timeout (30 minutes)
@@ -86,8 +88,8 @@ export function setupAuth() {
       }
     }
 
-    // Add isAuthenticated method
-    req.isAuthenticated = () => {
+    // Add isAuthenticated method  
+    req.isAuthenticated = (): req is Request & { user: NonNullable<Request['user']> } => {
       return !!(req.session?.userId && req.session?.user);
     };
 
@@ -157,14 +159,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
           });
         }
 
-        // Set user in request
+        // Set user in request  
         req.user = {
           id: user[0].id,
-          userId: user[0].userId,
+          userId: user[0].id.toString(), // Convert id to string for compatibility
           fullName: user[0].fullName,
           email: user[0].email,
-          role: user[0].role,
-          isVerified: user[0].isVerified,
+          role: user[0].role || 'CONSUMER',
+          isVerified: user[0].isVerified || false,
           profilePicture: user[0].profilePicture || undefined
         };
 

@@ -420,7 +420,7 @@ router.get('/status', requireAuth, async (req, res) => {
 
 // Helper functions
 function generateBackupCodes(): string {
-  const codes = [];
+  const codes: string[] = [];
   for (let i = 0; i < 10; i++) {
     const code = Math.random().toString(36).substring(2, 8).toUpperCase();
     codes.push(crypto.createHash('sha256').update(code).digest('hex'));
