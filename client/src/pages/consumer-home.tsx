@@ -61,16 +61,19 @@ export default function ConsumerHome() {
   const [showBalance, setShowBalance] = useState(true);
 
   // Fetch wallet balance from API
-  const { data: walletData } = useQuery({
+  const { data: walletData, isLoading: walletLoading, error: walletError } = useQuery({
     queryKey: ['/api/wallet/balance'],
     queryFn: async () => {
-      const response = await fetch('/api/wallet/balance');
+      const response = await fetch('/api/wallet/balance', {
+        credentials: 'include'
+      });
       if (!response.ok) throw new Error('Failed to fetch wallet balance');
       return response.json();
     }
   });
 
   const walletBalance = walletData?.balance || 0;
+  const formattedBalance = walletData?.formattedBalance || "₦0.00";
 
   // WebSocket integration for real-time features
   const { connected: orderConnected, orderUpdates, connectionError: orderError } = useWebSocketOrders();
@@ -447,6 +450,32 @@ export default function ConsumerHome() {
                 </CardContent>
               </Card>
             ))}
+          </div>
+          
+          {/* Additional Quick Actions Row */}
+          <div className="grid grid-cols-2 gap-3 mt-3">
+            <Button
+              variant="outline"
+              className="h-16 flex-col space-y-2 border-2 border-orange-200/50 text-orange-600 hover:bg-orange-50 rounded-3xl animate-slide-up"
+              onClick={() => setLocation("/toll-payments-enhanced")}
+              style={{ animationDelay: '0.6s' }}
+            >
+              <div className="w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">🎫</span>
+              </div>
+              <span className="text-sm">Pay Tolls</span>
+            </Button>
+            <Button
+              variant="outline"
+              className="h-16 flex-col space-y-2 border-2 border-purple-200/50 text-purple-600 hover:bg-purple-50 rounded-3xl animate-slide-up"
+              onClick={() => setLocation("/qr-scanner?type=delivery")}
+              style={{ animationDelay: '0.7s' }}
+            >
+              <div className="w-6 h-6 bg-purple-500 rounded-full flex items-center justify-center">
+                <span className="text-white text-xs">✓</span>
+              </div>
+              <span className="text-sm">Verify Delivery</span>
+            </Button>
           </div>
         </div>
 

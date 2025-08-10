@@ -87,9 +87,11 @@ export default function FuelOrdering() {
   };
 
   const handleCreateFuelOrder = async (orderData: any) => {
+    setIsLoading(true);
+    
     try {
-      // Create fuel order
-      const response = await fetch('/api/fuel-orders', {
+      // Create fuel order with enhanced data
+      const response = await fetch('/api/fuel/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -98,26 +100,46 @@ export default function FuelOrdering() {
           stationId: selectedStation?.id || 'station_1',
           fuelType: orderData.fuelType,
           quantity: parseFloat(orderData.quantity),
-          deliveryAddress: orderData.deliveryAddress,
+          unitPrice: parseFloat(orderData.unitPrice),
           totalAmount: parseFloat(orderData.totalAmount),
-          userId: user?.id,
-          paymentMethod: orderData.paymentMethod || 'wallet',
-          coordinates: {
-            latitude: orderData.coordinates?.latitude || 6.5244,
-            longitude: orderData.coordinates?.longitude || 3.3792
-          }
+          deliveryAddress: orderData.deliveryAddress,
+          deliveryLatitude: orderData.coordinates?.latitude || 6.5244,
+          deliveryLongitude: orderData.coordinates?.longitude || 3.3792,
+          scheduledDeliveryTime: orderData.scheduledTime,
+          notes: orderData.notes || `Fuel delivery order - ${orderData.fuelType}`,
+          paymentMethod: orderData.paymentMethod || 'wallet'
         }),
         credentials: 'include'
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success) {
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
+        // Show success message
+        setModalData({
+          isOpen: true,
+          type: "success",
+          title: "Order Placed Successfully! 🚚",
+          message: `Your ${orderData.fuelType} order has been placed. A driver will be assigned shortly. Track your order in real-time.`
+        });
+
+        // Navigate to tracking page after delay
+        setTimeout(() => {
           setLocation(`/fuel-delivery-tracking?orderId=${result.order.id}`);
-        }
+        }, 2000);
+      } else {
+        throw new Error(result.error || 'Failed to place order');
       }
     } catch (error) {
       console.error('Error creating fuel order:', error);
+      setModalData({
+        isOpen: true,
+        type: "error",
+        title: "Order Failed",
+        message: error.message || "Unable to place your order. Please try again or contact support."
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 }

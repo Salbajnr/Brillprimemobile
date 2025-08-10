@@ -53,6 +53,7 @@ function App() {
               <Route path="/wallet-fund/callback" component={WalletFundCallback} />
               <Route path="/wallet/transactions" component={WalletTransactions} />
               <Route path="/wallet" component={WalletBalance} />
+              <Route path="/toll-payments-enhanced" component={() => import('./pages/toll-payments-enhanced.tsx')} />
               <Route path="/bills" component={BillsPayment} />
               <Route path="/transfer" component={MoneyTransfer} />
               <Route component={NotFound} />

@@ -91,6 +91,21 @@ export default function WalletTransactionsPage() {
     return amount < 0 ? `-${symbol}${formattedAmount}` : `+${symbol}${formattedAmount}`;
   };
 
+  const getTransactionTypeColor = (type: string) => {
+    switch (type.toLowerCase()) {
+      case 'fuel_order':
+        return 'text-orange-600';
+      case 'toll_payment':
+        return 'text-blue-600';
+      case 'wallet_funding':
+        return 'text-green-600';
+      case 'merchant_payment':
+        return 'text-purple-600';
+      default:
+        return 'text-gray-600';
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
       year: 'numeric',

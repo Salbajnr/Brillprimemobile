@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import { z } from "zod";
 import { db } from "../db";
@@ -25,23 +24,33 @@ const verifyQRSchema = z.object({
   )
 });
 
-const tollGatesData = {
-  "lagos-ibadan-1": {
-    name: "Lagos-Ibadan Expressway Toll",
-    location: "Berger, Lagos",
-    operator: "Lagos State Government"
-  },
-  "lekki-toll": {
-    name: "Lekki Toll Gate",
-    location: "Lekki Peninsula, Lagos",
-    operator: "Lekki Concession Company"
-  },
-  "abuja-kaduna-1": {
-    name: "Abuja-Kaduna Expressway Toll",
-    location: "Zuba, Abuja",
-    operator: "Federal Government"
+// Get toll gates from database
+async function getTollGateById(id: string) {
+  try {
+    // Query from database - you should create a toll_gates table
+    const tollGates = await db.execute(`
+      SELECT * FROM toll_gates WHERE id = ?
+    `, [id]);
+    
+    return tollGates[0] || null;
+  } catch (error) {
+    console.error('Error fetching toll gate:', error);
+    return null;
   }
-};
+}
+
+async function getAllTollGates() {
+  try {
+    const tollGates = await db.execute(`
+      SELECT * FROM toll_gates WHERE is_active = true
+    `);
+    
+    return tollGates;
+  } catch (error) {
+    console.error('Error fetching toll gates:', error);
+    return [];
+  }
+}
 
 // Process toll payment
 router.post("/payment", sanitizeInput(), validateSchema(tollPaymentSchema), async (req: any, res: any) => {
@@ -53,8 +62,8 @@ router.post("/payment", sanitizeInput(), validateSchema(tollPaymentSchema), asyn
 
     const validatedData = req.body;
 
-    // Check if toll gate exists
-    const tollGateInfo = tollGatesData[validatedData.tollGateId as keyof typeof tollGatesData];
+    // Check if toll gate exists in database
+    const tollGateInfo = await getTollGateById(validatedData.tollGateId);
     if (!tollGateInfo) {
       return res.status(400).json({ success: false, error: 'Invalid toll gate' });
     }
@@ -201,28 +210,40 @@ router.get("/gates", async (req: any, res: any) => {
   try {
     const { latitude, longitude, radius = 50 } = req.query;
 
-    // Return all toll gates with distance calculation if location provided
-    const gates = Object.entries(tollGatesData).map(([id, info]) => ({
-      id,
-      ...info,
-      pricePerVehicle: {
-        motorcycle: id === 'lekki-toll' ? 120 : id === 'abuja-kaduna-1' ? 150 : 200,
-        car: id === 'lekki-toll' ? 400 : id === 'abuja-kaduna-1' ? 500 : 600,
-        suv: id === 'lekki-toll' ? 800 : id === 'abuja-kaduna-1' ? 900 : 1000,
-        truck: id === 'lekki-toll' ? 1200 : id === 'abuja-kaduna-1' ? 1400 : 1500
-      },
-      operatingHours: id === 'abuja-kaduna-1' ? '6:00 AM - 10:00 PM' : '24/7',
-      isOpen: true,
-      paymentMethods: ['wallet', 'card', 'qr'],
-      trafficStatus: id === 'abuja-kaduna-1' ? 'heavy' : id === 'lagos-ibadan-1' ? 'moderate' : 'light',
-      queueTime: id === 'abuja-kaduna-1' ? '10-15 minutes' : id === 'lagos-ibadan-1' ? '5-8 minutes' : '2-3 minutes'
-    }));
+    // Get toll gates from database
+    const gates = await getAllTollGates();
+
+    // Calculate distance if location provided
+    const gatesWithDistance = gates.map(gate => {
+      let distance = null;
+      if (latitude && longitude && gate.latitude && gate.longitude) {
+        const R = 6371; // Earth's radius in km
+        const dLat = (gate.latitude - latitude) * Math.PI / 180;
+        const dLon = (gate.longitude - longitude) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(latitude * Math.PI / 180) * Math.cos(gate.latitude * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        distance = R * c;
+      }
+
+      return {
+        ...gate,
+        distance,
+        paymentMethods: ['wallet', 'card', 'qr']
+      };
+    });
+
+    // Filter by radius if location provided
+    const filteredGates = latitude && longitude && radius
+      ? gatesWithDistance.filter(gate => gate.distance === null || gate.distance <= radius)
+      : gatesWithDistance;
 
     res.json({
       success: true,
-      gates,
+      gates: filteredGates,
       metadata: {
-        total: gates.length,
+        total: filteredGates.length,
         searchRadius: radius,
         userLocation: latitude && longitude ? { latitude, longitude } : null
       }
