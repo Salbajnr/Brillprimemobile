@@ -1,8 +1,8 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { driverProfiles, users } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { driverProfiles, users, userLocations } from '../../shared/schema';
+import { eq, and } from 'drizzle-orm';
 
 const router = Router();
 
@@ -18,12 +18,17 @@ router.get('/current', async (req, res) => {
       });
     }
 
-    // Get driver's current location
-    const [driver] = await db.select()
-      .from(driverProfiles)
-      .innerJoin(users, eq(driverProfiles.userId, users.id))
-      .where(eq(driverProfiles.userId, userId))
-      .limit(1);
+    // Get driver's current location with real-time data
+    const [driver] = await db.select({
+      driver: driverProfiles,
+      user: users,
+      location: userLocations
+    })
+    .from(driverProfiles)
+    .innerJoin(users, eq(driverProfiles.userId, users.id))
+    .leftJoin(userLocations, eq(users.id, userLocations.userId))
+    .where(eq(driverProfiles.userId, userId))
+    .limit(1);
 
     if (!driver) {
       return res.status(404).json({
@@ -32,11 +37,18 @@ router.get('/current', async (req, res) => {
       });
     }
 
+    // Use most recent location data
+    const latitude = driver.driver.currentLatitude || driver.location?.latitude || '6.5244';
+    const longitude = driver.driver.currentLongitude || driver.location?.longitude || '3.3792';
+
     const location = {
-      lat: parseFloat(driver.driver_profiles.currentLatitude || '6.5244'),
-      lng: parseFloat(driver.driver_profiles.currentLongitude || '3.3792'),
-      address: "Current Location", // This could be reverse geocoded
-      lastUpdate: driver.driver_profiles.updatedAt.toISOString()
+      lat: parseFloat(latitude),
+      lng: parseFloat(longitude),
+      address: await reverseGeocode(parseFloat(latitude), parseFloat(longitude)),
+      lastUpdate: driver.driver.updatedAt.toISOString(),
+      isAvailable: driver.driver.isAvailable,
+      vehicleType: driver.driver.vehicleType,
+      rating: parseFloat(driver.driver.rating || '5.0')
     };
 
     res.json({
@@ -53,11 +65,11 @@ router.get('/current', async (req, res) => {
   }
 });
 
-// Update driver location
+// Update driver location with enhanced tracking
 router.post('/update', async (req, res) => {
   try {
     const userId = req.session?.userId;
-    const { latitude, longitude } = req.body;
+    const { latitude, longitude, heading, speed, accuracy } = req.body;
     
     if (!userId) {
       return res.status(401).json({
@@ -73,18 +85,77 @@ router.post('/update', async (req, res) => {
       });
     }
 
-    // Update driver location
+    // Validate coordinates
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid coordinates'
+      });
+    }
+
+    const now = new Date();
+
+    // Update driver profile location
     await db.update(driverProfiles)
       .set({
         currentLatitude: latitude.toString(),
         currentLongitude: longitude.toString(),
-        updatedAt: new Date()
+        updatedAt: now
       })
       .where(eq(driverProfiles.userId, userId));
 
+    // Update or create user location record
+    const existingLocation = await db.select()
+      .from(userLocations)
+      .where(eq(userLocations.userId, userId))
+      .limit(1);
+
+    if (existingLocation.length > 0) {
+      await db.update(userLocations)
+        .set({
+          latitude: latitude.toString(),
+          longitude: longitude.toString(),
+          updatedAt: now
+        })
+        .where(eq(userLocations.userId, userId));
+    } else {
+      await db.insert(userLocations).values({
+        userId,
+        latitude: latitude.toString(),
+        longitude: longitude.toString(),
+        address: await reverseGeocode(latitude, longitude),
+        isDefault: true
+      });
+    }
+
+    // Broadcast real-time location update
+    if (global.io) {
+      const locationUpdate = {
+        driverId: userId,
+        latitude,
+        longitude,
+        heading,
+        speed,
+        accuracy,
+        timestamp: now.getTime()
+      };
+
+      // Emit to various channels
+      global.io.to(`driver_${userId}`).emit('location_update_confirmed', locationUpdate);
+      global.io.to('admin_monitoring').emit('driver_location_update', locationUpdate);
+      global.io.to('live_map').emit('driver_position_update', locationUpdate);
+    }
+
     res.json({
       success: true,
-      message: 'Location updated successfully'
+      message: 'Location updated successfully',
+      location: {
+        latitude,
+        longitude,
+        heading,
+        speed,
+        timestamp: now.toISOString()
+      }
     });
 
   } catch (error) {
@@ -95,5 +166,146 @@ router.post('/update', async (req, res) => {
     });
   }
 });
+
+// Get driver availability status
+router.get('/status', async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const [driver] = await db.select({
+      isAvailable: driverProfiles.isAvailable,
+      rating: driverProfiles.rating,
+      totalTrips: driverProfiles.totalTrips,
+      earnings: driverProfiles.earnings,
+      vehicleType: driverProfiles.vehicleType,
+      lastUpdate: driverProfiles.updatedAt
+    })
+    .from(driverProfiles)
+    .where(eq(driverProfiles.userId, userId))
+    .limit(1);
+
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: 'Driver profile not found'
+      });
+    }
+
+    // Calculate if driver is considered online (updated within last 5 minutes)
+    const isOnline = (Date.now() - driver.lastUpdate.getTime()) < 5 * 60 * 1000;
+
+    res.json({
+      success: true,
+      status: {
+        isAvailable: driver.isAvailable,
+        isOnline,
+        rating: parseFloat(driver.rating || '5.0'),
+        totalTrips: driver.totalTrips,
+        earnings: parseFloat(driver.earnings || '0'),
+        vehicleType: driver.vehicleType,
+        lastUpdate: driver.lastUpdate.toISOString()
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching driver status:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch status'
+    });
+  }
+});
+
+// Toggle driver availability
+router.post('/toggle-availability', async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Authentication required'
+      });
+    }
+
+    const [currentStatus] = await db.select({ isAvailable: driverProfiles.isAvailable })
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, userId))
+      .limit(1);
+
+    if (!currentStatus) {
+      return res.status(404).json({
+        success: false,
+        message: 'Driver profile not found'
+      });
+    }
+
+    const newStatus = !currentStatus.isAvailable;
+
+    await db.update(driverProfiles)
+      .set({
+        isAvailable: newStatus,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, userId));
+
+    // Broadcast availability change
+    if (global.io) {
+      global.io.to('admin_monitoring').emit('driver_availability_change', {
+        driverId: userId,
+        isAvailable: newStatus,
+        timestamp: Date.now()
+      });
+    }
+
+    res.json({
+      success: true,
+      message: `Driver ${newStatus ? 'available' : 'unavailable'}`,
+      isAvailable: newStatus
+    });
+
+  } catch (error) {
+    console.error('Error toggling availability:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to toggle availability'
+    });
+  }
+});
+
+// Simple reverse geocoding function (in production, use Google Maps API)
+async function reverseGeocode(lat: number, lng: number): Promise<string> {
+  try {
+    // This is a simplified version - in production use proper geocoding service
+    const areas = [
+      { name: "Victoria Island", lat: 6.4281, lng: 3.4106, radius: 3 },
+      { name: "Ikeja", lat: 6.5958, lng: 3.3390, radius: 5 },
+      { name: "Lekki", lat: 6.4474, lng: 3.4736, radius: 8 },
+      { name: "Lagos Island", lat: 6.4541, lng: 3.3947, radius: 2 },
+      { name: "Surulere", lat: 6.4969, lng: 3.3614, radius: 4 }
+    ];
+
+    for (const area of areas) {
+      const distance = Math.sqrt(
+        Math.pow(lat - area.lat, 2) + Math.pow(lng - area.lng, 2)
+      ) * 111; // Rough km conversion
+
+      if (distance <= area.radius) {
+        return area.name + ", Lagos";
+      }
+    }
+
+    return "Lagos, Nigeria";
+  } catch (error) {
+    return "Current Location";
+  }
+}
 
 export default router;

@@ -1,5 +1,5 @@
-import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
-import { varchar } from "drizzle-orm/pg-core"; // Import varchar
+import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, uuid, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { z } from 'zod';
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -7,22 +7,102 @@ export const verificationStatusEnum = pgEnum('verification_status', ['PENDING', 
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'DELIVERED', 'CANCELLED']);
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
 
-// Users table
+// Users table (Enhanced)
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
-  email: text("email").unique().notNull(),
-  password: text("password"),
-  fullName: text("full_name").notNull(),
-  phone: text("phone"),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  fullName: varchar("full_name", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 20 }),
+  password: text("password"), // Changed to text as per original, though snippet used varchar
   role: roleEnum("role").default('CONSUMER'),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
   profilePicture: text("profile_picture"),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+
+  // Enhanced security fields
+  emailVerified: boolean("email_verified").default(false),
+  phoneVerified: boolean("phone_verified").default(false),
+  dateOfBirth: timestamp("date_of_birth"),
+  address: text("address"),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 100 }),
+  country: varchar("country", { length: 100 }).default("Nigeria"),
+  referralCode: varchar("referral_code", { length: 20 }).unique(),
+  referredBy: integer("referred_by").references(() => users.id),
+
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaMethod: varchar("mfa_method", { length: 10 }), // SMS, EMAIL, TOTP
+  mfaSecret: text("mfa_secret"),
+  mfaBackupCodes: jsonb("mfa_backup_codes"),
+  biometricHash: text("biometric_hash"),
+  biometricType: varchar("biometric_type", { length: 20 }), // FACE, FINGERPRINT
+
+  lastLoginAt: timestamp("last_login_at"),
+  loginAttempts: integer("login_attempts").default(0),
+  accountLockedUntil: timestamp("account_locked_until"),
+});
+
+// MFA tokens table
+export const mfaTokens = pgTable("mfa_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  token: text("token").notNull(), // Hashed token
+  method: varchar("method", { length: 10 }).notNull(), // SMS, EMAIL, TOTP
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Enhanced verification documents table
+export const verificationDocuments = pgTable("verification_documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  documentType: varchar("document_type", { length: 30 }).notNull(), // LICENSE, NIN, PASSPORT, etc.
+  documentNumber: varchar("document_number", { length: 50 }),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: varchar("mime_type", { length: 100 }),
+  expiryDate: timestamp("expiry_date"),
+  status: verificationStatusEnum("status").default('PENDING'), // PENDING, VERIFIED, REJECTED - using enum from original
+  validationScore: decimal("validation_score", { precision: 3, scale: 2 }),
+  extractedData: jsonb("extracted_data"),
+  rejectionReason: text("rejection_reason"),
+  reviewedBy: integer("reviewed_by").references(() => users.id), // Changed from adminUsers.id in original snippet to users.id to match pattern
+  reviewedAt: timestamp("reviewed_at"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Products table
+// Security logs table
+export const securityLogs = pgTable("security_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: varchar("action", { length: 50 }).notNull(),
+  details: jsonb("details"),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  severity: varchar("severity", { length: 20 }).default("INFO"), // INFO, WARNING, ERROR, CRITICAL
+  timestamp: timestamp("timestamp").defaultNow()
+});
+
+// Trusted devices table
+export const trustedDevices = pgTable("trusted_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  deviceToken: text("device_token").unique().notNull(),
+  deviceName: varchar("device_name", { length: 100 }),
+  deviceType: varchar("device_type", { length: 50 }), // mobile, desktop, tablet
+  browserInfo: text("browser_info"),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Products table (from original, unchanged)
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -44,7 +124,7 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Categories table
+// Categories table (from original, unchanged)
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
@@ -54,7 +134,7 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Orders table
+// Orders table (from original, unchanged)
 export const orders = pgTable("orders", {
   id: serial("id").primaryKey(),
   orderNumber: text("order_number").unique().notNull(),
@@ -78,7 +158,7 @@ export const orders = pgTable("orders", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Transactions table
+// Transactions table (from original, unchanged)
 export const transactions = pgTable("transactions", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").references(() => orders.id),
@@ -93,7 +173,7 @@ export const transactions = pgTable("transactions", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Fuel orders table
+// Fuel orders table (from original, unchanged)
 export const fuelOrders = pgTable("fuel_orders", {
   id: serial("id").primaryKey(),
   customerId: integer("customer_id").references(() => users.id).notNull(),
@@ -117,25 +197,43 @@ export const fuelOrders = pgTable("fuel_orders", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Driver profiles table
+// Driver profiles table (Enhanced - Note: Snippet modified some fields, merging carefully)
 export const driverProfiles = pgTable("driver_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   vehicleType: text("vehicle_type"),
   vehicleModel: text("vehicle_model"),
   plateNumber: text("plate_number"),
-  licenseNumber: text("license_number"),
+  licenseNumber: text("license_number"), // From snippet
   isAvailable: boolean("is_available").default(true),
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   rating: decimal("rating", { precision: 3, scale: 2 }).default('5.0'),
   totalTrips: integer("total_trips").default(0),
   earnings: decimal("earnings", { precision: 10, scale: 2 }).default('0'),
+  // From snippet:
+  licenseExpiry: timestamp("license_expiry"),
+  vehiclePlate: varchar("vehicle_plate", { length: 20 }),
+  vehicleYear: integer("vehicle_year"),
+  vehicleColor: varchar("vehicle_color", { length: 30 }),
+  currentLatitude: varchar("current_latitude", { length: 20 }), // Snippet uses varchar, original uses decimal
+  currentLongitude: varchar("current_longitude", { length: 20 }), // Snippet uses varchar, original uses decimal
+  rating: decimal("rating", { precision: 3, scale: 2 }).default("5.00"), // Snippet has different default precision
+  totalTrips: integer("total_trips").default(0),
+  earnings: decimal("earnings", { precision: 10, scale: 2 }).default("0.00"), // Snippet has different default value
+  kycData: jsonb("kyc_data"),
+  kycStatus: varchar("kyc_status", { length: 20 }).default("PENDING"), // PENDING, PENDING_REVIEW, APPROVED, REJECTED
+  kycSubmittedAt: timestamp("kyc_submitted_at"),
+  kycApprovedAt: timestamp("kyc_approved_at"),
+  kycApprovedBy: integer("kyc_approved_by").references(() => users.id),
+  verificationLevel: varchar("verification_level", { length: 20 }).default("BASIC"), // BASIC, STANDARD, PREMIUM
+  backgroundCheckStatus: varchar("background_check_status", { length: 20 }).default("PENDING"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Merchant profiles table
+// Merchant profiles table (from original, unchanged)
 export const merchantProfiles = pgTable("merchant_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -152,7 +250,7 @@ export const merchantProfiles = pgTable("merchant_profiles", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Notifications table
+// Notifications table (from original, unchanged)
 export const notifications = pgTable("notifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -164,7 +262,7 @@ export const notifications = pgTable("notifications", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Identity verifications table
+// Identity verifications table (from original, unchanged)
 export const identityVerifications = pgTable("identity_verifications", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -174,11 +272,11 @@ export const identityVerifications = pgTable("identity_verifications", {
   verificationStatus: verificationStatusEnum("verification_status").default('PENDING'),
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
-  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedBy: integer("reviewed_by").references(() => users.id), // Changed from original user.id to match snippet's context for reviewedBy
   rejectionReason: text("rejection_reason")
 });
 
-// Driver verifications table
+// Driver verifications table (from original, unchanged)
 export const driverVerifications = pgTable("driver_verifications", {
   id: serial("id").primaryKey(),
   driverId: integer("driver_id").references(() => users.id).notNull(),
@@ -188,11 +286,11 @@ export const driverVerifications = pgTable("driver_verifications", {
   verificationStatus: verificationStatusEnum("verification_status").default('PENDING'),
   submittedAt: timestamp("submitted_at").defaultNow(),
   reviewedAt: timestamp("reviewed_at"),
-  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedBy: integer("reviewed_by").references(() => users.id), // Changed from original user.id to match snippet's context for reviewedBy
   rejectionReason: text("rejection_reason")
 });
 
-// User locations table
+// User locations table (from original, unchanged)
 export const userLocations = pgTable("user_locations", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -204,7 +302,7 @@ export const userLocations = pgTable("user_locations", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Wallets table
+// Wallets table (from original, unchanged)
 export const wallets = pgTable("wallets", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -215,7 +313,7 @@ export const wallets = pgTable("wallets", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Payment methods table
+// Payment methods table (from original, unchanged)
 export const paymentMethods = pgTable("payment_methods", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -230,7 +328,7 @@ export const paymentMethods = pgTable("payment_methods", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Escrow transactions table
+// Escrow transactions table (from original, unchanged)
 export const escrowTransactions = pgTable("escrow_transactions", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").references(() => orders.id),
@@ -252,7 +350,7 @@ export const escrowTransactions = pgTable("escrow_transactions", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Admin users table
+// Admin users table (from original, unchanged)
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   username: text("username").unique().notNull(),
@@ -267,7 +365,7 @@ export const adminUsers = pgTable("admin_users", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Compliance documents table
+// Compliance documents table (from original, unchanged)
 export const complianceDocuments = pgTable("compliance_documents", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -281,9 +379,7 @@ export const complianceDocuments = pgTable("compliance_documents", {
   notes: text("notes")
 });
 
-// Support tickets table removed - using updated definition below
-
-// Content reports table
+// Content reports table (from original, unchanged)
 export const contentReports = pgTable("content_reports", {
   id: serial("id").primaryKey(),
   reportedBy: integer("reported_by").references(() => users.id).notNull(),
@@ -299,7 +395,7 @@ export const contentReports = pgTable("content_reports", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Moderation responses table
+// Moderation responses table (from original, unchanged)
 export const moderationResponses = pgTable("moderation_responses", {
   id: serial("id").primaryKey(),
   reportId: integer("report_id").references(() => contentReports.id).notNull(),
@@ -310,7 +406,7 @@ export const moderationResponses = pgTable("moderation_responses", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Vendor violations table
+// Vendor violations table (from original, unchanged)
 export const vendorViolations = pgTable("vendor_violations", {
   id: serial("id").primaryKey(),
   vendorId: integer("vendor_id").references(() => users.id).notNull(),
@@ -325,7 +421,7 @@ export const vendorViolations = pgTable("vendor_violations", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Admin payment actions table
+// Admin payment actions table (from original, unchanged)
 export const adminPaymentActions = pgTable("admin_payment_actions", {
   id: serial("id").primaryKey(),
   transactionId: integer("transaction_id").references(() => transactions.id).notNull(),
@@ -339,7 +435,7 @@ export const adminPaymentActions = pgTable("admin_payment_actions", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Fraud alerts table
+// Fraud alerts table (from original, unchanged)
 export const fraudAlerts = pgTable("fraud_alerts", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -354,7 +450,7 @@ export const fraudAlerts = pgTable("fraud_alerts", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Suspicious activities table
+// Suspicious activities table (from original, unchanged)
 export const suspiciousActivities = pgTable("suspicious_activities", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id),
@@ -370,7 +466,7 @@ export const suspiciousActivities = pgTable("suspicious_activities", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Account flags table
+// Account flags table (from original, unchanged)
 export const accountFlags = pgTable("account_flags", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
@@ -386,7 +482,7 @@ export const accountFlags = pgTable("account_flags", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Delivery requests table
+// Delivery requests table (from original, unchanged)
 export const deliveryRequests = pgTable("delivery_requests", {
   id: serial("id").primaryKey(),
   orderId: integer("order_id").references(() => orders.id).notNull(),
@@ -418,7 +514,7 @@ export const deliveryRequests = pgTable("delivery_requests", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Vendor posts table
+// Vendor posts table (from original, unchanged)
 export const vendorPosts = pgTable("vendor_posts", {
   id: serial("id").primaryKey(),
   vendorId: integer("vendor_id").references(() => users.id).notNull(),
@@ -435,7 +531,7 @@ export const vendorPosts = pgTable("vendor_posts", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Chat conversations table
+// Chat conversations table (from original, unchanged)
 export const conversations = pgTable("conversations", {
   id: serial("id").primaryKey(),
   participantIds: jsonb("participant_ids").notNull(), // Array of user IDs
@@ -449,7 +545,7 @@ export const conversations = pgTable("conversations", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Chat messages table
+// Chat messages table (from original, unchanged)
 export const chatMessages = pgTable("chat_messages", {
   id: serial("id").primaryKey(),
   conversationId: integer("conversation_id").references(() => conversations.id).notNull(),
@@ -467,21 +563,7 @@ export const chatMessages = pgTable("chat_messages", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Export types for TypeScript
-export type SelectUser = typeof users.$inferSelect;
-export type InsertUser = typeof users.$inferInsert;
-
-// Add validation schemas for forms (basic exports for compatibility)
-import { z } from 'zod';
-
-export const signInSchema = z.object({
-  email: z.string().email('Please enter a valid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-export type SignInData = z.infer<typeof signInSchema>;
-
-// Toll Gates table
+// Toll Gates table (from original, unchanged)
 export const tollGates = pgTable('toll_gates', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 255 }).notNull(),
@@ -496,7 +578,7 @@ export const tollGates = pgTable('toll_gates', {
   updatedAt: timestamp('updated_at').defaultNow()
 });
 
-// Support tickets table
+// Support tickets table (from original, unchanged)
 export const supportTickets = pgTable('support_tickets', {
   id: serial('id').primaryKey(),
   ticketNumber: varchar('ticket_number', { length: 20 }).unique().notNull(),
@@ -516,7 +598,7 @@ export const supportTickets = pgTable('support_tickets', {
   resolvedAt: timestamp('resolved_at')
 });
 
-// Support responses table
+// Support responses table (from original, unchanged)
 export const supportResponses = pgTable('support_responses', {
   id: serial('id').primaryKey(),
   ticketId: integer('ticket_id').references(() => supportTickets.id).notNull(),
@@ -526,3 +608,16 @@ export const supportResponses = pgTable('support_responses', {
   attachments: text('attachments'), // JSON array of file URLs
   createdAt: timestamp('created_at').defaultNow()
 });
+
+
+// Export types for TypeScript
+export type SelectUser = typeof users.$inferSelect;
+export type InsertUser = typeof users.$inferInsert;
+
+// Add validation schemas for forms (basic exports for compatibility)
+export const signInSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+});
+
+export type SignInData = z.infer<typeof signInSchema>;
