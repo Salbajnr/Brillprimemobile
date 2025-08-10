@@ -33,17 +33,20 @@ export default function RoleSelectionPage() {
 
         <div className="space-y-4 mb-8">
           <RoleCard
-            role="CONSUMER"
+            title="Consumer"
+            description="Order products and services"
             isSelected={selectedRole === "CONSUMER"}
             onSelect={() => setSelectedRole("CONSUMER")}
           />
           <RoleCard
-            role="MERCHANT"
+            title="Merchant"
+            description="Sell products and manage your business"
             isSelected={selectedRole === "MERCHANT"}
             onSelect={() => setSelectedRole("MERCHANT")}
           />
           <RoleCard
-            role="DRIVER"
+            title="Driver"
+            description="Deliver orders and earn money"
             isSelected={selectedRole === "DRIVER"}
             onSelect={() => setSelectedRole("DRIVER")}
           />

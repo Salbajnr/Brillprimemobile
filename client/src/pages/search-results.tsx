@@ -32,7 +32,7 @@ export default function SearchResults() {
   }, []);
 
   // Fetch search results from API
-  const { data: searchResults = [], isLoading } = useQuery({
+  const { data: searchResults = [] } = useQuery({
     queryKey: ['/api/search', searchQuery],
     queryFn: async () => {
       if (!searchQuery.trim()) return [];

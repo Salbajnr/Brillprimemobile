@@ -20,7 +20,7 @@ const signInSchema = z.object({
 type SignInFormData = z.infer<typeof signInSchema>;
 
 export default function SignInPage() {
-  const [showPassword, setShowPassword] = useState(false);
+  const [showPassword] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { setUser } = useAuth();
@@ -56,7 +56,7 @@ export default function SignInPage() {
     onError: (error: Error) => {
       console.error("Sign in error:", error);
       toast({
-        variant: "destructive",
+
         title: "Sign In Failed",
         description: error.message,
       });

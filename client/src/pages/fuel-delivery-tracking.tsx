@@ -415,36 +415,6 @@ export default function FuelDeliveryTracking() {
     </div>
   );
 }
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { ArrowLeft, MapPin, Clock, Phone, Star, Truck, CheckCircle } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { LiveMap } from "@/components/ui/live-map";
-import { useWebSocket } from "@/hooks/use-websocket";
-
-interface DeliveryStatus {
-  id: string;
-  status: 'pending' | 'confirmed' | 'preparing' | 'in_transit' | 'delivered';
-  estimatedTime: string;
-  currentLocation?: {
-    latitude: number;
-    longitude: number;
-  };
-  driverInfo?: {
-    name: string;
-    phone: string;
-    rating: number;
-    vehicleNumber: string;
-  };
-}
-
-export default function FuelDeliveryTracking() {
-  const [, setLocation] = useLocation();
-  const [orderId, setOrderId] = useState<string>("");
-  const [deliveryStatus, setDeliveryStatus] = useState<DeliveryStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Get order ID from URL params
   useEffect(() => {

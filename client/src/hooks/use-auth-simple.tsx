@@ -1,6 +1,15 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { apiClient, User } from '../lib/api';
+import apiClient from '../lib/api';
+
+interface User {
+  id: number;
+  email: string;
+  fullName: string;
+  role: string;
+  isVerified?: boolean;
+  profilePicture?: string;
+}
 
 interface AuthContextType {
   user: User | null;
@@ -34,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const checkAuth = async () => {
       try {
         setLoading(true);
-        const response = await apiClient.getCurrentUser();
+        const response = await apiClient.auth.getCurrentUser();
         if (response.success && response.user) {
           setUser(response.user);
         }
@@ -53,7 +62,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.signin({ email, password });
+      const response = await apiClient.auth.login({ email, password });
       
       if (response.success && response.user) {
         setUser(response.user);
@@ -76,7 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(true);
       setError(null);
       
-      const response = await apiClient.signup(userData);
+      const response = await apiClient.auth.register(userData);
       
       if (response.success) {
         if (response.user) {
@@ -99,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async (): Promise<void> => {
     try {
       setLoading(true);
-      await apiClient.logout();
+      await apiClient.auth.logout();
       setUser(null);
       setError(null);
     } catch (err) {
@@ -111,7 +120,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const refreshUser = async (): Promise<void> => {
     try {
-      const response = await apiClient.getCurrentUser();
+      const response = await apiClient.auth.getCurrentUser();
       if (response.success && response.user) {
         setUser(response.user);
       }
