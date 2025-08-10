@@ -104,12 +104,12 @@ if (process.env.NODE_ENV === "production") {
 
           return (
             <div className="flex flex-col items-center justify-center min-h-screen max-w-md mx-auto relative overflow-hidden bg-white">
-              <div className="w-48 h-48 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
-                <img src="/src/assets/images/logo.png" alt="Brillprime Logo" className="w-32 h-32 object-contain" onError={(e) => {
+              <div className="w-48 h-48 flex items-center justify-center animate-pulse">
+                <img src="/src/assets/images/logo.png" alt="Brillprime Logo" className="w-40 h-40 object-contain" onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextElementSibling.style.display = 'block';
                 }} />
-                <div className="text-white text-6xl font-bold" style={{display: 'none'}}>B</div>
+                <div className="w-40 h-40 bg-blue-600 rounded-full flex items-center justify-center text-white text-6xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
               </div>
               <div className="mt-6 text-center">
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">Brillprime</h1>
@@ -243,17 +243,17 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="flex flex-col min-h-screen max-w-md mx-auto bg-white p-6">
               <div className="text-center mb-8">
-                <div className="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 shadow-lg">
+                <div className="w-24 h-24 flex items-center justify-center mx-auto mb-6">
                   <img 
                     src="/src/assets/images/sign_up_option_logo.png" 
                     alt="Logo" 
-                    className="w-12 h-12 object-contain"
+                    className="w-20 h-20 object-contain"
                     onError={(e) => {
                       e.target.style.display = 'none';
                       e.target.nextElementSibling.style.display = 'block';
                     }}
                   />
-                  <div className="text-white text-2xl font-bold" style={{display: 'none'}}>B</div>
+                  <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Role</h1>
                 <p className="text-gray-600">Select how you'll be using Brillprime</p>
@@ -329,8 +329,17 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-white text-2xl font-bold">B</span>
+                <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <img 
+                    src="/src/assets/images/logo.png" 
+                    alt="Brillprime Logo" 
+                    className="w-16 h-16 object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling.style.display = 'block';
+                    }}
+                  />
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
                 <p className="text-gray-600">Join Brillprime and start your financial journey</p>
@@ -447,8 +456,17 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col justify-center">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-white text-2xl font-bold">B</span>
+                <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <img 
+                    src="/src/assets/images/logo.png" 
+                    alt="Brillprime Logo" 
+                    className="w-16 h-16 object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextElementSibling.style.display = 'block';
+                    }}
+                  />
+                  <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
                 <p className="text-gray-600">Sign in to your Brillprime account</p>
@@ -553,8 +571,8 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="min-h-screen max-w-md mx-auto bg-white p-6 flex flex-col justify-center">
               <div className="text-center mb-8">
-                <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-white text-2xl">📱</span>
+                <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
+                  <span className="text-4xl">📱</span>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Verify Your Phone</h1>
                 <p className="text-gray-600">
