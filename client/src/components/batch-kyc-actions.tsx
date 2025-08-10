@@ -5,12 +5,11 @@ import { Textarea } from './ui/textarea';
 import { Dialog } from './ui/dialog';
 
 interface BatchKycActionsProps {
-  selectedDocuments: string[];
+  selectedCount: number;
   onBatchAction: (action: 'approve' | 'reject', reason?: string) => Promise<void>;
-  onClearSelection: () => void;
 }
 
-export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelection }: BatchKycActionsProps) {
+export function BatchKycActions({ selectedCount, onBatchAction }: BatchKycActionsProps) {
   const [showRejectDialog, setShowRejectDialog] = useState(false);
   const [reason, setReason] = useState('');
   const [processing, setProcessing] = useState(false);
@@ -19,7 +18,6 @@ export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelec
     setProcessing(true);
     try {
       await onBatchAction('approve');
-      onClearSelection();
     } catch (error) {
       console.error('Batch approve failed:', error);
     } finally {
@@ -35,7 +33,6 @@ export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelec
       await onBatchAction('reject', reason);
       setShowRejectDialog(false);
       setReason('');
-      onClearSelection();
     } catch (error) {
       console.error('Batch reject failed:', error);
     } finally {
@@ -43,7 +40,7 @@ export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelec
     }
   };
 
-  if (selectedDocuments.length === 0) {
+  if (selectedCount === 0) {
     return null;
   }
 
@@ -51,7 +48,7 @@ export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelec
     <div className="bg-blue-50 p-4 rounded-lg mb-4">
       <div className="flex items-center justify-between">
         <span className="text-sm font-medium">
-          {selectedDocuments.length} document(s) selected
+          {selectedCount} document(s) selected
         </span>
         <div className="flex gap-2">
           <Button
@@ -70,13 +67,7 @@ export function BatchKycActions({ selectedDocuments, onBatchAction, onClearSelec
           >
             Reject All
           </Button>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={onClearSelection}
-          >
-            Clear Selection
-          </Button>
+          
         </div>
       </div>
 

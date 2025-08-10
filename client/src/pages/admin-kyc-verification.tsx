@@ -51,75 +51,6 @@ export function AdminKYCVerification() {
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const response = await fetch('/api/admin/kyc/documents', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDocuments(data.documents || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch KYC documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDocumentReview = async (documentId: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
-    try {
-      const response = await fetch(`/api/admin/kyc/documents/${documentId}/review`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status, reason }),
-      });
-
-      if (response.ok) {
-        await fetchDocuments();
-        setSelectedDocument(null);
-      }
-    } catch (error) {
-      console.error('Failed to review document:', error);
-    }
-  };
-
-  const handleBatchAction = async (action: 'approve' | 'reject', reason?: string) => {
-    try {
-      const response = await fetch('/api/admin/kyc/documents/batch-review', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          documentIds: selectedDocuments,
-          status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-          reason,
-        }),
-      });
-
-      if (response.ok) {
-        await fetchDocuments();
-        setSelectedDocuments([]);
-      }
-    } catch (error) {
-      console.error('Failed to perform batch action:', error);
-    }
-  };
-
-  const [merchantKycSubmissions, setMerchantKycSubmissions] = useState<any[]>([]);
-  const [merchantKycStats, setMerchantKycStats] = useState<any>({});
-  
-  useEffect(() => {
     fetchMerchantKycSubmissions();
   }, []);
 
@@ -133,8 +64,13 @@ export function AdminKYCVerification() {
       });
       if (response.ok) {
         const data = await response.json();
-        setMerchantKycSubmissions(data.data.submissions || []);
-        setMerchantKycStats(data.data.stats || {});
+        setMerchantKycSubmissions(data.data?.submissions || []);
+        setMerchantKycStats(data.data?.stats || {
+          total: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0
+        });
       }
     } catch (error) {
       console.error('Failed to fetch merchant KYC submissions:', error);
@@ -160,6 +96,25 @@ export function AdminKYCVerification() {
     }
   };
 
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/admin/kyc/documents', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data.documents || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch KYC documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     if (filterStatus === 'all') return true;
     return doc.status === filterStatus;
@@ -167,24 +122,30 @@ export function AdminKYCVerification() {
 
   const pendingCount = documents.filter(doc => doc.status === 'PENDING').length;
 
-  const handleDocumentReview = async (id: string, action: 'approve' | 'reject', reason?: string) => {
+  const handleDocumentReview = async (documentId: string, action: 'approve' | 'reject', reason?: string) => {
     try {
-      const response = await fetch(`/api/admin/kyc/documents/${id}/review`, {
+      const response = await fetch(`/api/admin/kyc/documents/${documentId}/review`, {
         method: 'POST',
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ action, reason }),
+        body: JSON.stringify({ 
+          status: action === 'approve' ? 'APPROVED' : 'REJECTED', 
+          reason 
+        }),
       });
 
       if (response.ok) {
         await fetchDocuments();
+        setSelectedDocument(null);
       }
     } catch (error) {
       console.error('Failed to review document:', error);
     }
   };
+
+  
 
   const handleBatchAction = async (action: 'approve' | 'reject', reason?: string) => {
     try {
@@ -421,69 +382,7 @@ export function AdminKYCVerification() {
         </table>
       </div>
 
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">KYC Document Verification</h1>
-          <div className="flex gap-2">
-            <select
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-3 py-2 border rounded"
-            >
-              <option value="all">All Documents</option>
-              <option value="PENDING">Pending</option>
-              <option value="APPROVED">Approved</option>
-              <option value="REJECTED">Rejected</option>
-            </select>
-          </div>
-        </div>
-
-        <BatchKycActions
-          selectedDocuments={selectedDocuments}
-          onBatchAction={handleBatchAction}
-          onClearSelection={() => setSelectedDocuments([])}
-        />
-
-        <div className="grid gap-4">
-          {loading ? (
-            <div className="text-center py-8">Loading documents...</div>
-          ) : filteredDocuments.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">No documents found</div>
-          ) : (
-            filteredDocuments.map((document) => (
-              <div key={document.id} className="bg-white p-4 rounded-lg border">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <h3 className="font-semibold">{document.userName}</h3>
-                    <p className="text-sm text-gray-600">{document.userEmail}</p>
-                    <p className="text-sm">Type: {document.documentType}</p>
-                    <p className="text-sm">Status: {document.status}</p>
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="checkbox"
-                      checked={selectedDocuments.includes(document.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedDocuments([...selectedDocuments, document.id]);
-                        } else {
-                          setSelectedDocuments(selectedDocuments.filter(id => id !== document.id));
-                        }
-                      }}
-                    />
-                    <button
-                      onClick={() => setSelectedDocument(document)}
-                      className="px-3 py-1 bg-blue-600 text-white rounded text-sm"
-                    >
-                      Review
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
+      
 
       {selectedDocument && (
         <KycReviewModal
