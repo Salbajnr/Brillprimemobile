@@ -1,271 +1,408 @@
 
-import { useState, useEffect } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { MapPin, Navigation, Clock, Truck, Signal, Battery } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import React, { useState, useEffect, useRef } from 'react';
+import { MapPin, Navigation, Clock, AlertCircle, Truck } from 'lucide-react';
+import { useAuth } from '../hooks/use-auth';
+import api from '../lib/api';
 
 interface LocationData {
-  lat: number
-  lng: number
-  address: string
-  lastUpdate: string
-  heading?: number
-  speed?: number
-  eta?: string
-  distance?: string
+  latitude: number;
+  longitude: number;
+  heading?: number;
+  speed?: number;
+  accuracy?: number;
+  timestamp: string;
 }
 
-interface DriverStatus {
-  isOnline: boolean
-  batteryLevel: number
-  signalStrength: number
-  status: 'AVAILABLE' | 'BUSY' | 'OFFLINE'
+interface OrderTracking {
+  orderId: string;
+  status: string;
+  currentLocation?: LocationData;
+  estimatedArrival?: string;
+  trackingHistory: Array<{
+    status: string;
+    location?: LocationData;
+    timestamp: string;
+    notes?: string;
+  }>;
+  deliveryAddress: any;
+  pickupAddress: any;
 }
 
-export default function RealTimeLocationTracking() {
-  const [driverLocation, setDriverLocation] = useState<LocationData | null>(null)
-  const [driverStatus, setDriverStatus] = useState<DriverStatus | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null)
+interface Props {
+  orderId?: string;
+  driverId?: string;
+  onLocationUpdate?: (location: LocationData) => void;
+  showControls?: boolean;
+  autoStart?: boolean;
+}
 
+export default function RealTimeLocationTracking({
+  orderId,
+  driverId,
+  onLocationUpdate,
+  showControls = true,
+  autoStart = false
+}: Props) {
+  const { user } = useAuth();
+  const [isTracking, setIsTracking] = useState(false);
+  const [currentLocation, setCurrentLocation] = useState<LocationData | null>(null);
+  const [orderTracking, setOrderTracking] = useState<OrderTracking | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+  const lastUpdateRef = useRef<number>(0);
+
+  // WebSocket connection for real-time updates
   useEffect(() => {
-    let socket: WebSocket | null = null;
-    let locationInterval: NodeJS.Timeout | null = null;
+    if (orderId) {
+      // Subscribe to order tracking updates
+      api.tracking.subscribeToOrderTracking(orderId, (data: any) => {
+        setOrderTracking(prev => prev ? {
+          ...prev,
+          status: data.status,
+          currentLocation: data.location,
+          estimatedArrival: data.estimatedArrival
+        } : null);
+      });
 
-    const connectWebSocket = () => {
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}`;
-      
-      socket = new WebSocket(wsUrl);
-      
-      socket.onopen = () => {
-        console.log('Connected to real-time tracking');
-        socket?.send(JSON.stringify({ type: 'join_driver_tracking' }));
-      };
+      // Join order tracking room
+      fetchOrderTracking();
+    }
 
-      socket.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
-          
-          if (data.type === 'driver_location_update') {
-            setDriverLocation({
-              lat: data.latitude,
-              lng: data.longitude,
-              address: data.address || 'Current Location',
-              lastUpdate: new Date().toISOString(),
-              heading: data.heading,
-              speed: data.speed,
-              eta: data.eta,
-              distance: data.distance
-            });
-            setLastUpdate(new Date());
-          }
-          
-          if (data.type === 'driver_status_update') {
-            setDriverStatus(data.status);
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+    if (driverId) {
+      // Subscribe to driver location updates
+      api.tracking.subscribeToDriverTracking(driverId, (data: any) => {
+        setCurrentLocation(data.location);
+        if (onLocationUpdate) {
+          onLocationUpdate(data.location);
         }
-      };
-
-      socket.onclose = () => {
-        console.log('WebSocket connection closed, attempting to reconnect...');
-        setTimeout(connectWebSocket, 3000);
-      };
-    };
-
-    const fetchDriverLocation = async () => {
-      try {
-        const response = await fetch('/api/tracking/driver-location/current');
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.location) {
-            setDriverLocation(data.location);
-            setLastUpdate(new Date());
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching location:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    // Initial fetch
-    fetchDriverLocation();
-    
-    // Connect WebSocket for real-time updates
-    connectWebSocket();
-    
-    // Fallback polling every 30 seconds
-    locationInterval = setInterval(fetchDriverLocation, 30000);
+      });
+    }
 
     return () => {
-      if (socket) {
-        socket.close();
-      }
-      if (locationInterval) {
-        clearInterval(locationInterval);
-      }
+      stopTracking();
     };
-  }, []);
+  }, [orderId, driverId]);
 
-  const getStatusColor = (status?: string) => {
-    switch (status) {
-      case 'AVAILABLE':
-        return 'bg-green-100 text-green-800';
-      case 'BUSY':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'OFFLINE':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
+  // Auto-start tracking if enabled
+  useEffect(() => {
+    if (autoStart && user?.role === 'DRIVER') {
+      startTracking();
+    }
+  }, [autoStart, user]);
+
+  const fetchOrderTracking = async () => {
+    if (!orderId) return;
+
+    setIsLoading(true);
+    try {
+      const response = await api.tracking.getOrderTracking(orderId);
+      if (response.success) {
+        setOrderTracking(response.tracking);
+        if (response.tracking.currentLocation) {
+          setCurrentLocation(response.tracking.currentLocation);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch order tracking:', error);
+      setError('Failed to load tracking information');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const getBatteryColor = (level: number) => {
-    if (level > 60) return 'text-green-600';
-    if (level > 30) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+  const startTracking = () => {
+    if (!navigator.geolocation) {
+      setError('Geolocation is not supported by this browser');
+      return;
+    }
 
-  const getSignalColor = (strength: number) => {
-    if (strength > 70) return 'text-green-600';
-    if (strength > 40) return 'text-yellow-600';
-    return 'text-red-600';
-  };
+    setError(null);
+    setIsTracking(true);
 
-  if (loading) {
-    return (
-      <Card className="w-full">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
-            <span className="ml-2 text-gray-600">Loading real-time location...</span>
-          </div>
-        </CardContent>
-      </Card>
+    const options = {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 5000
+    };
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      handleLocationUpdate,
+      handleLocationError,
+      options
     );
-  }
+  };
 
-  if (!driverLocation) {
+  const stopTracking = () => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+    }
+    setIsTracking(false);
+  };
+
+  const handleLocationUpdate = async (position: GeolocationPosition) => {
+    const now = Date.now();
+    
+    // Throttle updates to every 5 seconds
+    if (now - lastUpdateRef.current < 5000) {
+      return;
+    }
+    
+    lastUpdateRef.current = now;
+
+    const locationData: LocationData = {
+      latitude: position.coords.latitude,
+      longitude: position.coords.longitude,
+      heading: position.coords.heading || undefined,
+      speed: position.coords.speed || undefined,
+      accuracy: position.coords.accuracy,
+      timestamp: new Date().toISOString()
+    };
+
+    setCurrentLocation(locationData);
+
+    // Update server if user is a driver
+    if (user?.role === 'DRIVER') {
+      try {
+        await api.driver.updateLocation(locationData);
+      } catch (error) {
+        console.error('Failed to update location on server:', error);
+      }
+    }
+
+    // Call callback if provided
+    if (onLocationUpdate) {
+      onLocationUpdate(locationData);
+    }
+  };
+
+  const handleLocationError = (error: GeolocationPositionError) => {
+    let errorMessage = 'Unknown location error';
+    
+    switch (error.code) {
+      case error.PERMISSION_DENIED:
+        errorMessage = 'Location access denied. Please enable location permissions.';
+        break;
+      case error.POSITION_UNAVAILABLE:
+        errorMessage = 'Location information unavailable.';
+        break;
+      case error.TIMEOUT:
+        errorMessage = 'Location request timed out.';
+        break;
+    }
+    
+    setError(errorMessage);
+    setIsTracking(false);
+  };
+
+  const updateTrackingStatus = async (status: string, notes?: string) => {
+    if (!orderId) return;
+
+    try {
+      const updateData: any = {
+        status,
+        notes
+      };
+
+      if (currentLocation) {
+        updateData.location = {
+          latitude: currentLocation.latitude,
+          longitude: currentLocation.longitude
+        };
+      }
+
+      const response = await api.tracking.updateDeliveryStatus(orderId, status, updateData.location);
+      
+      if (response.success) {
+        // Refresh tracking data
+        fetchOrderTracking();
+      }
+    } catch (error) {
+      console.error('Failed to update tracking status:', error);
+      setError('Failed to update tracking status');
+    }
+  };
+
+  const formatDistance = (meters: number): string => {
+    if (meters < 1000) {
+      return `${Math.round(meters)}m`;
+    }
+    return `${(meters / 1000).toFixed(1)}km`;
+  };
+
+  const formatSpeed = (speed: number): string => {
+    return `${Math.round(speed * 3.6)} km/h`; // Convert m/s to km/h
+  };
+
+  const formatTime = (dateString: string): string => {
+    return new Date(dateString).toLocaleTimeString();
+  };
+
+  if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MapPin className="h-5 w-5" />
-            Driver Location
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-4">
-            <MapPin className="h-12 w-12 mx-auto mb-2 text-gray-400" />
-            <p className="text-gray-600">Location not available</p>
-            <p className="text-sm text-gray-400">Waiting for GPS signal...</p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <span className="ml-2">Loading tracking information...</span>
+      </div>
     );
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5" />
-            Live Driver Tracking
-          </div>
-          {driverStatus && (
-            <Badge className={getStatusColor(driverStatus.status)}>
-              {driverStatus.status}
-            </Badge>
-          )}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Location Info */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Navigation className="h-4 w-4 text-blue-600" />
-            <span className="text-sm font-medium">{driverLocation.address}</span>
-          </div>
-          <div className="text-xs text-gray-500">
-            Coordinates: {driverLocation.lat.toFixed(6)}, {driverLocation.lng.toFixed(6)}
-          </div>
-        </div>
-
-        {/* ETA and Distance */}
-        {(driverLocation.eta || driverLocation.distance) && (
-          <div className="flex gap-4 p-3 bg-blue-50 rounded-lg">
-            {driverLocation.eta && (
-              <div className="flex items-center gap-1">
-                <Clock className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium">ETA: {driverLocation.eta}</span>
-              </div>
-            )}
-            {driverLocation.distance && (
-              <div className="flex items-center gap-1">
-                <MapPin className="h-4 w-4 text-blue-600" />
-                <span className="text-sm font-medium">{driverLocation.distance}</span>
-              </div>
+    <div className="bg-white rounded-lg shadow-lg p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h3 className="text-lg font-semibold flex items-center">
+          <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+          Real-Time Tracking
+        </h3>
+        
+        {showControls && user?.role === 'DRIVER' && (
+          <div className="flex space-x-2">
+            {!isTracking ? (
+              <button
+                onClick={startTracking}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center"
+              >
+                <Navigation className="h-4 w-4 mr-2" />
+                Start Tracking
+              </button>
+            ) : (
+              <button
+                onClick={stopTracking}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
+              >
+                Stop Tracking
+              </button>
             )}
           </div>
         )}
+      </div>
 
-        {/* Driver Status */}
-        {driverStatus && (
-          <div className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1">
-                <Battery className={`h-4 w-4 ${getBatteryColor(driverStatus.batteryLevel)}`} />
-                <span className="text-sm">{driverStatus.batteryLevel}%</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Signal className={`h-4 w-4 ${getSignalColor(driverStatus.signalStrength)}`} />
-                <span className="text-sm">{driverStatus.signalStrength}%</span>
+      {error && (
+        <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
+          <AlertCircle className="h-4 w-4 mr-2" />
+          {error}
+        </div>
+      )}
+
+      {/* Current Location Display */}
+      {currentLocation && (
+        <div className="mb-6 p-4 bg-blue-50 rounded-lg">
+          <h4 className="font-medium text-blue-900 mb-2">Current Location</h4>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-gray-600">Coordinates:</span>
+              <div className="font-mono">
+                {currentLocation.latitude.toFixed(6)}, {currentLocation.longitude.toFixed(6)}
               </div>
             </div>
-          </div>
-        )}
-
-        {/* Movement Info */}
-        {(driverLocation.speed !== undefined || driverLocation.heading !== undefined) && (
-          <div className="flex gap-4 text-sm text-gray-600">
-            {driverLocation.speed !== undefined && (
-              <span>Speed: {driverLocation.speed.toFixed(1)} km/h</span>
+            <div>
+              <span className="text-gray-600">Last Update:</span>
+              <div>{formatTime(currentLocation.timestamp)}</div>
+            </div>
+            {currentLocation.speed !== undefined && (
+              <div>
+                <span className="text-gray-600">Speed:</span>
+                <div>{formatSpeed(currentLocation.speed)}</div>
+              </div>
             )}
-            {driverLocation.heading !== undefined && (
-              <span>Heading: {driverLocation.heading}°</span>
-            )}
-          </div>
-        )}
-
-        {/* Last Update */}
-        <div className="text-xs text-gray-500 text-center">
-          Last update: {lastUpdate ? lastUpdate.toLocaleTimeString() : 'Never'}
-          <div className="mt-1">
-            {lastUpdate && (
-              <span className="inline-flex items-center gap-1">
-                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                Live tracking active
-              </span>
+            {currentLocation.accuracy && (
+              <div>
+                <span className="text-gray-600">Accuracy:</span>
+                <div>{formatDistance(currentLocation.accuracy)}</div>
+              </div>
             )}
           </div>
         </div>
+      )}
 
-        {/* Map Placeholder */}
-        <div className="w-full h-48 bg-gray-200 rounded-md flex items-center justify-center">
-          <div className="text-center">
-            <MapPin className="h-8 w-8 mx-auto mb-2 text-blue-500" />
-            <p className="text-sm text-gray-600">Live Map View</p>
-            <p className="text-xs text-gray-400">
-              Lat: {driverLocation.lat.toFixed(4)}, Lng: {driverLocation.lng.toFixed(4)}
-            </p>
+      {/* Order Tracking Information */}
+      {orderTracking && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="font-medium">Order #{orderTracking.orderId}</h4>
+            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+              orderTracking.status === 'DELIVERED' ? 'bg-green-100 text-green-800' :
+              orderTracking.status === 'IN_TRANSIT' ? 'bg-blue-100 text-blue-800' :
+              orderTracking.status === 'PICKED_UP' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-gray-100 text-gray-800'
+            }`}>
+              {orderTracking.status.replace('_', ' ')}
+            </span>
+          </div>
+
+          {orderTracking.estimatedArrival && (
+            <div className="flex items-center text-sm text-gray-600">
+              <Clock className="h-4 w-4 mr-2" />
+              Estimated arrival: {formatTime(orderTracking.estimatedArrival)}
+            </div>
+          )}
+
+          {/* Driver Status Updates (for drivers) */}
+          {user?.role === 'DRIVER' && orderId && (
+            <div className="flex space-x-2 pt-4 border-t">
+              <button
+                onClick={() => updateTrackingStatus('PICKED_UP')}
+                className="flex-1 px-3 py-2 bg-yellow-600 text-white rounded hover:bg-yellow-700 text-sm"
+              >
+                Mark Picked Up
+              </button>
+              <button
+                onClick={() => updateTrackingStatus('DELIVERED')}
+                className="flex-1 px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+              >
+                Mark Delivered
+              </button>
+            </div>
+          )}
+
+          {/* Tracking History */}
+          <div className="pt-4 border-t">
+            <h5 className="font-medium mb-3">Tracking History</h5>
+            <div className="space-y-3">
+              {orderTracking.trackingHistory.map((event, index) => (
+                <div key={index} className="flex items-start space-x-3">
+                  <div className={`w-3 h-3 rounded-full mt-1 ${
+                    event.status === 'DELIVERED' ? 'bg-green-500' :
+                    event.status === 'IN_TRANSIT' ? 'bg-blue-500' :
+                    event.status === 'PICKED_UP' ? 'bg-yellow-500' :
+                    'bg-gray-400'
+                  }`} />
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm">
+                        {event.status.replace('_', ' ')}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {formatTime(event.timestamp)}
+                      </span>
+                    </div>
+                    {event.notes && (
+                      <p className="text-sm text-gray-600 mt-1">{event.notes}</p>
+                    )}
+                    {event.location && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        {event.location.latitude.toFixed(4)}, {event.location.longitude.toFixed(4)}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </CardContent>
-    </Card>
-  )
+      )}
+
+      {/* Tracking Status Indicator */}
+      <div className="mt-6 pt-4 border-t">
+        <div className="flex items-center justify-between text-sm">
+          <span className="text-gray-600">Tracking Status:</span>
+          <span className={`flex items-center ${isTracking ? 'text-green-600' : 'text-gray-400'}`}>
+            <div className={`w-2 h-2 rounded-full mr-2 ${isTracking ? 'bg-green-500' : 'bg-gray-400'}`} />
+            {isTracking ? 'Active' : 'Inactive'}
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }
