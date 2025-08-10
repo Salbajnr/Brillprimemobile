@@ -44,7 +44,7 @@ class PaystackService {
     if (!this.paystack) {
       throw new Error('Paystack not initialized - check your secret key configuration');
     }
-    
+
     try {
       const response = await this.paystack.transaction.initialize({
         email: params.email,
@@ -80,7 +80,7 @@ class PaystackService {
   async verifyTransaction(reference: string) {
     try {
       const response = await this.paystack.transaction.verify(reference);
-      
+
       return {
         success: true,
         data: response.data,
@@ -110,7 +110,7 @@ class PaystackService {
   }) {
     try {
       const response = await this.paystack.customer.create(params);
-      
+
       return {
         success: true,
         data: response.data,
@@ -235,7 +235,7 @@ class PaystackService {
   async verifyTransfer(reference: string) {
     try {
       const response = await this.paystack.transfer.verify(reference);
-      
+
       return {
         success: true,
         data: response.data,
@@ -256,7 +256,7 @@ class PaystackService {
   async getBanks(country: string = 'nigeria') {
     try {
       const response = await this.paystack.misc.list_banks({ country });
-      
+
       return {
         success: true,
         data: response.data
@@ -278,7 +278,7 @@ class PaystackService {
         account_number,
         bank_code
       });
-      
+
       return {
         success: true,
         data: response.data,
@@ -379,4 +379,126 @@ class PaystackService {
 }
 
 export const paystackService = new PaystackService();
-export default PaystackService;
+
+interface PaymentData {
+  email: string;
+  amount: number;
+  reference: string;
+  metadata?: any;
+}
+
+export const paystack = {
+  async initializePayment(data: PaymentData) {
+    const response = await fetch('https://api.paystack.co/transaction/initialize', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    return response.json();
+  },
+
+  async verifyPayment(reference: string) {
+    const response = await fetch(`https://api.paystack.co/transaction/verify/${reference}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+      }
+    });
+
+    return response.json();
+  },
+
+  async verifyAccount(accountNumber: string, bankCode: string) {
+    const response = await fetch('https://api.paystack.co/bank/resolve', {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+      },
+      body: JSON.stringify({
+        account_number: accountNumber,
+        bank_code: bankCode
+      })
+    });
+
+    return response.json();
+  },
+
+  async getBanks() {
+    const response = await fetch('https://api.paystack.co/bank', {
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+      }
+    });
+
+    return response.json();
+  },
+
+  async createTransferRecipient(data: {
+    type: string;
+    name: string;
+    account_number: string;
+    bank_code: string;
+  }) {
+    const response = await fetch('https://api.paystack.co/transferrecipient', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    });
+
+    return response.json();
+  },
+
+  async initiateTransfer(data: {
+    amount: number;
+    recipient: string;
+    bankCode: string;
+    reference: string;
+    reason?: string;
+  }) {
+    // First create recipient
+    const recipientData = await this.createTransferRecipient({
+      type: 'nuban',
+      name: 'Recipient',
+      account_number: data.recipient,
+      bank_code: data.bankCode
+    });
+
+    if (!recipientData.status) {
+      throw new Error('Failed to create transfer recipient');
+    }
+
+    // Then initiate transfer
+    const response = await fetch('https://api.paystack.co/transfer', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        source: 'balance',
+        amount: data.amount,
+        recipient: recipientData.data.recipient_code,
+        reference: data.reference,
+        reason: data.reason
+      })
+    });
+
+    return response.json();
+  },
+
+  async verifyTransfer(transferCode: string) {
+    const response = await fetch(`https://api.paystack.co/transfer/${transferCode}`, {
+      headers: {
+        'Authorization': `Bearer ${process.env.PAYSTACK_SECRET_KEY}`
+      }
+    });
+
+    return response.json();
+  }
+};

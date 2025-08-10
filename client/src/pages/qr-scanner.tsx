@@ -99,54 +99,48 @@ export default function QRScanner() {
     setTimeout(() => startCamera(), 100);
   };
 
-  const simulateQRScan = (type: "delivery" | "payment" | "merchant") => {
-    // Simulate different QR code types for demo purposes
-    const mockResults = {
-      delivery: {
-        orderId: "FO_" + Date.now(),
-        driverName: "James Adebayo",
-        driverPhone: "+234 803 456 7890",
-        deliveryTime: new Date().toLocaleString(),
-        items: ["20L Premium Fuel", "2L Engine Oil"],
-        totalAmount: "₦15,000",
-        pickupLocation: "TotalEnergies Station, Victoria Island",
-        deliveryAddress: "15 Admiralty Way, Lekki Phase 1",
-        fuelType: "PMS",
-        quantity: "20L",
-        verified: false
-      },
-      payment: {
-        merchantName: "Lagos Fuel Station",
-        merchantId: "MER789",
-        amount: "₦8,500",
-        reference: "PAY" + Date.now(),
-        tollGateId: "TG_VI_001",
-        vehicleClass: "Class 1"
-      },
-      merchant: {
-        businessName: "Premium Gas Station",
-        address: "123 Victoria Island, Lagos",
-        phone: "+234 901 234 5678",
-        services: ["Fuel", "Car Wash", "Convenience Store"],
-        merchantId: "MERCH_" + Date.now(),
-        rating: 4.5,
-        isVerified: true
+  const simulateQRScan = async (type: "delivery" | "payment" | "merchant") => {
+    try {
+      setIsLoading(true);
+      
+      // Generate a realistic QR code for testing
+      const qrCode = `${type.toUpperCase()}_${Date.now()}`;
+      
+      const response = await fetch('/api/qr/scan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qrCode, type })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to process QR code');
       }
-    };
+      
+      const result = await response.json();
+      
+      setScanResult({
+        type,
+        data: result.data
+      });
 
-    setScanResult({
-      type,
-      data: mockResults[type]
-    });
+      setModalData({
+        isOpen: true,
+        type: "success",
+        title: "QR Code Scanned Successfully",
+        message: `${type.charAt(0).toUpperCase() + type.slice(1)} information detected. Please review the details below.`
+      });
 
-    setModalData({
-      isOpen: true,
-      type: "success",
-      title: "QR Code Scanned Successfully",
-      message: `${type.charAt(0).toUpperCase() + type.slice(1)} information detected. Please review the details below.`
-    });
-
-    stopCamera();
+      stopCamera();
+    } catch (error) {
+      setModalData({
+        isOpen: true,
+        type: "error",
+        title: "QR Code Scan Failed",
+        message: "Unable to process the QR code. Please try again."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const confirmDelivery = async () => {

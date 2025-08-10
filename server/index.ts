@@ -9,6 +9,9 @@ import { Server as SocketIOServer } from "socket.io";
 import { storage } from "./storage";
 import supportRoutes from "./routes/support";
 import adminSupportRoutes from "./routes/admin-support";
+import qrProcessingRoutes from './routes/qr-processing';
+import activeOrdersRoutes from './routes/active-orders';
+import driverLocationRoutes from './routes/driver-location';
 import { db } from './db.js';
 import { 
   notifications, 
@@ -127,6 +130,9 @@ app.use(session({
 // Register routes
 app.use('/api/support', supportRoutes);
 app.use('/api/admin/support', adminSupportRoutes);
+app.use("/api/qr", qrProcessingRoutes);
+app.use("/api/orders", activeOrdersRoutes);
+app.use("/api/drivers/location", driverLocationRoutes);
 
 // Health check endpoint
 app.get("/api/health", (req, res) => {
@@ -870,7 +876,7 @@ app.get("/api/notifications", requireAuth, async (req: any, res: any) => {
     const { read, limit = 10 } = req.query;
 
     const userNotifications = await storage.getNotifications(userId, parseInt(limit as string));
-    
+
     const filteredNotifications = read !== undefined 
       ? userNotifications.filter(n => n.isRead === (read === 'true'))
       : userNotifications;

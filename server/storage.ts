@@ -204,8 +204,15 @@ export const storage = {
         .orderBy(desc(orders.createdAt))
         .limit(5);
 
+      // Get wallet balance
+      const [walletData] = await db.select({
+        balance: wallets.balance
+      }).from(wallets)
+        .where(eq(wallets.userId, consumerId))
+        .limit(1);
+
       return {
-        balance: 125450.00, // This should come from a wallet table
+        balance: parseFloat(walletData?.balance || '0'),
         totalTransactions: transactionSummary.totalTransactions || 0,
         totalSpent: parseFloat(transactionSummary.totalSpent?.toString() || '0'),
         successRate: transactionSummary.totalTransactions > 0 
