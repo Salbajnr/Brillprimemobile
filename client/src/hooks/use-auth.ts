@@ -22,12 +22,13 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function useAuth() {
   const context = useContext(AuthContext);
   if (!context) {
-    // Return default values for now
+    // Return default values for now - simplified for role selection
+    const [selectedRole, setSelectedRole] = useState<'CONSUMER' | 'MERCHANT' | 'DRIVER' | null>(null);
     return {
       user: null,
-      selectedRole: null,
+      selectedRole,
       setUser: () => {},
-      setSelectedRole: () => {},
+      setSelectedRole,
       isAuthenticated: () => false,
       logout: () => {}
     };
