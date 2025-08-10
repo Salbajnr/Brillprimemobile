@@ -632,7 +632,7 @@ if (process.env.NODE_ENV === "production") {
 
               // Auto-focus next input
               if (value && index < 5) {
-                const nextInput = document.getElementById(`otp-${index + 1}`);
+                const nextInput = document.getElementById(\`otp-\${index + 1}\`);
                 if (nextInput) nextInput.focus();
               }
             }
