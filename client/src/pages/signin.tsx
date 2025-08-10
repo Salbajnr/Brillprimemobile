@@ -15,7 +15,7 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/hooks/use-auth-simple";
 import { signInSchema } from "../../../shared/schema";
 
 type SignInFormData = {
@@ -29,7 +29,7 @@ export default function SignInPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { setUser } = useAuth();
+  const { setUser, signin, user, loading: authLoading, error } = useAuth();
   const [loading, setLoading] = useState(false);
 
   const form = useForm<SignInFormData>({
@@ -41,7 +41,7 @@ export default function SignInPage() {
   });
 
   const signInMutation = useMutation({
-    mutationFn: authAPI.signin,
+    mutationFn: ({ email, password }: SignInFormData) => authAPI.signin(email, password),
     onSuccess: (data) => {
       console.log("Sign in successful:", data);
       if (data.user) {

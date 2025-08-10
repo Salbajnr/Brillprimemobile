@@ -348,39 +348,36 @@ app.get("/api/dashboard", requireAuth, async (req, res) => {
   }
 });
 
-// Import routes
-import paymentsRouter from "./routes/payments";
-import escrowRouter from "./routes/escrow";
-import productsRouter from "./routes/products";
-import adminRoutes from "./admin/routes.js";
-import merchantRoutes from "./routes/merchant.js";
-import driverRoutes from "./routes/driver.js";
-import tollPaymentsRoutes from "./routes/toll-payments.js";
-import verificationRoutes from "./routes/verification.js";
-import paymentRoutes from "./routes/payments.js";
-import productsRoutes from "./routes/products.js";
-import fuelOrdersRoutes from "./routes/fuel-orders.js";
-import qrPaymentsRoutes from "./routes/qr-payments.js";
-import liveChatRoutes from "./routes/live-chat.js";
-import analyticsRoutes from "./routes/analytics.js";
-import escrowRoutes from "./routes/escrow-management.js";
-import orderStatusRoutes from "./routes/order-status.js";
-import realTimeTrackingRoutes from "./routes/real-time-tracking.js";
-import secureTransactionsRoutes from "./routes/secure-transactions.js";
-import vendorFeedRoutes from "./routes/vendor-feed.js";
-import ratingsReviewsRoutes from "./routes/ratings-reviews.js";
-import liveSystemRoutes from "./routes/live-system.js";
-import merchantKycRoutes from "./routes/merchant-kyc.js";
-import roleManagementRoutes from "./routes/role-management.js";
-import simpleVerificationRoutes from "./routes/simple-verification.js";
-import fileSyncRoutes from "./routes/file-sync.js";
-import errorLoggingRoutes from "./routes/error-logging.js";
-import analyticsLoggingRoutes from "./routes/analytics-logging.js";
-import adminOversightRoutes from "./routes/admin-oversight.js";
-import adminMerchantKycRoutes from "./routes/admin-merchant-kyc.js";
-import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination.js";
-import locationRecommendationsRoutes from "./routes/location-recommendations.js";
-import testRealtimeRoutes from "./routes/test-realtime.js";
+// Import routes (using proper extensions for ES modules)
+import adminRoutes from "./admin/routes.ts";
+import merchantRoutes from "./routes/merchant.ts";
+import driverRoutes from "./routes/driver.ts";
+import tollPaymentsRoutes from "./routes/toll-payments.ts";
+import verificationRoutes from "./routes/verification.ts";
+import paymentRoutes from "./routes/payments.ts";
+import productsRoutes from "./routes/products.ts";
+import fuelOrdersRoutes from "./routes/fuel-orders.ts";
+import qrPaymentsRoutes from "./routes/qr-payments.ts";
+import liveChatRoutes from "./routes/live-chat.ts";
+import analyticsRoutes from "./routes/analytics.ts";
+import escrowRoutes from "./routes/escrow-management.ts";
+import orderStatusRoutes from "./routes/order-status.ts";
+import realTimeTrackingRoutes from "./routes/real-time-tracking.ts";
+import secureTransactionsRoutes from "./routes/secure-transactions.ts";
+import vendorFeedRoutes from "./routes/vendor-feed.ts";
+import ratingsReviewsRoutes from "./routes/ratings-reviews.ts";
+import liveSystemRoutes from "./routes/live-system.ts";
+import merchantKycRoutes from "./routes/merchant-kyc.ts";
+import roleManagementRoutes from "./routes/role-management.ts";
+import simpleVerificationRoutes from "./routes/simple-verification.ts";
+import fileSyncRoutes from "./routes/file-sync.ts";
+import errorLoggingRoutes from "./routes/error-logging.ts";
+import analyticsLoggingRoutes from "./routes/analytics-logging.ts";
+import adminOversightRoutes from "./routes/admin-oversight.ts";
+import adminMerchantKycRoutes from "./routes/admin-merchant-kyc.ts";
+import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination.ts";
+import locationRecommendationsRoutes from "./routes/location-recommendations.ts";
+import testRealtimeRoutes from "./routes/test-realtime.ts";
 
 // Register route modules with proper prefixes
 app.use("/api/admin", adminRoutes);
@@ -1395,6 +1392,7 @@ app.use((err, req, res, next) => {
 // Function to initialize the application and database
 async function initApp() {
   try {
+    const { initializeDatabase } = await import('./init-db');
     await initializeDatabase();
     console.log("Database initialized successfully.");
   } catch (error) {
