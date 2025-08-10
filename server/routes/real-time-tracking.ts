@@ -222,7 +222,7 @@ export function registerRealTimeTrackingRoutes(app: Express) {
             parseFloat(orderTracking.deliveryLongitude || '0')
           );
           etaMinutes = Math.round((distanceKm / avgSpeedKmh) * 60);
-          
+
           // Simple route optimization (in production, use Google Maps API)
           optimizedRoute = {
             distance: `${distanceKm.toFixed(1)} km`,
@@ -275,7 +275,7 @@ export function registerRealTimeTrackingRoutes(app: Express) {
 
         // Notify admin dashboard
         global.io.to('admin_drivers').emit('driver_location_update', locationUpdate);
-        
+
         // Broadcast to live map viewers
         global.io.to('live_map').emit('driver_position_update', {
           driverId: userId,
@@ -342,7 +342,7 @@ export function registerRealTimeTrackingRoutes(app: Express) {
 
       // Verify user has access to this order
       const trackingData = await storage.getOrderTracking(orderId);
-      
+
       if (!trackingData) {
         return res.status(404).json({
           success: false,
@@ -409,7 +409,7 @@ export function registerRealTimeTrackingRoutes(app: Express) {
           lat: parseFloat(validDeliveries[index - 1].deliveryLatitude || '0'),
           lng: parseFloat(validDeliveries[index - 1].deliveryLongitude || '0')
         };
-        
+
         const currentLocation = {
           lat: parseFloat(delivery.deliveryLatitude || '0'),
           lng: parseFloat(delivery.deliveryLongitude || '0')

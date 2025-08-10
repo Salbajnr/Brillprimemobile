@@ -20,15 +20,15 @@ if (process.env.NODE_ENV === 'development') {
     stdio: 'pipe',
     shell: true
   });
-  
+
   viteProcess.stdout.on('data', (data) => {
     console.log(`[Vite] ${data}`);
   });
-  
+
   viteProcess.stderr.on('data', (data) => {
     console.log(`[Vite Error] ${data}`);
   });
-  
+
   process.on('exit', () => {
     viteProcess.kill();
   });
@@ -85,12 +85,12 @@ app.get("/api/users", (req, res) => {
 // Auth endpoints
 app.post("/api/auth/signup", (req, res) => {
   const { email, password, role, fullName, phone } = req.body;
-  
+
   // Basic validation
   if (!email || !password || !role || !fullName) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-  
+
   // Simulate user creation
   const user = {
     id: Date.now().toString(),
@@ -100,34 +100,34 @@ app.post("/api/auth/signup", (req, res) => {
     role,
     createdAt: new Date().toISOString()
   };
-  
+
   res.status(201).json({ message: "User created successfully", user });
 });
 
 app.post("/api/auth/signin", (req, res) => {
   const { email, password } = req.body;
-  
+
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password required" });
   }
-  
+
   // Simulate authentication
   const user = {
     id: "1",
     email,
     role: "CONSUMER"
   };
-  
+
   res.json({ message: "Sign in successful", user });
 });
 
 app.post("/api/auth/verify-otp", (req, res) => {
   const { otp, phone } = req.body;
-  
+
   if (!otp || otp.length !== 6) {
     return res.status(400).json({ message: "Valid 6-digit OTP required" });
   }
-  
+
   // Simulate OTP verification
   res.json({ message: "OTP verified successfully", verified: true });
 });
@@ -135,7 +135,7 @@ app.post("/api/auth/verify-otp", (req, res) => {
 // Dashboard data endpoint
 app.get("/api/dashboard", (req, res) => {
   const { role } = req.query;
-  
+
   const dashboardData = {
     CONSUMER: {
       balance: "₦125,450.00",
@@ -153,7 +153,7 @@ app.get("/api/dashboard", (req, res) => {
       quickActions: ["Start Trip", "View Earnings", "Update Status", "Fuel Delivery", "Trip History"]
     }
   };
-  
+
   res.json(dashboardData[role as string] || dashboardData.CONSUMER);
 });
 
@@ -168,17 +168,17 @@ app.get("/api/wallet/balance", (req, res) => {
     accountNumber: "1234567890",
     bankName: "Brill Prime Wallet"
   };
-  
+
   res.json(walletData);
 });
 
 app.post("/api/wallet/fund", (req, res) => {
   const { amount, paymentMethod, reference } = req.body;
-  
+
   if (!amount || amount <= 0) {
     return res.status(400).json({ message: "Invalid amount" });
   }
-  
+
   // Simulate wallet funding
   const transaction = {
     id: `fund_${Date.now()}`,
@@ -191,12 +191,12 @@ app.post("/api/wallet/fund", (req, res) => {
     createdAt: new Date().toISOString(),
     description: `Wallet funding of ₦${amount}`
   };
-  
+
   // Simulate processing delay
   setTimeout(() => {
     console.log(`Wallet funding processed: ${transaction.id}`);
   }, 2000);
-  
+
   res.status(201).json({ 
     message: "Wallet funding initiated", 
     transaction,
@@ -206,7 +206,7 @@ app.post("/api/wallet/fund", (req, res) => {
 
 app.get("/api/wallet/transactions", (req, res) => {
   const { page = 1, limit = 10, type } = req.query;
-  
+
   // Simulate transaction history
   const transactions = [
     {
@@ -237,12 +237,12 @@ app.get("/api/wallet/transactions", (req, res) => {
       createdAt: new Date(Date.now() - 259200000).toISOString()
     }
   ];
-  
+
   // Filter by type if specified
   const filteredTransactions = type ? 
     transactions.filter(t => t.type === type) : 
     transactions;
-  
+
   res.json({
     transactions: filteredTransactions,
     pagination: {
@@ -256,11 +256,11 @@ app.get("/api/wallet/transactions", (req, res) => {
 // Bill payment endpoints
 app.post("/api/bills/pay", (req, res) => {
   const { billType, amount, accountNumber, provider } = req.body;
-  
+
   if (!billType || !amount || !accountNumber) {
     return res.status(400).json({ message: "Missing required fields" });
   }
-  
+
   const transaction = {
     id: `bill_${Date.now()}`,
     type: "BILL_PAYMENT",
@@ -272,18 +272,18 @@ app.post("/api/bills/pay", (req, res) => {
     status: "PROCESSING",
     createdAt: new Date().toISOString()
   };
-  
+
   res.json({ message: "Bill payment initiated", transaction });
 });
 
 // Money transfer endpoints
 app.post("/api/transfer/send", (req, res) => {
   const { recipientAccount, amount, narration, transferType } = req.body;
-  
+
   if (!recipientAccount || !amount || amount <= 0) {
     return res.status(400).json({ message: "Invalid transfer details" });
   }
-  
+
   const transaction = {
     id: `transfer_${Date.now()}`,
     type: "MONEY_TRANSFER",
@@ -295,9 +295,27 @@ app.post("/api/transfer/send", (req, res) => {
     status: "PROCESSING",
     createdAt: new Date().toISOString()
   };
-  
+
   res.json({ message: "Transfer initiated", transaction });
 });
+
+// Import routes
+import authRoutes from './routes/auth.js';
+import dashboardRoutes from './routes/dashboard.js';
+import walletRoutes from './routes/wallet.js';
+import secureTransactionRoutes from './routes/secure-transactions.js';
+import fuelOrderRoutes from './routes/fuel-orders.js';
+import realTimeTrackingRoutes from './routes/real-time-tracking.js';
+import orderStatusRoutes from './routes/order-status.js';
+
+// Routes
+app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/wallet', walletRoutes);
+app.use('/api/transactions', secureTransactionRoutes);
+app.use('/api/fuel-orders', fuelOrderRoutes);
+app.use('/api/tracking', realTimeTrackingRoutes);
+app.use('/api/orders', orderStatusRoutes);
 
 // Handle frontend routing based on environment
 if (process.env.NODE_ENV === 'development') {
@@ -312,7 +330,7 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   // In production, serve built static files
   app.use(express.static(path.join(__dirname, '../client/dist')));
-  
+
   app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
       res.sendFile(path.join(__dirname, '../client/dist/index.html'));
@@ -323,7 +341,7 @@ if (process.env.NODE_ENV === 'development') {
 }
 
 // Error handling middleware
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   const message = err.message || "Internal Server Error";
   console.error(`[${new Date().toISOString()}] Error:`, err);
