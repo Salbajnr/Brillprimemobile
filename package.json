@@ -78,6 +78,7 @@
     "framer-motion": "^11.13.1",
     "helmet": "^8.1.0",
     "input-otp": "^1.4.2",
+    "ioredis": "^5.7.0",
     "isomorphic-dompurify": "^2.26.0",
     "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.453.0",
