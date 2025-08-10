@@ -299,23 +299,7 @@ app.post("/api/transfer/send", (req, res) => {
   res.json({ message: "Transfer initiated", transaction });
 });
 
-// Import routes
-import authRoutes from './routes/auth.js';
-import dashboardRoutes from './routes/dashboard.js';
-import walletRoutes from './routes/wallet.js';
-import secureTransactionRoutes from './routes/secure-transactions.js';
-import fuelOrderRoutes from './routes/fuel-orders.js';
-import realTimeTrackingRoutes from './routes/real-time-tracking.js';
-import orderStatusRoutes from './routes/order-status.js';
-
-// Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/wallet', walletRoutes);
-app.use('/api/transactions', secureTransactionRoutes);
-app.use('/api/fuel-orders', fuelOrderRoutes);
-app.use('/api/tracking', realTimeTrackingRoutes);
-app.use('/api/orders', orderStatusRoutes);
+// Additional API endpoints will be added here as needed
 
 // Handle frontend routing based on environment
 if (process.env.NODE_ENV === 'development') {
