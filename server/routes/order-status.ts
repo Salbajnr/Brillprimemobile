@@ -1,441 +1,333 @@
-import type { Express } from "express";
-import { storage } from "../storage";
-import { requireAuth } from "../middleware/auth";
-import { z } from "zod";
-import { orderBroadcastingService } from "../services/order-broadcasting";
+import express from 'express';
+import { db } from '../db';
+import { orders, users, products, fuelOrders, transactions } from '../../shared/schema';
+import { eq, desc, and, or, inArray } from 'drizzle-orm';
+import { requireAuth } from '../middleware/auth';
 
-// Order Status Broadcasting schemas
-const updateOrderStatusSchema = z.object({
-  orderId: z.string(),
-  status: z.enum(['pending', 'confirmed', 'preparing', 'ready_for_pickup', 'picked_up', 'in_transit', 'delivered', 'cancelled']),
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number(),
-    address: z.string().optional()
-  }).optional(),
-  estimatedTime: z.object({
-    preparation: z.number().optional(), // minutes
-    pickup: z.number().optional(),
-    delivery: z.number().optional()
-  }).optional(),
-  notes: z.string().optional()
-});
+const router = express.Router();
 
-const updateKitchenStatusSchema = z.object({
-  orderId: z.string(),
-  kitchenStatus: z.enum(['received', 'preparing', 'ready_for_pickup', 'completed']),
-  preparationTime: z.number().optional(),
-  actualPreparationTime: z.number().optional(),
-  items: z.array(z.object({
-    productId: z.string(),
-    status: z.enum(['pending', 'preparing', 'ready']),
-    estimatedTime: z.number().optional()
-  })).optional(),
-  notes: z.string().optional()
-});
+// Create new order
+router.post('/create', requireAuth, async (req, res) => {
+  try {
+    const {
+      orderType, // 'PRODUCT', 'FUEL', 'COMMODITY'
+      items, // Array of items for product orders
+      deliveryAddress,
+      deliveryLatitude,
+      deliveryLongitude,
+      urgentOrder = false,
+      notes
+    } = req.body;
 
-const confirmPickupSchema = z.object({
-  orderId: z.string(),
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number()
-  }),
-  photoProof: z.string().optional(),
-  notes: z.string().optional()
-});
+    const customerId = req.user.id;
 
-const confirmDeliverySchema = z.object({
-  orderId: z.string(),
-  location: z.object({
-    latitude: z.number(),
-    longitude: z.number()
-  }),
-  photoProof: z.string().optional(),
-  signature: z.string().optional(),
-  qrCode: z.string().optional(),
-  customerFeedback: z.string().optional(),
-  notes: z.string().optional()
-});
+    let totalAmount = 0;
+    let orderData: any = {};
 
-export function registerOrderStatusRoutes(app: Express) {
-  // Update order status (Merchant/Driver)
-  app.put("/api/orders/status", requireAuth, async (req, res) => {
-    try {
-      const data = updateOrderStatusSchema.parse(req.body);
-      const userId = req.session!.userId!;
+    if (orderType === 'PRODUCT' && items) {
+      // Calculate total for product orders
+      for (const item of items) {
+        const product = await db.select().from(products)
+          .where(eq(products.id, item.productId))
+          .limit(1);
 
-      // Verify user has permission to update this order
-      const order = await storage.getOrderTracking(data.orderId);
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found"
-        });
+        if (product.length > 0) {
+          totalAmount += parseFloat(product[0].price) * item.quantity;
+        }
       }
+      orderData = { items };
+    }
 
-      const hasPermission = order.sellerId === userId || order.driverId === userId;
-      if (!hasPermission) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied"
-        });
+    const order = await db.insert(orders).values({
+      orderNumber: `ORD${Date.now()}${customerId}`,
+      customerId,
+      orderType,
+      status: 'PENDING',
+      totalAmount: totalAmount.toString(),
+      deliveryAddress,
+      deliveryLatitude: deliveryLatitude?.toString(),
+      deliveryLongitude: deliveryLongitude?.toString(),
+      orderData,
+      urgentOrder,
+      notes,
+      paymentStatus: 'PENDING',
+      estimatedPreparationTime: urgentOrder ? 15 : 30
+    }).returning();
+
+    // Create transaction for payment
+    await db.insert(transactions).values({
+      orderId: order[0].id,
+      userId: customerId,
+      amount: totalAmount.toString(),
+      currency: 'NGN',
+      paymentMethod: 'pending',
+      paymentStatus: 'PENDING',
+      transactionRef: `ORD_${order[0].id}_${Date.now()}`,
+      metadata: {
+        orderId: order[0].id,
+        orderType,
+        urgentOrder
       }
+    });
 
-      const previousStatus = order.status;
+    res.json({
+      success: true,
+      data: {
+        order: order[0],
+        message: 'Order created successfully'
+      }
+    });
+  } catch (error) {
+    console.error('Order creation error:', error);
+    res.status(500).json({ success: false, message: 'Failed to create order' });
+  }
+});
 
-      // Update order status in database
-      const updatedOrder = await storage.updateOrderTracking(
-        data.orderId,
-        data.status,
-        data.location
-      );
+// Update order status
+router.patch('/:orderId/status', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { status, reason } = req.body;
+    const userId = req.user.id;
 
-      // Prepare status update for broadcasting
-      const statusUpdate = {
-        orderId: data.orderId,
-        status: data.status,
-        previousStatus,
-        location: data.location,
-        estimatedTime: data.estimatedTime,
-        notes: data.notes,
+    const order = await db.select().from(orders)
+      .where(eq(orders.id, parseInt(orderId)))
+      .limit(1);
+
+    if (order.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    // Check authorization - customer, merchant, or driver can update
+    const canUpdate = order[0].customerId === userId || 
+                     order[0].merchantId === userId || 
+                     order[0].driverId === userId;
+
+    if (!canUpdate) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to update this order' });
+    }
+
+    const updateData: any = { status, updatedAt: new Date() };
+
+    // Handle specific status transitions
+    switch (status) {
+      case 'CONFIRMED':
+        if (order[0].paymentStatus !== 'COMPLETED') {
+          return res.status(400).json({ 
+            success: false, 
+            message: 'Cannot confirm order without completed payment' 
+          });
+        }
+        break;
+      case 'CANCELLED':
+        updateData.notes = reason || 'Order cancelled';
+        // Handle refund logic here if needed
+        break;
+      case 'DELIVERED':
+        updateData.deliveredAt = new Date();
+        break;
+    }
+
+    await db.update(orders).set(updateData)
+      .where(eq(orders.id, parseInt(orderId)));
+
+    // Emit real-time update
+    const server = req.app.get('server');
+    if (server && server.io) {
+      server.io.to(`order_${orderId}`).emit('status_update', {
+        orderId: parseInt(orderId),
+        status,
         updatedBy: userId,
-        timestamp: Date.now()
-      };
-
-      // Broadcast to all relevant parties
-      await orderBroadcastingService.broadcastOrderStatus(statusUpdate);
-
-      res.json({
-        success: true,
-        message: `Order status updated to ${data.status}`,
-        order: updatedOrder,
-        statusUpdate
-      });
-
-    } catch (error: any) {
-      console.error('Order status update error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || "Failed to update order status"
+        timestamp: new Date().toISOString()
       });
     }
-  });
 
-  // Update kitchen/preparation status (Merchant)
-  app.put("/api/orders/kitchen-status", requireAuth, async (req, res) => {
-    try {
-      const data = updateKitchenStatusSchema.parse(req.body);
-      const userId = req.session!.userId!;
+    res.json({
+      success: true,
+      message: `Order status updated to ${status}`
+    });
+  } catch (error) {
+    console.error('Update order status error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update order status' });
+  }
+});
 
-      // Verify merchant owns this order
-      const order = await storage.getOrderTracking(data.orderId);
-      if (!order || order.sellerId !== userId) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied or order not found"
-        });
+// Get order details
+router.get('/:orderId', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const userId = req.user.id;
+
+    const orderDetails = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      customerId: orders.customerId,
+      merchantId: orders.merchantId,
+      driverId: orders.driverId,
+      orderType: orders.orderType,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      deliveryAddress: orders.deliveryAddress,
+      orderData: orders.orderData,
+      urgentOrder: orders.urgentOrder,
+      notes: orders.notes,
+      paymentStatus: orders.paymentStatus,
+      createdAt: orders.createdAt,
+      updatedAt: orders.updatedAt,
+      customer: {
+        fullName: users.fullName,
+        phone: users.phone,
+        email: users.email
       }
+    })
+    .from(orders)
+    .leftJoin(users, eq(orders.customerId, users.id))
+    .where(eq(orders.id, parseInt(orderId)))
+    .limit(1);
 
-      // Prepare kitchen update
-      const kitchenUpdate = {
-        orderId: data.orderId,
-        kitchenStatus: data.kitchenStatus,
-        preparationTime: data.preparationTime,
-        actualPreparationTime: data.actualPreparationTime,
-        items: data.items,
-        notes: data.notes,
-        timestamp: Date.now()
-      };
-
-      // Broadcast kitchen update
-      await orderBroadcastingService.broadcastKitchenUpdate(kitchenUpdate);
-
-      // Update main order status if needed
-      let newOrderStatus = order.status;
-      switch (data.kitchenStatus) {
-        case 'received':
-          newOrderStatus = 'confirmed';
-          break;
-        case 'preparing':
-          newOrderStatus = 'preparing';
-          break;
-        case 'ready_for_pickup':
-          newOrderStatus = 'ready_for_pickup';
-          break;
-      }
-
-      if (newOrderStatus !== order.status) {
-        await storage.updateOrderTracking(data.orderId, newOrderStatus);
-        
-        await orderBroadcastingService.broadcastOrderStatus({
-          orderId: data.orderId,
-          status: newOrderStatus,
-          previousStatus: order.status,
-          estimatedTime: data.preparationTime ? { preparation: data.preparationTime } : undefined,
-          notes: data.notes,
-          updatedBy: userId,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: `Kitchen status updated to ${data.kitchenStatus}`,
-        kitchenUpdate,
-        orderStatus: newOrderStatus
-      });
-
-    } catch (error: any) {
-      console.error('Kitchen status update error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || "Failed to update kitchen status"
-      });
+    if (orderDetails.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
-  });
 
-  // Confirm pickup (Driver)
-  app.post("/api/orders/confirm-pickup", requireAuth, async (req, res) => {
-    try {
-      const data = confirmPickupSchema.parse(req.body);
-      const driverId = req.session!.userId!;
+    const order = orderDetails[0];
 
-      // Verify driver is assigned to this order
-      const order = await storage.getOrderTracking(data.orderId);
-      if (!order || order.driverId !== driverId) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied or order not found"
-        });
-      }
+    // Check if user can view this order
+    const canView = order.customerId === userId || 
+                   order.merchantId === userId || 
+                   order.driverId === userId;
 
-      // Update order status to picked up
-      await storage.updateOrderTracking(data.orderId, 'picked_up', data.location);
-
-      // Broadcast pickup confirmation
-      await orderBroadcastingService.broadcastPickupConfirmation(
-        data.orderId,
-        driverId,
-        {
-          location: data.location,
-          timestamp: Date.now(),
-          photoProof: data.photoProof,
-          notes: data.notes
-        }
-      );
-
-      res.json({
-        success: true,
-        message: "Pickup confirmed successfully",
-        orderId: data.orderId,
-        pickupTime: Date.now()
-      });
-
-    } catch (error: any) {
-      console.error('Pickup confirmation error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || "Failed to confirm pickup"
-      });
+    if (!canView) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to view this order' });
     }
-  });
 
-  // Confirm delivery (Driver)
-  app.post("/api/orders/confirm-delivery", requireAuth, async (req, res) => {
-    try {
-      const data = confirmDeliverySchema.parse(req.body);
-      const driverId = req.session!.userId!;
+    // Get related transactions
+    const orderTransactions = await db.select().from(transactions)
+      .where(eq(transactions.orderId, parseInt(orderId)))
+      .orderBy(desc(transactions.createdAt));
 
-      // Verify driver is assigned to this order
-      const order = await storage.getOrderTracking(data.orderId);
-      if (!order || order.driverId !== driverId) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied or order not found"
-        });
+    res.json({
+      success: true,
+      data: {
+        order,
+        transactions: orderTransactions
       }
+    });
+  } catch (error) {
+    console.error('Get order details error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get order details' });
+  }
+});
 
-      // Update order status to delivered
-      await storage.updateOrderTracking(data.orderId, 'delivered', data.location);
+// Get user's orders
+router.get('/user/orders', requireAuth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { 
+      status, 
+      orderType, 
+      page = 1, 
+      limit = 20,
+      role = 'customer' // customer, merchant, driver
+    } = req.query;
 
-      // Broadcast delivery confirmation
-      await orderBroadcastingService.broadcastDeliveryConfirmation(
-        data.orderId,
-        {
-          location: data.location,
-          timestamp: Date.now(),
-          photoProof: data.photoProof,
-          signature: data.signature,
-          qrCode: data.qrCode,
-          customerFeedback: data.customerFeedback,
-          notes: data.notes
-        }
-      );
+    const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      res.json({
-        success: true,
-        message: "Delivery confirmed successfully",
-        orderId: data.orderId,
-        deliveryTime: Date.now()
-      });
+    let whereConditions = [];
 
-    } catch (error: any) {
-      console.error('Delivery confirmation error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || "Failed to confirm delivery"
-      });
+    // Filter by user role
+    switch (role) {
+      case 'customer':
+        whereConditions.push(eq(orders.customerId, userId));
+        break;
+      case 'merchant':
+        whereConditions.push(eq(orders.merchantId, userId));
+        break;
+      case 'driver':
+        whereConditions.push(eq(orders.driverId, userId));
+        break;
     }
-  });
 
-  // Get order status timeline
-  app.get("/api/orders/:orderId/timeline", requireAuth, async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const userId = req.session!.userId!;
-
-      // Verify user has access to this order
-      const order = await storage.getOrderTracking(orderId);
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found"
-        });
-      }
-
-      const hasAccess = order.buyerId === userId || order.sellerId === userId || order.driverId === userId;
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied"
-        });
-      }
-
-      // Get status timeline (this would come from a status history table in production)
-      const timeline = [
-        {
-          status: 'pending',
-          timestamp: order.createdAt,
-          description: 'Order placed',
-          location: null
-        },
-        {
-          status: order.status,
-          timestamp: order.updatedAt,
-          description: `Order ${order.status}`,
-          location: order.currentLocation
-        }
-      ];
-
-      res.json({
-        success: true,
-        timeline,
-        currentStatus: order.status,
-        estimatedDeliveryTime: order.estimatedDeliveryTime
-      });
-
-    } catch (error: any) {
-      console.error('Order timeline error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to get order timeline"
-      });
+    if (status) {
+      whereConditions.push(eq(orders.status, status as any));
     }
-  });
 
-  // Get live order updates (WebSocket endpoint info)
-  app.get("/api/orders/:orderId/live-updates", requireAuth, async (req, res) => {
-    try {
-      const { orderId } = req.params;
-      const userId = req.session!.userId!;
-
-      // Verify access
-      const order = await storage.getOrderTracking(orderId);
-      if (!order) {
-        return res.status(404).json({
-          success: false,
-          message: "Order not found"
-        });
-      }
-
-      const hasAccess = order.buyerId === userId || order.sellerId === userId || order.driverId === userId;
-      if (!hasAccess) {
-        return res.status(403).json({
-          success: false,
-          message: "Access denied"
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Connect to WebSocket for live updates",
-        websocketEvents: [
-          'order_status_update',
-          'kitchen_update',
-          'driver_location_update',
-          'pickup_confirmation',
-          'delivery_confirmation'
-        ],
-        roomToJoin: `order_${orderId}`,
-        currentStatus: order.status
-      });
-
-    } catch (error: any) {
-      console.error('Live updates info error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to get live updates info"
-      });
+    if (orderType) {
+      whereConditions.push(eq(orders.orderType, orderType as string));
     }
-  });
 
-  // Bulk update order statuses (Admin)
-  app.put("/api/orders/bulk-status", requireAuth, async (req, res) => {
-    try {
-      const { orderIds, status, notes } = req.body;
-      const userId = req.session!.userId!;
+    const userOrders = await db.select({
+      id: orders.id,
+      orderNumber: orders.orderNumber,
+      orderType: orders.orderType,
+      status: orders.status,
+      totalAmount: orders.totalAmount,
+      deliveryAddress: orders.deliveryAddress,
+      urgentOrder: orders.urgentOrder,
+      paymentStatus: orders.paymentStatus,
+      createdAt: orders.createdAt,
+      customer: {
+        fullName: users.fullName,
+        phone: users.phone
+      }
+    })
+    .from(orders)
+    .leftJoin(users, eq(orders.customerId, users.id))
+    .where(and(...whereConditions))
+    .orderBy(desc(orders.createdAt))
+    .limit(parseInt(limit as string))
+    .offset(offset);
 
-      // This would need admin authorization in production
-      // For now, we'll allow any user to do bulk updates
-
-      const results = [];
-
-      for (const orderId of orderIds) {
-        try {
-          const order = await storage.getOrderTracking(orderId);
-          if (order) {
-            await storage.updateOrderTracking(orderId, status);
-            
-            await orderBroadcastingService.broadcastOrderStatus({
-              orderId,
-              status,
-              previousStatus: order.status,
-              notes,
-              updatedBy: userId,
-              timestamp: Date.now()
-            });
-
-            results.push({ orderId, success: true });
-          } else {
-            results.push({ orderId, success: false, error: 'Order not found' });
-          }
-        } catch (error: any) {
-          results.push({ orderId, success: false, error: error.message });
+    res.json({
+      success: true,
+      data: {
+        orders: userOrders,
+        pagination: {
+          page: parseInt(page as string),
+          limit: parseInt(limit as string),
+          total: userOrders.length
         }
       }
+    });
+  } catch (error) {
+    console.error('Get user orders error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get orders' });
+  }
+});
 
-      res.json({
-        success: true,
-        message: "Bulk update completed",
-        results
-      });
+// Assign driver to order
+router.post('/:orderId/assign-driver', requireAuth, async (req, res) => {
+  try {
+    const { orderId } = req.params;
+    const { driverId } = req.body;
+    const userId = req.user.id;
 
-    } catch (error: any) {
-      console.error('Bulk status update error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to update order statuses"
-      });
+    const order = await db.select().from(orders)
+      .where(eq(orders.id, parseInt(orderId)))
+      .limit(1);
+
+    if (order.length === 0) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
     }
-  });
-}
+
+    // Only merchant or admin can assign drivers
+    if (order[0].merchantId !== userId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized to assign driver' });
+    }
+
+    await db.update(orders).set({
+      driverId: parseInt(driverId),
+      status: 'IN_PROGRESS',
+      updatedAt: new Date()
+    }).where(eq(orders.id, parseInt(orderId)));
+
+    res.json({
+      success: true,
+      message: 'Driver assigned successfully'
+    });
+  } catch (error) {
+    console.error('Assign driver error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign driver' });
+  }
+});
+
+export default router;

@@ -477,14 +477,14 @@ export function registerFuelOrderRoutes(app: Express) {
       if (!driverId || req.session?.user?.role !== 'DRIVER') {
         return res.status(403).json({ success: false, error: 'Only drivers can accept orders' });
       }
-  
+
       // Check if driver is available
       const driverProfile = await db
         .select()
         .from(driverProfiles)
         .where(eq(driverProfiles.userId, driverId))
         .limit(1);
-  
+
       if (!driverProfile.length || !driverProfile[0].isAvailable) {
         return res.status(400).json({ success: false, error: 'Driver not available' });
       }

@@ -1,4 +1,3 @@
-
 import { Request, Response, NextFunction } from "express";
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt';
@@ -73,15 +72,15 @@ export function setupAuth() {
     // Update last activity
     if (req.session?.userId) {
       req.session.lastActivity = Date.now();
-      
+
       // Verify IP and User Agent for security
       const currentIP = req.ip || req.connection.remoteAddress;
       const currentUA = req.headers['user-agent'];
-      
+
       if (req.session.ipAddress && req.session.ipAddress !== currentIP) {
         console.warn(`IP address mismatch for user ${req.session.userId}: ${req.session.ipAddress} vs ${currentIP}`);
       }
-      
+
       if (req.session.userAgent && req.session.userAgent !== currentUA) {
         console.warn(`User agent mismatch for user ${req.session.userId}`);
       }
@@ -140,7 +139,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
     const token = authHeader.substring(7);
-    
+
     verifyToken(token)
       .then(async (decoded: any) => {
         // Verify user still exists and is active
@@ -190,7 +189,7 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
 // Middleware to require specific role with proper validation
 export function requireRole(allowedRoles: string | string[]) {
   const roles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];
-  
+
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated() && !req.user) {
       return res.status(401).json({ 
@@ -199,7 +198,7 @@ export function requireRole(allowedRoles: string | string[]) {
         code: "AUTH_REQUIRED"
       });
     }
-    
+
     const userRole = req.user?.role;
     if (!userRole || !roles.includes(userRole)) {
       return res.status(403).json({ 
@@ -208,7 +207,7 @@ export function requireRole(allowedRoles: string | string[]) {
         code: "INSUFFICIENT_PERMISSIONS"
       });
     }
-    
+
     next();
   };
 }
