@@ -1,5 +1,6 @@
 import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, uuid, jsonb, pgEnum } from "drizzle-orm/pg-core";
 import { z } from 'zod';
+import { createInsertSchema } from 'drizzle-zod';
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -197,32 +198,25 @@ export const fuelOrders = pgTable("fuel_orders", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Driver profiles table (Enhanced - Note: Snippet modified some fields, merging carefully)
+// Driver profiles table (Enhanced)
 export const driverProfiles = pgTable("driver_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull(),
   vehicleType: text("vehicle_type"),
   vehicleModel: text("vehicle_model"),
   plateNumber: text("plate_number"),
-  licenseNumber: text("license_number"), // From snippet
+  licenseNumber: text("license_number"),
+  licenseExpiry: timestamp("license_expiry"),
+  vehicleYear: integer("vehicle_year"),
+  vehicleColor: varchar("vehicle_color", { length: 30 }),
   isAvailable: boolean("is_available").default(true),
   currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
   currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default('5.0'),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('5.00'),
   totalTrips: integer("total_trips").default(0),
-  earnings: decimal("earnings", { precision: 10, scale: 2 }).default('0'),
-  // From snippet:
-  licenseExpiry: timestamp("license_expiry"),
-  vehiclePlate: varchar("vehicle_plate", { length: 20 }),
-  vehicleYear: integer("vehicle_year"),
-  vehicleColor: varchar("vehicle_color", { length: 30 }),
-  currentLatitude: varchar("current_latitude", { length: 20 }), // Snippet uses varchar, original uses decimal
-  currentLongitude: varchar("current_longitude", { length: 20 }), // Snippet uses varchar, original uses decimal
-  rating: decimal("rating", { precision: 3, scale: 2 }).default("5.00"), // Snippet has different default precision
-  totalTrips: integer("total_trips").default(0),
-  earnings: decimal("earnings", { precision: 10, scale: 2 }).default("0.00"), // Snippet has different default value
+  earnings: decimal("earnings", { precision: 10, scale: 2 }).default('0.00'),
   kycData: jsonb("kyc_data"),
-  kycStatus: varchar("kyc_status", { length: 20 }).default("PENDING"), // PENDING, PENDING_REVIEW, APPROVED, REJECTED
+  kycStatus: varchar("kyc_status", { length: 20 }).default("PENDING"),
   kycSubmittedAt: timestamp("kyc_submitted_at"),
   kycApprovedAt: timestamp("kyc_approved_at"),
   kycApprovedBy: integer("kyc_approved_by").references(() => users.id),
@@ -298,6 +292,23 @@ export const userLocations = pgTable("user_locations", {
   longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
   address: text("address"),
   isDefault: boolean("is_default").default(false),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Order tracking table
+export const orderTracking = pgTable("order_tracking", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  driverId: integer("driver_id").references(() => users.id),
+  status: orderStatusEnum("status").notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  address: text("address"),
+  notes: text("notes"),
+  estimatedArrival: timestamp("estimated_arrival"),
+  actualArrival: timestamp("actual_arrival"),
+  metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -621,3 +632,52 @@ export const signInSchema = z.object({
 });
 
 export type SignInData = z.infer<typeof signInSchema>;
+
+
+
+// Insert schemas for forms
+export const insertProductSchema = createInsertSchema(products).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  rating: true,
+  reviewCount: true,
+  totalSold: true,
+  totalViews: true
+});
+
+export const insertUserSchema = createInsertSchema(users).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastLoginAt: true,
+  loginAttempts: true,
+  accountLockedUntil: true
+});
+
+export const insertOrderSchema = createInsertSchema(orders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  orderNumber: true
+});
+
+export const insertTransactionSchema = createInsertSchema(transactions).omit({
+  id: true,
+  createdAt: true
+});
+
+export const insertFuelOrderSchema = createInsertSchema(fuelOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  acceptedAt: true,
+  pickedUpAt: true,
+  deliveredAt: true
+});
+
+// Insert types
+export type InsertProduct = z.infer<typeof insertProductSchema>;
+export type InsertOrder = z.infer<typeof insertOrderSchema>;
+export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
+export type InsertFuelOrder = z.infer<typeof insertFuelOrderSchema>;

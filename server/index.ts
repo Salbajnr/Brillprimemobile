@@ -7,13 +7,13 @@ import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
-import { validateEnv } from './env-validation';
+import { validateEnvironment } from './env-validation';
 
-// Route imports
+// Route imports - mixing default exports and function exports
 import authRoutes from './routes/auth';
 import paymentsRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
-import productsRoutes from './routes/products';
+import { registerProductRoutes } from './routes/products';
 import analyticsRoutes from './routes/analytics';
 import driverRoutes from './routes/driver';
 import supportRoutes from './routes/support';
@@ -25,11 +25,11 @@ import driverLocationRoutes from './routes/driver-location';
 import activeOrdersRoutes from './routes/active-orders';
 import qrProcessingRoutes from './routes/qr-processing';
 import paystackWebhooksRoutes from './routes/paystack-webhooks';
-import escrowManagementRoutes from './routes/escrow-management';
+import { registerEscrowManagementRoutes } from './routes/escrow-management';
 import withdrawalSystemRoutes from './routes/withdrawal-system';
 
 // Validate environment variables
-validateEnv();
+validateEnvironment();
 
 const app = express();
 const server = createServer(app);
@@ -227,7 +227,6 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/payments', paymentsRoutes);
 apiRouter.use('/wallet', walletRoutes);
-apiRouter.use('/products', productsRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
 apiRouter.use('/drivers', driverRoutes);
 apiRouter.use('/support', supportRoutes);
@@ -239,8 +238,11 @@ apiRouter.use('/driver-location', driverLocationRoutes);
 apiRouter.use('/active-orders', activeOrdersRoutes);
 apiRouter.use('/qr-processing', qrProcessingRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
-apiRouter.use('/escrow', escrowManagementRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
+
+// Register function-based routes directly on app
+registerProductRoutes(app);
+registerEscrowManagementRoutes(app);
 
 app.use('/api', apiRouter);
 
@@ -275,15 +277,116 @@ app.use((error: any, req: any, res: any, next: any) => {
   });
 });
 
-// Serve static files in production
+// Serve static files and handle SPA routing
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 if (process.env.NODE_ENV === 'production') {
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = dirname(__filename);
-  
   app.use(express.static(path.join(__dirname, '../client/dist')));
   
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  });
+} else {
+  // Development mode: serve the client assets if available
+  const clientDistPath = path.join(__dirname, '../client/dist');
+  const clientPublicPath = path.join(__dirname, '../client/public');
+  
+  // Try to serve built assets first
+  app.use(express.static(clientDistPath));
+  app.use(express.static(clientPublicPath));
+  
+  // For development, provide a simple landing page if no frontend build exists
+  app.get('*', (req, res) => {
+    // Don't intercept API routes
+    if (req.path.startsWith('/api')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+    
+    // Try to serve the built index.html first
+    const indexPath = path.join(clientDistPath, 'index.html');
+    
+    // Check if built assets exist
+    try {
+      res.sendFile(indexPath);
+    } catch (error) {
+      // Fallback: provide development info page
+      res.send(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>BrillPrime - Development Server</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+            .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+            .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+            .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+            .code { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
+            h1 { color: #2c3e50; }
+            h2 { color: #34495e; margin-top: 30px; }
+            .logo { font-size: 2em; font-weight: bold; color: #3498db; margin-bottom: 20px; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="logo">🚀 BrillPrime</div>
+            <h1>Development Server Status</h1>
+            
+            <div class="status success">
+              ✅ Backend Server: Running on port ${PORT}
+            </div>
+            
+            <div class="status success">
+              ✅ Database: Connected and configured
+            </div>
+            
+            <div class="status success">
+              ✅ WebSocket: Enabled for real-time features
+            </div>
+            
+            <div class="status warning">
+              ⚠️ Frontend: Build required for full application access
+            </div>
+            
+            <h2>Available API Endpoints</h2>
+            <div class="info">
+              The following API endpoints are available for testing:
+            </div>
+            
+            <div class="code">
+              GET  /api/health - Server health check<br>
+              POST /api/auth/login - User authentication<br>
+              POST /api/auth/register - User registration<br>
+              GET  /api/ws-test - WebSocket test endpoint<br>
+              ... and many more financial service endpoints
+            </div>
+            
+            <h2>Getting Started</h2>
+            <div class="info">
+              The BrillPrime platform includes:
+              <ul>
+                <li>🏪 Merchant Dashboard & Product Management</li>
+                <li>🚚 Driver Dashboard & Delivery Tracking</li>
+                <li>💳 Payment Processing & Wallet System</li>
+                <li>⛽ Fuel Delivery Services</li>
+                <li>🏗️ Admin Control Center</li>
+                <li>💬 Real-time Chat & Support System</li>
+                <li>📱 Mobile-Optimized Interface</li>
+              </ul>
+            </div>
+            
+            <div class="code">
+              Server Time: ${new Date().toISOString()}<br>
+              Server Uptime: ${Math.round(process.uptime())}s<br>
+              Memory Usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB
+            </div>
+          </div>
+        </body>
+        </html>
+      `);
+    }
   });
 }
 

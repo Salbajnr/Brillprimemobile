@@ -396,4 +396,20 @@ class OrderBroadcastingService {
 }
 
 const orderBroadcastingService = new OrderBroadcastingService();
+
+// Export the service instance and convenience functions
 export { orderBroadcastingService };
+
+// Export convenience function for backward compatibility
+export const broadcastOrderUpdate = (orderId: string, update: Partial<OrderStatusUpdate>) => {
+  return orderBroadcastingService.broadcastOrderStatus({
+    orderId,
+    status: update.status || 'PENDING',
+    previousStatus: update.previousStatus,
+    location: update.location,
+    estimatedTime: update.estimatedTime,
+    notes: update.notes,
+    updatedBy: update.updatedBy || 0,
+    timestamp: update.timestamp || Date.now()
+  });
+};

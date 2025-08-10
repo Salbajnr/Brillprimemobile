@@ -25,12 +25,9 @@ type SignInFormData = {
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
-  const [showErrorModal, setShowErrorModal] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
   const [, setLocation] = useLocation();
   const { toast } = useToast();
-  const { setUser, signin, user, loading: authLoading, error } = useAuth();
-  const [loading, setLoading] = useState(false);
+  const { setUser } = useAuth();
 
   const form = useForm<SignInFormData>({
     resolver: zodResolver(signInSchema),
@@ -41,8 +38,8 @@ export default function SignInPage() {
   });
 
   const signInMutation = useMutation({
-    mutationFn: ({ email, password }: SignInFormData) => authAPI.signin(email, password),
-    onSuccess: (data) => {
+    mutationFn: ({ email, password }: SignInFormData) => authAPI.signIn({ email, password }),
+    onSuccess: (data: any) => {
       console.log("Sign in successful:", data);
       if (data.user) {
         console.log("Setting user data:", data.user, "Role:", data.user.role);

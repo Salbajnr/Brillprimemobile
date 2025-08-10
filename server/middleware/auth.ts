@@ -234,5 +234,6 @@ export function requireVerified(req: Request, res: Response, next: NextFunction)
   next();
 }
 
-// Alias for consistency
+// Aliases for consistency
 export const auth = requireAuth;
+export const authenticateToken = requireAuth;
