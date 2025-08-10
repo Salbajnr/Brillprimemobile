@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Router, Route, Switch } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -17,7 +16,7 @@ import DriverRegistrationPage from './pages/driver-registration';
 import LocationSetupPage from './pages/location-setup';
 import IdentityVerificationPage from './pages/identity-verification';
 import EnhancedVerificationPage from './pages/enhanced-verification';
-import MFASetupPage from './pages/mfa-setup';
+import MfaSetupPage from './pages/mfa-setup';
 import BiometricSetupPage from './pages/biometric-setup';
 import ForgotPasswordPage from './pages/forgot-password';
 import ResetPasswordPage from './pages/reset-password';
@@ -103,6 +102,10 @@ import MerchantAnalyticsPage from './pages/merchant-analytics';
 import SideMenuPage from './pages/side-menu';
 import NotFoundPage from './pages/not-found';
 
+// New Imports for Enhanced Pages
+import RealTimeTrackingEnhanced from './pages/real-time-tracking-enhanced';
+import LiveChatEnhanced from './pages/live-chat-enhanced';
+
 // Create Query Client
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -131,7 +134,7 @@ export default function App() {
             <Route path="/location-setup" component={LocationSetupPage} />
             <Route path="/identity-verification" component={IdentityVerificationPage} />
             <Route path="/enhanced-verification" component={EnhancedVerificationPage} />
-            <Route path="/mfa-setup" component={MFASetupPage} />
+            <Route path="/mfa-setup" component={MfaSetupPage} />
             <Route path="/biometric-setup" component={BiometricSetupPage} />
             <Route path="/forgot-password" component={ForgotPasswordPage} />
             <Route path="/reset-password" component={ResetPasswordPage} />
@@ -215,6 +218,10 @@ export default function App() {
 
             {/* Utility */}
             <Route path="/side-menu" component={SideMenuPage} />
+
+            {/* Enhanced Real-Time Pages */}
+            <Route path="/real-time-tracking-enhanced" component={RealTimeTrackingEnhanced} />
+            <Route path="/live-chat-enhanced" component={LiveChatEnhanced} />
 
             {/* 404 Fallback */}
             <Route component={NotFoundPage} />
