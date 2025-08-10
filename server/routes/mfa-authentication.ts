@@ -251,7 +251,7 @@ router.post('/verify', async (req, res) => {
 
     // Check backup codes if primary method fails
     if (!isValid && user.mfaBackupCodes) {
-      const backupCodes = JSON.parse(user.mfaBackupCodes);
+      const backupCodes = JSON.parse(user.mfaBackupCodes as string);
       const hashedBackupToken = crypto.createHash('sha256').update(data.token).digest('hex');
       
       if (backupCodes.includes(hashedBackupToken)) {
@@ -396,7 +396,7 @@ router.get('/status', requireAuth, async (req, res) => {
     }
 
     const backupCodesCount = user.mfaBackupCodes 
-      ? JSON.parse(user.mfaBackupCodes).length 
+      ? JSON.parse(user.mfaBackupCodes as string).length 
       : 0;
 
     res.json({

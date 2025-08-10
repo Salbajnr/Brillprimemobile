@@ -88,8 +88,8 @@ export function setupAuth() {
       }
     }
 
-    // Add isAuthenticated method  
-    req.isAuthenticated = (): req is Request & { user: NonNullable<Request['user']> } => {
+    // Add isAuthenticated method
+    req.isAuthenticated = () => {
       return !!(req.session?.userId && req.session?.user);
     };
 
@@ -105,7 +105,7 @@ export function setupAuth() {
 // Token verification utility with proper error handling
 export function verifyToken(token: string): Promise<any> {
   return new Promise((resolve, reject) => {
-    jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    jwt.verify(token, JWT_SECRET as string, (err, decoded) => {
       if (err) {
         if (err.name === 'TokenExpiredError') {
           reject(new Error('TOKEN_EXPIRED'));
@@ -123,11 +123,11 @@ export function verifyToken(token: string): Promise<any> {
 
 // Generate secure JWT token
 export function generateToken(payload: object, expiresIn: string = '1h'): string {
-  return jwt.sign(payload, JWT_SECRET, { 
-    expiresIn,
+  return jwt.sign(payload, JWT_SECRET as string, { 
+    expiresIn: expiresIn,
     issuer: 'brillprime-api',
     audience: 'brillprime-app'
-  });
+  } as jwt.SignOptions);
 }
 
 // Middleware to require authentication with enhanced security
