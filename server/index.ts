@@ -28,6 +28,17 @@ const app = express();
 const server = createServer(app);
 
 // Setup WebSocket
+async function setupWebSocket(server: any) {
+  try {
+    const { setupWebSocketServer } = await import('./websocket');
+    const io = await setupWebSocketServer(server);
+    console.log('WebSocket server initialized successfully');
+    return io;
+  } catch (error) {
+    console.error('Failed to initialize WebSocket server:', error);
+  }
+}
+
 setupWebSocket(server);
 
 // Security middleware
