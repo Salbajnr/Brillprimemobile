@@ -1,7 +1,7 @@
-# Brillprime - Cross-Platform Financial Solutions
+# Brill Prime - Cross-Platform Financial Solutions
 
 ## Overview
-Brillprime is now a comprehensive cross-platform monorepo supporting iOS, Android, and Web applications with shared business logic, API calls, hooks, and constants. The project provides secure financial transaction capabilities and user management for CONSUMERs, MERCHANTs, and DRIVERs in the Nigerian market. Enhanced as a unified codebase that maximizes code reuse while maintaining platform-specific optimizations.
+Brill Prime is now a comprehensive cross-platform monorepo supporting iOS, Android, and Web applications with shared business logic, API calls, hooks, and constants. The project provides secure financial transaction capabilities and user management for CONSUMERs, MERCHANTs, and DRIVERs in the Nigerian market. Enhanced as a unified codebase that maximizes code reuse while maintaining platform-specific optimizations.
 
 ## User Preferences
 - Preferred communication style: Simple, everyday language

@@ -74,7 +74,7 @@ if (process.env.NODE_ENV === "production") {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brillprime - Financial Solutions</title>
+    <title>Brill Prime - Financial Solutions</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -87,7 +87,7 @@ if (process.env.NODE_ENV === "production") {
 
         function SplashPage({ onComplete }) {
           useEffect(() => {
-            console.log('Brillprime app initializing...');
+            console.log('Brill Prime app initializing...');
             const timer = setTimeout(() => {
               console.log('Splash timeout complete');
               const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
@@ -105,14 +105,14 @@ if (process.env.NODE_ENV === "production") {
           return (
             <div className="flex flex-col items-center justify-center min-h-screen max-w-md mx-auto relative overflow-hidden bg-white">
               <div className="w-48 h-48 flex items-center justify-center animate-pulse">
-                <img src="/src/assets/images/logo.png" alt="Brillprime Logo" className="w-full h-full object-contain max-w-44 max-h-44" onError={(e) => {
+                <img src="/src/assets/images/logo.png" alt="Brill Prime Logo" className="w-full h-full object-contain max-w-44 max-h-44" onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextElementSibling.style.display = 'block';
                 }} />
                 <div className="w-40 h-40 bg-blue-600 rounded-full flex items-center justify-center text-white text-6xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
               </div>
               <div className="mt-6 text-center">
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Brillprime</h1>
+                <h1 className="text-3xl font-bold text-gray-900 mb-2">Brill Prime</h1>
                 <p className="text-gray-600 text-sm">Financial Solutions</p>
               </div>
               <div className="flex gap-2 mt-8">
@@ -129,7 +129,7 @@ if (process.env.NODE_ENV === "production") {
           
           const onboardingData = [
             {
-              title: "Welcome to\\nBrillprime",
+              title: "Welcome to\\nBrill Prime",
               description: "Your trusted financial partner for secure transactions and seamless money management.",
               image: "/src/assets/images/onboarding_img1.png"
             },
@@ -256,7 +256,7 @@ if (process.env.NODE_ENV === "production") {
                   <div className="w-20 h-20 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Choose Your Role</h1>
-                <p className="text-gray-600">Select how you'll be using Brillprime</p>
+                <p className="text-gray-600">Select how you'll be using Brill Prime</p>
               </div>
 
               <div className="space-y-4 flex-1">
@@ -332,7 +332,7 @@ if (process.env.NODE_ENV === "production") {
                 <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
                   <img 
                     src="/src/assets/images/logo.png" 
-                    alt="Brillprime Logo" 
+                    alt="Brill Prime Logo" 
                     className="w-full h-full object-contain max-w-16 max-h-16"
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -342,7 +342,7 @@ if (process.env.NODE_ENV === "production") {
                   <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
-                <p className="text-gray-600">Join Brillprime and start your financial journey</p>
+                <p className="text-gray-600">Join Brill Prime and start your financial journey</p>
               </div>
 
               <form onSubmit={handleSubmit} className="flex-1 space-y-4">
@@ -459,7 +459,7 @@ if (process.env.NODE_ENV === "production") {
                 <div className="w-20 h-20 flex items-center justify-center mx-auto mb-4">
                   <img 
                     src="/src/assets/images/logo.png" 
-                    alt="Brillprime Logo" 
+                    alt="Brill Prime Logo" 
                     className="w-full h-full object-contain max-w-16 max-h-16"
                     onError={(e) => {
                       e.target.style.display = 'none';
@@ -469,7 +469,7 @@ if (process.env.NODE_ENV === "production") {
                   <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold shadow-lg" style={{display: 'none'}}>B</div>
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">Welcome Back</h1>
-                <p className="text-gray-600">Sign in to your Brillprime account</p>
+                <p className="text-gray-600">Sign in to your Brill Prime account</p>
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
@@ -639,7 +639,7 @@ if (process.env.NODE_ENV === "production") {
             <div className="min-h-screen max-w-md mx-auto bg-gray-50 p-6">
               <div className="bg-white rounded-lg shadow p-6 mb-6">
                 <h1 className="text-2xl font-bold text-gray-900 mb-2">{getDashboardTitle()}</h1>
-                <p className="text-gray-600 mb-6">Welcome to Brillprime Financial Solutions</p>
+                <p className="text-gray-600 mb-6">Welcome to Brill Prime Financial Solutions</p>
                 
                 <div className="space-y-3 mb-6">
                   <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg font-medium hover:bg-blue-700 transition-colors">
@@ -693,7 +693,7 @@ if (process.env.NODE_ENV === "production") {
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
         
-        console.log('Brillprime script loaded');
+        console.log('Brill Prime script loaded');
     </script>
 </body>
 </html>
@@ -712,6 +712,6 @@ app.use((err: any, req: any, res: any, next: any) => {
 // Start server - Replit expects port 5000 for workflows
 const port = 5000;
 app.listen(port, '0.0.0.0', () => {
-  console.log(`[${new Date().toLocaleTimeString()}] Brillprime server running on port ${port}`);
+  console.log(`[${new Date().toLocaleTimeString()}] Brill Prime server running on port ${port}`);
   console.log(`API endpoints: /api/health, /api/users`);
 });

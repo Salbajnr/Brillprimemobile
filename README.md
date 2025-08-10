@@ -1,11 +1,11 @@
-# BrillPrime Monorepo
+# Brill Prime Monorepo
 
 A comprehensive financial services platform with web, native mobile, and admin applications.
 
 ## Project Structure
 
 ```
-brillprime-monorepo/
+brill-prime-monorepo/
 ├── apps/
 │   ├── web/          # React web application
 │   ├── native/       # React Native mobile app
@@ -61,12 +61,12 @@ npm run test:e2e
 This monorepo uses npm workspaces to manage dependencies and enable code sharing between applications.
 
 ### Apps
-- **@brillprime/web**: Main web application (React + Vite)
-- **@brillprime/native**: Mobile application (React Native)
+- **@brill-prime/web**: Main web application (React + Vite)
+- **@brill-prime/native**: Mobile application (React Native)
 
 ### Packages
-- **@brillprime/shared**: Shared types, schemas, and utilities
-- **@brillprime/server**: Backend API server (Express.js)
+- **@brill-prime/shared**: Shared types, schemas, and utilities
+- **@brill-prime/server**: Backend API server (Express.js)
 
 ## Features
 
