@@ -3,12 +3,15 @@ import { useState, useEffect, createContext, useContext } from 'react'
 interface User {
   id: string
   email: string
+  fullName: string
   role: 'CONSUMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN'
   name?: string
+  profileImageUrl?: string
 }
 
 interface AuthContextType {
   user: User | null
+  setUser: (user: User | null) => void
   login: (email: string, password: string) => Promise<void>
   logout: () => void
   signup: (email: string, password: string, role: string) => Promise<void>
@@ -87,7 +90,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, signup, isLoading }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, signup, isLoading }}>
       {children}
     </AuthContext.Provider>
   )

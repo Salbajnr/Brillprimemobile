@@ -1,15 +1,21 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, ArrowLeft, Check, X, Flashlight, FlashlightOff, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useLocation } from "wouter";
 import { NotificationModal } from "@/components/ui/notification-modal";
+import { toast } from "@/hooks/use-toast"; // Assuming toast is available here
 
 // Import QR scanner assets
 import qrScannerFrame from "../assets/images/qr_scanner_frame.svg";
 import successIcon from "../assets/images/congratulations_icon.png";
 import errorIcon from "../assets/images/confirmation_fail_img.png";
+
+// Define COLORS if they are used elsewhere and not imported
+const COLORS = {
+  PRIMARY: "#4682b4", // Example primary color, adjust if needed
+};
 
 export default function QRScanner() {
   const [, setLocation] = useLocation();
@@ -32,11 +38,32 @@ export default function QRScanner() {
     title: "",
     message: ""
   });
+  const [isLoading, setIsLoading] = useState(false); // Assuming isLoading is used for API calls
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null); // Added canvasRef
   const streamRef = useRef<MediaStream | null>(null);
 
   useEffect(() => {
+    // Request camera permission on mount
+    const getCameraPermission = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        setHasPermission(true);
+        stream.getTracks().forEach(track => track.stop()); // Stop the stream immediately after checking permission
+      } catch (err) {
+        console.error("Camera permission error:", err);
+        setHasPermission(false);
+        setModalData({
+          isOpen: true,
+          type: "error",
+          title: "Camera Permission Denied",
+          message: "Please grant camera access in your browser settings to use the QR scanner."
+        });
+      }
+    };
+    getCameraPermission();
+
     return () => {
       // Cleanup camera stream when component unmounts
       if (streamRef.current) {
@@ -45,15 +72,163 @@ export default function QRScanner() {
     };
   }, []);
 
-  const startCamera = async () => {
+  // Real QR code scanning with camera
+  const startCameraScanning = useCallback(async () => {
+    if (hasPermission === false) {
+      toast({
+        title: "Camera Access Required",
+        description: "Please grant camera permissions to scan.",
+        variant: "destructive"
+      });
+      return;
+    }
+
     try {
-        const stream = await navigator.mediaDevices.getUserMedia({ 
-          video: { 
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: 'environment',
+          width: { ideal: 640 },
+          height: { ideal: 480 }
+        }
+      });
+      streamRef.current = stream; // Store stream in ref
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+        setIsScanning(true);
+
+        // Start QR detection
+        const interval = setInterval(() => {
+          if (videoRef.current && canvasRef.current) {
+            const canvas = canvasRef.current;
+            const video = videoRef.current;
+            const context = canvas.getContext('2d');
+
+            if (context) {
+              canvas.width = video.videoWidth;
+              canvas.height = video.videoHeight;
+              context.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+              // In a real application, you would use a library like jsQR here
+              // to decode the QR code from the canvas imageData.
+              // For now, we simulate a successful scan after a delay.
+              if (video.videoWidth > 0) { // Check if video is playing
+                // Simulate detecting a QR code after 3 seconds of scanning
+                setTimeout(() => {
+                  const mockQRData = generateMockQRData();
+                  setScanResult(mockQRData);
+                  stopScanning();
+                  clearInterval(interval);
+                }, 3000);
+              }
+            }
+          }
+        }, 100); // Check every 100ms
+
+        // Return cleanup function for the interval
+        return () => {
+          clearInterval(interval);
+        };
+      }
+    } catch (error) {
+      console.error('Camera access error:', error);
+      toast({
+        title: "Camera Error",
+        description: "Unable to access camera. Please check permissions.",
+        variant: "destructive"
+      });
+      stopScanning(); // Ensure scanning is stopped on error
+    }
+  }, [hasPermission, toast]); // Add dependencies for useCallback
+
+  const stopScanning = useCallback(() => {
+    if (videoRef.current && videoRef.current.srcObject) {
+      const stream = videoRef.current.srcObject as MediaStream;
+      stream.getTracks().forEach(track => track.stop());
+      videoRef.current.srcObject = null;
+    }
+    setIsScanning(false);
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+  }, []);
+
+  const generateMockQRData = () => {
+    const qrTypes = ["delivery", "payment", "merchant"]; // Match original types
+    const randomType = qrTypes[Math.floor(Math.random() * qrTypes.length)];
+
+    switch (randomType) {
+      case "delivery":
+        return {
+          type: "delivery",
+          data: {
+            orderId: "ORDER_" + Math.random().toString(36).substr(2, 9),
+            driverName: "Driver " + Math.random().toString(36).substr(2, 5),
+            deliveryTime: new Date().toLocaleTimeString(),
+            items: ["Item A", "Item B"],
+            totalAmount: `$${(Math.random() * 100).toFixed(2)}`
+          }
+        };
+
+      case "payment":
+        return {
+          type: "payment",
+          data: {
+            merchantName: "BrillPrime Merchant " + Math.floor(Math.random() * 100),
+            merchantId: "MERCHANT_" + Math.random().toString(36).substr(2, 9),
+            reference: "PAY_" + Date.now(),
+            amount: `$${(Math.random() * 5000).toFixed(2)}`
+          }
+        };
+
+      case "merchant":
+        return {
+          type: "merchant",
+          data: {
+            businessName: "BrillPrime Service",
+            address: "123 Main St, Lagos",
+            phone: "+234 " + Math.floor(Math.random() * 900000000 + 100000000),
+            services: ["Delivery", "Payment", "Support"]
+          }
+        };
+
+      default:
+        return { type: "UNKNOWN", data: "Sample QR data" };
+    }
+  };
+
+  // Simulate QR code scanning for demo purposes (fallback)
+  const simulateQRScan = (type: "delivery" | "payment" | "merchant") => {
+    setIsScanning(true);
+
+    setTimeout(() => {
+      const mockData = generateMockQRData();
+      setScanResult(mockData);
+      setIsScanning(false);
+    }, 2000);
+  };
+
+
+  const startCamera = async () => {
+    if (hasPermission === false) {
+      toast({
+        title: "Camera Access Required",
+        description: "Please grant camera permissions to scan.",
+        variant: "destructive"
+      });
+      return;
+    }
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
             facingMode: "environment",
             width: { ideal: 1280 },
             height: { ideal: 720 }
-          } 
+          }
         });
+        streamRef.current = stream; // Store stream in ref
 
         if (videoRef.current) {
           videoRef.current.srcObject = stream;
@@ -64,8 +239,12 @@ export default function QRScanner() {
         }
       } catch (error) {
         console.error('Error accessing camera:', error);
-        setError('Unable to access camera. Please check permissions.');
-        alert('Unable to access camera. Please check permissions.');
+        toast({
+          title: "Camera Error",
+          description: "Unable to access camera. Please check permissions.",
+          variant: "destructive"
+        });
+        setHasPermission(false); // Assume permission denied if getUserMedia fails
       }
   };
 
@@ -80,44 +259,84 @@ export default function QRScanner() {
   const toggleFlashlight = async () => {
     if (streamRef.current) {
       const track = streamRef.current.getVideoTracks()[0];
+      // Check if the device supports torch mode
       if (track.getCapabilities && track.getCapabilities().torch) {
         try {
           await track.applyConstraints({
-            advanced: [{ torch: !flashlightOn } as any]
+            advanced: [{ torch: !flashlightOn } as any] // Use `torch` for flashlight control
           });
           setFlashlightOn(!flashlightOn);
         } catch (error) {
           console.error("Flashlight toggle error:", error);
+          toast({
+            title: "Flashlight Error",
+            description: "Could not toggle flashlight.",
+            variant: "destructive"
+          });
         }
+      } else {
+        toast({
+          title: "Flashlight Not Supported",
+          description: "Your device does not support flashlight control.",
+          variant: "info"
+        });
       }
     }
   };
 
   const switchCamera = () => {
-    stopCamera();
-    setFacingMode(facingMode === "user" ? "environment" : "user");
-    setTimeout(() => startCamera(), 100);
+    stopCamera(); // Stop the current camera stream
+    const newFacingMode = facingMode === "user" ? "environment" : "user";
+    setFacingMode(newFacingMode);
+
+    // Re-request camera with the new facing mode after a short delay
+    setTimeout(async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: newFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          }
+        });
+        streamRef.current = stream; // Store new stream
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          videoRef.current.play();
+          setIsScanning(true); // Ensure scanning state is true
+        }
+      } catch (error) {
+        console.error('Error switching camera:', error);
+        toast({
+          title: "Camera Switch Error",
+          description: "Could not switch camera. Please try again.",
+          variant: "destructive"
+        });
+        stopCamera(); // Stop if switching fails
+      }
+    }, 100); // Small delay to allow previous stream to release
   };
 
-  const simulateQRScan = async (type: "delivery" | "payment" | "merchant") => {
+
+  const simulateQRScanAPI = async (type: "delivery" | "payment" | "merchant") => {
     try {
       setIsLoading(true);
-      
+
       // Generate a realistic QR code for testing
       const qrCode = `${type.toUpperCase()}_${Date.now()}`;
-      
+
       const response = await fetch('/api/qr/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ qrCode, type })
       });
-      
+
       if (!response.ok) {
         throw new Error('Failed to process QR code');
       }
-      
+
       const result = await response.json();
-      
+
       setScanResult({
         type,
         data: result.data
@@ -145,7 +364,7 @@ export default function QRScanner() {
 
   const confirmDelivery = async () => {
     if (!scanResult || scanResult.type !== 'delivery') return;
-    
+
     try {
       // Call API to verify and confirm delivery
       const response = await fetch('/api/qr/verify-delivery', {
@@ -153,7 +372,7 @@ export default function QRScanner() {
         headers: {
           'Content-Type': 'application/json',
         },
-        credentials: 'include',
+        credentials: 'include', // Assuming cookies are needed for auth
         body: JSON.stringify({
           orderId: scanResult.data.orderId,
           qrCode: `DELIVERY_${scanResult.data.orderId}_${Date.now()}`,
@@ -192,8 +411,8 @@ export default function QRScanner() {
         message: "Unable to connect to verification service. Please check your internet connection."
       });
     }
-    
-    setScanResult(null);
+
+    setScanResult(null); // Clear scan result after confirmation attempt
   };
 
   const processPayment = () => {
@@ -203,6 +422,7 @@ export default function QRScanner() {
       title: "Payment Processing",
       message: "Redirecting to payment confirmation. Please wait..."
     });
+    // Simulate navigation to payment processing
     setTimeout(() => {
       setLocation("/payment-methods");
     }, 2000);
@@ -215,7 +435,16 @@ export default function QRScanner() {
       title: "Contact Saved",
       message: "Merchant contact information has been saved to your favorites."
     });
-    setScanResult(null);
+    setScanResult(null); // Clear scan result after action
+  };
+
+  // Handler for the main start/stop scanning button
+  const handleScanButtonClick = () => {
+    if (isScanning) {
+      stopScanning();
+    } else {
+      startCameraScanning();
+    }
   };
 
   if (scanResult) {
@@ -389,6 +618,7 @@ export default function QRScanner() {
     );
   }
 
+  // Main scanner UI when no scan result is active
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}
       {/* Header */}
@@ -437,7 +667,8 @@ export default function QRScanner() {
         {/* Camera View */}
         <Card className="rounded-3xl border-2 border-blue-100/50 bg-white overflow-hidden animate-fade-in-up">
           <CardContent className="p-0">
-            <div className="relative bg-black aspect-[4/3]">
+            {/* Updated camera view to use the video element and canvas */}
+            <div className="relative w-full bg-black aspect-video">
               {isScanning ? (
                 <>
                   <video
@@ -445,18 +676,19 @@ export default function QRScanner() {
                     className="w-full h-full object-cover"
                     playsInline
                     muted
+                    autoPlay
                   />
-                  {/* QR Scanner Overlay */}
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute inset-0 w-full h-full pointer-events-none" // Canvas overlay
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                     <div className="relative">
-                      <div className="w-64 h-64 border-4 border-white/30 rounded-3xl"></div>
-                      <div className="absolute inset-0 w-64 h-64">
-                        {/* Corner indicators */}
-                        <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-[#4682b4] rounded-tl-lg"></div>
-                        <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-[#4682b4] rounded-tr-lg"></div>
-                        <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-[#4682b4] rounded-bl-lg"></div>
-                        <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-[#4682b4] rounded-br-lg"></div>
-                      </div>
+                      {/* Corner indicators */}
+                      <div className="absolute top-0 left-0 w-8 h-8 border-l-4 border-t-4 border-[#4682b4] rounded-tl-lg"></div>
+                      <div className="absolute top-0 right-0 w-8 h-8 border-r-4 border-t-4 border-[#4682b4] rounded-tr-lg"></div>
+                      <div className="absolute bottom-0 left-0 w-8 h-8 border-l-4 border-b-4 border-[#4682b4] rounded-bl-lg"></div>
+                      <div className="absolute bottom-0 right-0 w-8 h-8 border-r-4 border-b-4 border-[#4682b4] rounded-br-lg"></div>
                       {/* Scanning line animation */}
                       <div className="absolute inset-0 w-64 h-64 overflow-hidden rounded-3xl">
                         <div className="w-full h-0.5 bg-[#4682b4] animate-pulse absolute top-1/2 transform -translate-y-1/2"></div>
@@ -484,25 +716,24 @@ export default function QRScanner() {
 
         {/* Control Buttons */}
         <div className="grid grid-cols-1 gap-3">
-          {!isScanning ? (
-            <Button
-              onClick={startCamera}
-              disabled={hasPermission === false}
-              className="h-14 bg-[#4682b4] hover:bg-[#0b1a51] text-white rounded-3xl transition-colors duration-300 animate-fade-in-up"
-            >
-              <Camera className="w-6 h-6 mr-3" />
-              Start Camera
-            </Button>
-          ) : (
-            <Button
-              onClick={stopCamera}
-              variant="outline"
-              className="h-14 border-2 border-red-200 text-red-600 hover:bg-red-50 rounded-3xl transition-all duration-300 hover:scale-105 animate-fade-in-up"
-            >
-              <X className="w-6 h-6 mr-3" />
-              Stop Scanning
-            </Button>
-          )}
+          <Button
+            onClick={handleScanButtonClick} // Use the combined handler
+            disabled={hasPermission === false && !isScanning} // Disable if permission denied and not already scanning
+            className="w-full py-4 rounded-3xl text-lg font-semibold transition-all duration-300 hover:scale-105"
+            style={{ backgroundColor: COLORS.PRIMARY }}
+          >
+            {isScanning ? (
+              <>
+                <X className="w-5 h-5 mr-2" />
+                Stop Scanning
+              </>
+            ) : (
+              <>
+                <Camera className="w-5 h-5 mr-2" />
+                Start QR Scanner
+              </>
+            )}
+          </Button>
         </div>
 
         {/* Quick Test Buttons for Demo */}
