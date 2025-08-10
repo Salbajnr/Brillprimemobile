@@ -36,36 +36,18 @@ app.get("/api/users", (req, res) => {
 });
 
 // Import and register all route modules
-import adminRoutes from "./admin/routes.js";
-import merchantRoutes from "./routes/merchant.js";
-import driverRoutes from "./routes/driver.js";
-import paymentRoutes from "./routes/payments.js";
-import productsRoutes from "./routes/products.js";
-import fuelOrdersRoutes from "./routes/fuel-orders.js";
-import tollPaymentsRoutes from "./routes/toll-payments.js";
-import qrPaymentsRoutes from "./routes/qr-payments.js";
-import liveChatRoutes from "./routes/live-chat.js";
-import analyticsRoutes from "./routes/analytics.js";
-import escrowRoutes from "./routes/escrow-management.js";
-import verificationRoutes from "./routes/verification.js";
-import orderStatusRoutes from "./routes/order-status.js";
-import realTimeTrackingRoutes from "./routes/real-time-tracking.js";
+import adminRoutes from "./admin/routes";
+import merchantRoutes from "./routes/merchant";
+import driverRoutes from "./routes/driver";
+import verificationRoutes from "./routes/verification";
+import tollPaymentsRoutes from "./routes/toll-payments";
 
 // Register route modules
 app.use("/api/admin", adminRoutes);
 app.use("/api/merchant", merchantRoutes);
 app.use("/api/driver", driverRoutes);
-app.use("/api", paymentRoutes);
-app.use("/api", productsRoutes);
-app.use("/api", fuelOrdersRoutes);
-app.use("/api", tollPaymentsRoutes);
-app.use("/api", qrPaymentsRoutes);
-app.use("/api", liveChatRoutes);
-app.use("/api", analyticsRoutes);
-app.use("/api", escrowRoutes);
-app.use("/api", verificationRoutes);
-app.use("/api", orderStatusRoutes);
-app.use("/api", realTimeTrackingRoutes);
+app.use("/api/verification", verificationRoutes);
+app.use("/api/toll", tollPaymentsRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === "production") {

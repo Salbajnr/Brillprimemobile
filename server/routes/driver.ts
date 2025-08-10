@@ -1,7 +1,9 @@
-import { Express } from 'express';
+import { Router } from "express";
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { storage } from '../storage';
+
+const router = Router();
 
 // Validation schemas
 const updateDriverStatusSchema = z.object({
@@ -27,11 +29,11 @@ const updateDeliveryStatusSchema = z.object({
 
 export function registerDriverRoutes(app: Express) {
   // Get driver profile
-  app.get("/api/driver/profile", requireAuth, async (req, res) => {
+  router.get("/profile", requireAuth, async (req, res) => {
     try {
       const driverId = req.session!.userId!;
       const driverProfile = await storage.getDriverProfile(driverId);
-      
+
       if (!driverProfile) {
         return res.status(404).json({ message: "Driver profile not found" });
       }
@@ -62,7 +64,7 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Update driver online/offline status
-  app.put("/api/driver/status", requireAuth, async (req, res) => {
+  router.put("/status", requireAuth, async (req, res) => {
     try {
       const driverId = req.session!.userId!;
       const validatedData = updateDriverStatusSchema.parse(req.body);
@@ -92,10 +94,10 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Get available delivery requests
-  app.get("/api/driver/delivery-requests", requireAuth, async (req, res) => {
+  router.get("/delivery-requests", requireAuth, async (req, res) => {
     try {
       const driverId = req.session!.userId!;
-      
+
       // Get driver's current location to find nearby requests
       const driverProfile = await storage.getDriverProfile(driverId);
       if (!driverProfile || !driverProfile.isOnline) {
@@ -140,7 +142,7 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Accept delivery request
-  app.post("/api/driver/accept-delivery/:requestId", requireAuth, async (req, res) => {
+  router.post("/accept-delivery/:requestId", requireAuth, async (req, res) => {
     try {
       const { requestId } = req.params;
       const driverId = req.session!.userId!;
@@ -207,7 +209,7 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Update delivery status
-  app.put("/api/driver/delivery/:deliveryId/status", requireAuth, async (req, res) => {
+  router.put("/delivery/:deliveryId/status", requireAuth, async (req, res) => {
     try {
       const { deliveryId } = req.params;
       const driverId = req.session!.userId!;
@@ -271,10 +273,10 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Get driver earnings
-  app.get("/api/driver/earnings", requireAuth, async (req, res) => {
+  router.get("/earnings", requireAuth, async (req, res) => {
     try {
       const driverId = req.session!.userId!;
-      
+
       const earnings = {
         todayEarnings: 0,
         weeklyEarnings: 0,
@@ -304,7 +306,7 @@ export function registerDriverRoutes(app: Express) {
       earnings.totalEarnings = allDeliveries.reduce((sum: number, d: any) => sum + d.deliveryFee, 0);
 
       earnings.completedDeliveries = allDeliveries.filter((d: any) => d.status === 'DELIVERED').length;
-      
+
       // Calculate performance metrics (mock data for now)
       earnings.averageDeliveryTime = 25;
       earnings.onTimeDeliveryRate = 92;
@@ -319,13 +321,13 @@ export function registerDriverRoutes(app: Express) {
   });
 
   // Get driver delivery history
-  app.get("/api/driver/deliveries", requireAuth, async (req, res) => {
+  router.get("/deliveries", requireAuth, async (req, res) => {
     try {
       const driverId = req.session!.userId!;
       const { status, limit = 50 } = req.query;
 
       let deliveries = await storage.getDriverDeliveries(driverId);
-      
+
       if (status && status !== 'all') {
         deliveries = deliveries.filter((delivery: any) => delivery.status === status);
       }
@@ -339,4 +341,6 @@ export function registerDriverRoutes(app: Express) {
       res.status(500).json({ message: "Failed to fetch deliveries" });
     }
   });
+
+  app.use('/api/driver', router);
 }

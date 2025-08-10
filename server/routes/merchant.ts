@@ -1,7 +1,9 @@
-import { Express } from 'express';
+import { Router } from "express";
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
 import { storage } from '../storage';
+
+const router = Router();
 
 // Validation schemas
 const updateOrderStatusSchema = z.object({
@@ -35,16 +37,16 @@ const createProductSchema = z.object({
   isActive: z.boolean().default(true)
 });
 
-export function registerMerchantRoutes(app: Express) {
+export function registerMerchantRoutes(app: any) { // Changed Express to any for router compatibility
   // Get merchant dashboard metrics
-  app.get("/api/merchant/metrics", requireAuth, async (req, res) => {
+  router.get("/api/merchant/metrics", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
-      
+
       // Get business metrics
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const metrics = {
         todayRevenue: 0,
         todaySales: 0,
@@ -61,23 +63,23 @@ export function registerMerchantRoutes(app: Express) {
       const todayOrders = await storage.getMerchantOrdersForDate(merchantId, today);
       metrics.todayRevenue = todayOrders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
       metrics.todaySales = todayOrders.length;
-      
+
       // Get active orders count
       const activeOrders = await storage.getMerchantActiveOrders(merchantId);
       metrics.activeOrders = activeOrders.length;
-      
+
       // Get customer count (unique customers who have ordered)
       const customers = await storage.getMerchantCustomers(merchantId);
       metrics.customerCount = customers.length;
-      
+
       // Get products with low stock
       const products = await storage.getMerchantProducts(merchantId);
       metrics.lowStockAlerts = products.filter((p: any) => p.stockLevel <= p.lowStockThreshold).length;
       metrics.inventoryValue = products.reduce((sum: number, p: any) => sum + (p.price * p.stockLevel), 0);
-      
+
       // Calculate pending orders
       metrics.pendingOrdersCount = activeOrders.filter((o: any) => o.status === 'NEW').length;
-      
+
       // Calculate average order value
       if (todayOrders.length > 0) {
         metrics.averageOrderValue = metrics.todayRevenue / todayOrders.length;
@@ -91,13 +93,13 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Get merchant orders
-  app.get("/api/merchant/orders", requireAuth, async (req, res) => {
+  router.get("/api/merchant/orders", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
       const { status, limit = 50 } = req.query;
 
       let orders = await storage.getMerchantOrders(merchantId);
-      
+
       if (status && status !== 'all') {
         orders = orders.filter((order: any) => order.status === status);
       }
@@ -134,7 +136,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Update order status
-  app.put("/api/merchant/orders/:orderId/status", requireAuth, async (req, res) => {
+  router.put("/api/merchant/orders/:orderId/status", requireAuth, async (req, res) => {
     try {
       const { orderId } = req.params;
       const merchantId = req.session!.userId!;
@@ -184,7 +186,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Assign driver to order
-  app.post("/api/merchant/orders/:orderId/assign-driver", requireAuth, async (req, res) => {
+  router.post("/api/merchant/orders/:orderId/assign-driver", requireAuth, async (req, res) => {
     try {
       const { orderId } = req.params;
       const merchantId = req.session!.userId!;
@@ -234,10 +236,10 @@ export function registerMerchantRoutes(app: Express) {
         });
       }
 
-      res.json({ 
-        success: true, 
+      res.json({
+        success: true,
         message: "Driver assignment requested",
-        deliveryRequestId: deliveryRequest.id 
+        deliveryRequestId: deliveryRequest.id
       });
     } catch (error) {
       console.error("Assign driver error:", error);
@@ -246,7 +248,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Get merchant products
-  app.get("/api/merchant/products", requireAuth, async (req, res) => {
+  router.get("/api/merchant/products", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
       const products = await storage.getMerchantProducts(merchantId);
@@ -278,7 +280,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Create new product
-  app.post("/api/merchant/products", requireAuth, async (req, res) => {
+  router.post("/api/merchant/products", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
       const validatedData = createProductSchema.parse(req.body);
@@ -301,7 +303,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Update product
-  app.put("/api/merchant/products/:productId", requireAuth, async (req, res) => {
+  router.put("/api/merchant/products/:productId", requireAuth, async (req, res) => {
     try {
       const { productId } = req.params;
       const merchantId = req.session!.userId!;
@@ -326,10 +328,10 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Get revenue analytics
-  app.get("/api/merchant/revenue", requireAuth, async (req, res) => {
+  router.get("/api/merchant/revenue", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
-      
+
       const revenue = {
         totalRevenue: 0,
         monthlyRevenue: 0,
@@ -372,7 +374,7 @@ export function registerMerchantRoutes(app: Express) {
   });
 
   // Toggle business hours
-  app.put("/api/merchant/business-hours", requireAuth, async (req, res) => {
+  router.put("/api/merchant/business-hours", requireAuth, async (req, res) => {
     try {
       const merchantId = req.session!.userId!;
       const { isOpen } = req.body;
@@ -385,4 +387,6 @@ export function registerMerchantRoutes(app: Express) {
       res.status(500).json({ message: "Failed to update business hours" });
     }
   });
+
+  app.use(router);
 }

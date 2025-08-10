@@ -33,9 +33,12 @@ const tollGatesData = {
   }
 };
 
-export function registerTollPaymentRoutes(app: Express) {
+import { Router } from "express";
+const router = Router();
+
+// Convert function to use router
   // Process toll payment
-  app.post("/api/toll/payment", async (req: any, res: any) => {
+  router.post("/payment", async (req: any, res: any) => {
     try {
       const userId = req.session?.userId;
       if (!userId) {
@@ -278,4 +281,5 @@ export function registerTollPaymentRoutes(app: Express) {
       res.status(500).json({ success: false, error: 'Failed to verify QR code' });
     }
   });
-}
+
+export default router;

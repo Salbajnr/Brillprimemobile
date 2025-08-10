@@ -185,28 +185,39 @@ export const verifyPhoneOTP = [
     try {
       const { userId, otpCode } = req.body;
     
-    const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
+      const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
     
-    if (phoneVerification) {
-      // Update user phone verification status
-      await storage.updateUser(parseInt(userId), { isPhoneVerified: true });
-      
-      res.json({
-        status: 'Success',
-        message: 'Phone number verified successfully'
-      });
-    } else {
-      res.status(400).json({
+      if (phoneVerification) {
+        // Update user phone verification status
+        await storage.updateUser(parseInt(userId), { isPhoneVerified: true });
+        
+        res.json({
+          status: 'Success',
+          message: 'Phone number verified successfully'
+        });
+      } else {
+        res.status(400).json({
+          status: 'Error',
+          message: 'Invalid or expired OTP code'
+        });
+      }
+    
+    } catch (error) {
+      console.error('Phone OTP verification error:', error);
+      res.status(500).json({
         status: 'Error',
-        message: 'Invalid or expired OTP code'
+        message: 'Failed to verify phone number'
       });
     }
-    
-  } catch (error) {
-    console.error('Phone OTP verification error:', error);
-    res.status(500).json({
-      status: 'Error',
-      message: 'Failed to verify phone number'
-    });
   }
-};
+];
+
+// Export router with routes
+import { Router } from 'express';
+const router = Router();
+
+router.post('/identity-verification', submitIdentityVerification);
+router.get('/status/:userId', getVerificationStatus);
+router.post('/verify-phone-otp', verifyPhoneOTP);
+
+export default router;
