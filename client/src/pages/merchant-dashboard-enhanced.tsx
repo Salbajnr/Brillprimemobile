@@ -120,9 +120,13 @@ export default function EnhancedMerchantDashboard() {
     queryKey: ["/api/merchant/metrics"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/merchant/metrics");
+      if (!response.ok) {
+        throw new Error('Failed to fetch metrics');
+      }
       return response.json();
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000, // Refresh every 30 seconds
+    retry: 2
   });
 
   // Orders query
@@ -130,9 +134,13 @@ export default function EnhancedMerchantDashboard() {
     queryKey: ["/api/merchant/orders"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/merchant/orders");
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
       return response.json();
     },
-    refetchInterval: 15000 // Refresh every 15 seconds
+    refetchInterval: 15000, // Refresh every 15 seconds
+    retry: 2
   });
 
   // Products query
@@ -140,8 +148,12 @@ export default function EnhancedMerchantDashboard() {
     queryKey: ["/api/merchant/products"],
     queryFn: async () => {
       const response = await apiRequest("GET", "/api/merchant/products");
+      if (!response.ok) {
+        throw new Error('Failed to fetch products');
+      }
       return response.json();
-    }
+    },
+    retry: 2
   });
 
   // Revenue analytics query

@@ -1,7 +1,6 @@
-
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
-import { storage } from './storage';
+import { storage } from "./storage.js";
 import jwt from 'jsonwebtoken';
 
 // Define message types for WebSocket communication
@@ -261,7 +260,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
         }
 
         socket.join(data.roomId);
-        
+
         // Track room participants
         if (!roomParticipants.has(data.roomId)) {
           roomParticipants.set(data.roomId, new Set());
