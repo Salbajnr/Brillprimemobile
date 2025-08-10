@@ -236,8 +236,9 @@ class ApiClient {
       }
     }, 5000);
 
-    // Return cleanup function
-    return () => clearInterval(pollInterval);
+    // Store cleanup function for potential use
+    const cleanup = () => clearInterval(pollInterval);
+    return Promise.resolve();
   }
 
   // Fuel Orders
@@ -404,13 +405,13 @@ class ApiClient {
   }
 
   // Merchant specific
-  async getProducts(): Promise<any> {
+  async getMerchantProducts(): Promise<any> {
     const response = await fetch('/api/products', {
       headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
     });
 
     if (!response.ok) {
-      throw new Error('Failed to fetch products');
+      throw new Error('Failed to fetch merchant products');
     }
 
     return response.json();

@@ -1,5 +1,5 @@
-// Authentication API functions
-export const authAPI = {
+// Legacy auth API functions (deprecated)
+export const legacyAuthAPI = {
   async signup(data: {
     email: string
     password: string

@@ -1,3 +1,4 @@
+import React from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -53,7 +54,12 @@ function App() {
               <Route path="/wallet-fund/callback" component={WalletFundCallback} />
               <Route path="/wallet/transactions" component={WalletTransactions} />
               <Route path="/wallet" component={WalletBalance} />
-              <Route path="/toll-payments-enhanced" component={() => import('./pages/toll-payments-enhanced.tsx')} />
+              <Route path="/toll-payments-enhanced" 
+                component={() => {
+                  const TollPaymentsEnhanced = React.lazy(() => import('./pages/toll-payments-enhanced'));
+                  return <React.Suspense fallback={<div>Loading...</div>}><TollPaymentsEnhanced /></React.Suspense>;
+                }} 
+              />
               <Route path="/bills" component={BillsPayment} />
               <Route path="/transfer" component={MoneyTransfer} />
               <Route component={NotFound} />

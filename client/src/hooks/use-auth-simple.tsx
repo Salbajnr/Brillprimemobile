@@ -1,6 +1,6 @@
 
 import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { apiClient, User, ApiResponse } from '../lib/api';
+import { apiClient, User } from '../lib/api';
 
 interface AuthContextType {
   user: User | null;
@@ -147,5 +147,8 @@ export function useAuth() {
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context;
+  return {
+    ...context,
+    isAuthenticated: () => !!context.user
+  };
 }

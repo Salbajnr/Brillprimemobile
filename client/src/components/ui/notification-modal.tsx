@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -6,9 +7,10 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { CheckCircle, XCircle, AlertCircle, Info } from "lucide-react"
+import { Card, CardContent } from '@/components/ui/card';
+import { X, Bell, CheckCircle, XCircle, AlertCircle, Info, AlertTriangle } from "lucide-react"
 
-interface NotificationModalProps {
+interface SimpleNotificationModalProps {
   isOpen: boolean
   onClose: () => void
   type: 'success' | 'error' | 'warning' | 'info'
@@ -18,7 +20,28 @@ interface NotificationModalProps {
   onConfirm?: () => void
 }
 
-export function NotificationModal({
+interface Notification {
+  id: number;
+  title: string;
+  message: string;
+  type: 'info' | 'success' | 'warning' | 'error';
+  timestamp: number;
+  orderId?: string;
+  isRead?: boolean;
+  actions?: {
+    label: string;
+    action: () => void;
+    variant?: 'default' | 'destructive' | 'outline';
+  }[];
+}
+
+interface NotificationModalProps {
+  notification: Notification | null;
+  onClose: () => void;
+  onAction?: (actionLabel: string) => void;
+}
+
+export function SimpleNotificationModal({
   isOpen,
   onClose,
   type,
@@ -26,7 +49,7 @@ export function NotificationModal({
   message,
   confirmText = "OK",
   onConfirm
-}: NotificationModalProps) {
+}: SimpleNotificationModalProps) {
   const getIcon = () => {
     switch (type) {
       case 'success':
@@ -79,31 +102,7 @@ export function NotificationModal({
     </Dialog>
   )
 }
-import { useState, useEffect } from 'react';
-import { X, Bell, AlertCircle, CheckCircle, Info, AlertTriangle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 
-interface Notification {
-  id: number;
-  title: string;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error';
-  timestamp: number;
-  orderId?: string;
-  isRead?: boolean;
-  actions?: {
-    label: string;
-    action: () => void;
-    variant?: 'default' | 'destructive' | 'outline';
-  }[];
-}
-
-interface NotificationModalProps {
-  notification: Notification | null;
-  onClose: () => void;
-  onAction?: (actionLabel: string) => void;
-}
 
 export function NotificationModal({ notification, onClose, onAction }: NotificationModalProps) {
   const [isVisible, setIsVisible] = useState(false);
