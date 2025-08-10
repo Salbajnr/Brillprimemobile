@@ -8,7 +8,15 @@
   },
   "dependencies": {
     "@types/bcrypt": "^6.0.0",
+    "@types/multer": "^2.0.0",
+    "@types/qrcode": "^1.5.5",
+    "@types/sharp": "^0.31.1",
+    "@types/speakeasy": "^2.0.10",
     "bcrypt": "^6.0.0",
+    "multer": "^2.0.2",
+    "qrcode": "^1.5.4",
+    "sharp": "^0.34.3",
+    "speakeasy": "^2.0.0",
     "tsx": "^4.7.0"
   }
 }
