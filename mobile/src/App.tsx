@@ -10,6 +10,10 @@ import SplashScreen from './screens/SplashScreen';
 import SignInScreen from './screens/SignInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
+import OrderHistoryScreen from './screens/OrderHistoryScreen';
+import WalletBalanceScreen from './screens/WalletBalanceScreen';
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
@@ -23,7 +27,7 @@ const App: React.FC = () => {
             initialRouteName="Splash"
             screenOptions={{
               headerStyle: {
-                backgroundColor: '#1E40AF',
+                backgroundColor: '#4682b4',
               },
               headerTintColor: '#fff',
               headerTitleStyle: {
@@ -39,17 +43,37 @@ const App: React.FC = () => {
             <Stack.Screen 
               name="SignIn" 
               component={SignInScreen}
-              options={{ title: 'Sign In' }}
+              options={{ title: 'Sign In', headerShown: false }}
             />
             <Stack.Screen 
               name="SignUp" 
               component={SignUpScreen}
-              options={{ title: 'Sign Up' }}
+              options={{ title: 'Sign Up', headerShown: false }}
             />
             <Stack.Screen 
               name="Home" 
               component={HomeScreen}
-              options={{ title: 'BrillPrime' }}
+              options={{ title: 'BrillPrime', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Profile" 
+              component={ProfileScreen}
+              options={{ title: 'Profile', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="Notifications" 
+              component={NotificationsScreen}
+              options={{ title: 'Notifications', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="OrderHistory" 
+              component={OrderHistoryScreen}
+              options={{ title: 'Order History', headerShown: false }}
+            />
+            <Stack.Screen 
+              name="WalletBalance" 
+              component={WalletBalanceScreen}
+              options={{ title: 'My Wallet', headerShown: false }}
             />
           </Stack.Navigator>
         </NavigationContainer>
