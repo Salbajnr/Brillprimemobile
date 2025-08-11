@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { 
@@ -22,31 +22,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { useWebSocketOrders } from "@/hooks/use-websocket";
 import LiveMap from "@/components/ui/live-map";
 
-interface FuelOrder {
-  id: string;
-  stationId: string;
-  fuelType: string;
-  quantity: number;
-  unitPrice: number;
-  totalAmount: number;
-  deliveryAddress: string;
-  status: string;
-  customerName?: string;
-  customerPhone?: string;
-  driverName?: string;
-  driverPhone?: string;
-  createdAt: string;
-  acceptedAt?: string;
-  pickedUpAt?: string;
-  deliveredAt?: string;
-  estimatedDeliveryTime?: string;
-}
+
 
 export default function FuelDeliveryTracking() {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const { connected, orderUpdates } = useWebSocketOrders();
+  const { connected } = useWebSocketOrders();
   
   // Get order ID from URL params
   const urlParams = new URLSearchParams(window.location.search);
@@ -411,210 +393,6 @@ export default function FuelDeliveryTracking() {
             </div>
           </CardContent>
         </Card>
-      </div>
-    </div>
-  );
-}
-
-  // Get order ID from URL params
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const id = urlParams.get('orderId');
-    if (id) {
-      setOrderId(id);
-    }
-  }, []);
-
-  // WebSocket connection for real-time updates
-  const { isConnected } = useWebSocket('fuel-delivery', {
-    onMessage: (data) => {
-      if (data.type === 'delivery_update' && data.orderId === orderId) {
-        setDeliveryStatus(data.status);
-      }
-    }
-  });
-
-  useEffect(() => {
-    if (orderId) {
-      fetchDeliveryStatus();
-    }
-  }, [orderId]);
-
-  const fetchDeliveryStatus = async () => {
-    try {
-      const response = await fetch(`/api/fuel-orders/${orderId}/status`, {
-        credentials: 'include'
-      });
-      
-      if (response.ok) {
-        const result = await response.json();
-        setDeliveryStatus(result.delivery);
-      }
-    } catch (error) {
-      console.error('Error fetching delivery status:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'confirmed': return 'bg-blue-100 text-blue-800';
-      case 'preparing': return 'bg-yellow-100 text-yellow-800';
-      case 'in_transit': return 'bg-orange-100 text-orange-800';
-      case 'delivered': return 'bg-green-100 text-green-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  const getStatusSteps = () => {
-    const steps = [
-      { key: 'confirmed', label: 'Order Confirmed', icon: CheckCircle },
-      { key: 'preparing', label: 'Fuel Preparing', icon: Clock },
-      { key: 'in_transit', label: 'Out for Delivery', icon: Truck },
-      { key: 'delivered', label: 'Delivered', icon: CheckCircle }
-    ];
-
-    const currentIndex = steps.findIndex(step => step.key === deliveryStatus?.status);
-    
-    return steps.map((step, index) => ({
-      ...step,
-      isCompleted: index <= currentIndex,
-      isActive: index === currentIndex
-    }));
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#4682b4] mx-auto mb-4"></div>
-          <p>Loading delivery status...</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 w-full max-w-md mx-auto">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-b">
-        <div className="flex items-center justify-between p-4">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setLocation("/fuel-ordering")}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <h1 className="text-lg font-semibold text-[#131313]">Track Delivery</h1>
-          <div className="w-10"></div>
-        </div>
-      </div>
-
-      <div className="p-4 space-y-6">
-        {/* Order Status */}
-        {deliveryStatus && (
-          <Card>
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold text-[#131313]">Order #{orderId}</h3>
-                <Badge className={getStatusColor(deliveryStatus.status)}>
-                  {deliveryStatus.status.replace('_', ' ').toUpperCase()}
-                </Badge>
-              </div>
-              
-              <div className="flex items-center space-x-2 text-sm text-gray-600 mb-4">
-                <Clock className="w-4 h-4" />
-                <span>Estimated delivery: {deliveryStatus.estimatedTime}</span>
-              </div>
-
-              {/* Status Steps */}
-              <div className="space-y-3">
-                {getStatusSteps().map((step, index) => (
-                  <div key={step.key} className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      step.isCompleted ? 'bg-[#4682b4] text-white' : 
-                      step.isActive ? 'bg-[#4682b4]/20 text-[#4682b4]' : 
-                      'bg-gray-200 text-gray-400'
-                    }`}>
-                      <step.icon className="w-4 h-4" />
-                    </div>
-                    <span className={`text-sm ${
-                      step.isCompleted || step.isActive ? 'text-[#131313] font-medium' : 'text-gray-500'
-                    }`}>
-                      {step.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Driver Info */}
-        {deliveryStatus?.driverInfo && (
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-[#131313] mb-4">Driver Information</h3>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Driver Name</span>
-                  <span className="font-medium">{deliveryStatus.driverInfo.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Vehicle Number</span>
-                  <span className="font-medium">{deliveryStatus.driverInfo.vehicleNumber}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-gray-600">Rating</span>
-                  <div className="flex items-center space-x-1">
-                    <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    <span className="font-medium">{deliveryStatus.driverInfo.rating}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <Button
-                variant="outline"
-                className="w-full mt-4"
-                onClick={() => window.open(`tel:${deliveryStatus.driverInfo?.phone}`)}
-              >
-                <Phone className="w-4 h-4 mr-2" />
-                Call Driver
-              </Button>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Live Map */}
-        {deliveryStatus?.currentLocation && (
-          <Card>
-            <CardContent className="p-6">
-              <h3 className="font-semibold text-[#131313] mb-4">Live Location</h3>
-              <div className="h-64 rounded-lg overflow-hidden">
-                <LiveMap
-                  center={deliveryStatus.currentLocation}
-                  markers={[
-                    {
-                      id: 'driver',
-                      position: deliveryStatus.currentLocation,
-                      title: 'Driver Location',
-                      type: 'driver'
-                    }
-                  ]}
-                  zoom={15}
-                />
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* WebSocket Status */}
-        <div className="flex items-center justify-center space-x-2 text-sm text-gray-500">
-          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
-          <span>{isConnected ? 'Live tracking active' : 'Connecting...'}</span>
-        </div>
       </div>
     </div>
   );

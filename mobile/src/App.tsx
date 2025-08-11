@@ -1,0 +1,246 @@
+import React from 'react';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { QueryClient, QueryClientProvider } from 'react-query';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+
+// Import screens
+import SplashScreen from './screens/SplashScreen';
+import SignInScreen from './screens/SignInScreen';
+import SignUpScreen from './screens/SignUpScreen';
+import HomeScreen from './screens/HomeScreen';
+import ProfileScreen from './screens/ProfileScreen';
+import EditProfileScreen from './screens/EditProfileScreen';
+import SupportScreen from './screens/SupportScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
+import OrderHistoryScreen from './screens/OrderHistoryScreen';
+import WalletBalanceScreen from './screens/WalletBalanceScreen';
+import MessagesScreen from './screens/MessagesScreen';
+import CartScreen from './screens/CartScreen';
+import CheckoutScreen from './screens/CheckoutScreen';
+import QRScannerScreen from './screens/QRScannerScreen';
+import TrackOrderScreen from './screens/TrackOrderScreen';
+import AccountSettingsScreen from './screens/AccountSettingsScreen';
+import BillPaymentsScreen from './screens/BillPaymentsScreen';
+import MoneyTransferScreen from './screens/MoneyTransferScreen';
+import FuelOrderingScreen from './screens/FuelOrderingScreen';
+import TollPaymentsScreen from './screens/TollPaymentsScreen';
+import LocationSetupScreen from './screens/LocationSetupScreen';
+import PaymentMethodsScreen from './screens/PaymentMethodsScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import RoleSelectionScreen from './screens/RoleSelectionScreen';
+import OTPVerificationScreen from './screens/OTPVerificationScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen';
+import BiometricSetupScreen from './screens/BiometricSetupScreen';
+import MFASetupScreen from './screens/MFASetupScreen';
+import IdentityVerificationScreen from './screens/IdentityVerificationScreen';
+import DriverDashboardScreen from './screens/DriverDashboardScreen';
+import MerchantDashboardScreen from './screens/MerchantDashboardScreen';
+import OrderConfirmationScreen from './screens/OrderConfirmationScreen';
+import SearchResultsScreen from './screens/SearchResultsScreen';
+import VendorFeedScreen from './screens/VendorFeedScreen';
+
+const Stack = createStackNavigator();
+const queryClient = new QueryClient();
+
+const App: React.FC = () => {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <NavigationContainer>
+          <Stack.Navigator
+            initialRouteName="Splash"
+            screenOptions={{
+              headerStyle: {
+                backgroundColor: '#4682b4',
+              },
+              headerTintColor: '#fff',
+              headerTitleStyle: {
+                fontWeight: 'bold',
+              },
+            }}
+          >
+            <Stack.Screen
+              name="Splash"
+              component={SplashScreen}
+              options={{ headerShown: false }}
+            />
+            <Stack.Screen
+              name="SignIn"
+              component={SignInScreen}
+              options={{ title: 'Sign In', headerShown: false }}
+            />
+            <Stack.Screen
+              name="SignUp"
+              component={SignUpScreen}
+              options={{ title: 'Sign Up', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Home"
+              component={HomeScreen}
+              options={{ title: 'BrillPrime', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Profile"
+              component={ProfileScreen}
+              options={{ title: 'Profile', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{ title: 'Notifications', headerShown: false }}
+            />
+            <Stack.Screen
+              name="OrderHistory"
+              component={OrderHistoryScreen}
+              options={{ title: 'Order History', headerShown: false }}
+            />
+            <Stack.Screen
+              name="WalletBalance"
+              component={WalletBalanceScreen}
+              options={{ title: 'My Wallet', headerShown: false }}
+            />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{ title: 'Edit Profile', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Support"
+              component={SupportScreen}
+              options={{ title: 'Support', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Messages"
+              component={MessagesScreen}
+              options={{ title: 'Messages', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Cart"
+              component={CartScreen}
+              options={{ title: 'Shopping Cart', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Checkout"
+              component={CheckoutScreen}
+              options={{ title: 'Checkout', headerShown: false }}
+            />
+            <Stack.Screen
+              name="QRScanner"
+              component={QRScannerScreen}
+              options={{ title: 'QR Scanner', headerShown: false }}
+            />
+            <Stack.Screen
+              name="TrackOrder"
+              component={TrackOrderScreen}
+              options={{ title: 'Track Order', headerShown: false }}
+            />
+            <Stack.Screen
+              name="AccountSettings"
+              component={AccountSettingsScreen}
+              options={{ title: 'Account Settings', headerShown: false }}
+            />
+            <Stack.Screen
+              name="BillPayments"
+              component={BillPaymentsScreen}
+              options={{ title: 'Bill Payments', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MoneyTransfer"
+              component={MoneyTransferScreen}
+              options={{ title: 'Money Transfer', headerShown: false }}
+            />
+            <Stack.Screen
+              name="FuelOrdering"
+              component={FuelOrderingScreen}
+              options={{ title: 'Fuel Ordering', headerShown: false }}
+            />
+            <Stack.Screen
+              name="TollPayments"
+              component={TollPaymentsScreen}
+              options={{ title: 'Toll Payments', headerShown: false }}
+            />
+            <Stack.Screen
+              name="LocationSetup"
+              component={LocationSetupScreen}
+              options={{ title: 'Location Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="PaymentMethods"
+              component={PaymentMethodsScreen}
+              options={{ title: 'Payment Methods', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ title: 'Welcome', headerShown: false }}
+            />
+            <Stack.Screen
+              name="RoleSelection"
+              component={RoleSelectionScreen}
+              options={{ title: 'Choose Role', headerShown: false }}
+            />
+            <Stack.Screen
+              name="OTPVerification"
+              component={OTPVerificationScreen}
+              options={{ title: 'Verify OTP', headerShown: false }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ title: 'Forgot Password', headerShown: false }}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ title: 'Reset Password', headerShown: false }}
+            />
+            <Stack.Screen
+              name="BiometricSetup"
+              component={BiometricSetupScreen}
+              options={{ title: 'Biometric Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MFASetup"
+              component={MFASetupScreen}
+              options={{ title: 'MFA Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="IdentityVerification"
+              component={IdentityVerificationScreen}
+              options={{ title: 'Identity Verification', headerShown: false }}
+            />
+            <Stack.Screen
+              name="DriverDashboard"
+              component={DriverDashboardScreen}
+              options={{ title: 'Driver Dashboard', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MerchantDashboard"
+              component={MerchantDashboardScreen}
+              options={{ title: 'Merchant Dashboard', headerShown: false }}
+            />
+            <Stack.Screen
+              name="OrderConfirmation"
+              component={OrderConfirmationScreen}
+              options={{ title: 'Order Confirmation', headerShown: false }}
+            />
+            <Stack.Screen
+              name="SearchResults"
+              component={SearchResultsScreen}
+              options={{ title: 'Search Results', headerShown: false }}
+            />
+            <Stack.Screen
+              name="VendorFeed"
+              component={VendorFeedScreen}
+              options={{ title: 'Vendor Feed', headerShown: false }}
+            />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </SafeAreaProvider>
+    </QueryClientProvider>
+  );
+};
+
+export default App;
