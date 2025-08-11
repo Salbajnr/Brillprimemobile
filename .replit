@@ -192,3 +192,16 @@ args = "cd mobile && npm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow]]
+name = "Run E2E Tests"
+author = 46281729
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test:e2e"
