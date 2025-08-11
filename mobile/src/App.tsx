@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -23,6 +22,11 @@ import QRScannerScreen from './screens/QRScannerScreen';
 import TrackOrderScreen from './screens/TrackOrderScreen';
 import AccountSettingsScreen from './screens/AccountSettingsScreen';
 import BillPaymentsScreen from './screens/BillPaymentsScreen';
+import MoneyTransferScreen from './screens/MoneyTransferScreen';
+import FuelOrderingScreen from './screens/FuelOrderingScreen';
+import TollPaymentsScreen from './screens/TollPaymentsScreen';
+import LocationSetupScreen from './screens/LocationSetupScreen';
+import PaymentMethodsScreen from './screens/PaymentMethodsScreen';
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
@@ -32,7 +36,7 @@ const App: React.FC = () => {
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <NavigationContainer>
-          <Stack.Navigator 
+          <Stack.Navigator
             initialRouteName="Splash"
             screenOptions={{
               headerStyle: {
@@ -44,90 +48,115 @@ const App: React.FC = () => {
               },
             }}
           >
-            <Stack.Screen 
-              name="Splash" 
-              component={SplashScreen} 
+            <Stack.Screen
+              name="Splash"
+              component={SplashScreen}
               options={{ headerShown: false }}
             />
-            <Stack.Screen 
-              name="SignIn" 
+            <Stack.Screen
+              name="SignIn"
               component={SignInScreen}
               options={{ title: 'Sign In', headerShown: false }}
             />
-            <Stack.Screen 
-              name="SignUp" 
+            <Stack.Screen
+              name="SignUp"
               component={SignUpScreen}
               options={{ title: 'Sign Up', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Home" 
+            <Stack.Screen
+              name="Home"
               component={HomeScreen}
               options={{ title: 'BrillPrime', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Profile" 
+            <Stack.Screen
+              name="Profile"
               component={ProfileScreen}
               options={{ title: 'Profile', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Notifications" 
+            <Stack.Screen
+              name="Notifications"
               component={NotificationsScreen}
               options={{ title: 'Notifications', headerShown: false }}
             />
-            <Stack.Screen 
-              name="OrderHistory" 
+            <Stack.Screen
+              name="OrderHistory"
               component={OrderHistoryScreen}
               options={{ title: 'Order History', headerShown: false }}
             />
-            <Stack.Screen 
-              name="WalletBalance" 
+            <Stack.Screen
+              name="WalletBalance"
               component={WalletBalanceScreen}
               options={{ title: 'My Wallet', headerShown: false }}
             />
-            <Stack.Screen 
-              name="EditProfile" 
+            <Stack.Screen
+              name="EditProfile"
               component={EditProfileScreen}
               options={{ title: 'Edit Profile', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Support" 
+            <Stack.Screen
+              name="Support"
               component={SupportScreen}
               options={{ title: 'Support', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Messages" 
+            <Stack.Screen
+              name="Messages"
               component={MessagesScreen}
               options={{ title: 'Messages', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Cart" 
+            <Stack.Screen
+              name="Cart"
               component={CartScreen}
               options={{ title: 'Shopping Cart', headerShown: false }}
             />
-            <Stack.Screen 
-              name="Checkout" 
+            <Stack.Screen
+              name="Checkout"
               component={CheckoutScreen}
               options={{ title: 'Checkout', headerShown: false }}
             />
-            <Stack.Screen 
-              name="QRScanner" 
+            <Stack.Screen
+              name="QRScanner"
               component={QRScannerScreen}
               options={{ title: 'QR Scanner', headerShown: false }}
             />
-            <Stack.Screen 
-              name="TrackOrder" 
+            <Stack.Screen
+              name="TrackOrder"
               component={TrackOrderScreen}
               options={{ title: 'Track Order', headerShown: false }}
             />
-            <Stack.Screen 
-              name="AccountSettings" 
+            <Stack.Screen
+              name="AccountSettings"
               component={AccountSettingsScreen}
               options={{ title: 'Account Settings', headerShown: false }}
             />
-            <Stack.Screen 
-              name="BillPayments" 
+            <Stack.Screen
+              name="BillPayments"
               component={BillPaymentsScreen}
               options={{ title: 'Bill Payments', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MoneyTransfer"
+              component={MoneyTransferScreen}
+              options={{ title: 'Money Transfer', headerShown: false }}
+            />
+            <Stack.Screen
+              name="FuelOrdering"
+              component={FuelOrderingScreen}
+              options={{ title: 'Fuel Ordering', headerShown: false }}
+            />
+            <Stack.Screen
+              name="TollPayments"
+              component={TollPaymentsScreen}
+              options={{ title: 'Toll Payments', headerShown: false }}
+            />
+            <Stack.Screen
+              name="LocationSetup"
+              component={LocationSetupScreen}
+              options={{ title: 'Location Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="PaymentMethods"
+              component={PaymentMethodsScreen}
+              options={{ title: 'Payment Methods', headerShown: false }}
             />
           </Stack.Navigator>
         </NavigationContainer>

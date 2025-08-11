@@ -93,11 +93,48 @@ This document lists the 15+ screens that have been successfully adapted from the
     - Provider selection
     - Payment processing
 
-## Ready for Future Import
+## Additional Screens (Successfully Imported)
 
-18. **MoneyTransferScreen** - From `client/src/pages/money-transfer.tsx`
-19. **FuelOrderingScreen** - From `client/src/pages/fuel-ordering.tsx`
-20. **LocationSetupScreen** - From `client/src/pages/location-setup.tsx`
+18. **MoneyTransferScreen** - Adapted from `client/src/pages/money-transfer.tsx`
+    - Send money to other users
+    - Transaction PIN verification
+    - Real-time transfer processing
+
+19. **FuelOrderingScreen** - Adapted from `client/src/pages/fuel-ordering.tsx`
+    - Multi-fuel type selection (Petrol, Diesel, Kerosene)
+    - Quantity selection and pricing
+    - Order placement and tracking integration
+
+20. **TollPaymentsScreen** - Adapted from `client/src/pages/toll-payments.tsx`
+    - Toll gate selection across Nigeria
+    - Vehicle type classification
+    - Quick payment processing
+
+21. **LocationSetupScreen** - Adapted from `client/src/pages/location-setup.tsx`
+    - GPS location access
+    - Preset location selection
+    - Save custom locations (Home, Office, etc.)
+
+22. **PaymentMethodsScreen** - Adapted from `client/src/pages/payment-methods.tsx`
+    - Saved card management
+    - Wallet integration
+    - Multiple payment options
+
+## Ready for Future Import (Remaining Screens)
+
+23. **OnboardingScreen** - From `client/src/pages/onboarding.tsx`
+24. **RoleSelectionScreen** - From `client/src/pages/role-selection.tsx`
+25. **OTPVerificationScreen** - From `client/src/pages/otp-verification.tsx`
+26. **ForgotPasswordScreen** - From `client/src/pages/forgot-password.tsx`
+27. **ResetPasswordScreen** - From `client/src/pages/reset-password.tsx`
+28. **BiometricSetupScreen** - From `client/src/pages/biometric-setup.tsx`
+29. **MFASetupScreen** - From `client/src/pages/mfa-setup.tsx`
+30. **IdentityVerificationScreen** - From `client/src/pages/identity-verification.tsx`
+31. **DriverDashboardScreen** - From `client/src/pages/driver-dashboard.tsx`
+32. **MerchantDashboardScreen** - From `client/src/pages/merchant-dashboard.tsx`
+33. **OrderConfirmationScreen** - From `client/src/pages/order-confirmation.tsx`
+34. **SearchResultsScreen** - From `client/src/pages/search-results.tsx`
+35. **VendorFeedScreen** - From `client/src/pages/vendor-feed.tsx`
 
 ## Key Adaptations Made
 
