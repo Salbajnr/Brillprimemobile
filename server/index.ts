@@ -1,7 +1,6 @@
 import express from 'express';
 import session from 'express-session';
-import { RedisStore } from 'connect-redis';
-import { Redis } from 'ioredis';
+import MemoryStore from 'memorystore';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -10,6 +9,13 @@ import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
 import { validateEnvironment } from './env-validation';
+
+// Extend express-session types
+declare module 'express-session' {
+  interface SessionData {
+    csrfToken?: string;
+  }
+}
 import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
 import { xssProtection, csrfProtection } from './middleware/validation';
 import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
@@ -189,37 +195,12 @@ app.use(cors({
   credentials: true
 }));
 
-// Redis client for session storage
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-  retryDelayOnFailover: 100,
-  maxRetriesPerRequest: 3,
-  lazyConnect: true
+// Use memory store for sessions in development environment
+console.log('🔄 Using memory store for sessions (Redis disabled in development)');
+const MemoryStoreSession = MemoryStore(session);
+const sessionStore = new MemoryStoreSession({
+  checkPeriod: 86400000 // prune expired entries every 24h
 });
-
-// Handle Redis connection
-redis.on('connect', () => {
-  console.log('✅ Redis connected for session storage');
-});
-
-redis.on('error', (err) => {
-  console.error('❌ Redis session store error:', err);
-});
-
-// Enhanced session configuration with fallback to memory store
-let sessionStore;
-try {
-  // Try to use Redis store if available
-  sessionStore = new RedisStore({
-    client: redis,
-    prefix: 'sess:',
-    ttl: 24 * 60 * 60 // 24 hours
-  });
-} catch (error) {
-  console.log('Redis unavailable, using memory store for sessions');
-  sessionStore = new (require('memorystore')(session))({
-    checkPeriod: 86400000 // prune expired entries every 24h
-  });
-}
 
 const sessionConfig = {
   store: sessionStore,
@@ -231,7 +212,7 @@ const sessionConfig = {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
   },
   name: 'brillprime.sid',
   genid: () => {
@@ -520,7 +501,7 @@ if (process.env.NODE_ENV === 'production') {
 // Enhanced server startup
 const PORT = process.env.PORT || 5000;
 
-server.listen(PORT, '0.0.0.0', async () => {
+server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`🚀 BrillPrime server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 WebSocket server enabled`);

@@ -2,6 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { KycReviewModal } from '../components/kyc-review-modal';
 import { BatchKycActions } from '../components/batch-kyc-actions';
 
+interface MerchantKycSubmission {
+  id: string;
+  merchantId: string;
+  businessName: string;
+  merchantEmail: string;
+  documents: any[];
+  status: 'PENDING' | 'APPROVED' | 'REJECTED';
+  submittedAt: string;
+  reviewedAt?: string;
+  rejectionReason?: string;
+}
+
+interface MerchantKycStats {
+  total: number;
+  pending: number;
+  approved: number;
+  rejected: number;
+}
+
 interface KycDocument {
   id: string;
   userId: string;
@@ -22,78 +41,16 @@ export function AdminKYCVerification() {
   const [selectedDocuments, setSelectedDocuments] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [merchantKycSubmissions, setMerchantKycSubmissions] = useState<MerchantKycSubmission[]>([]);
+  const [merchantKycStats, setMerchantKycStats] = useState<MerchantKycStats>({
+    total: 0,
+    pending: 0,
+    approved: 0,
+    rejected: 0
+  });
 
   useEffect(() => {
     fetchDocuments();
-  }, []);
-
-  const fetchDocuments = async () => {
-    try {
-      const response = await fetch('/api/admin/kyc/documents', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      if (response.ok) {
-        const data = await response.json();
-        setDocuments(data.documents || []);
-      }
-    } catch (error) {
-      console.error('Failed to fetch KYC documents:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDocumentReview = async (documentId: string, status: 'APPROVED' | 'REJECTED', reason?: string) => {
-    try {
-      const response = await fetch(`/api/admin/kyc/documents/${documentId}/review`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status, reason }),
-      });
-
-      if (response.ok) {
-        await fetchDocuments();
-        setSelectedDocument(null);
-      }
-    } catch (error) {
-      console.error('Failed to review document:', error);
-    }
-  };
-
-  const handleBatchAction = async (action: 'approve' | 'reject', reason?: string) => {
-    try {
-      const response = await fetch('/api/admin/kyc/documents/batch-review', {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          documentIds: selectedDocuments,
-          status: action === 'approve' ? 'APPROVED' : 'REJECTED',
-          reason,
-        }),
-      });
-
-      if (response.ok) {
-        await fetchDocuments();
-        setSelectedDocuments([]);
-      }
-    } catch (error) {
-      console.error('Failed to perform batch action:', error);
-    }
-  };
-
-  const [merchantKycSubmissions, setMerchantKycSubmissions] = useState<any[]>([]);
-  const [merchantKycStats, setMerchantKycStats] = useState<any>({});
-  
-  useEffect(() => {
     fetchMerchantKycSubmissions();
   }, []);
 
@@ -107,8 +64,13 @@ export function AdminKYCVerification() {
       });
       if (response.ok) {
         const data = await response.json();
-        setMerchantKycSubmissions(data.data.submissions || []);
-        setMerchantKycStats(data.data.stats || {});
+        setMerchantKycSubmissions(data.data?.submissions || []);
+        setMerchantKycStats(data.data?.stats || {
+          total: 0,
+          pending: 0,
+          approved: 0,
+          rejected: 0
+        });
       }
     } catch (error) {
       console.error('Failed to fetch merchant KYC submissions:', error);
@@ -134,12 +96,79 @@ export function AdminKYCVerification() {
     }
   };
 
+  const fetchDocuments = async () => {
+    try {
+      const response = await fetch('/api/admin/kyc/documents', {
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setDocuments(data.documents || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch KYC documents:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredDocuments = documents.filter(doc => {
     if (filterStatus === 'all') return true;
     return doc.status === filterStatus;
   });
 
   const pendingCount = documents.filter(doc => doc.status === 'PENDING').length;
+
+  const handleDocumentReview = async (documentId: string, action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch(`/api/admin/kyc/documents/${documentId}/review`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          status: action === 'approve' ? 'APPROVED' : 'REJECTED', 
+          reason 
+        }),
+      });
+
+      if (response.ok) {
+        await fetchDocuments();
+        setSelectedDocument(null);
+      }
+    } catch (error) {
+      console.error('Failed to review document:', error);
+    }
+  };
+
+  
+
+  const handleBatchAction = async (action: 'approve' | 'reject', reason?: string) => {
+    try {
+      const response = await fetch('/api/admin/kyc/batch-review', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          documentIds: selectedDocuments, 
+          action, 
+          reason 
+        }),
+      });
+
+      if (response.ok) {
+        await fetchDocuments();
+      }
+    } catch (error) {
+      console.error('Batch action failed:', error);
+    }
+  };
 
   if (loading) {
     return (
@@ -352,6 +381,8 @@ export function AdminKYCVerification() {
           </tbody>
         </table>
       </div>
+
+      
 
       {selectedDocument && (
         <KycReviewModal
