@@ -1,83 +1,89 @@
 
-const path = require('path');
-const fs = require('fs');
+// Simple API Key Integration Test
+console.log('🔍 BrillPrime API Integration Status\n');
 
-console.log('🔍 Testing API Key Integrations...\n');
+// Check environment variables directly from process.env
+const envVars = {
+  // Critical Services
+  'PAYSTACK_SECRET_KEY': process.env.PAYSTACK_SECRET_KEY,
+  'PAYSTACK_PUBLIC_KEY': process.env.PAYSTACK_PUBLIC_KEY,
+  'DATABASE_URL': process.env.DATABASE_URL,
+  
+  // Google Services  
+  'VITE_GOOGLE_MAPS_API_KEY': process.env.VITE_GOOGLE_MAPS_API_KEY,
+  'VITE_GOOGLE_CLIENT_ID': process.env.VITE_GOOGLE_CLIENT_ID,
+  'GOOGLE_CLIENT_SECRET': process.env.GOOGLE_CLIENT_SECRET,
+  
+  // Social Auth
+  'VITE_APPLE_CLIENT_ID': process.env.VITE_APPLE_CLIENT_ID,
+  'VITE_FACEBOOK_APP_ID': process.env.VITE_FACEBOOK_APP_ID,
+  
+  // Communication
+  'SENDGRID_API_KEY': process.env.SENDGRID_API_KEY,
+  'EMAIL_USER': process.env.EMAIL_USER,
+  'TWILIO_ACCOUNT_SID': process.env.TWILIO_ACCOUNT_SID,
+  'TERMII_API_KEY': process.env.TERMII_API_KEY,
+  
+  // Security
+  'JWT_SECRET': process.env.JWT_SECRET,
+  'SESSION_SECRET': process.env.SESSION_SECRET
+};
 
-// Load environment variables
-require('dotenv').config();
+console.log('🔑 API Key Status:\n');
 
-// Check if services directory exists
-const servicesPath = path.join(__dirname, 'server', 'services');
-const paystackServicePath = path.join(servicesPath, 'paystack.ts');
+// Critical Services
+console.log('💳 Payment Processing:');
+console.log(`  Paystack Secret: ${envVars.PAYSTACK_SECRET_KEY ? '✅ Set' : '❌ Missing'}`);
+console.log(`  Paystack Public: ${envVars.PAYSTACK_PUBLIC_KEY ? '✅ Set' : '❌ Missing'}`);
 
-console.log('📁 Checking service files...');
-console.log('Services directory exists:', fs.existsSync(servicesPath));
-console.log('Paystack service exists:', fs.existsSync(paystackServicePath));
+console.log('\n🗺️  Location Services:');
+console.log(`  Google Maps: ${envVars.VITE_GOOGLE_MAPS_API_KEY ? '✅ Set' : '❌ Missing'}`);
 
-console.log('\n🔑 API Key Status Check:\n');
+console.log('\n👤 Authentication:');
+console.log(`  Google OAuth: ${envVars.VITE_GOOGLE_CLIENT_ID ? '✅ Set' : '❌ Missing'}`);
+console.log(`  Apple Sign-In: ${envVars.VITE_APPLE_CLIENT_ID ? '✅ Set' : '❌ Missing'}`);
+console.log(`  Facebook Login: ${envVars.VITE_FACEBOOK_APP_ID ? '✅ Set' : '❌ Missing'}`);
 
-// Essential Payment Integration
-const paystackSecret = process.env.PAYSTACK_SECRET_KEY;
-const paystackPublic = process.env.PAYSTACK_PUBLIC_KEY;
-console.log('💳 Paystack Payment:');
-console.log('  Secret Key:', paystackSecret ? '✅ Configured' : '❌ Missing PAYSTACK_SECRET_KEY');
-console.log('  Public Key:', paystackPublic ? '✅ Configured' : '❌ Missing PAYSTACK_PUBLIC_KEY');
+console.log('\n📧 Communication:');
+console.log(`  Email Service: ${envVars.SENDGRID_API_KEY || envVars.EMAIL_USER ? '✅ Set' : '❌ Missing'}`);
+console.log(`  SMS Service: ${envVars.TWILIO_ACCOUNT_SID || envVars.TERMII_API_KEY ? '✅ Set' : '❌ Missing'}`);
 
-// Google Services
-const googleMapsKey = process.env.VITE_GOOGLE_MAPS_API_KEY;
-const googleClientId = process.env.VITE_GOOGLE_CLIENT_ID;
-const googleClientSecret = process.env.GOOGLE_CLIENT_SECRET;
-console.log('\n🗺️  Google Services:');
-console.log('  Maps API:', googleMapsKey ? '✅ Configured' : '❌ Missing VITE_GOOGLE_MAPS_API_KEY');
-console.log('  OAuth Client ID:', googleClientId ? '✅ Configured' : '❌ Missing VITE_GOOGLE_CLIENT_ID');
-console.log('  OAuth Secret:', googleClientSecret ? '✅ Configured' : '❌ Missing GOOGLE_CLIENT_SECRET');
-
-// Social Authentication
-const appleClientId = process.env.VITE_APPLE_CLIENT_ID;
-const facebookAppId = process.env.VITE_FACEBOOK_APP_ID;
-console.log('\n👤 Social Authentication:');
-console.log('  Apple Sign-In:', appleClientId ? '✅ Configured' : '❌ Missing VITE_APPLE_CLIENT_ID');
-console.log('  Facebook Login:', facebookAppId ? '✅ Configured' : '❌ Missing VITE_FACEBOOK_APP_ID');
-
-// Communication Services
-const sendgridKey = process.env.SENDGRID_API_KEY;
-const emailUser = process.env.EMAIL_USER;
-const twilioSid = process.env.TWILIO_ACCOUNT_SID;
-const termiiKey = process.env.TERMII_API_KEY;
-console.log('\n📧 Communication Services:');
-console.log('  Email (SendGrid):', sendgridKey ? '✅ Configured' : '❌ Missing SENDGRID_API_KEY');
-console.log('  Email (SMTP):', emailUser ? '✅ Configured' : '❌ Missing EMAIL_USER');
-console.log('  SMS (Twilio):', twilioSid ? '✅ Configured' : '❌ Missing TWILIO_ACCOUNT_SID');
-console.log('  SMS (Termii):', termiiKey ? '✅ Configured' : '❌ Missing TERMII_API_KEY');
-
-// Database & Infrastructure
-const databaseUrl = process.env.DATABASE_URL;
-const redisDisabled = process.env.REDIS_DISABLED;
 console.log('\n🗄️  Infrastructure:');
-console.log('  Database:', databaseUrl ? '✅ Configured' : '❌ Missing DATABASE_URL');
-console.log('  Redis:', redisDisabled === 'true' ? '⚠️  Disabled (OK for development)' : '❓ Status unknown');
+console.log(`  Database: ${envVars.DATABASE_URL ? '✅ Set' : '❌ Missing'}`);
+console.log(`  JWT Secret: ${envVars.JWT_SECRET ? '✅ Set' : '❌ Missing'}`);
 
-// Summary
-console.log('\n📊 Integration Summary:');
-const criticalServices = [paystackSecret, paystackPublic, googleMapsKey, databaseUrl];
-const criticalCount = criticalServices.filter(Boolean).length;
-const socialServices = [googleClientId, appleClientId, facebookAppId];
-const socialCount = socialServices.filter(Boolean).length;
-const commServices = [sendgridKey || emailUser, twilioSid || termiiKey];
-const commCount = commServices.filter(Boolean).length;
+// Calculate readiness score
+const criticalKeys = [
+  envVars.PAYSTACK_SECRET_KEY,
+  envVars.PAYSTACK_PUBLIC_KEY, 
+  envVars.VITE_GOOGLE_MAPS_API_KEY,
+  envVars.DATABASE_URL,
+  envVars.JWT_SECRET
+];
 
-console.log(`  Critical Services: ${criticalCount}/4 configured`);
-console.log(`  Social Auth: ${socialCount}/3 configured`);
-console.log(`  Communication: ${commCount}/2 configured`);
+const configuredCritical = criticalKeys.filter(Boolean).length;
+const totalCritical = criticalKeys.length;
 
-if (criticalCount === 4) {
-  console.log('\n✅ Your app is ready for basic deployment!');
+console.log('\n📊 Deployment Readiness:');
+console.log(`  Critical APIs: ${configuredCritical}/${totalCritical} configured`);
+
+if (configuredCritical >= 4) {
+  console.log('  Status: ✅ Ready for deployment!');
+} else if (configuredCritical >= 2) {
+  console.log('  Status: ⚠️  Partially ready - add missing keys');
 } else {
-  console.log('\n⚠️  Add missing critical API keys before deployment.');
+  console.log('  Status: ❌ Not ready - configure API keys first');
 }
 
-console.log('\n🚀 Next steps:');
-console.log('1. Add missing API keys to Replit Secrets');
-console.log('2. Test each integration individually');
-console.log('3. Deploy with confidence!');
+console.log('\n🎯 Next Steps:');
+if (configuredCritical < totalCritical) {
+  console.log('1. Use Replit Secrets to add missing API keys');
+  console.log('2. Get API keys from respective service providers');
+  console.log('3. Test integrations individually');
+}
+console.log('4. Deploy to Replit when ready!');
+
+console.log('\n🔧 Quick Setup Guide:');
+console.log('• Paystack: https://dashboard.paystack.com/settings/api');
+console.log('• Google Maps: https://console.cloud.google.com/apis/credentials');
+console.log('• Google OAuth: https://console.cloud.google.com/apis/credentials');
