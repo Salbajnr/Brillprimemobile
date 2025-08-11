@@ -413,11 +413,16 @@ if (process.env.NODE_ENV === 'production') {
 
     // Try to serve the built index.html first
     const indexPath = path.join(clientDistPath, 'index.html');
+    
+    console.log('Trying to serve index.html from:', indexPath);
 
-    // Check if built assets exist
-    try {
-      res.sendFile(indexPath);
-    } catch (error) {
+    // Check if built assets exist using fs
+    const fs = require('fs');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    } else {
+      console.log('Built index.html not found, serving fallback page');
+      const error = new Error('File not found');
       // Fallback: provide development info page
       res.send(`
         <!DOCTYPE html>

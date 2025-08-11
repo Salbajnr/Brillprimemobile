@@ -9,6 +9,21 @@ interface ApiResponse<T = any> {
   error?: string;
 }
 
+export interface DashboardData {
+  user?: any;
+  stats?: {
+    totalOrders?: number;
+    pendingOrders?: number;
+    completedOrders?: number;
+    revenue?: number;
+    wallet?: {
+      balance?: number;
+    };
+  };
+  recentOrders?: any[];
+  notifications?: any[];
+}
+
 // Generic API request helper with enhanced error handling
 async function apiRequest<T = any>(
   endpoint: string,
@@ -753,7 +768,7 @@ if (typeof window !== 'undefined') {
   });
 }
 
-export default {
+const apiClient = {
   auth: authApi,
   verification: verificationApi,
   mfa: mfaApi,
@@ -769,4 +784,8 @@ export default {
   fuel: fuelApi,
   toll: tollApi,
   wsManager,
+  getDashboardData: () => apiRequest('/dashboard'),
 };
+
+export { apiClient };
+export default apiClient;
