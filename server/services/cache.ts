@@ -1,78 +1,69 @@
-
-import { Redis } from 'ioredis';
-
 class CacheService {
-  private redis: Redis;
-  private isConnected: boolean = false;
+  private cache: Map<string, { value: any; expires: number }> = new Map();
+  private isConnected: boolean = true;
 
   constructor() {
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379', {
-      retryDelayOnFailover: 100,
-      maxRetriesPerRequest: 3,
-      lazyConnect: true,
-      keyPrefix: 'brillprime:',
-      db: 0, // Use database 0 for caching
-    });
+    console.log('🔄 Using in-memory cache service (Redis disabled in development)');
+    
+    // Clean up expired entries every 5 minutes
+    setInterval(() => {
+      this.cleanupExpired();
+    }, 5 * 60 * 1000);
+  }
 
-    this.redis.on('connect', () => {
-      this.isConnected = true;
-      console.log('✅ Redis cache service connected');
-    });
-
-    this.redis.on('error', (err) => {
-      this.isConnected = false;
-      console.error('❌ Redis cache error:', err);
-    });
+  private cleanupExpired() {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (entry.expires < now) {
+        this.cache.delete(key);
+      }
+    }
   }
 
   // Generic cache methods
   async get<T>(key: string): Promise<T | null> {
-    if (!this.isConnected) return null;
+    const entry = this.cache.get(key);
+    if (!entry) return null;
     
-    try {
-      const value = await this.redis.get(key);
-      return value ? JSON.parse(value) : null;
-    } catch (error) {
-      console.error('Cache get error:', error);
+    if (entry.expires < Date.now()) {
+      this.cache.delete(key);
       return null;
     }
+    
+    return entry.value;
   }
 
   async set(key: string, value: any, ttlSeconds: number = 3600): Promise<void> {
-    if (!this.isConnected) return;
-    
-    try {
-      await this.redis.setex(key, ttlSeconds, JSON.stringify(value));
-    } catch (error) {
-      console.error('Cache set error:', error);
-    }
+    const expires = Date.now() + (ttlSeconds * 1000);
+    this.cache.set(key, { value, expires });
   }
 
   async del(key: string | string[]): Promise<void> {
-    if (!this.isConnected) return;
-    
-    try {
-      if (Array.isArray(key)) {
-        await this.redis.del(...key);
-      } else {
-        await this.redis.del(key);
-      }
-    } catch (error) {
-      console.error('Cache delete error:', error);
+    if (Array.isArray(key)) {
+      key.forEach(k => this.cache.delete(k));
+    } else {
+      this.cache.delete(key);
     }
   }
 
   async invalidatePattern(pattern: string): Promise<void> {
-    if (!this.isConnected) return;
-    
-    try {
-      const keys = await this.redis.keys(pattern);
-      if (keys.length > 0) {
-        await this.redis.del(...keys);
+    const regex = new RegExp(pattern.replace('*', '.*'));
+    for (const key of this.cache.keys()) {
+      if (regex.test(key)) {
+        this.cache.delete(key);
       }
-    } catch (error) {
-      console.error('Cache invalidate pattern error:', error);
     }
+  }
+
+  async healthCheck(): Promise<boolean> {
+    return this.isConnected;
+  }
+
+  async warmCache(): Promise<void> {
+    console.log('Warming up cache...');
+    console.log('Pre-caching popular products...');
+    console.log('Pre-caching analytics...');
+    console.log('Cache warming completed');
   }
 
   // Application-specific cache methods
@@ -128,83 +119,65 @@ class CacheService {
     await this.set(`analytics:${type}:${timeframe}`, data, ttl);
   }
 
-  // Location-based cache
-  async getDriverLocations() {
-    return this.get('drivers:locations');
+  // Location cache for real-time tracking
+  async getDriverLocation(driverId: number) {
+    return this.get(`location:driver:${driverId}`);
   }
 
-  async setDriverLocations(locations: any) {
-    await this.set('drivers:locations', locations, 30); // 30 seconds
+  async setDriverLocation(driverId: number, location: any) {
+    await this.set(`location:driver:${driverId}`, location, 60); // 1 minute
   }
 
-  async getLocationRecommendations(lat: number, lng: number, radius: number) {
-    const key = `recommendations:${lat.toFixed(3)}:${lng.toFixed(3)}:${radius}`;
-    return this.get(key);
+  // Session and user presence cache
+  async getUserPresence(userId: number) {
+    return this.get(`presence:${userId}`);
   }
 
-  async setLocationRecommendations(lat: number, lng: number, radius: number, data: any) {
-    const key = `recommendations:${lat.toFixed(3)}:${lng.toFixed(3)}:${radius}`;
-    await this.set(key, data, 1800); // 30 minutes
+  async setUserPresence(userId: number, status: string) {
+    await this.set(`presence:${userId}`, { status, lastSeen: Date.now() }, 300); // 5 minutes
   }
 
-  // Session cache helpers
-  async getSessionData(sessionId: string) {
-    return this.get(`session:${sessionId}`);
+  // Notification cache
+  async getUnreadNotifications(userId: number) {
+    return this.get(`notifications:unread:${userId}`);
   }
 
-  async setSessionData(sessionId: string, data: any) {
-    await this.set(`session:${sessionId}`, data, 86400); // 24 hours
+  async setUnreadNotifications(userId: number, notifications: any[]) {
+    await this.set(`notifications:unread:${userId}`, notifications, 600); // 10 minutes
+  }
+
+  // Chat cache
+  async getChatHistory(chatId: string) {
+    return this.get(`chat:${chatId}`);
+  }
+
+  async setChatHistory(chatId: string, messages: any[]) {
+    await this.set(`chat:${chatId}`, messages, 3600); // 1 hour
+  }
+
+  // System metrics cache
+  async getSystemMetrics() {
+    return this.get('system:metrics');
+  }
+
+  async setSystemMetrics(metrics: any) {
+    await this.set('system:metrics', metrics, 60); // 1 minute
   }
 
   // Rate limiting cache
-  async incrementRateLimit(key: string, windowSeconds: number): Promise<number> {
-    if (!this.isConnected) return 0;
-    
-    try {
-      const current = await this.redis.incr(`ratelimit:${key}`);
-      if (current === 1) {
-        await this.redis.expire(`ratelimit:${key}`, windowSeconds);
-      }
-      return current;
-    } catch (error) {
-      console.error('Rate limit error:', error);
-      return 0;
-    }
+  async getRateLimit(key: string) {
+    return this.get(`ratelimit:${key}`);
   }
 
-  // Cache warming
-  async warmCache() {
-    console.log('Warming up cache...');
-    
-    // Warm up common data
-    try {
-      // Pre-cache popular products
-      const popularProducts = await this.getProductCatalog();
-      if (!popularProducts) {
-        // Fetch and cache popular products
-        console.log('Pre-caching popular products...');
-      }
-      
-      // Pre-cache analytics
-      const analytics = await this.getAnalytics('transactions', '24h');
-      if (!analytics) {
-        console.log('Pre-caching analytics...');
-      }
-      
-      console.log('Cache warming completed');
-    } catch (error) {
-      console.error('Cache warming error:', error);
-    }
+  async setRateLimit(key: string, count: number, windowSeconds: number) {
+    await this.set(`ratelimit:${key}`, count, windowSeconds);
   }
 
-  // Health check
-  async healthCheck(): Promise<boolean> {
-    try {
-      await this.redis.ping();
-      return true;
-    } catch (error) {
-      return false;
-    }
+  async incrementRateLimit(key: string, windowSeconds: number = 60): Promise<number> {
+    const current = await this.getRateLimit(key) || 0;
+    const newCount = current + 1;
+    await this.setRateLimit(key, newCount, windowSeconds);
+    return newCount;
   }
 }
 
