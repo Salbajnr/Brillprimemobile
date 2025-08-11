@@ -56,18 +56,48 @@ This document lists the 15+ screens that have been successfully adapted from the
     - Contact information
     - Form validation
 
-## Additional Mobile-Ready Screens (Ready for Import)
+## Additional Screens (Successfully Imported)
 
-The following screens from the web app can be easily adapted using the same patterns:
+11. **MessagesScreen** - Adapted from `client/src/pages/messages.tsx`
+    - Real-time messaging interface
+    - Conversation management
+    - Support chat integration
 
-11. **MessagesScreen** - From `client/src/pages/messages.tsx`
-12. **CartScreen** - From `client/src/pages/cart.tsx`
-13. **CheckoutScreen** - From `client/src/pages/checkout.tsx`
-14. **QRScannerScreen** - From `client/src/pages/qr-scanner.tsx`
-15. **TrackOrderScreen** - From `client/src/pages/track-order.tsx`
-16. **AccountSettingsScreen** - From `client/src/pages/account-settings.tsx`
-17. **BillPaymentsScreen** - From `client/src/pages/bills-payment.tsx`
+12. **CartScreen** - Adapted from `client/src/pages/cart.tsx`
+    - Shopping cart management
+    - Quantity controls
+    - Checkout navigation
+
+13. **CheckoutScreen** - Adapted from `client/src/pages/checkout.tsx`
+    - Order summary and payment
+    - Address selection
+    - Payment method integration
+
+14. **QRScannerScreen** - Adapted from `client/src/pages/qr-scanner.tsx`
+    - QR code scanning functionality
+    - Multiple scan types (payment, delivery, toll)
+    - Result processing
+
+15. **TrackOrderScreen** - Adapted from `client/src/pages/track-order.tsx`
+    - Real-time order tracking
+    - Driver information and contact
+    - Status timeline
+
+16. **AccountSettingsScreen** - Adapted from `client/src/pages/account-settings.tsx`
+    - Comprehensive settings management
+    - Privacy and security controls
+    - Account management actions
+
+17. **BillPaymentsScreen** - Adapted from `client/src/pages/bills-payment.tsx`
+    - Multi-category bill payments
+    - Provider selection
+    - Payment processing
+
+## Ready for Future Import
+
 18. **MoneyTransferScreen** - From `client/src/pages/money-transfer.tsx`
+19. **FuelOrderingScreen** - From `client/src/pages/fuel-ordering.tsx`
+20. **LocationSetupScreen** - From `client/src/pages/location-setup.tsx`
 
 ## Key Adaptations Made
 
