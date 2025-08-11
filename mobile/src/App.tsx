@@ -32,6 +32,14 @@ import RoleSelectionScreen from './screens/RoleSelectionScreen';
 import OTPVerificationScreen from './screens/OTPVerificationScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import ResetPasswordScreen from './screens/ResetPasswordScreen';
+import BiometricSetupScreen from './screens/BiometricSetupScreen';
+import MFASetupScreen from './screens/MFASetupScreen';
+import IdentityVerificationScreen from './screens/IdentityVerificationScreen';
+import DriverDashboardScreen from './screens/DriverDashboardScreen';
+import MerchantDashboardScreen from './screens/MerchantDashboardScreen';
+import OrderConfirmationScreen from './screens/OrderConfirmationScreen';
+import SearchResultsScreen from './screens/SearchResultsScreen';
+import VendorFeedScreen from './screens/VendorFeedScreen';
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
@@ -187,6 +195,46 @@ const App: React.FC = () => {
               name="ResetPassword"
               component={ResetPasswordScreen}
               options={{ title: 'Reset Password', headerShown: false }}
+            />
+            <Stack.Screen
+              name="BiometricSetup"
+              component={BiometricSetupScreen}
+              options={{ title: 'Biometric Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MFASetup"
+              component={MFASetupScreen}
+              options={{ title: 'MFA Setup', headerShown: false }}
+            />
+            <Stack.Screen
+              name="IdentityVerification"
+              component={IdentityVerificationScreen}
+              options={{ title: 'Identity Verification', headerShown: false }}
+            />
+            <Stack.Screen
+              name="DriverDashboard"
+              component={DriverDashboardScreen}
+              options={{ title: 'Driver Dashboard', headerShown: false }}
+            />
+            <Stack.Screen
+              name="MerchantDashboard"
+              component={MerchantDashboardScreen}
+              options={{ title: 'Merchant Dashboard', headerShown: false }}
+            />
+            <Stack.Screen
+              name="OrderConfirmation"
+              component={OrderConfirmationScreen}
+              options={{ title: 'Order Confirmation', headerShown: false }}
+            />
+            <Stack.Screen
+              name="SearchResults"
+              component={SearchResultsScreen}
+              options={{ title: 'Search Results', headerShown: false }}
+            />
+            <Stack.Screen
+              name="VendorFeed"
+              component={VendorFeedScreen}
+              options={{ title: 'Vendor Feed', headerShown: false }}
             />
           </Stack.Navigator>
         </NavigationContainer>
