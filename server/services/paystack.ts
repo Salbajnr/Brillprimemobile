@@ -1,4 +1,5 @@
 import Paystack from 'paystack';
+import crypto from 'crypto';
 
 interface PaystackConfig {
   secretKey: string;
@@ -359,7 +360,6 @@ class PaystackService {
 
   // Validate webhook
   validateWebhook(signature: string, body: string): boolean {
-    const crypto = require('crypto');
     const hash = crypto.createHmac('sha512', this.config.secretKey).update(JSON.stringify(body)).digest('hex');
     return hash === signature;
   }

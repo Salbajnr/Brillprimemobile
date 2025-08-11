@@ -1,3 +1,7 @@
+// Load environment variables first
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import session from 'express-session';
 import MemoryStore from 'memorystore';
@@ -8,6 +12,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
+import fs from 'fs';
 import { validateEnvironment } from './env-validation';
 
 // Extend express-session types
@@ -417,7 +422,6 @@ if (process.env.NODE_ENV === 'production') {
     console.log('Trying to serve index.html from:', indexPath);
 
     // Check if built assets exist using fs
-    const fs = require('fs');
     if (fs.existsSync(indexPath)) {
       return res.sendFile(indexPath);
     } else {

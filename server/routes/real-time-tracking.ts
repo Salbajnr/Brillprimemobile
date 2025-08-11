@@ -1,7 +1,7 @@
 
 import { Router } from 'express';
 import { db } from '../db';
-import { orders, driverProfiles, userLocations, orderTracking } from '../../shared/schema';
+import { orders, driverProfiles, userLocations, orderTracking, users } from '../../shared/schema';
 import { eq, and, desc, gte } from 'drizzle-orm';
 import { z } from 'zod';
 
@@ -159,8 +159,8 @@ router.get('/order/:orderId', requireAuth, async (req, res) => {
     // Verify user has access to this order
     if (order.userId !== userId && order.driverId !== userId) {
       // Check if user is admin or merchant
-      const [user] = await db.select().from(require('../../shared/schema').users)
-        .where(eq(require('../../shared/schema').users.id, userId))
+      const [user] = await db.select().from(users)
+        .where(eq(users.id, userId))
         .limit(1);
       
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
@@ -257,8 +257,8 @@ router.post('/order/:orderId/status', requireAuth, async (req, res) => {
 
     // Verify user can update this order
     if (order.driverId !== userId) {
-      const [user] = await db.select().from(require('../../shared/schema').users)
-        .where(eq(require('../../shared/schema').users.id, userId))
+      const [user] = await db.select().from(users)
+        .where(eq(users.id, userId))
         .limit(1);
       
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
@@ -409,8 +409,8 @@ router.post('/orders/batch', requireAuth, async (req, res) => {
 
         // Verify access
         if (order.userId !== userId && order.driverId !== userId) {
-          const [user] = await db.select().from(require('../../shared/schema').users)
-            .where(eq(require('../../shared/schema').users.id, userId))
+          const [user] = await db.select().from(users)
+            .where(eq(users.id, userId))
             .limit(1);
           
           if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
@@ -473,8 +473,8 @@ router.post('/order/:orderId/join', requireAuth, async (req, res) => {
     }
 
     if (order.userId !== userId && order.driverId !== userId) {
-      const [user] = await db.select().from(require('../../shared/schema').users)
-        .where(eq(require('../../shared/schema').users.id, userId))
+      const [user] = await db.select().from(users)
+        .where(eq(users.id, userId))
         .limit(1);
       
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
