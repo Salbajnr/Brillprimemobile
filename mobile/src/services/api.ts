@@ -1,6 +1,6 @@
-
 import { ApiResponse } from '../shared/types';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import NetInfo from '@react-native-community/netinfo';
 
 // Get the base URL from environment or use the Replit backend URL
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000';
@@ -42,7 +42,7 @@ class ApiService {
     try {
       const url = `${this.baseURL}/api${endpoint}`;
       const authHeaders = await this.getAuthHeaders();
-      
+
       const config: RequestInit = {
         method,
         headers: {
@@ -67,7 +67,7 @@ class ApiService {
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
-      
+
       config.signal = controller.signal;
 
       const response = await fetch(url, config);
@@ -75,7 +75,7 @@ class ApiService {
 
       let result;
       const contentType = response.headers.get('content-type');
-      
+
       if (contentType && contentType.includes('application/json')) {
         result = await response.json();
       } else {
@@ -95,7 +95,7 @@ class ApiService {
       };
     } catch (error: any) {
       console.error(`💥 API ${method} ${endpoint} error:`, error);
-      
+
       if (error.name === 'AbortError') {
         return {
           success: false,
