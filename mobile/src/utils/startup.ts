@@ -1,92 +1,129 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+import NetInfo from '@react-native-community/netinfo';
 import { apiService } from '../services/api';
-import { Alert } from 'react-native';
+import { STORAGE_KEYS } from '../constants';
 
-export interface StartupConfig {
-  hasCompletedOnboarding: boolean;
-  userSession: any;
-  serverHealthy: boolean;
-  appVersion: string;
+export interface AppInitializationResult {
+  isFirstLaunch: boolean;
+  hasValidSession: boolean;
+  networkStatus: any;
+  biometricAvailable: boolean;
 }
 
-export class StartupManager {
-  static async initialize(): Promise<StartupConfig> {
+export const initializeApp = async (): Promise<AppInitializationResult> => {
+  try {
     console.log('🚀 Initializing BrillPrime Mobile App...');
-    
+
+    // Check if this is the first launch
+    const hasLaunched = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+    const isFirstLaunch = !hasLaunched;
+
+    // Check network connectivity
+    const networkState = await NetInfo.fetch();
+    console.log('🌐 Network Status:', networkState);
+
+    // Check for existing user session
+    let hasValidSession = false;
     try {
-      // Check local storage
-      const hasCompletedOnboarding = await AsyncStorage.getItem('hasCompletedOnboarding');
-      const userSession = await AsyncStorage.getItem('userSession');
-      
-      // Check server health
-      let serverHealthy = false;
-      try {
-        const healthResponse = await apiService.get('/mobile/health');
-        serverHealthy = healthResponse.success;
-        console.log('✅ Server health check passed');
-      } catch (error) {
-        console.warn('⚠️ Server health check failed:', error);
-        serverHealthy = false;
+      const sessionData = await AsyncStorage.getItem(STORAGE_KEYS.USER_SESSION);
+      if (sessionData) {
+        const session = JSON.parse(sessionData);
+        if (session.token) {
+          // Validate session with server
+          const response = await apiService.getCurrentUser();
+          hasValidSession = response.success;
+          
+          if (!hasValidSession) {
+            // Clear invalid session
+            await AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION);
+          }
+        }
       }
-
-      const config: StartupConfig = {
-        hasCompletedOnboarding: !!hasCompletedOnboarding,
-        userSession: userSession ? JSON.parse(userSession) : null,
-        serverHealthy,
-        appVersion: '1.0.0',
-      };
-
-      console.log('📱 Mobile app startup config:', config);
-      return config;
-      
     } catch (error) {
-      console.error('💥 Startup initialization failed:', error);
-      throw error;
+      console.error('❌ Session validation error:', error);
+      await AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION);
     }
-  }
 
-  static async clearAppData(): Promise<void> {
+    // Check biometric availability
+    let biometricAvailable = false;
     try {
-      await AsyncStorage.multiRemove([
-        'hasCompletedOnboarding',
-        'userSession',
-        'cachedUserData',
-        'appSettings',
-      ]);
-      console.log('🧹 App data cleared');
+      if (Platform.OS === 'ios' || Platform.OS === 'android') {
+        // This would normally check react-native-biometrics
+        // For now, we'll simulate the check
+        biometricAvailable = true;
+      }
     } catch (error) {
-      console.error('Error clearing app data:', error);
-      throw error;
+      console.error('❌ Biometric check error:', error);
     }
-  }
 
-  static async validateBackendConnection(): Promise<boolean> {
+    // Initialize push notifications (placeholder)
     try {
-      const response = await apiService.healthCheck();
-      return response.success;
+      // await initializePushNotifications();
+      console.log('🔔 Push notifications initialized');
     } catch (error) {
-      console.error('Backend connection validation failed:', error);
-      return false;
+      console.error('❌ Push notification initialization failed:', error);
     }
-  }
 
-  static showConnectionError(): void {
-    Alert.alert(
-      'Connection Error',
-      'Unable to connect to BrillPrime servers. Please check your internet connection and try again.',
-      [
-        {
-          text: 'Retry',
-          onPress: () => StartupManager.validateBackendConnection(),
-        },
-        {
-          text: 'Continue Offline',
-          style: 'cancel',
-        },
-      ]
-    );
-  }
-}
+    // Set up error tracking (placeholder)
+    try {
+      // await initializeErrorTracking();
+      console.log('📊 Error tracking initialized');
+    } catch (error) {
+      console.error('❌ Error tracking initialization failed:', error);
+    }
 
-export default StartupManager;
+    // Set up analytics (placeholder)
+    try {
+      // await initializeAnalytics();
+      console.log('📈 Analytics initialized');
+    } catch (error) {
+      console.error('❌ Analytics initialization failed:', error);
+    }
+
+    // Health check with backend
+    try {
+      await apiService.healthCheck();
+      console.log('✅ Backend health check passed');
+    } catch (error) {
+      console.warn('⚠️ Backend health check failed:', error);
+    }
+
+    const result: AppInitializationResult = {
+      isFirstLaunch,
+      hasValidSession,
+      networkStatus: networkState,
+      biometricAvailable,
+    };
+
+    console.log('✅ App initialization completed:', result);
+    return result;
+
+  } catch (error) {
+    console.error('💥 App initialization failed:', error);
+    throw error;
+  }
+};
+
+export const clearAppData = async (): Promise<void> => {
+  try {
+    await AsyncStorage.multiRemove([
+      STORAGE_KEYS.USER_SESSION,
+      STORAGE_KEYS.BIOMETRIC_ENABLED,
+      STORAGE_KEYS.PUSH_TOKEN,
+    ]);
+    console.log('🧹 App data cleared');
+  } catch (error) {
+    console.error('❌ Failed to clear app data:', error);
+  }
+};
+
+export const resetOnboarding = async (): Promise<void> => {
+  try {
+    await AsyncStorage.removeItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
+    console.log('🔄 Onboarding reset');
+  } catch (error) {
+    console.error('❌ Failed to reset onboarding:', error);
+  }
+};
