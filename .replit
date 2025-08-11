@@ -30,7 +30,7 @@ externalPort = 5173
 PORT = "5000"
 
 [workflows]
-runButton = "Clean Development Server"
+runButton = "Full Stack Mobile Development"
 
 [[workflows.workflow]]
 name = "Project"
@@ -162,3 +162,16 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow]]
+name = "Full Stack Mobile Development"
+author = 46281729
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile && npm start"
