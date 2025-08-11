@@ -27,6 +27,11 @@ import FuelOrderingScreen from './screens/FuelOrderingScreen';
 import TollPaymentsScreen from './screens/TollPaymentsScreen';
 import LocationSetupScreen from './screens/LocationSetupScreen';
 import PaymentMethodsScreen from './screens/PaymentMethodsScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import RoleSelectionScreen from './screens/RoleSelectionScreen';
+import OTPVerificationScreen from './screens/OTPVerificationScreen';
+import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
+import ResetPasswordScreen from './screens/ResetPasswordScreen';
 
 const Stack = createStackNavigator();
 const queryClient = new QueryClient();
@@ -157,6 +162,31 @@ const App: React.FC = () => {
               name="PaymentMethods"
               component={PaymentMethodsScreen}
               options={{ title: 'Payment Methods', headerShown: false }}
+            />
+            <Stack.Screen
+              name="Onboarding"
+              component={OnboardingScreen}
+              options={{ title: 'Welcome', headerShown: false }}
+            />
+            <Stack.Screen
+              name="RoleSelection"
+              component={RoleSelectionScreen}
+              options={{ title: 'Choose Role', headerShown: false }}
+            />
+            <Stack.Screen
+              name="OTPVerification"
+              component={OTPVerificationScreen}
+              options={{ title: 'Verify OTP', headerShown: false }}
+            />
+            <Stack.Screen
+              name="ForgotPassword"
+              component={ForgotPasswordScreen}
+              options={{ title: 'Forgot Password', headerShown: false }}
+            />
+            <Stack.Screen
+              name="ResetPassword"
+              component={ResetPasswordScreen}
+              options={{ title: 'Reset Password', headerShown: false }}
             />
           </Stack.Navigator>
         </NavigationContainer>

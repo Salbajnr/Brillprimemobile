@@ -120,13 +120,34 @@ This document lists the 15+ screens that have been successfully adapted from the
     - Wallet integration
     - Multiple payment options
 
-## Ready for Future Import (Remaining Screens)
+## Additional Successfully Imported Screens
 
-23. **OnboardingScreen** - From `client/src/pages/onboarding.tsx`
-24. **RoleSelectionScreen** - From `client/src/pages/role-selection.tsx`
-25. **OTPVerificationScreen** - From `client/src/pages/otp-verification.tsx`
-26. **ForgotPasswordScreen** - From `client/src/pages/forgot-password.tsx`
-27. **ResetPasswordScreen** - From `client/src/pages/reset-password.tsx`
+23. **OnboardingScreen** - Adapted from `client/src/pages/onboarding.tsx`
+    - Multi-slide welcome experience
+    - App feature introduction
+    - Skip functionality and smooth navigation
+
+24. **RoleSelectionScreen** - Adapted from `client/src/pages/role-selection.tsx`
+    - Consumer, Driver, Merchant role selection
+    - Feature comparison for each role
+    - Role-based navigation flow
+
+25. **OTPVerificationScreen** - Adapted from `client/src/pages/otp-verification.tsx`
+    - 6-digit OTP input with auto-focus
+    - Resend functionality with timer
+    - Email and phone verification support
+
+26. **ForgotPasswordScreen** - Adapted from `client/src/pages/forgot-password.tsx`
+    - Email validation and reset link sending
+    - Clean form interface
+    - Navigation back to sign in
+
+27. **ResetPasswordScreen** - Adapted from `client/src/pages/reset-password.tsx`
+    - Secure password reset with token validation
+    - Password strength requirements
+    - Confirmation matching validation
+
+## Ready for Future Import (Remaining Screens)
 28. **BiometricSetupScreen** - From `client/src/pages/biometric-setup.tsx`
 29. **MFASetupScreen** - From `client/src/pages/mfa-setup.tsx`
 30. **IdentityVerificationScreen** - From `client/src/pages/identity-verification.tsx`
@@ -135,6 +156,8 @@ This document lists the 15+ screens that have been successfully adapted from the
 33. **OrderConfirmationScreen** - From `client/src/pages/order-confirmation.tsx`
 34. **SearchResultsScreen** - From `client/src/pages/search-results.tsx`
 35. **VendorFeedScreen** - From `client/src/pages/vendor-feed.tsx`
+
+## Total Imported Screens: 27 out of 35+ available screens
 
 ## Key Adaptations Made
 
