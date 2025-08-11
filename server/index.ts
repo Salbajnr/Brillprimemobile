@@ -15,6 +15,10 @@ import crypto from 'crypto';
 import fs from 'fs';
 import { validateEnvironment } from './env-validation';
 
+// Import mobile specific configurations and routes
+import './mobile/mobile-config'; // For mobile app configurations
+import mobileHealthRoutes from './routes/mobile-health'; // Mobile health route
+
 // Extend express-session types
 declare module 'express-session' {
   interface SessionData {
@@ -418,7 +422,7 @@ if (process.env.NODE_ENV === 'production') {
 
     // Try to serve the built index.html first
     const indexPath = path.join(clientDistPath, 'index.html');
-    
+
     console.log('Trying to serve index.html from:', indexPath);
 
     // Check if built assets exist using fs
@@ -587,5 +591,8 @@ process.on('unhandledRejection', (reason, promise) => {
 app.use("/api/data-privacy", dataPrivacyRoutes);
 app.use("/api/legal", legalComplianceRoutes);
 app.use("/api/compliance", nigerianComplianceRoutes);
+
+// Register mobile health routes
+app.use('/api', mobileHealthRoutes);
 
 export default app;
