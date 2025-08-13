@@ -40,7 +40,16 @@ class ApiService {
     customHeaders: Record<string, string> = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const url = `${this.baseURL}/api${endpoint}`;
+      // Check network connectivity
+      const netInfo = await NetInfo.fetch();
+      if (!netInfo.isConnected) {
+        return {
+          success: false,
+          error: 'No internet connection. Please check your network.',
+        };
+      }
+
+      const url = `${this.baseURL}${endpoint}`;
       const authHeaders = await this.getAuthHeaders();
 
       const config: RequestInit = {
@@ -50,7 +59,6 @@ class ApiService {
           ...customHeaders,
         },
         credentials: 'include',
-        timeout: this.requestTimeout,
       };
 
       if (data && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
@@ -84,6 +92,13 @@ class ApiService {
 
       if (!response.ok) {
         console.error(`❌ API Error ${response.status}:`, result);
+        
+        // Handle specific HTTP errors
+        if (response.status === 401) {
+          // Clear session on unauthorized
+          await AsyncStorage.removeItem('userSession');
+        }
+        
         throw new Error(result.message || `HTTP error! status: ${response.status}`);
       }
 
@@ -100,6 +115,14 @@ class ApiService {
         return {
           success: false,
           error: 'Request timeout - please check your connection',
+        };
+      }
+
+      // Network error handling
+      if (!error.message || error.message.includes('Network request failed')) {
+        return {
+          success: false,
+          error: 'Connection failed. Please check your internet connection.',
         };
       }
 
