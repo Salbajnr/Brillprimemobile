@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
@@ -39,6 +38,11 @@ import MerchantDashboardScreen from '../screens/MerchantDashboardScreen';
 import OrderConfirmationScreen from '../screens/OrderConfirmationScreen';
 import SearchResultsScreen from '../screens/SearchResultsScreen';
 import VendorFeedScreen from '../screens/VendorFeedScreen';
+import LegalComplianceScreen from '../screens/LegalComplianceScreen';
+import LiveChatEnhancedScreen from '../screens/LiveChatEnhancedScreen';
+import AddPaymentMethodScreen from '../screens/AddPaymentMethodScreen';
+import WalletFundScreen from '../screens/WalletFundScreen';
+import EnhancedVerificationScreen from '../screens/EnhancedVerificationScreen';
 
 export type RootStackParamList = {
   Splash: undefined;
@@ -76,6 +80,11 @@ export type RootStackParamList = {
   OrderConfirmation: { orderId: string };
   SearchResults: { query: string };
   VendorFeed: undefined;
+  LegalCompliance: undefined;
+  LiveChatEnhanced: undefined;
+  AddPaymentMethod: undefined;
+  WalletFund: undefined;
+  EnhancedVerification: undefined;
 };
 
 const Stack = createStackNavigator<RootStackParamList>();
@@ -126,6 +135,11 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="OrderConfirmation" component={OrderConfirmationScreen} />
         <Stack.Screen name="SearchResults" component={SearchResultsScreen} />
         <Stack.Screen name="VendorFeed" component={VendorFeedScreen} />
+        <Stack.Screen name="LegalCompliance" component={LegalComplianceScreen} />
+        <Stack.Screen name="LiveChatEnhanced" component={LiveChatEnhancedScreen} />
+        <Stack.Screen name="AddPaymentMethod" component={AddPaymentMethodScreen} />
+        <Stack.Screen name="WalletFund" component={WalletFundScreen} />
+        <Stack.Screen name="EnhancedVerification" component={EnhancedVerificationScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

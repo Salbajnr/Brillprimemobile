@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -110,7 +109,7 @@ export default function LiveChatEnhanced() {
           return prev.filter(id => id !== data.userId);
         }
       });
-      
+
       // Clear typing indicator after 3 seconds
       setTimeout(() => {
         setTypingUsers(prev => prev.filter(id => id !== data.userId));
@@ -125,6 +124,29 @@ export default function LiveChatEnhanced() {
             : participant
         )
       })));
+    },
+    onRoleBasedMessage: (data: any) => {
+      // Handle role-specific message features
+      if (data.messageType === 'driver_location') {
+        // Handle driver location updates
+        setChatSessions(prev => prev.map(session => {
+          if (session.id === data.chatId) {
+            const locationMessage: ChatMessage = {
+              id: data.id,
+              senderId: data.senderId,
+              senderName: data.senderName,
+              senderRole: 'driver',
+              message: `📍 Location shared`,
+              timestamp: data.timestamp,
+              type: 'location',
+              status: 'delivered',
+              orderId: data.orderId
+            };
+            return { ...session, messages: [...session.messages, locationMessage] };
+          }
+          return session;
+        }));
+      }
     }
   });
 
@@ -138,7 +160,7 @@ export default function LiveChatEnhanced() {
 
       const data = await response.json();
       setChatSessions(data.sessions || []);
-      
+
       // Auto-select first active session
       const activeSessions = data.sessions.filter((s: ChatSession) => s.status === 'active');
       if (activeSessions.length > 0) {
@@ -166,7 +188,7 @@ export default function LiveChatEnhanced() {
       if (!response.ok) throw new Error('Failed to load messages');
 
       const data = await response.json();
-      
+
       setChatSessions(prev => prev.map(session => 
         session.id === chatId 
           ? { ...session, messages: data.messages || [] }
@@ -216,7 +238,7 @@ export default function LiveChatEnhanced() {
       if (!response.ok) throw new Error('Failed to send message');
 
       const data = await response.json();
-      
+
       // Update message with server response
       setChatSessions(prev => prev.map(session => 
         session.id === activeSession.id 
@@ -235,7 +257,7 @@ export default function LiveChatEnhanced() {
       setIsTyping(false);
     } catch (error) {
       console.error('Error sending message:', error);
-      
+
       // Update message status to failed
       setChatSessions(prev => prev.map(session => 
         session.id === activeSession.id 
@@ -317,7 +339,7 @@ export default function LiveChatEnhanced() {
   useEffect(() => {
     if (activeSession && socket) {
       socket.emit('join_chat', { chatId: activeSession.id });
-      
+
       return () => {
         socket.emit('leave_chat', { chatId: activeSession.id });
       };
@@ -389,11 +411,11 @@ export default function LiveChatEnhanced() {
                         {session.type}
                       </Badge>
                     </div>
-                    
+
                     {session.orderId && (
                       <p className="text-xs text-gray-500">Order #{session.orderId.slice(-6)}</p>
                     )}
-                    
+
                     {session.messages.length > 0 && (
                       <p className="text-xs text-gray-600 truncate mt-1">
                         {session.messages[session.messages.length - 1].message}
@@ -458,7 +480,14 @@ export default function LiveChatEnhanced() {
                           : 'bg-gray-100 text-gray-900'
                       }`}
                     >
-                      <p className="text-sm">{msg.message}</p>
+                      {msg.type === 'location' ? (
+                        <div className="flex items-center space-x-2">
+                          <MapPin className="h-5 w-5" />
+                          <p className="text-sm">Location shared</p>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{msg.message}</p>
+                      )}
                       <div className={`flex items-center justify-end space-x-1 mt-1 ${
                         msg.senderId === user?.id ? 'text-blue-100' : 'text-gray-500'
                       }`}>
@@ -490,7 +519,7 @@ export default function LiveChatEnhanced() {
                   <Button variant="outline" size="sm">
                     <Paperclip className="h-4 w-4" />
                   </Button>
-                  
+
                   <div className="flex-1 relative">
                     <Input
                       ref={messageInputRef}
@@ -507,7 +536,7 @@ export default function LiveChatEnhanced() {
                       placeholder="Type a message..."
                       className="rounded-full pr-12"
                     />
-                    
+
                     <Button
                       onClick={sendMessage}
                       disabled={!message.trim()}

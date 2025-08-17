@@ -291,6 +291,92 @@ export function registerLiveChatRoutes(app: Express) {
     }
   });
 
+  // Role-based message features
+  app.post("/api/chat/send-location", requireAuth, async (req, res) => {
+    try {
+      const { roomId, latitude, longitude, address } = req.body;
+      const userId = req.session!.userId!;
+
+      // Validate that user is driver in this chat room
+      const userRooms = await liveChatService.getUserChatRooms(userId);
+      const room = userRooms.find(r => r.id === roomId);
+
+      if (!room) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied to this chat room"
+        });
+      }
+
+      // Broadcast location via WebSocket
+      if ((global as any).io) {
+        (global as any).io.to(roomId).emit('location_shared', {
+          chatId: roomId,
+          senderId: userId,
+          latitude,
+          longitude,
+          address,
+          timestamp: Date.now()
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Location shared successfully"
+      });
+
+    } catch (error: any) {
+      console.error('Share location error:', error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to share location"
+      });
+    }
+  });
+
+  // Merchant order updates in chat
+  app.post("/api/chat/send-order-update", requireAuth, async (req, res) => {
+    try {
+      const { roomId, orderId, status, message } = req.body;
+      const userId = req.session!.userId!;
+
+      // Validate access and role
+      const userRooms = await liveChatService.getUserChatRooms(userId);
+      const room = userRooms.find(r => r.id === roomId);
+
+      if (!room) {
+        return res.status(403).json({
+          success: false,
+          message: "Access denied to this chat room"
+        });
+      }
+
+      // Broadcast order update via WebSocket
+      if ((global as any).io) {
+        (global as any).io.to(roomId).emit('order_update', {
+          chatId: roomId,
+          senderId: userId,
+          orderId,
+          status,
+          message,
+          timestamp: Date.now()
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Order update sent successfully"
+      });
+
+    } catch (error: any) {
+      console.error('Send order update error:', error);
+      res.status(500).json({
+        success: false,
+        message: "Failed to send order update"
+      });
+    }
+  });
+
   // Escalate chat to support
   app.post("/api/chat/escalate/:roomId", requireAuth, async (req, res) => {
     try {

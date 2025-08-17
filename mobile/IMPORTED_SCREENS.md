@@ -180,9 +180,44 @@ This document lists the 15+ screens that have been successfully adapted from the
     - Category-based filtering
     - Featured products display
 
-## Total Imported Screens: 35 out of 35+ available screens
+## Total Imported Screens: 40 out of 40+ available screens
 
 ## All Major Web App Screens Successfully Imported! 🎉
+
+### Recently Added (New Batch)
+
+36. **LegalComplianceScreen** - Adapted from `client/src/pages/legal-compliance.tsx`
+    - Complete legal and compliance management
+    - Terms of service acceptance
+    - GDPR rights and data protection
+    - Nigerian regulatory compliance (NDPR, CBN)
+    - PCI DSS payment security information
+
+37. **LiveChatEnhancedScreen** - Adapted from `client/src/pages/live-chat-enhanced.tsx`
+    - Advanced real-time messaging
+    - Role-based chat features (Consumer, Driver, Merchant)
+    - Order-linked conversations
+    - Support ticket escalation
+    - Typing indicators and message status
+
+38. **AddPaymentMethodScreen** - Adapted from `client/src/pages/add-payment-method.tsx`
+    - Add credit/debit cards
+    - Bank account integration
+    - Payment method validation
+    - Secure form handling
+
+39. **WalletFundScreen** - Adapted from `client/src/pages/wallet-fund.tsx`
+    - Wallet funding interface
+    - Multiple payment method selection
+    - Quick amount buttons
+    - Transaction limits display
+
+40. **EnhancedVerificationScreen** - Adapted from `client/src/pages/enhanced-verification.tsx`
+    - Advanced identity verification
+    - Multi-step verification process
+    - Biometric verification
+    - Income and background checks
+    - Progress tracking
 
 Your mobile app now has complete feature parity with the web application, including:
 - Authentication flows
