@@ -169,10 +169,10 @@ export default function IdentityVerification() {
       const canvas = canvasRef.current;
       const video = videoRef.current;
       const context = canvas.getContext('2d');
-      
+
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      
+
       if (context) {
         context.drawImage(video, 0, 0);
         canvas.toBlob((blob) => {
@@ -390,7 +390,7 @@ export default function IdentityVerification() {
           <p className="text-sm text-gray-600 mb-4">
             Take a clear photo of your face for identity verification
           </p>
-          
+
           {faceImage ? (
             <div className="space-y-4">
               <div className="flex justify-center">
@@ -569,7 +569,7 @@ export default function IdentityVerification() {
     formData.append('userId', user?.id.toString() || '');
     formData.append('role', user?.role || '');
     formData.append('verificationData', JSON.stringify(verificationData));
-    
+
     if (faceImage) {
       formData.append('faceImage', faceImage);
     }
@@ -594,7 +594,18 @@ export default function IdentityVerification() {
           return false;
       }
     } else {
-      return currentStep === steps.length - 1 && faceImage;
+      // For consumer, only face verification is the last step after email/phone
+      // We need to check if email and phone are verified before proceeding to face verification
+      const isEmailVerified = user?.isVerified;
+      const isPhoneVerified = (verificationData as ConsumerVerification).phoneVerification; // Assuming this state is updated elsewhere or via OTP flow
+
+      if (currentStep === 0) { // Email verification step
+        return isEmailVerified;
+      } else if (currentStep === 1) { // Phone verification step
+        return isPhoneVerified;
+      } else { // Face verification step
+        return (verificationData as ConsumerVerification).faceVerification && faceImage;
+      }
     }
   };
 
@@ -609,7 +620,7 @@ export default function IdentityVerification() {
           <p className="text-gray-600">
             Complete your verification to access all features
           </p>
-          
+
           {/* Progress Bar */}
           <div className="mt-6">
             <Progress value={verificationProgress} className="h-2" />
@@ -621,26 +632,29 @@ export default function IdentityVerification() {
 
         {/* Steps Navigation */}
         <div className="flex justify-center mb-8">
-          <div className="flex space-x-4">
+          <div className="flex space-x-4 overflow-x-auto pb-2">
             {steps.map((step, index) => (
               <div
                 key={step.id}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-full border-2 ${
+                className={`flex items-center space-x-2 px-4 py-2 rounded-full border-2 cursor-pointer transition-colors duration-300 ${
                   index === currentStep
-                    ? 'bg-blue-100 border-blue-500'
-                    : step.completed
-                    ? 'bg-green-100 border-green-500'
-                    : 'bg-gray-100 border-gray-300'
+                    ? 'bg-blue-100 border-blue-500 text-blue-700'
+                    : step.completed || (user?.role === 'CONSUMER' && index < 2 && user?.isVerified && index === 0) || (user?.role === 'CONSUMER' && index < 2 && (verificationData as ConsumerVerification).phoneVerification && index === 1)
+                    ? 'bg-green-100 border-green-500 text-green-700'
+                    : 'bg-gray-100 border-gray-300 text-gray-600'
                 }`}
+                onClick={() => setCurrentStep(index)}
               >
-                {step.completed ? (
+                {step.completed || (user?.role === 'CONSUMER' && index < 2 && user?.isVerified && index === 0) || (user?.role === 'CONSUMER' && index < 2 && (verificationData as ConsumerVerification).phoneVerification && index === 1) ? (
                   <CheckCircle className="h-5 w-5 text-green-600" />
                 ) : (
-                  <div className={`w-5 h-5 rounded-full border-2 ${
-                    index === currentStep ? 'border-blue-500 bg-blue-500' : 'border-gray-400'
-                  }`} />
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center font-bold text-xs ${
+                    index === currentStep ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-400 text-gray-400'
+                  }`}>
+                    {index + 1}
+                  </div>
                 )}
-                <span className="text-sm font-medium hidden md:block">
+                <span className="text-sm font-medium">
                   {step.title}
                 </span>
               </div>
@@ -658,7 +672,9 @@ export default function IdentityVerification() {
             </>
           ) : (
             <>
-              {currentStep < 2 ? renderConsumerVerificationSteps() : renderFaceVerificationStep()}
+              {currentStep === 0 && renderConsumerVerificationSteps()}
+              {currentStep === 1 && renderConsumerVerificationSteps()}
+              {currentStep === 2 && renderFaceVerificationStep()}
             </>
           )}
         </div>
@@ -667,7 +683,7 @@ export default function IdentityVerification() {
         <div className="flex justify-between">
           <Button
             variant="outline"
-            onClick={() => currentStep > 0 ? setCurrentStep(currentStep - 1) : setLocation('/dashboard')}
+            onClick={() => currentStep > 0 ? setCurrentStep(currentStep - 1) : setLocation(user?.role === 'DRIVER' ? '/driver-dashboard' : '/consumer-home')}
             className="rounded-xl"
             disabled={currentStep === 0}
           >
@@ -677,7 +693,13 @@ export default function IdentityVerification() {
 
           {currentStep < steps.length - 1 ? (
             <Button
-              onClick={() => setCurrentStep(currentStep + 1)}
+              onClick={() => {
+                // Mark current step as completed before moving to the next
+                const newSteps = [...steps];
+                newSteps[currentStep].completed = true;
+                setVerificationProgress((newSteps.filter(s => s.completed).length / newSteps.length) * 100);
+                setCurrentStep(currentStep + 1);
+              }}
               disabled={!canProceed()}
               className="rounded-xl"
               style={{ backgroundColor: COLORS.PRIMARY, color: COLORS.WHITE }}
