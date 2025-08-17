@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, Car, Clock, CreditCard, Navigation, Ticket, CheckCircle, AlertCircle } from "lucide-react";
@@ -7,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface VehicleType {
   id: string;
@@ -47,30 +47,10 @@ interface TollTransaction {
   reference?: string;
 }
 
-interface TollGate {
-  id: string;
-  name: string;
-  location: string;
-  highway: string;
-  distance: number;
-  pricePerVehicle: {
-    car: number;
-    suv: number;
-    truck: number;
-    motorcycle: number;
-  };
-  operatingHours: string;
-  isOpen: boolean;
-  estimatedTime: string;
-  paymentMethods: string[];
-  trafficStatus: 'light' | 'moderate' | 'heavy';
-  queueTime: string;
-}
-
 export default function TollPayments() {
   const [, setLocation] = useLocation();
   const [selectedVehicle, setSelectedVehicle] = useState<string>("car");
-  const [selectedTollGate, setSelectedTollGate] = useState<string | null>(null);
+  const [selectedTollGate, setSelectedTollGate] = useState<any>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTransactions, setActiveTransactions] = useState<TollTransaction[]>([
     {
@@ -111,67 +91,7 @@ export default function TollPayments() {
     }
   ];
 
-  const tollGates: TollGate[] = [
-    {
-      id: "lagos-ibadan-1",
-      name: "Lagos-Ibadan Expressway Toll",
-      location: "Berger, Lagos",
-      highway: "Lagos-Ibadan Expressway",
-      distance: 2.5,
-      pricePerVehicle: {
-        motorcycle: 200,
-        car: 600,
-        suv: 1000,
-        truck: 1500
-      },
-      operatingHours: "24/7",
-      isOpen: true,
-      estimatedTime: "3 mins",
-      paymentMethods: ["wallet", "card", "qr"],
-      trafficStatus: "moderate",
-      queueTime: "5-8 minutes"
-    },
-    {
-      id: "lekki-toll",
-      name: "Lekki Toll Gate",
-      location: "Lekki Peninsula, Lagos",
-      highway: "Lekki-Epe Expressway",
-      distance: 15.2,
-      pricePerVehicle: {
-        motorcycle: 120,
-        car: 400,
-        suv: 800,
-        truck: 1200
-      },
-      operatingHours: "24/7",
-      isOpen: true,
-      estimatedTime: "2 mins",
-      paymentMethods: ["wallet", "card", "qr"],
-      trafficStatus: "light",
-      queueTime: "2-3 minutes"
-    },
-    {
-      id: "abuja-kaduna-1",
-      name: "Abuja-Kaduna Expressway Toll",
-      location: "Zuba, Abuja",
-      highway: "Abuja-Kaduna Expressway",
-      distance: 45.8,
-      pricePerVehicle: {
-        motorcycle: 150,
-        car: 500,
-        suv: 900,
-        truck: 1400
-      },
-      operatingHours: "6:00 AM - 10:00 PM",
-      isOpen: true,
-      estimatedTime: "4 mins",
-      paymentMethods: ["wallet", "card"],
-      trafficStatus: "heavy",
-      queueTime: "10-15 minutes"
-    }
-  ];
-
-  const [tollGates] = useState<TollGate[]>([
+  const [tollGatesData, setTollGatesData] = useState<TollGate[]>([
     {
       id: "lagos-ibadan-1",
       name: "Lagos-Ibadan Toll Plaza",
@@ -250,7 +170,7 @@ export default function TollPayments() {
     }
   ]);
 
-  const filteredTollGates = tollGates.filter(gate =>
+  const filteredTollGates = tollGatesData.filter(gate =>
     gate.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     gate.highway.toLowerCase().includes(searchQuery.toLowerCase()) ||
     gate.location.toLowerCase().includes(searchQuery.toLowerCase())
@@ -265,23 +185,21 @@ export default function TollPayments() {
   };
 
   const handleTollSelection = (tollGate: TollGate) => {
-    setSelectedTollGate(tollGate.id);
+    setSelectedTollGate(tollGate);
   };
 
   const handlePurchase = async () => {
     if (selectedTollGate) {
-      const selectedGate = tollGates.find(g => g.id === selectedTollGate);
-      const amount = selectedGate?.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']];
-      
+      const amount = selectedTollGate?.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']];
+
       try {
-        // Create toll payment transaction
         const response = await fetch('/api/toll/payment', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            tollGateId: selectedTollGate,
+            tollGateId: selectedTollGate.id,
             vehicleType: selectedVehicle,
             amount: amount,
             paymentMethod: 'wallet'
@@ -292,10 +210,9 @@ export default function TollPayments() {
         if (response.ok) {
           const result = await response.json();
           if (result.success) {
-            // Create new transaction
             const newTransaction: TollTransaction = {
               id: result.transaction.id,
-              tollGateId: selectedTollGate,
+              tollGateId: selectedTollGate.id,
               vehicleType: selectedVehicle,
               amount: amount || 0,
               timestamp: new Date().toISOString(),
@@ -304,15 +221,34 @@ export default function TollPayments() {
               paymentMethod: 'wallet',
               reference: result.transaction.reference
             };
-            
+
             setActiveTransactions(prev => [...prev, newTransaction]);
             setLocation(`/toll-payment-success?transactionId=${result.transaction.id}&qrCode=${result.qrCode}`);
+          } else {
+             setModalData({
+              isOpen: true,
+              type: "error",
+              title: "Payment Failed",
+              message: result.message || "An error occurred during payment processing."
+            });
           }
         } else {
           console.error('Failed to process toll payment');
+          setModalData({
+            isOpen: true,
+            type: "error",
+            title: "Payment Error",
+            message: "Server error. Please try again later."
+          });
         }
       } catch (error) {
         console.error('Error processing toll payment:', error);
+        setModalData({
+          isOpen: true,
+          type: "error",
+          title: "Network Error",
+          message: "Failed to connect. Check your internet connection."
+        });
       }
     }
   };
@@ -326,20 +262,7 @@ export default function TollPayments() {
     }
   };
 
-  const getTrafficStatusIcon = (status: string) => {
-    switch (status) {
-      case 'light': return '🟢';
-      case 'moderate': return '🟡';
-      case 'heavy': return '🔴';
-      default: return '⚪';
-    }
-  };
-
-  const getSelectedTollGate = () => {
-    return tollGates.find(g => g.id === selectedTollGate);
-  };
-
-  const getTrafficStatusColor = (status: string) => {
+  const getTrafficStatusBadgeClass = (status: string) => {
     switch (status) {
       case 'light': return 'bg-green-100 text-green-800';
       case 'moderate': return 'bg-yellow-100 text-yellow-800';
@@ -359,7 +282,6 @@ export default function TollPayments() {
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">
-      {/* Header */}
       <div className="bg-white shadow-sm border-b">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-4">
@@ -377,7 +299,6 @@ export default function TollPayments() {
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="px-4 pb-4">
           <Input
             placeholder="Search toll gates or highways..."
@@ -389,14 +310,13 @@ export default function TollPayments() {
       </div>
 
       <div className="p-4 space-y-6">
-        {/* Active Transactions */}
         {activeTransactions.length > 0 && (
           <Card>
             <CardContent className="p-4">
               <h3 className="font-semibold text-[#131313] mb-3">Recent Transactions</h3>
               <div className="space-y-3">
                 {activeTransactions.slice(0, 3).map((transaction) => {
-                  const gate = tollGates.find(g => g.id === transaction.tollGateId);
+                  const gate = tollGatesData.find(g => g.id === transaction.tollGateId);
                   return (
                     <div key={transaction.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                       <div className="flex items-center space-x-3">
@@ -424,7 +344,6 @@ export default function TollPayments() {
           </Card>
         )}
 
-        {/* Vehicle Type Selection */}
         <Card>
           <CardContent className="p-4">
             <Label className="text-sm font-medium text-[#131313] mb-3 block">Select Vehicle Type</Label>
@@ -450,7 +369,6 @@ export default function TollPayments() {
           </CardContent>
         </Card>
 
-        {/* Toll Gates List */}
         <div className="space-y-4">
           <h2 className="font-semibold text-[#131313]">Available Toll Gates</h2>
 
@@ -458,13 +376,12 @@ export default function TollPayments() {
             <Card
               key={gate.id}
               className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedTollGate === gate.id ? "ring-2 ring-[#4682b4] ring-opacity-50" : ""
+                selectedTollGate?.id === gate.id ? "ring-2 ring-[#4682b4] ring-opacity-50" : ""
               } ${!gate.isOpen ? "opacity-60" : ""}`}
               onClick={() => gate.isOpen && handleTollSelection(gate)}
             >
               <CardContent className="p-4">
                 <div className="space-y-3">
-                  {/* Gate Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <h3 className="font-semibold text-[#131313] mb-1">{gate.name}</h3>
@@ -487,10 +404,9 @@ export default function TollPayments() {
                     </div>
                   </div>
 
-                  {/* Traffic Status */}
                   <div className="flex items-center justify-between">
                     <div className="flex items-center space-x-2">
-                      <Badge className={getTrafficStatusColor(gate.trafficStatus)}>
+                      <Badge className={getTrafficStatusBadgeClass(gate.trafficStatus)}>
                         {gate.trafficStatus} traffic
                       </Badge>
                       <span className="text-sm text-gray-600">Queue: {gate.queueTime}</span>
@@ -503,7 +419,6 @@ export default function TollPayments() {
                     </div>
                   </div>
 
-                  {/* Payment Methods */}
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-600">Payment:</span>
                     {gate.paymentMethods.map((method) => (
@@ -518,7 +433,6 @@ export default function TollPayments() {
           ))}
         </div>
 
-        {/* Purchase Summary */}
         {selectedTollGate && (
           <Card className="border-[#4682b4]">
             <CardContent className="p-6">
@@ -526,7 +440,7 @@ export default function TollPayments() {
               <div className="space-y-3">
                 <div className="flex justify-between">
                   <span className="text-gray-600">Toll Gate:</span>
-                  <span className="font-medium">{getSelectedTollGate()?.name}</span>
+                  <span className="font-medium">{selectedTollGate?.name}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Vehicle Type:</span>
@@ -536,20 +450,20 @@ export default function TollPayments() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Distance:</span>
-                  <span className="font-medium">{getSelectedTollGate()?.distance} km</span>
+                  <span className="font-medium">{selectedTollGate?.distance} km</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-600">Current Traffic:</span>
-                  <Badge className={getTrafficStatusColor(getSelectedTollGate()?.trafficStatus || 'light')}>
-                    {getSelectedTollGate()?.trafficStatus} traffic
+                  <Badge className={getTrafficStatusBadgeClass(selectedTollGate?.trafficStatus || 'light')}>
+                    {selectedTollGate?.trafficStatus} traffic
                   </Badge>
                 </div>
                 <hr />
                 <div className="flex justify-between font-semibold text-lg">
                   <span>Total Amount:</span>
                   <span className="text-[#4682b4]">
-                    {getSelectedTollGate() && formatCurrency(
-                      getSelectedTollGate()!.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']]
+                    {selectedTollGate && formatCurrency(
+                      selectedTollGate!.pricePerVehicle[selectedVehicle as keyof TollGate['pricePerVehicle']]
                     )}
                   </span>
                 </div>
@@ -558,7 +472,6 @@ export default function TollPayments() {
           </Card>
         )}
 
-        {/* Empty State */}
         {filteredTollGates.length === 0 && (
           <div className="text-center py-12">
             <Car className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -568,7 +481,6 @@ export default function TollPayments() {
         )}
       </div>
 
-      {/* Bottom Action Button */}
       {selectedTollGate && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t">
           <Button
@@ -580,6 +492,25 @@ export default function TollPayments() {
           </Button>
         </div>
       )}
+
+      <Dialog open={modalData.isOpen} onOpenChange={(open) => setModalData({ ...modalData, isOpen: open })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {modalData.type === "success" ? (
+                <div className="flex items-center text-green-600">
+                  <CheckCircle className="w-6 h-6 mr-2" /> {modalData.title}
+                </div>
+              ) : (
+                <div className="flex items-center text-red-600">
+                  <AlertCircle className="w-6 h-6 mr-2" /> {modalData.title}
+                </div>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+          <DialogDescription>{modalData.message}</DialogDescription>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

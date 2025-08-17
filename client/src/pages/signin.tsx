@@ -25,10 +25,13 @@ type SignInFormData = {
 
 export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { signin } = useAuth();
-  
+
   // Add missing state variables for compatibility
   const setUser = (user: any) => console.log("User updated:", user);
   const setLoading = (loading: boolean) => console.log("Loading:", loading);
@@ -398,7 +401,30 @@ export default function SignInPage() {
               )}
             />
 
-            <div className="text-right">
+            <div className="flex items-center justify-between">
+              <FormField
+                control={form.control}
+                name="rememberMe"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
+                    <FormControl>
+                      <Input
+                        type="checkbox"
+                        checked={field.value}
+                        onChange={field.onChange}
+                        className="h-4 w-4 border-[var(--brill-secondary)] focus-visible:ring-[var(--brill-secondary)]"
+                      />
+                    </FormControl>
+                    <label
+                      htmlFor={field.name}
+                      className="text-sm font-medium text-[var(--brill-text-light)] leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Remember me
+                    </label>
+                  </FormItem>
+                )}
+              />
+
               <Button
                 type="button"
                 variant="link"
