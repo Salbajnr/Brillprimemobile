@@ -1,10 +1,43 @@
+import Redis from 'ioredis';
+
+let redisClient: Redis | null = null;
+
+if (!process.env.REDIS_DISABLED) {
+  try {
+    redisClient = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      retryDelayOnFailover: 100,
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+
+    redisClient.on('error', (err) => {
+      console.warn('Redis connection error:', err.message);
+      redisClient = null;
+    });
+  } catch (error) {
+    console.warn('Redis not available, using memory cache');
+    redisClient = null;
+  }
+} else {
+  console.log('Redis disabled by configuration');
+}
+
+// In-memory cache fallback
+const memoryCache = new Map<string, { value: any; expires: number }>();
+
 class CacheService {
-  private cache: Map<string, { value: any; expires: number }> = new Map();
-  private isConnected: boolean = true;
+  //private cache: Map<string, { value: any; expires: number }> = new Map(); // Removed to use the new memoryCache map
+  private isConnected: boolean = true; // This property might need re-evaluation if redisClient is null
 
   constructor() {
-    console.log('🔄 Using in-memory cache service (Redis disabled in development)');
-    
+    if (redisClient) {
+      console.log(`🚀 Connected to Redis at ${process.env.REDIS_HOST || 'localhost'}:${parseInt(process.env.REDIS_PORT || '6379')}`);
+    } else {
+      console.log('🔄 Using in-memory cache service (Redis disabled or unavailable)');
+    }
+
     // Clean up expired entries every 5 minutes
     setInterval(() => {
       this.cleanupExpired();
@@ -13,54 +46,124 @@ class CacheService {
 
   private cleanupExpired() {
     const now = Date.now();
-    for (const [key, entry] of this.cache.entries()) {
-      if (entry.expires < now) {
-        this.cache.delete(key);
+    if (redisClient) {
+      // Redis handles its own expiration, so this might not be needed for Redis
+      // If we were to implement a Redis cleanup for patterns, it would be here.
+      // For now, focusing on memory cache cleanup.
+    } else {
+      // Clean up expired entries from memory cache
+      for (const [key, entry] of memoryCache.entries()) {
+        if (entry.expires < now) {
+          memoryCache.delete(key);
+        }
       }
     }
   }
 
   // Generic cache methods
   async get<T>(key: string): Promise<T | null> {
-    const entry = this.cache.get(key);
-    if (!entry) return null;
-    
-    if (entry.expires < Date.now()) {
-      this.cache.delete(key);
+    try {
+      if (redisClient) {
+        const value = await redisClient.get(key);
+        return value ? JSON.parse(value) : null;
+      } else {
+        const cached = memoryCache.get(key);
+        if (cached && cached.expires > Date.now()) {
+          return cached.value;
+        } else if (cached) {
+          memoryCache.delete(key);
+        }
+        return null;
+      }
+    } catch (error) {
+      console.error(`Cache get error for key "${key}":`, error);
       return null;
     }
-    
-    return entry.value;
   }
 
   async set(key: string, value: any, ttlSeconds: number = 3600): Promise<void> {
-    const expires = Date.now() + (ttlSeconds * 1000);
-    this.cache.set(key, { value, expires });
+    try {
+      if (redisClient) {
+        await redisClient.setex(key, ttlSeconds, JSON.stringify(value));
+      } else {
+        // Fallback to memory cache
+        memoryCache.set(key, {
+          value,
+          expires: Date.now() + (ttlSeconds * 1000)
+        });
+      }
+    } catch (error) {
+      console.error(`Cache set error for key "${key}":`, error);
+    }
   }
 
   async del(key: string | string[]): Promise<void> {
-    if (Array.isArray(key)) {
-      key.forEach(k => this.cache.delete(k));
-    } else {
-      this.cache.delete(key);
+    try {
+      if (redisClient) {
+        if (Array.isArray(key)) {
+          await redisClient.del(key);
+        } else {
+          await redisClient.del(key);
+        }
+      } else {
+        if (Array.isArray(key)) {
+          key.forEach(k => memoryCache.delete(k));
+        } else {
+          memoryCache.delete(key);
+        }
+      }
+    } catch (error) {
+      console.error(`Cache delete error for key "${key}":`, error);
     }
   }
 
   async invalidatePattern(pattern: string): Promise<void> {
-    const regex = new RegExp(pattern.replace('*', '.*'));
-    for (const key of this.cache.keys()) {
-      if (regex.test(key)) {
-        this.cache.delete(key);
+    if (redisClient) {
+      // Redis pattern invalidation can be complex and depends on the Redis version/configuration.
+      // For simplicity, we'll iterate through keys if possible, or use SCAN.
+      // A more robust solution might involve using a Redis cluster or a dedicated search index.
+      // For now, let's assume a simple pattern match on keys.
+      // Note: KEYS command is generally discouraged in production due to performance implications.
+      // Consider using SCAN for large datasets.
+      try {
+        const keys = await redisClient.keys(pattern.replace('*', '?')); // Basic wildcard support
+        await redisClient.del(keys);
+      } catch (error) {
+        console.error('Redis pattern invalidation error:', error);
+      }
+    } else {
+      const regex = new RegExp(pattern.replace('*', '.*'));
+      for (const key of memoryCache.keys()) {
+        if (regex.test(key)) {
+          memoryCache.delete(key);
+        }
       }
     }
   }
 
   async healthCheck(): Promise<boolean> {
+    if (redisClient) {
+      try {
+        await redisClient.ping();
+        this.isConnected = true;
+      } catch (error) {
+        console.warn('Redis health check failed:', error.message);
+        this.isConnected = false;
+        // Optionally, try to reconnect or set redisClient to null
+        redisClient = null;
+      }
+    } else {
+      this.isConnected = false;
+    }
     return this.isConnected;
   }
 
   async warmCache(): Promise<void> {
     console.log('Warming up cache...');
+    // Warming up cache would involve pre-populating it with common data.
+    // This might involve fetching data from another source and setting it in the cache.
+    // Example:
+    // await this.set('popular_products', await fetchPopularProducts(), 3600);
     console.log('Pre-caching popular products...');
     console.log('Pre-caching analytics...');
     console.log('Cache warming completed');
@@ -182,3 +285,6 @@ class CacheService {
 }
 
 export const cacheService = new CacheService();
+
+// Exporting redisClient and memoryCache for potential external use or testing
+export { redisClient, memoryCache };
