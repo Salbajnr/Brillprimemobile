@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { MapPin, MessageSquare, Package, Truck, ArrowLeft, Phone, Navigation, Clock } from 'lucide-react';
 import { useLocation } from 'wouter';
@@ -22,6 +21,10 @@ export default function RealTimeTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [orderInfo, setOrderInfo] = useState<any>(null);
   const [participants, setParticipants] = useState<any[]>([]);
+  const [activeOrders, setActiveOrders] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<any>(null);
+  const [trackingEnabled, setTrackingEnabled] = useState(false);
 
   // WebSocket hooks
   const { socket, connected, emit } = useWebSocket();
@@ -241,9 +244,9 @@ export default function RealTimeTrackingPage() {
               } : undefined}
               orderId={selectedOrderId}
             />
-            
+
             <RealTimeLocationTracking />
-            
+
             {/* ETA Card */}
             <Card>
               <CardContent className="p-4">
@@ -262,7 +265,7 @@ export default function RealTimeTrackingPage() {
 
           <TabsContent value="order" className="mt-4">
             <RealTimeOrderTracking />
-            
+
             {/* Order Timeline */}
             <Card className="mt-4">
               <CardHeader>
@@ -279,7 +282,7 @@ export default function RealTimeTrackingPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="h-2 w-2 rounded-full bg-blue-500 mt-2 flex-shrink-0" />
                     <div className="text-sm">
@@ -289,7 +292,7 @@ export default function RealTimeTrackingPage() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-start gap-3">
                     <div className="h-2 w-2 rounded-full bg-yellow-500 mt-2 flex-shrink-0 animate-pulse" />
                     <div className="text-sm">
@@ -304,7 +307,7 @@ export default function RealTimeTrackingPage() {
 
           <TabsContent value="chat" className="mt-4">
             <RealTimeChatSystem />
-            
+
             {/* Quick Actions */}
             <Card className="mt-4">
               <CardHeader>
