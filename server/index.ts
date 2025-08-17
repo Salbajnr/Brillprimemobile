@@ -14,6 +14,7 @@ import { dirname } from 'path';
 import crypto from 'crypto';
 import fs from 'fs';
 import { validateEnvironment } from './env-validation';
+import { redisClient } from './services/cache';
 
 // Import mobile specific configurations and routes
 import './mobile/mobile-config'; // For mobile app configurations
@@ -205,32 +206,60 @@ app.use(cors({
 }));
 
 // Use memory store for sessions in development environment
-console.log('🔄 Using memory store for sessions (Redis disabled in development)');
-const MemoryStoreSession = MemoryStore(session);
-const sessionStore = new MemoryStoreSession({
-  checkPeriod: 86400000 // prune expired entries every 24h
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_URL) {
+  console.log('🔄 Using memory store for sessions (Redis disabled)');
+  const MemoryStoreSession = MemoryStore(session);
+  const sessionStore = new MemoryStoreSession({
+    checkPeriod: 86400000 // prune expired entries every 24h
+  });
 
-const sessionConfig = {
-  store: sessionStore,
-  secret: process.env.SESSION_SECRET || 'your-secret-key',
-  resave: false,
-  saveUninitialized: false,
-  rolling: true, // Reset expiration on activity
-  cookie: {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
-  },
-  name: 'brillprime.sid',
-  genid: () => {
-    // Generate secure session ID
-    return crypto.randomBytes(32).toString('hex');
-  }
-};
+  const sessionConfig = {
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    rolling: true, // Reset expiration on activity
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
+    },
+    name: 'brillprime.sid',
+    genid: () => {
+      // Generate secure session ID
+      return crypto.randomBytes(32).toString('hex');
+    }
+  };
 
-app.use(session(sessionConfig));
+  app.use(session(sessionConfig));
+
+} else {
+  console.log('🔄 Using Redis store for sessions');
+  const RedisStore = require('connect-redis')(session);
+  const sessionStore = new RedisStore({ client: redisClient });
+
+  const sessionConfig = {
+    store: sessionStore,
+    secret: process.env.SESSION_SECRET || 'your-secret-key',
+    resave: false,
+    saveUninitialized: false,
+    rolling: true, // Reset expiration on activity
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      maxAge: 24 * 60 * 60 * 1000, // 24 hours
+      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
+    },
+    name: 'brillprime.sid',
+    genid: () => {
+      // Generate secure session ID
+      return crypto.randomBytes(32).toString('hex');
+    }
+  };
+
+  app.use(session(sessionConfig));
+}
 
 // CSRF token generation
 app.use((req, res, next) => {
