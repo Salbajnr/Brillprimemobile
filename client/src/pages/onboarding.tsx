@@ -93,7 +93,19 @@ export default function OnboardingPage() {
         </div>
 
         <div className="flex justify-between items-center pt-6 sm:pt-8 px-2">
-          <ProgressIndicator totalSteps={3} currentStep={currentStep} />
+          {/* Simple dot pagination */}
+          <div className="flex space-x-2">
+            {[1, 2, 3].map((step) => (
+              <div
+                key={step}
+                className={`w-2 h-2 rounded-full transition-colors duration-300 ${
+                  step === currentStep 
+                    ? 'bg-[var(--brill-primary)]' 
+                    : 'bg-gray-300'
+                }`}
+              />
+            ))}
+          </div>
           
           {currentStep < onboardingData.length ? (
             <Button

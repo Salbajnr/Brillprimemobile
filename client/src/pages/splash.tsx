@@ -19,7 +19,7 @@ export default function SplashPage() {
     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden">
       {/* Logo with effects */}
       <div className="flex flex-col items-center justify-center">
-        <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 bg-blue-600 rounded-full flex items-center justify-center shadow-2xl animate-pulse">
+        <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center">
           <img 
             src={logoImage} 
             alt="Brillprime Logo" 
@@ -28,7 +28,7 @@ export default function SplashPage() {
             onError={(e) => {
               // If image fails to load, show text fallback
               e.currentTarget.style.display = 'none';
-              e.currentTarget.parentElement!.innerHTML = '<div class="text-white text-2xl font-bold">BP</div>';
+              e.currentTarget.parentElement!.innerHTML = '<div class="text-blue-600 text-2xl font-bold">BP</div>';
             }}
           />
         </div>
