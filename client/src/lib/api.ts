@@ -1,4 +1,3 @@
-
 // API configuration and helpers
 const API_BASE = '/api';
 
@@ -40,15 +39,15 @@ async function apiRequest<T = any>(
     });
 
     const data = await response.json();
-    
+
     if (!response.ok) {
       throw new Error(data.message || `HTTP ${response.status}: Request failed`);
     }
-    
+
     return data;
   } catch (error: any) {
     console.error(`API Error (${endpoint}):`, error);
-    
+
     // Log frontend errors to backend
     if (endpoint !== '/analytics/log-error') {
       try {
@@ -68,7 +67,7 @@ async function apiRequest<T = any>(
         console.error('Failed to log error:', logError);
       }
     }
-    
+
     return {
       success: false,
       error: error.message || 'Network error occurred'
@@ -86,14 +85,14 @@ class WebSocketManager {
   connect() {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
     const wsUrl = `${protocol}//${window.location.host}`;
-    
+
     this.ws = new WebSocket(wsUrl);
-    
+
     this.ws.onopen = () => {
       console.log('WebSocket connected');
       this.reconnectAttempts = 0;
     };
-    
+
     this.ws.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
@@ -102,12 +101,12 @@ class WebSocketManager {
         console.error('WebSocket message parsing error:', error);
       }
     };
-    
+
     this.ws.onclose = () => {
       console.log('WebSocket disconnected');
       this.reconnect();
     };
-    
+
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
@@ -149,11 +148,11 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(credentials),
     });
-    
+
     if (result.success) {
       wsManager.connect();
     }
-    
+
     return result;
   },
 
@@ -162,11 +161,11 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(userData),
     });
-    
+
     if (result.success) {
       wsManager.connect();
     }
-    
+
     return result;
   },
 
@@ -320,7 +319,7 @@ export const walletApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/wallet/transactions?${queryParams}`);
   },
 
@@ -363,7 +362,7 @@ export const orderApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/orders?${queryParams}`);
   },
 
@@ -415,7 +414,7 @@ export const productApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/products?${queryParams}`);
   },
 
@@ -490,7 +489,7 @@ export const driverApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/drivers/earnings?${queryParams}`);
   },
 
@@ -548,7 +547,7 @@ export const supportApi = {
     formData.append('message', ticketData.message);
     if (ticketData.priority) formData.append('priority', ticketData.priority);
     if (ticketData.category) formData.append('category', ticketData.category);
-    
+
     ticketData.attachments?.forEach((file, index) => {
       formData.append(`attachment_${index}`, file);
     });
@@ -569,7 +568,7 @@ export const supportApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/support/tickets?${queryParams}`);
   },
 
@@ -578,7 +577,7 @@ export const supportApi = {
   addResponse: (ticketId: string, message: string, attachments?: File[]) => {
     const formData = new FormData();
     formData.append('message', message);
-    
+
     attachments?.forEach((file, index) => {
       formData.append(`attachment_${index}`, file);
     });
@@ -608,7 +607,7 @@ export const notificationApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/notifications?${queryParams}`);
   },
 
@@ -634,7 +633,7 @@ export const notificationApi = {
 
   // Notification preferences
   getPreferences: () => apiRequest('/notifications/preferences'),
-  
+
   updatePreferences: (preferences: any) =>
     apiRequest('/notifications/preferences', {
       method: 'PUT',
@@ -659,7 +658,7 @@ export const analyticsApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/analytics/orders?${queryParams}`);
   },
 
@@ -672,7 +671,7 @@ export const analyticsApi = {
     Object.entries(params).forEach(([key, value]) => {
       if (value !== undefined) queryParams.append(key, value.toString());
     });
-    
+
     return apiRequest(`/analytics/revenue?${queryParams}`);
   },
 
@@ -688,7 +687,7 @@ export const analyticsApi = {
 
   // Performance monitoring
   getPerformanceMetrics: () => apiRequest('/analytics/performance'),
-  
+
   // Custom analytics
   customQuery: (query: any) =>
     apiRequest('/analytics/custom', {
