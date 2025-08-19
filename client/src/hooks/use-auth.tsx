@@ -35,9 +35,9 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     },
     ...options,
   });
-  
+
   const data = await response.json();
-  
+
   return {
     success: response.ok,
     data: response.ok ? data : null,
@@ -126,9 +126,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const response = await apiRequest("/auth/me");
       if (response.success) {
         setUser(response.data?.user || response.user);
+      } else {
+        // If /auth/me fails, it's likely due to an expired token or invalid session
+        setUser(null);
+        localStorage.removeItem('user');
+        setError(response.error || 'Session expired. Please log in again.');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to refresh user:', err);
+      setUser(null);
+      localStorage.removeItem('user');
+      setError(err.message || 'An error occurred while refreshing user data.');
     }
   };
 

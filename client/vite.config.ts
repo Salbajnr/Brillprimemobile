@@ -11,6 +11,12 @@ export default defineConfig({
       '@assets': path.resolve(__dirname, './src/assets'),
     },
   },
+  define: {
+    global: 'globalThis',
+  },
+  optimizeDeps: {
+    include: ['buffer']
+  },
   server: {
     port: 5173,
     host: '0.0.0.0',
