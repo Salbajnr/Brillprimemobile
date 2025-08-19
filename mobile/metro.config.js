@@ -1,31 +1,36 @@
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+
+const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
 const path = require('path');
 
-/**
- * Metro configuration for React Native
- * https://facebook.github.io/metro/docs/configuration
- */
 const config = {
   watchFolders: [
-    // Include the root directory for shared code
-    path.resolve(__dirname, '../'),
+    path.resolve(__dirname, '../shared'),
+    path.resolve(__dirname, '../server'),
   ],
   resolver: {
     alias: {
-      // Alias for shared types and schema
+      '@': path.resolve(__dirname, 'src'),
       '@shared': path.resolve(__dirname, '../shared'),
-      '@web': path.resolve(__dirname, '../client/src'),
       '@server': path.resolve(__dirname, '../server'),
     },
-    // Include node_modules from root and mobile directory
-    nodeModulesPaths: [
-      path.resolve(__dirname, 'node_modules'),
-      path.resolve(__dirname, '../node_modules'),
+    extensions: [
+      '.native.js',
+      '.native.ts',
+      '.native.tsx',
+      '.js',
+      '.jsx',
+      '.ts',
+      '.tsx',
+      '.json',
     ],
   },
   transformer: {
-    // Enable TypeScript support
-    babelTransformerPath: require.resolve('react-native-typescript-transformer'),
+    getTransformOptions: async () => ({
+      transform: {
+        experimentalImportSupport: false,
+        inlineRequires: true,
+      },
+    }),
   },
 };
 
