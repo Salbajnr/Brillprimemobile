@@ -1,19 +1,9 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import App from "./App.tsx";
 import './index.css';
 
 console.log("main.tsx loading...");
-
-// Simple test component first
-function TestApp() {
-  return (
-    <div className="min-h-screen bg-blue-600 flex items-center justify-center">
-      <div className="text-white text-2xl font-bold">
-        BrillPrime Test Loading...
-      </div>
-    </div>
-  );
-}
 
 const rootElement = document.getElementById('root');
 console.log("Root element:", rootElement);
@@ -25,7 +15,7 @@ if (rootElement) {
     
     root.render(
       <React.StrictMode>
-        <TestApp />
+        <App />
       </React.StrictMode>
     );
     console.log("React app rendered");
