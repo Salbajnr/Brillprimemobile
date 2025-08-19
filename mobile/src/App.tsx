@@ -1,31 +1,50 @@
+import React from 'react';
+import { StatusBar } from 'react-native';
+import { NavigationContainer } from '@react-navigation/native';
+import { createStackNavigator } from '@react-navigation/stack';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from './hooks/useToast';
 
-import React, { useEffect } from 'react';
-import { StatusBar, LogBox } from 'react-native';
-import AppWrapper from './components/AppWrapper';
-import { initializeApp } from './utils/startup';
+// Import screens
+import SplashScreen from './screens/SplashScreen';
+import OnboardingScreen from './screens/OnboardingScreen';
+import SignInScreen from './screens/SignInScreen';
+import SignUpScreen from './screens/SignUpScreen';
+import HomeScreen from './screens/HomeScreen';
+import ProfileScreen from './screens/ProfileScreen';
 
-// Ignore specific warnings
-LogBox.ignoreLogs([
-  'Non-serializable values were found in the navigation state',
-  'Animated.event now requires a second argument for options',
-  'Warning: componentWillReceiveProps has been renamed',
-]);
+
+const Stack = createStackNavigator();
 
 const App: React.FC = () => {
-  useEffect(() => {
-    // Initialize app services
-    initializeApp().catch(console.error);
-  }, []);
-
   return (
-    <>
-      <StatusBar
-        barStyle="dark-content"
-        backgroundColor="#FFFFFF"
-        translucent={false}
-      />
-      <AppWrapper />
-    </>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <NavigationContainer>
+              <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
+              <Stack.Navigator
+                initialRouteName="Splash"
+                screenOptions={{
+                  headerShown: false,
+                  gestureEnabled: true,
+                }}
+              >
+                <Stack.Screen name="Splash" component={SplashScreen} />
+                <Stack.Screen name="Onboarding" component={OnboardingScreen} />
+                <Stack.Screen name="SignIn" component={SignInScreen} />
+                <Stack.Screen name="SignUp" component={SignUpScreen} />
+                <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Profile" component={ProfileScreen} />
+              </Stack.Navigator>
+            </NavigationContainer>
+          </ToastProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 };
 

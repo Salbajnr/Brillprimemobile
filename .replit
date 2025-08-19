@@ -230,3 +230,16 @@ args = "cd client && npm run build"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Mobile Android Development"
+author = 46646176
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile && npx react-native start"
