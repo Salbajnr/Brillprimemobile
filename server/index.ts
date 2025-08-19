@@ -288,7 +288,29 @@ app.use((req, res, next) => {
 });
 
 // Health check endpoints
-app.get('/api/health', healthCheck);
+app.get('/api/health', async (req, res) => {
+  try {
+    // Check database connection
+    await db.execute(sql`SELECT 1`);
+
+    const healthStatus = {
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      environment: process.env.NODE_ENV,
+      version: process.env.npm_package_version || '1.0.0'
+    };
+
+    res.status(200).json(healthStatus);
+  } catch (error) {
+    res.status(503).json({
+      status: 'unhealthy',
+      timestamp: new Date().toISOString(),
+      error: error.message
+    });
+  }
+});
 
 // Detailed health check for load balancer
 app.get('/api/health/detailed', async (req, res) => {
@@ -481,7 +503,7 @@ if (process.env.NODE_ENV === 'production') {
     setHeaders: (res, path) => {
       // Remove any CSP headers for static assets
       res.removeHeader('Content-Security-Policy');
-      
+
       if (path.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       } else if (path.endsWith('.css')) {
@@ -489,16 +511,16 @@ if (process.env.NODE_ENV === 'production') {
       } else if (path.endsWith('.html')) {
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
       }
-      
+
       // Allow all sources for development
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Headers', '*');
       res.setHeader('Access-Control-Allow-Methods', '*');
     }
   }));
-  
+
   app.use(express.static(clientPublicPath));
-  
+
   // Also serve client src files for development
   const clientSrcPath = path.join(process.cwd(), 'client/src');
   app.use('/src', express.static(clientSrcPath));
@@ -514,7 +536,7 @@ if (process.env.NODE_ENV === 'production') {
     const indexPath = path.join(process.cwd(), 'client/dist/index.html');
 
     console.log('Trying to serve index.html from:', indexPath);
-    
+
     // Check if built assets exist and serve them
     if (fs.existsSync(indexPath)) {
       return res.sendFile(indexPath);
