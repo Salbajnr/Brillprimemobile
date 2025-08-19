@@ -1,7 +1,7 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { useAuth } from './use-auth-simple';
+import { useAuth } from './use-auth';
 
 interface WebSocketHookReturn {
   socket: Socket | null;
