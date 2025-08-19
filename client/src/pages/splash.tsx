@@ -1,46 +1,19 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "../hooks/use-auth";
 import logoImage from "../assets/images/logo.png";
 
 export default function SplashPage() {
   const [, setLocation] = useLocation();
-  const { user, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      console.log("Splash navigation - User:", user, "Role:", user?.role, "Authenticated:", isAuthenticated());
-      // Check user authentication state after splash screen
-      if (isAuthenticated() && user) {
-        // Direct role-based navigation instead of going through dashboard
-        if (user.role === "CONSUMER") {
-          console.log("Splash: Redirecting CONSUMER to /consumer-home");
-          setLocation("/consumer-home");
-        } else if (user.role === "MERCHANT") {
-          console.log("Splash: Redirecting MERCHANT to /merchant-dashboard");
-          setLocation("/merchant-dashboard");
-        } else if (user.role === "DRIVER") {
-          console.log("Splash: Redirecting DRIVER to /driver-dashboard");
-          setLocation("/driver-dashboard");
-        } else {
-          // Fallback to dashboard for unknown roles
-          setLocation("/dashboard");
-        }
-      } else {
-        // Check if user has seen onboarding before
-        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
-        if (hasSeenOnboarding) {
-          // Returning user (invalid session) → Account Type Selection
-          setLocation("/role-selection");
-        } else {
-          // First-time user → Onboarding
-          setLocation("/onboarding");
-        }
-      }
+      // Always go to onboarding for now, bypassing auth checks
+      console.log("Splash: Redirecting to onboarding");
+      setLocation("/onboarding");
     }, 2000); // Show splash for 2 seconds
 
     return () => clearTimeout(timer);
-  }, [setLocation, user, isAuthenticated]);
+  }, [setLocation]);
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden">

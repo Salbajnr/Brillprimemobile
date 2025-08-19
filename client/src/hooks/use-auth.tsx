@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('user')
       }
     }
-    // Don't try to authenticate immediately - let the app load first
+    // Always set loading to false immediately to allow app to render
     setIsLoading(false)
   }, [])
 

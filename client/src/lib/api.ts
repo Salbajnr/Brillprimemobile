@@ -757,15 +757,15 @@ export const tollApi = {
   getTollHistory: () => apiRequest('/toll/history'),
 };
 
-// Initialize WebSocket connection on module load
-if (typeof window !== 'undefined') {
-  // Check if user is authenticated before connecting
-  authApi.getCurrentUser().then(result => {
-    if (result.success) {
-      wsManager.connect();
-    }
-  });
-}
+// Initialize WebSocket connection on module load - DISABLED FOR NOW
+// if (typeof window !== 'undefined') {
+//   // Check if user is authenticated before connecting
+//   authApi.getCurrentUser().then(result => {
+//     if (result.success) {
+//       wsManager.connect();
+//     }
+//   });
+// }
 
 const apiClient = {
   auth: authApi,
