@@ -1,13 +1,10 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { Button } from "../components/ui/button";
-import { RoleCard } from "../components/ui/role-card";
+
 // Using direct path to avoid import issues during development
 const signUpLogo = "/src/assets/images/sign_up_option_logo.png";
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
-  const [, setLocation] = useLocation();
 
   const handleContinue = () => {
     if (selectedRole) {
@@ -30,33 +27,78 @@ export default function RoleSelectionPage() {
         </div>
 
         <div className="space-y-4 mb-8">
-          <RoleCard
-            title="Consumer"
-            description="Order products and services"
-            isSelected={selectedRole === "CONSUMER"}
-            onSelect={() => setSelectedRole("CONSUMER")}
-          />
-          <RoleCard
-            title="Merchant"
-            description="Sell products and manage your business"
-            isSelected={selectedRole === "MERCHANT"}
-            onSelect={() => setSelectedRole("MERCHANT")}
-          />
-          <RoleCard
-            title="Driver"
-            description="Deliver orders and earn money"
-            isSelected={selectedRole === "DRIVER"}
-            onSelect={() => setSelectedRole("DRIVER")}
-          />
+          {/* Consumer Role Card */}
+          <div 
+            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
+              selectedRole === "CONSUMER" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+            }`}
+            onClick={() => setSelectedRole("CONSUMER")}
+          >
+            <h3 className="text-xl font-semibold mb-2">Consumer</h3>
+            <p className="text-gray-600 mb-4">Order products and services</p>
+            <button 
+              className={`w-full py-2 px-4 rounded transition-colors ${
+                selectedRole === "CONSUMER" 
+                  ? "bg-blue-600 text-white" 
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {selectedRole === "CONSUMER" ? "Selected" : "Select Role"}
+            </button>
+          </div>
+
+          {/* Merchant Role Card */}
+          <div 
+            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
+              selectedRole === "MERCHANT" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+            }`}
+            onClick={() => setSelectedRole("MERCHANT")}
+          >
+            <h3 className="text-xl font-semibold mb-2">Merchant</h3>
+            <p className="text-gray-600 mb-4">Sell products and manage your business</p>
+            <button 
+              className={`w-full py-2 px-4 rounded transition-colors ${
+                selectedRole === "MERCHANT" 
+                  ? "bg-blue-600 text-white" 
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {selectedRole === "MERCHANT" ? "Selected" : "Select Role"}
+            </button>
+          </div>
+
+          {/* Driver Role Card */}
+          <div 
+            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
+              selectedRole === "DRIVER" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+            }`}
+            onClick={() => setSelectedRole("DRIVER")}
+          >
+            <h3 className="text-xl font-semibold mb-2">Driver</h3>
+            <p className="text-gray-600 mb-4">Deliver orders and earn money</p>
+            <button 
+              className={`w-full py-2 px-4 rounded transition-colors ${
+                selectedRole === "DRIVER" 
+                  ? "bg-blue-600 text-white" 
+                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
+              }`}
+            >
+              {selectedRole === "DRIVER" ? "Selected" : "Select Role"}
+            </button>
+          </div>
         </div>
 
-        <Button
+        <button
           onClick={handleContinue}
           disabled={!selectedRole}
-          className="w-full h-10 sm:h-12 rounded-brill font-medium shadow-lg btn-scale disabled:opacity-50 disabled:cursor-not-allowed text-sm sm:text-base bg-[var(--brill-active)] text-[var(--brill-white)] hover:bg-[var(--brill-secondary)]"
+          className={`w-full h-10 sm:h-12 rounded font-medium shadow-lg transition-all text-sm sm:text-base ${
+            selectedRole 
+              ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer" 
+              : "bg-gray-300 text-gray-500 cursor-not-allowed"
+          }`}
         >
           Continue
-        </Button>
+        </button>
       </div>
     </div>
   );
