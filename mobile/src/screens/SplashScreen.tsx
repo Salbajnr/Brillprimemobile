@@ -35,6 +35,7 @@ const SplashScreen: React.FC<NavigationProps> = ({ navigation }) => {
         source={require('../assets/logo.png')} 
         style={styles.logo}
         resizeMode="contain"
+        defaultSource={require('../assets/logo.png')}
       />
       <Text style={styles.title}>BrillPrime</Text>
       <Text style={styles.subtitle}>Your Premium Service Platform</Text>
