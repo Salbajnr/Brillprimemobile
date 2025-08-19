@@ -26,14 +26,32 @@ interface SystemMetrics {
 }
 
 export class RealTimeAnalytics extends EventEmitter {
-  private redis: Redis;
+  private redis: Redis | null;
   private metricsInterval: NodeJS.Timeout | null = null;
   private alertInterval: NodeJS.Timeout | null = null;
   private currentMetrics: SystemMetrics;
+  private memoryStore = new Map<string, any>();
 
   constructor() {
     super();
-    this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+    // Redis configuration for analytics
+    const REDIS_URL = "redis://default:ob0XzfYSqIWm028JdW7JkBY8VWkhQp7A@redis-13241.c245.us-east-1-3.ec2.redns.redis-cloud.com:13241";
+    
+    if (process.env.REDIS_DISABLED) {
+      this.redis = null;
+      console.log('Analytics using memory store (Redis disabled)');
+    } else {
+      try {
+        this.redis = new Redis(REDIS_URL, {
+          maxRetriesPerRequest: 3,
+          lazyConnect: true,
+        });
+        console.log('Analytics connected to Redis Cloud');
+      } catch (error) {
+        this.redis = null;
+        console.log('Analytics using memory store (Redis connection failed)');
+      }
+    }
     this.currentMetrics = this.getEmptyMetrics();
     this.startMetricsCollection();
     this.startAlertMonitoring();
