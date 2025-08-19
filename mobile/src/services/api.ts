@@ -207,6 +207,34 @@ class ApiService {
     return this.post('/auth/resend-otp', { email });
   }
 
+  // Password reset methods
+  async forgotPassword(email: string) {
+    try {
+      const response = await this.post('/auth/forgot-password', { email });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to send reset link'
+      };
+    }
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    try {
+      const response = await this.post('/auth/reset-password', {
+        token,
+        newPassword
+      });
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      return {
+        success: false,
+        error: error.response?.data?.message || 'Failed to reset password'
+      };
+    }
+  }
+
   // Dashboard endpoints
   async getDashboard() {
     return this.get('/dashboard');

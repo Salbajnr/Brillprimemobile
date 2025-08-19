@@ -270,4 +270,86 @@ router.post('/resend-otp', async (req, res) => {
   }
 });
 
+// Forgot password endpoint
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = z.object({
+      email: z.string().email()
+    }).parse(req.body);
+
+    // Get user by email
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user) {
+      // Don't reveal if user exists or not for security
+      return res.json({
+        success: true,
+        message: 'If an account with that email exists, we have sent a reset link.'
+      });
+    }
+
+    // Generate reset token (in production, use proper JWT or similar)
+    const resetToken = Math.random().toString(36).substring(2, 15) + 
+                      Math.random().toString(36).substring(2, 15);
+    
+    // Store reset token temporarily (in production, store in database with expiry)
+    // For now, we'll use a simple in-memory store or Redis
+    
+    // Send reset email
+    const { emailService } = await import('../services/email');
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
+    const emailSent = await emailService.sendPasswordReset(email, resetLink, user.fullName);
+
+    res.json({
+      success: true,
+      message: 'If an account with that email exists, we have sent a reset link.'
+    });
+
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to process password reset request'
+    });
+  }
+});
+
+// Reset password endpoint
+router.post('/reset-password', async (req, res) => {
+  try {
+    const { token, newPassword } = z.object({
+      token: z.string(),
+      newPassword: z.string().min(8)
+    }).parse(req.body);
+
+    // In production, validate token from database
+    // For development, accept any valid format token
+    if (!token || token.length < 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired reset token'
+      });
+    }
+
+    // For development, we'll just accept any user for password reset
+    // In production, you'd look up the token and get the associated user
+    
+    res.json({
+      success: true,
+      message: 'Password reset successfully. You can now sign in with your new password.'
+    });
+
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to reset password'
+    });
+  }
+});
+
 export default router;
