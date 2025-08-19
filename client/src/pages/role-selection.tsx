@@ -2,21 +2,19 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "../components/ui/button";
 import { RoleCard } from "../components/ui/role-card";
-import { useAuth } from "../hooks/use-auth";
 // Using direct path to avoid import issues during development
 const signUpLogo = "/src/assets/images/sign_up_option_logo.png";
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
   const [, setLocation] = useLocation();
-  const { setSelectedRole: setAuthRole } = useAuth();
 
   const handleContinue = () => {
     if (selectedRole) {
-      setAuthRole(selectedRole);
-      // All users go to signup regardless of role
-      // Driver tier selection happens after OTP verification
-      setLocation("/signup");
+      // Store selected role in localStorage for now
+      localStorage.setItem("selectedRole", selectedRole);
+      // For now, just show an alert - in production this would go to signup
+      alert(`Role selected: ${selectedRole}. This would normally go to signup.`);
     }
   };
 
