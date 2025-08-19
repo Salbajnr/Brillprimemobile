@@ -542,7 +542,40 @@ if (process.env.NODE_ENV === 'production') {
 
     // Check if built assets exist and serve them
     if (fs.existsSync(indexPath)) {
-      return res.sendFile(indexPath);
+      // Read the file and inject debug script
+      let indexContent = fs.readFileSync(indexPath, 'utf8');
+      
+      // Add debug script to monitor script loading and execution
+      const debugScript = `
+      <script>
+        console.log('Debug: HTML loaded, DOM ready');
+        window.addEventListener('load', () => {
+          console.log('Debug: Window loaded');
+          setTimeout(() => {
+            const root = document.getElementById('root');
+            console.log('Debug: Root element check:', root, 'innerHTML:', root ? root.innerHTML : 'not found');
+            if (root && root.innerHTML === '') {
+              console.error('Debug: React app failed to mount - root is still empty');
+              root.innerHTML = '<div style="padding: 20px; background: red; color: white; text-align: center;">React App Failed to Load</div>';
+            }
+          }, 3000);
+        });
+        
+        // Monitor script errors
+        window.addEventListener('error', (e) => {
+          console.error('Debug: Script error:', e.error, e.filename, e.lineno);
+        });
+        
+        // Monitor module errors
+        window.addEventListener('unhandledrejection', (e) => {
+          console.error('Debug: Module error:', e.reason);
+        });
+      </script>`;
+      
+      // Insert debug script before closing head tag
+      indexContent = indexContent.replace('</head>', debugScript + '</head>');
+      
+      return res.send(indexContent);
     } else {
       console.log('Built index.html not found, serving development fallback');
       // Simple fallback that will load your React app
@@ -555,7 +588,7 @@ if (process.env.NODE_ENV === 'production') {
     <script src="https://cdn.tailwindcss.com"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">Fallback Mode</div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>`);
