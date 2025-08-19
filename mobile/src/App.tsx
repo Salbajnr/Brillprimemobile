@@ -1,10 +1,11 @@
-
 import React from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './hooks/useAuth';
+import { ToastProvider } from './hooks/useToast';
 
 // Import screens
 import SplashScreen from './screens/SplashScreen';
@@ -13,8 +14,7 @@ import SignInScreen from './screens/SignInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
-import { AuthProvider } from './hooks/useAuth';
-import { ToastProvider } from './hooks/useToast';
+
 
 const Stack = createStackNavigator();
 
