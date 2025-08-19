@@ -3,38 +3,89 @@ import rateLimit from 'express-rate-limit';
 import { Request, Response } from 'express';
 import { Redis } from 'ioredis';
 
-// Create Redis client for rate limiting storage
-const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
+// Redis configuration for rate limiting
+const REDIS_URL = "redis://default:ob0XzfYSqIWm028JdW7JkBY8VWkhQp7A@redis-13241.c245.us-east-1-3.ec2.redns.redis-cloud.com:13241";
+let redis: Redis | null = null;
 
-// Custom rate limiter store using Redis
-class RedisStore {
-  constructor(private redis: Redis, private prefix: string = 'rl:') {}
+if (!process.env.REDIS_DISABLED) {
+  try {
+    redis = new Redis(REDIS_URL, {
+      maxRetriesPerRequest: 3,
+      lazyConnect: true,
+    });
+    console.log('Rate limiter connected to Redis Cloud');
+  } catch (error) {
+    console.log('Rate limiter using memory store (Redis connection failed)');
+    redis = null;
+  }
+} else {
+  console.log('Rate limiter using memory store (Redis disabled)');
+}
+
+// Custom rate limiter store using Redis or Memory
+class RateLimitStore {
+  private memoryStore = new Map<string, { count: number; resetTime: number }>();
+  
+  constructor(private redis: Redis | null, private prefix: string = 'rl:') {}
 
   async incr(key: string): Promise<{ totalHits: number; resetTime?: Date }> {
     const fullKey = `${this.prefix}${key}`;
-    const current = await this.redis.incr(fullKey);
     
-    if (current === 1) {
-      // First request, set expiry
-      await this.redis.expire(fullKey, 60); // 1 minute window
+    if (this.redis) {
+      // Use Redis if available
+      const current = await this.redis.incr(fullKey);
+      
+      if (current === 1) {
+        await this.redis.expire(fullKey, 60);
+      }
+      
+      const ttl = await this.redis.ttl(fullKey);
+      const resetTime = new Date(Date.now() + ttl * 1000);
+      
+      return { totalHits: current, resetTime };
+    } else {
+      // Use memory store fallback
+      const now = Date.now();
+      const resetTime = now + 60000; // 60 seconds
+      const existing = this.memoryStore.get(fullKey);
+      
+      if (!existing || existing.resetTime < now) {
+        this.memoryStore.set(fullKey, { count: 1, resetTime });
+        return { totalHits: 1, resetTime: new Date(resetTime) };
+      } else {
+        existing.count++;
+        this.memoryStore.set(fullKey, existing);
+        return { totalHits: existing.count, resetTime: new Date(existing.resetTime) };
+      }
     }
-    
-    const ttl = await this.redis.ttl(fullKey);
-    const resetTime = new Date(Date.now() + ttl * 1000);
-    
-    return { totalHits: current, resetTime };
   }
 
   async decrement(key: string): Promise<void> {
-    await this.redis.decr(`${this.prefix}${key}`);
+    const fullKey = `${this.prefix}${key}`;
+    
+    if (this.redis) {
+      await this.redis.decr(fullKey);
+    } else {
+      const existing = this.memoryStore.get(fullKey);
+      if (existing && existing.count > 0) {
+        existing.count--;
+        this.memoryStore.set(fullKey, existing);
+      }
+    }
   }
 
   async resetKey(key: string): Promise<void> {
-    await this.redis.del(`${this.prefix}${key}`);
+    const fullKey = `${this.prefix}${key}`;
+    
+    if (this.redis) {
+      await this.redis.del(fullKey);
+    } else {
+      this.memoryStore.delete(fullKey);
+    }
   }
 }
 
-const store = new RedisStore(redis);
+const store = new RateLimitStore(redis);
 
 // Role-based rate limits
 const RATE_LIMITS = {

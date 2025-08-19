@@ -6,7 +6,10 @@ import {
   transactions, 
   driverProfiles, 
   products,
-  fuelOrders
+  fuelOrders,
+  wallets,
+  supportTickets,
+  notifications
 } from '../shared/schema';
 import { eq, desc, and, gte, sql, isNull, lte, count, sum } from 'drizzle-orm';
 
@@ -24,8 +27,8 @@ export const storage = {
 
   async createUser(userData: any) {
     try {
-      const [user] = await db.insert(users).values(userData).returning();
-      return user;
+      const result = await db.insert(users).values(userData).returning();
+      return result[0];
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -285,7 +288,7 @@ export const storage = {
         .set({ 
           currentLatitude: latitude.toString(),
           currentLongitude: longitude.toString(),
-          lastLocationUpdate: new Date()
+          updatedAt: new Date()
         })
         .where(eq(driverProfiles.userId, driverId));
     } catch (error) {

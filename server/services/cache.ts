@@ -2,26 +2,36 @@ import Redis from 'ioredis';
 
 let redisClient: Redis | null = null;
 
-if (!process.env.REDIS_DISABLED) {
+// Redis configuration for Replit environment
+const REDIS_URL = "redis://default:ob0XzfYSqIWm028JdW7JkBY8VWkhQp7A@redis-13241.c245.us-east-1-3.ec2.redns.redis-cloud.com:13241";
+
+if (process.env.REDIS_DISABLED === 'true') {
+  console.log('Redis disabled by configuration - using memory cache');
+  redisClient = null;
+} else {
   try {
-    redisClient = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      retryDelayOnFailover: 100,
+    redisClient = new Redis(REDIS_URL, {
       maxRetriesPerRequest: 3,
       lazyConnect: true,
+      retryDelayOnFailover: 100,
+    });
+
+    redisClient.on('connect', () => {
+      console.log('🚀 Connected to Redis Cloud successfully');
     });
 
     redisClient.on('error', (err) => {
       console.warn('Redis connection error:', err.message);
-      redisClient = null;
+      // Don't set to null immediately, let it retry
+    });
+
+    redisClient.on('close', () => {
+      console.log('Redis connection closed');
     });
   } catch (error) {
-    console.warn('Redis not available, using memory cache');
+    console.warn('Redis initialization failed, using memory cache:', error);
     redisClient = null;
   }
-} else {
-  console.log('Redis disabled by configuration');
 }
 
 // In-memory cache fallback
@@ -277,7 +287,7 @@ class CacheService {
   }
 
   async incrementRateLimit(key: string, windowSeconds: number = 60): Promise<number> {
-    const current = await this.getRateLimit(key) || 0;
+    const current = (await this.getRateLimit(key) as number) || 0;
     const newCount = current + 1;
     await this.setRateLimit(key, newCount, windowSeconds);
     return newCount;
