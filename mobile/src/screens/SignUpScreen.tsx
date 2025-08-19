@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert, ScrollView } from 'react-native';
 import { NavigationProps } from '../shared/types';
-import { apiService } from '../services/api';
+import { useAuth } from '../hooks/useAuth';
 
 const SignUpScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [formData, setFormData] = useState({
@@ -12,7 +12,7 @@ const SignUpScreen: React.FC<NavigationProps> = ({ navigation }) => {
     password: '',
     confirmPassword: '',
   });
-  const [loading, setLoading] = useState(false);
+  const { signUp, isLoading } = useAuth();
 
   const handleSignUp = async () => {
     if (!formData.fullName || !formData.email || !formData.phone || !formData.password) {
@@ -25,17 +25,12 @@ const SignUpScreen: React.FC<NavigationProps> = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/api/auth/signup', formData);
-      if (response.success) {
-        Alert.alert('Success', 'Account created successfully! Please verify your email.');
-        navigation.navigate('SignIn');
-      }
-    } catch (error: any) {
-      Alert.alert('Sign Up Failed', error.message || 'Please try again');
-    } finally {
-      setLoading(false);
+    const result = await signUp(formData);
+    if (result.success) {
+      Alert.alert('Success', 'Account created successfully! Please verify your email.');
+      navigation.navigate('SignIn');
+    } else {
+      Alert.alert('Sign Up Failed', result.error || 'Please try again');
     }
   };
 
@@ -91,10 +86,10 @@ const SignUpScreen: React.FC<NavigationProps> = ({ navigation }) => {
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSignUp}
-        disabled={loading}
+        disabled={isLoading}
       >
         <Text style={styles.buttonText}>
-          {loading ? 'Creating Account...' : 'Create Account'}
+          {isLoading ? 'Creating Account...' : 'Create Account'}
         </Text>
       </TouchableOpacity>
       

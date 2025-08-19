@@ -2,13 +2,12 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NavigationProps } from '../shared/types';
-import { apiService } from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
 
 const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { signIn, isLoading } = useAuth();
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -16,17 +15,11 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/api/auth/signin', { email, password });
-      if (response.success) {
-        await AsyncStorage.setItem('userSession', JSON.stringify(response.user));
-        navigation.replace('Home');
-      }
-    } catch (error: any) {
-      Alert.alert('Sign In Failed', error.message || 'Please try again');
-    } finally {
-      setLoading(false);
+    const result = await signIn(email, password);
+    if (result.success) {
+      navigation.replace('Home');
+    } else {
+      Alert.alert('Sign In Failed', result.error || 'Please try again');
     }
   };
 
@@ -55,10 +48,10 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
       <TouchableOpacity
         style={[styles.button, loading && styles.buttonDisabled]}
         onPress={handleSignIn}
-        disabled={loading}
+        disabled={isLoading}
       >
         <Text style={styles.buttonText}>
-          {loading ? 'Signing In...' : 'Sign In'}
+          {isLoading ? 'Signing In...' : 'Sign In'}
         </Text>
       </TouchableOpacity>
       
