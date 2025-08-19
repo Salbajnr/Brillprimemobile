@@ -12,12 +12,15 @@
     "dev:web": "npm run dev --workspace=apps/web",
     "dev:mobile": "npm run start --workspace=apps/Mobile",
     "build": "npm run build:web && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
-    "build:web": "npm run build --workspace=apps/web",
-    "build:mobile": "npm run build --workspace=apps/Mobile",
-    "start": "NODE_ENV=production node dist/index.js",
+    "build:web": "cd client && npm run build",
+    "build:mobile": "cd mobile && npm run build",
+    "start": "NODE_ENV=production tsx server/index.ts",
+    "start:prod": "NODE_ENV=production node dist/index.js",
     "check": "tsc",
+    "check:db": "node -e \"require('pg').Pool({connectionString:process.env.DATABASE_URL}).query('SELECT 1').then(()=>console.log('✅ Database connected')).catch(e=>{console.error('❌ Database error:',e.message);process.exit(1)})\"",
     "db:push": "drizzle-kit push",
-    "install:all": "npm install && npm install --workspace=apps/web && npm install --workspace=apps/Mobile"
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
+    "install:all": "npm install && cd client && npm install && cd .. && cd mobile && npm install && cd .."
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.2",
