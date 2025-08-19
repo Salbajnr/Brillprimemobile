@@ -10,7 +10,7 @@ import RealTimeLocationTracking from '../components/RealTimeLocationTracking';
 import RealTimeChatSystem from '../components/RealTimeChatSystem';
 import LiveMap from '../components/ui/live-map';
 import { NotificationModal } from '../components/ui/notification-modal';
-import { useAuth } from '@/hooks/use-auth-simple';
+import { useAuth } from '@/hooks/use-auth';
 import { useWebSocket, useOrderUpdates, useDriverTracking, useNotifications } from '@/hooks/use-websocket';
 
 export default function RealTimeTrackingPage() {

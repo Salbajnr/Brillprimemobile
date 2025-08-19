@@ -15,7 +15,7 @@ import { LoadingButton } from "@/components/ui/loading-button";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { authAPI } from "@/lib/auth";
-import { useAuth } from "@/hooks/use-auth-simple";
+import { useAuth } from "@/hooks/use-auth";
 import { signInSchema } from "../../../shared/schema";
 
 type SignInFormData = {

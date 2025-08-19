@@ -67,9 +67,11 @@ class LoadBalancerMiddleware {
 
   // Determine if server is healthy
   private isServerHealthy(stats: ServerStats): boolean {
+    // More relaxed thresholds for development environment
+    const isDev = process.env.NODE_ENV !== 'production';
     return (
-      stats.cpuUsage < 90 && // CPU usage under 90%
-      stats.memoryUsage < 90 && // Memory usage under 90%
+      stats.cpuUsage < (isDev ? 95 : 90) && // CPU usage threshold
+      stats.memoryUsage < (isDev ? 98 : 90) && // Memory usage threshold  
       stats.activeConnections < 1000 // Active connections under 1000
     );
   }
