@@ -6,6 +6,7 @@ import { Toaster } from './components/ui/toaster';
 // Import pages
 import Splash from './pages/splash';
 import Onboarding from './pages/onboarding';
+import RoleSelection from './pages/role-selection';
 import NotFound from './pages/not-found';
 
 // Create a client
@@ -26,6 +27,7 @@ function App() {
           <Switch>
             <Route path="/" component={Splash} />
             <Route path="/onboarding" component={Onboarding} />
+            <Route path="/role-selection" component={RoleSelection} />
             <Route component={NotFound} />
           </Switch>
         </div>
