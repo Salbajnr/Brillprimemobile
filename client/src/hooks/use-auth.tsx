@@ -54,7 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false); // Renamed from isLoading to loading for clarity if needed, but keeping original name for now
 
   useEffect(() => {
-    // Check for existing session
+    // Check for existing session without blocking the UI
     const storedUser = localStorage.getItem('user')
     if (storedUser) {
       try {
@@ -64,6 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem('user')
       }
     }
+    // Don't try to authenticate immediately - let the app load first
     setIsLoading(false)
   }, [])
 

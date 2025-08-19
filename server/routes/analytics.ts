@@ -305,4 +305,12 @@ router.get("/admin/dashboard", requireAdminAuth, async (req, res) => {
   }
 });
 
+// Add missing log-error endpoint
+router.post('/log-error', (req, res) => {
+  console.error('Frontend error:', req.body);
+  res.json({ success: true, message: 'Error logged' });
+});
+
+
+
 export default router;
