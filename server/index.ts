@@ -610,10 +610,8 @@ process.on('SIGINT', () => {
 // Unhandled promise rejection handling
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  // Don't exit the process in production
-  if (process.env.NODE_ENV !== 'production') {
-    process.exit(1);
-  }
+  // Don't exit the process - Redis connection issues are handled gracefully
+  // This prevents server crashes due to Redis connection attempts
 });
 
 // Register compliance and legal routes

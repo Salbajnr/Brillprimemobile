@@ -1,12 +1,11 @@
-import React from 'react';
 import { Router, Route, Switch } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from './components/ui/toaster';
-import { AuthProvider } from './hooks/use-auth-simple';
+import { AuthProvider } from './hooks/use-auth';
 
 // Import pages
 import Splash from './pages/splash';
-import SignIn from './pages/signin-simple';
+import SignIn from './pages/signin';
 import Dashboard from './pages/dashboard';
 import ConsumerHome from './pages/consumer-home';
 import MerchantDashboard from './pages/merchant-dashboard';
