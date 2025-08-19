@@ -13,7 +13,6 @@ import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
-import fs from 'fs';
 import { validateEnvironment } from './env-validation';
 import { redisClient } from './services/cache';
 
@@ -504,7 +503,7 @@ if (process.env.NODE_ENV === 'production') {
   const clientSrcPath = path.join(process.cwd(), 'client/src');
   app.use('/src', express.static(clientSrcPath));
 
-  // For development, provide a simple landing page if no frontend build exists
+  // For development, serve the built React app
   app.get('*', (req, res) => {
     // Don't intercept API routes
     if (req.path.startsWith('/api')) {
@@ -516,113 +515,25 @@ if (process.env.NODE_ENV === 'production') {
 
     console.log('Trying to serve index.html from:', indexPath);
     
-    fs.access(indexPath, fs.constants.F_OK, (err) => {
-      if (!err) {
-        res.sendFile(indexPath);
-      } else {
-        console.log('index.html not found, serving fallback');
-        // Fallback HTML that loads your React app
-        res.send(`
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <meta charset="UTF-8" />
-              <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>BrillPrime</title>
-              <script src="https://cdn.tailwindcss.com"></script>
-            </head>
-            <body>
-              <div id="root"></div>
-              <script type="module" src="/src/main.tsx"></script>
-            </body>
-          </html>
-        `);
-      }
-    });
-
-    // Check if built assets exist using fs
+    // Check if built assets exist and serve them
     if (fs.existsSync(indexPath)) {
       return res.sendFile(indexPath);
     } else {
-      console.log('Built index.html not found, serving fallback page');
-      const error = new Error('File not found');
-      // Fallback: provide development info page
-      res.send(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-          <title>BrillPrime - Development Server</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
-            .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-            .warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
-            .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-            .code { background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; margin: 10px 0; }
-            h1 { color: #2c3e50; }
-            h2 { color: #34495e; margin-top: 30px; }
-            .logo { font-size: 2em; font-weight: bold; color: #3498db; margin-bottom: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="container">
-            <div class="logo">🚀 BrillPrime</div>
-            <h1>Development Server Status</h1>
-
-            <div class="status success">
-              ✅ Backend Server: Running on port ${PORT}
-            </div>
-
-            <div class="status success">
-              ✅ Database: Connected and configured
-            </div>
-
-            <div class="status success">
-              ✅ WebSocket: Enabled for real-time features
-            </div>
-
-            <div class="status warning">
-              ⚠️ Frontend: Build required for full application access
-            </div>
-
-            <h2>Available API Endpoints</h2>
-            <div class="info">
-              The following API endpoints are available for testing:
-            </div>
-
-            <div class="code">
-              GET  /api/health - Server health check<br>
-              POST /api/auth/login - User authentication<br>
-              POST /api/auth/register - User registration<br>
-              GET  /api/ws-test - WebSocket test endpoint<br>
-              ... and many more financial service endpoints
-            </div>
-
-            <h2>Getting Started</h2>
-            <div class="info">
-              The BrillPrime platform includes:
-              <ul>
-                <li>🏪 Merchant Dashboard & Product Management</li>
-                <li>🚚 Driver Dashboard & Delivery Tracking</li>
-                <li>💳 Payment Processing & Wallet System</li>
-                <li>⛽ Fuel Delivery Services</li>
-                <li>🏗️ Admin Control Center</li>
-                <li>💬 Real-time Chat & Support System</li>
-                <li>📱 Mobile-Optimized Interface</li>
-              </ul>
-            </div>
-
-            <div class="code">
-              Server Time: ${new Date().toISOString()}<br>
-              Server Uptime: ${Math.round(process.uptime())}s<br>
-              Memory Usage: ${Math.round(process.memoryUsage().heapUsed / 1024 / 1024)}MB
-            </div>
-          </div>
-        </body>
-        </html>
-      `);
+      console.log('Built index.html not found, serving development fallback');
+      // Simple fallback that will load your React app
+      res.send(`<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BrillPrime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>`);
     }
   });
 }
