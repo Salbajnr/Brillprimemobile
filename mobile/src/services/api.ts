@@ -5,6 +5,12 @@ import NetInfo from '@react-native-community/netinfo';
 // Get the base URL from environment or use the Replit backend URL
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000';
 
+const config = {
+  apiBaseUrl: BASE_URL,
+  requestTimeout: 30000, // 30 seconds
+  cacheTimeout: 300000, // 5 minutes
+};
+
 class ApiService {
   private baseURL: string;
   private requestTimeout: number = 30000; // 30 seconds
@@ -92,13 +98,13 @@ class ApiService {
 
       if (!response.ok) {
         console.error(`❌ API Error ${response.status}:`, result);
-        
+
         // Handle specific HTTP errors
         if (response.status === 401) {
           // Clear session on unauthorized
           await AsyncStorage.removeItem('userSession');
         }
-        
+
         throw new Error(result.message || `HTTP error! status: ${response.status}`);
       }
 
