@@ -9,6 +9,7 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
+import fs from 'fs';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
 import crypto from 'crypto';
@@ -498,6 +499,10 @@ if (process.env.NODE_ENV === 'production') {
   }));
   
   app.use(express.static(clientPublicPath));
+  
+  // Also serve client src files for development
+  const clientSrcPath = path.join(process.cwd(), 'client/src');
+  app.use('/src', express.static(clientSrcPath));
 
   // For development, provide a simple landing page if no frontend build exists
   app.get('*', (req, res) => {
@@ -510,6 +515,31 @@ if (process.env.NODE_ENV === 'production') {
     const indexPath = path.join(process.cwd(), 'client/dist/index.html');
 
     console.log('Trying to serve index.html from:', indexPath);
+    
+    fs.access(indexPath, fs.constants.F_OK, (err) => {
+      if (!err) {
+        res.sendFile(indexPath);
+      } else {
+        console.log('index.html not found, serving fallback');
+        // Fallback HTML that loads your React app
+        res.send(`
+          <!DOCTYPE html>
+          <html lang="en">
+            <head>
+              <meta charset="UTF-8" />
+              <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>BrillPrime</title>
+              <script src="https://cdn.tailwindcss.com"></script>
+            </head>
+            <body>
+              <div id="root"></div>
+              <script type="module" src="/src/main.tsx"></script>
+            </body>
+          </html>
+        `);
+      }
+    });
 
     // Check if built assets exist using fs
     if (fs.existsSync(indexPath)) {
