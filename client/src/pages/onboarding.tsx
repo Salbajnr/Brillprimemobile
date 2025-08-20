@@ -1,8 +1,5 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { ArrowRight } from "lucide-react";
-import { ProgressIndicator } from "../components/ui/progress-indicator";
-import { Button } from "../components/ui/button";
 // Using direct paths to avoid import issues during development
 const onboardingImg1 = "/src/assets/images/onboarding_img1.png";
 const onboardingImg2 = "/src/assets/images/onboarding_img2.png";
@@ -108,19 +105,22 @@ export default function OnboardingPage() {
           </div>
           
           {currentStep < onboardingData.length ? (
-            <Button
+            <button
               onClick={handleNext}
-              className="w-12 h-12 sm:w-16 sm:h-16 gradient-bg rounded-full text-white shadow-lg btn-scale p-0"
+              className="w-12 h-12 sm:w-16 sm:h-16 bg-[rgb(11,26,81)] rounded-full text-white shadow-lg hover:bg-blue-900 transition-all duration-200 flex items-center justify-center"
             >
-              <ArrowRight className="h-4 w-4 sm:h-5 sm:w-5" />
-            </Button>
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              </svg>
+            </button>
           ) : (
-            <Button
+            <button
               onClick={handleNext}
-              className="w-32 sm:w-40 h-10 sm:h-12 gradient-bg rounded-brill text-white font-medium shadow-lg btn-scale text-sm sm:text-base"
+              className="w-32 sm:w-40 h-10 sm:h-12 bg-[rgb(11,26,81)] text-white font-medium shadow-lg hover:bg-blue-900 transition-all duration-200 text-sm sm:text-base"
+              style={{ borderRadius: '25px' }}
             >
               Get Started
-            </Button>
+            </button>
           )}
         </div>
       </div>

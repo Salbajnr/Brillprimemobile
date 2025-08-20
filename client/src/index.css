@@ -7,11 +7,11 @@
   line-height: 1.5;
   font-weight: 400;
 
-  /* Brillprime Brand Colors */
-  --brill-primary: #4682b4;
+  /* Brillprime Brand Colors - Updated to match design */
+  --brill-primary: rgb(11, 26, 81);
   --brill-secondary: #0b1a51;
   --brill-active: #010e42;
-  --brill-text: #131313;
+  --brill-text: rgb(19, 19, 19);
   --brill-text-light: #6b7280;
   --brill-white: #ffffff;
   
@@ -41,7 +41,20 @@ body {
 }
 
 .rounded-brill {
-  border-radius: 12px;
+  border-radius: 25px;
+}
+
+/* Curved styling for buttons and inputs */
+.curved-button {
+  border-radius: 25px;
+}
+
+.curved-input {
+  border-radius: 25px;
+}
+
+.curved-social {
+  border-radius: 20px;
 }
 
 .btn-scale {

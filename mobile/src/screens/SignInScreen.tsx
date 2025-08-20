@@ -1,14 +1,12 @@
-
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { NavigationProps } from '../shared/types';
-import { apiService } from '../services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../hooks/useAuth';
 
 const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [loading, setLoading] = useState(false);
+  const { signIn, isLoading } = useAuth();
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -16,17 +14,11 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
       return;
     }
 
-    setLoading(true);
-    try {
-      const response = await apiService.post('/api/auth/signin', { email, password });
-      if (response.success) {
-        await AsyncStorage.setItem('userSession', JSON.stringify(response.user));
-        navigation.replace('Home');
-      }
-    } catch (error: any) {
-      Alert.alert('Sign In Failed', error.message || 'Please try again');
-    } finally {
-      setLoading(false);
+    const result = await signIn(email, password);
+    if (result.success) {
+      navigation.replace('Home');
+    } else {
+      Alert.alert('Sign In Failed', result.error || 'Please try again');
     }
   };
 
@@ -34,7 +26,7 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
     <View style={styles.container}>
       <Text style={styles.title}>Welcome Back</Text>
       <Text style={styles.subtitle}>Sign in to your account</Text>
-      
+
       <TextInput
         style={styles.input}
         placeholder="Email Address"
@@ -43,7 +35,7 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
         keyboardType="email-address"
         autoCapitalize="none"
       />
-      
+
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -51,19 +43,33 @@ const SignInScreen: React.FC<NavigationProps> = ({ navigation }) => {
         onChangeText={setPassword}
         secureTextEntry
       />
-      
+
       <TouchableOpacity
-        style={[styles.button, loading && styles.buttonDisabled]}
+        style={[styles.button, isLoading && styles.buttonDisabled]}
         onPress={handleSignIn}
-        disabled={loading}
+        disabled={isLoading}
       >
         <Text style={styles.buttonText}>
-          {loading ? 'Signing In...' : 'Sign In'}
+          {isLoading ? 'Signing In...' : 'Sign In'}
         </Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity onPress={() => navigation.navigate('SignUp')}>
-        <Text style={styles.linkText}>Don't have an account? Sign Up</Text>
+
+      <TouchableOpacity
+        style={styles.forgotPasswordButton}
+        onPress={() => navigation.navigate('ForgotPassword')}
+      >
+        <Text style={styles.forgotPasswordText}>
+          Forgot Password?
+        </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.signUpButton}
+        onPress={() => navigation.navigate('SignUp')}
+      >
+        <Text style={styles.signUpText}>
+          Don't have an account? Sign Up
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -112,11 +118,23 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
   },
-  linkText: {
+  forgotPasswordButton: {
+    paddingVertical: 10,
+    marginBottom: 10,
+  },
+  forgotPasswordText: {
+    fontSize: 16,
     color: '#4682b4',
     textAlign: 'center',
-    marginTop: 20,
+    textDecorationLine: 'underline',
+  },
+  signUpButton: {
+    paddingVertical: 10,
+  },
+  signUpText: {
     fontSize: 16,
+    color: '#4682b4',
+    textAlign: 'center',
   },
 });
 

@@ -27,75 +27,58 @@ export default function RoleSelectionPage() {
         </div>
 
         <div className="space-y-4 mb-8">
-          {/* Consumer Role Card */}
-          <div 
-            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
-              selectedRole === "CONSUMER" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+          {/* Consumer Button */}
+          <button 
+            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+              selectedRole === "CONSUMER" 
+                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
+            style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("CONSUMER")}
           >
-            <h3 className="text-xl font-semibold mb-2">Consumer</h3>
-            <p className="text-gray-600 mb-4">Order products and services</p>
-            <button 
-              className={`w-full py-2 px-4 rounded transition-colors ${
-                selectedRole === "CONSUMER" 
-                  ? "bg-blue-600 text-white" 
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {selectedRole === "CONSUMER" ? "Selected" : "Select Role"}
-            </button>
-          </div>
+            <div className="font-semibold text-lg mb-1">Consumer</div>
+            <div className="text-sm opacity-80">Order products and services</div>
+          </button>
 
-          {/* Merchant Role Card */}
-          <div 
-            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
-              selectedRole === "MERCHANT" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+          {/* Merchant Button */}
+          <button 
+            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+              selectedRole === "MERCHANT" 
+                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
+            style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("MERCHANT")}
           >
-            <h3 className="text-xl font-semibold mb-2">Merchant</h3>
-            <p className="text-gray-600 mb-4">Sell products and manage your business</p>
-            <button 
-              className={`w-full py-2 px-4 rounded transition-colors ${
-                selectedRole === "MERCHANT" 
-                  ? "bg-blue-600 text-white" 
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {selectedRole === "MERCHANT" ? "Selected" : "Select Role"}
-            </button>
-          </div>
+            <div className="font-semibold text-lg mb-1">Merchant</div>
+            <div className="text-sm opacity-80">Sell products and manage your business</div>
+          </button>
 
-          {/* Driver Role Card */}
-          <div 
-            className={`cursor-pointer transition-all duration-200 hover:shadow-lg p-6 border rounded-lg ${
-              selectedRole === "DRIVER" ? "ring-2 ring-blue-600 border-blue-600" : "border-gray-200"
+          {/* Driver Button */}
+          <button 
+            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+              selectedRole === "DRIVER" 
+                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
+                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
             }`}
+            style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("DRIVER")}
           >
-            <h3 className="text-xl font-semibold mb-2">Driver</h3>
-            <p className="text-gray-600 mb-4">Deliver orders and earn money</p>
-            <button 
-              className={`w-full py-2 px-4 rounded transition-colors ${
-                selectedRole === "DRIVER" 
-                  ? "bg-blue-600 text-white" 
-                  : "border border-gray-300 text-gray-700 hover:bg-gray-50"
-              }`}
-            >
-              {selectedRole === "DRIVER" ? "Selected" : "Select Role"}
-            </button>
-          </div>
+            <div className="font-semibold text-lg mb-1">Driver</div>
+            <div className="text-sm opacity-80">Deliver orders and earn money</div>
+          </button>
         </div>
 
         <button
           onClick={handleContinue}
           disabled={!selectedRole}
-          className={`w-full h-10 sm:h-12 rounded font-medium shadow-lg transition-all text-sm sm:text-base ${
+          className={`w-full py-4 px-6 font-medium shadow-lg transition-all text-base ${
             selectedRole 
-              ? "bg-blue-600 text-white hover:bg-blue-700 cursor-pointer" 
+              ? "bg-[rgb(11,26,81)] text-white hover:bg-blue-900 cursor-pointer" 
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
+          style={{ borderRadius: '25px' }}
         >
           Continue
         </button>
