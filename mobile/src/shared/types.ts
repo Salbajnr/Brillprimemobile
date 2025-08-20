@@ -1,4 +1,3 @@
-
 // Import types from web app's shared schema
 export * from '../../../shared/schema';
 
@@ -13,9 +12,15 @@ export type RootStackParamList = {
   RoleSelection: undefined;
   SignIn: { email?: string };
   SignUp: { role?: string };
-  OTPVerification: { email: string };
+  OTPVerification: {
+    email: string;
+    phone?: string;
+    verificationType?: 'email' | 'phone';
+  };
   ForgotPassword: undefined;
-  ResetPassword: { token: string };
+  ResetPassword: {
+    token: string;
+  };
   LocationSetup: undefined;
   BiometricSetup: undefined;
   MFASetup: undefined;
