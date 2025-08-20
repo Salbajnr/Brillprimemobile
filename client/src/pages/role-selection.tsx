@@ -8,10 +8,10 @@ export default function RoleSelectionPage() {
 
   const handleContinue = () => {
     if (selectedRole) {
-      // Store selected role in localStorage for now
+      // Store selected role in localStorage
       localStorage.setItem("selectedRole", selectedRole);
-      // For now, just show an alert - in production this would go to signup
-      alert(`Role selected: ${selectedRole}. This would normally go to signup.`);
+      // Navigate to signup page
+      window.location.href = "/signup";
     }
   };
 

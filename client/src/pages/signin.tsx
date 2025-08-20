@@ -1,501 +1,124 @@
 import { useState } from "react";
-import { useLocation } from "wouter";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { Eye, EyeOff, Mail, Lock } from "lucide-react";
-import googleIcon from "../assets/images/google_icon.png";
-import appleIcon from "../assets/images/apple_icon.png";
-import facebookLogo from "../assets/images/facebook_logo.png";
-import { useMutation } from "@tanstack/react-query";
-import logo from "../assets/images/logo.png";
 
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { authAPI } from "@/lib/auth";
-import { useAuth } from "@/hooks/use-auth";
-import { signInSchema } from "../../../shared/schema";
-
-type SignInFormData = {
-  email: string;
-  password: string;
-};
+// Using direct paths to avoid import issues during development
+const logoImage = "/src/assets/images/logo.png";
 
 export default function SignInPage() {
-  const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
-  const [, setLocation] = useLocation();
-  const { toast } = useToast();
-  const { signin } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
 
-  // Add missing state variables for compatibility
-  const setUser = (user: any) => console.log("User updated:", user);
-  const setLoading = (loading: boolean) => console.log("Loading:", loading);
-  const setErrorMessage = (message: string) => console.log("Error:", message);
-  const setShowErrorModal = (show: boolean) => console.log("Show modal:", show);
-
-  const form = useForm<SignInFormData>({
-    resolver: zodResolver(signInSchema),
-    defaultValues: {
-      email: "",
-      password: "",
-    },
-  });
-
-  const signInMutation = useMutation({
-    mutationFn: ({ email, password }: SignInFormData) => authAPI.signIn({ email, password }),
-    onSuccess: (data: any) => {
-      console.log("Sign in successful:", data);
-      if (data.user) {
-        console.log("Setting user data:", data.user, "Role:", data.user.role);
-        setUser(data.user);
-
-        // Direct role-based navigation instead of going through dashboard
-        if (data.user.role === "CONSUMER") {
-          console.log("Navigating CONSUMER to /consumer-home");
-          setLocation("/consumer-home");
-        } else if (data.user.role === "MERCHANT") {
-          console.log("Navigating MERCHANT to /merchant-dashboard");
-          setLocation("/merchant-dashboard");
-        } else if (data.user.role === "DRIVER") {
-          console.log("Navigating DRIVER to /driver-dashboard");
-          // Check if driver has selected a tier (for existing users)
-          const selectedTier = sessionStorage.getItem('selectedDriverTier');
-          if (!selectedTier) {
-            // No tier selected, go to tier selection first
-            setLocation("/driver-tier-selection");
-          } else {
-            // Tier already selected, go to dashboard and prompt KYC
-            sessionStorage.setItem('promptKYCVerification', 'true');
-            setLocation("/driver-dashboard");
-          }
-        } else {
-          // Fallback to dashboard for unknown roles
-          setLocation("/dashboard");
-        }
-      }
-    },
-    onError: (error: Error) => {
-      console.error("Sign in error:", error);
-      toast({
-        title: "Sign In Failed",
-        description: error.message,
-      });
-    },
-  });
-
-  const onSubmit = (data: SignInFormData) => {
-    signInMutation.mutate(data);
+  const handleSignIn = () => {
+    if (email.length < 4) {
+      alert('Please enter a valid email');
+      return;
+    }
+    
+    if (password.trim().length < 8) {
+      alert('Password must be at least 8 characters');
+      return;
+    }
+    
+    // For now just show success message
+    alert('Sign in functionality would be implemented here');
   };
 
-  // Social login handlers
-  const handleGoogleLogin = async () => {
-    try {
-      setLoading(true);
-      const { socialAuth } = await import("@/lib/social-auth");
-      socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Google login success:", profile);
-
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                name: profile.name,
-                picture: (profile as any).picture || ""
-              })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.message || "Social login failed");
-            }
-
-            // Update auth context
-            setUser(data.user);
-
-            // Show success and redirect based on role
-            toast({
-              title: "Welcome back!",
-              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
-            });
-
-            // Role-based navigation
-            if (data.user.role === "CONSUMER") {
-              setLocation("/consumer-home");
-            } else if (data.user.role === "MERCHANT") {
-              setLocation("/merchant-dashboard");
-            } else if (data.user.role === "DRIVER") {
-              // Check if driver has selected a tier
-              const selectedTier = sessionStorage.getItem('selectedDriverTier');
-              if (!selectedTier) {
-                setLocation("/driver-tier-selection");
-              } else {
-                sessionStorage.setItem('promptKYCVerification', 'true');
-                setLocation("/driver-dashboard");
-              }
-            } else {
-              setLocation("/dashboard");
-            }
-          } catch (error) {
-            console.error("Google backend authentication failed:", error);
-            console.error("Google signin error:", error);
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error) => {
-          console.error("Google login error:", error);
-          console.error("Google sign-in failed. Please try again.");
-        }
-      );
-      await socialAuth.signInWithGoogle();
-    } catch (error) {
-      console.error("Google login initialization error:", error);
-      setErrorMessage("Google sign-in is not available at the moment.");
-      setShowErrorModal(true);
-      setLoading(false);
-    }
-  };
-
-  const handleAppleLogin = async () => {
-    try {
-      setLoading(true);
-      const { socialAuth } = await import("@/lib/social-auth");
-      socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Apple login success:", profile);
-
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                name: profile.name,
-                picture: (profile as any).picture || ""
-              })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.message || "Social login failed");
-            }
-
-            // Update auth context
-            setUser(data.user);
-
-            // Show success and redirect based on role
-            toast({
-              title: "Welcome back!",
-              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
-            });
-
-            // Role-based navigation
-            if (data.user.role === "CONSUMER") {
-              setLocation("/consumer-home");
-            } else if (data.user.role === "MERCHANT") {
-              setLocation("/merchant-dashboard");
-            } else if (data.user.role === "DRIVER") {
-              // Check if driver has selected a tier
-              const selectedTier = sessionStorage.getItem('selectedDriverTier');
-              if (!selectedTier) {
-                setLocation("/driver-tier-selection");
-              } else {
-                sessionStorage.setItem('promptKYCVerification', 'true');
-                setLocation("/driver-dashboard");
-              }
-            } else {
-              setLocation("/dashboard");
-            }
-          } catch (error) {
-            console.error("Apple backend authentication failed:", error);
-            setErrorMessage(error instanceof Error ? error.message : "Apple sign-in failed. Please try again.");
-            setShowErrorModal(true);
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error) => {
-          console.error("Apple login error:", error);
-          setErrorMessage("Apple sign-in failed. Please try again.");
-          setShowErrorModal(true);
-          setLoading(false);
-        }
-      );
-      await socialAuth.signInWithApple();
-    } catch (error) {
-      console.error("Apple login initialization error:", error);
-      setErrorMessage("Apple sign-in is not available at the moment.");
-      setShowErrorModal(true);
-      setLoading(false);
-    }
-  };
-
-  const handleFacebookLogin = async () => {
-    try {
-      setLoading(true);
-      const { socialAuth } = await import("@/lib/social-auth");
-      socialAuth.setCallbacks(
-        async (profile) => {
-          try {
-            console.log("Facebook login success:", profile);
-
-            // Send profile to backend for authentication
-            const response = await fetch("/api/auth/social-login", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              credentials: "include",
-              body: JSON.stringify({
-                provider: profile.provider,
-                socialId: profile.id,
-                email: profile.email,
-                name: profile.name,
-                picture: (profile as any).picture || ""
-              })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-              throw new Error(data.message || "Social login failed");
-            }
-
-            // Update auth context
-             setUser(data.user);
-
-            // Show success and redirect based on role
-            toast({
-              title: "Welcome back!",
-              description: data.isNewUser ? "Account created successfully!" : "Signed in successfully!",
-            });
-
-            // Role-based navigation
-            if (data.user.role === "CONSUMER") {
-              setLocation("/consumer-home");
-            } else if (data.user.role === "MERCHANT") {
-              setLocation("/merchant-dashboard");
-            } else if (data.user.role === "DRIVER") {
-              // Check if driver has selected a tier
-              const selectedTier = sessionStorage.getItem('selectedDriverTier');
-              if (!selectedTier) {
-                setLocation("/driver-tier-selection");
-              } else {
-                sessionStorage.setItem('promptKYCVerification', 'true');
-                setLocation("/driver-dashboard");
-              }
-            } else {
-              setLocation("/dashboard");
-            }
-          } catch (error) {
-            console.error("Facebook backend authentication failed:", error);
-            setErrorMessage(error instanceof Error ? error.message : "Facebook sign-in failed. Please try again.");
-            setShowErrorModal(true);
-          } finally {
-            setLoading(false);
-          }
-        },
-        (error) => {
-          console.error("Facebook login error:", error);
-          setErrorMessage("Facebook sign-in failed. Please try again.");
-          setShowErrorModal(true);
-          setLoading(false);
-        }
-      );
-      await socialAuth.signInWithFacebook();
-    } catch (error) {
-      console.error("Facebook login initialization error:", error);
-      setErrorMessage("Facebook sign-in is not available at the moment.");
-      setShowErrorModal(true);
-      setLoading(false);
-    }
+  const togglePassword = () => {
+    setShowPassword(!showPassword);
   };
 
   return (
-    <div className="w-full max-w-md mx-auto min-h-screen bg-white">
-      <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
-        <div className="text-center mb-6 sm:mb-8">
-          <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
-            <img src={logo} alt="Brillprime Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
+    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col">
+      <div className="flex-1 flex flex-col justify-center px-6 py-8">
+        {/* Logo and Title */}
+        <div className="text-center mb-6">
+          <div className="mb-2">
+            <img src={logoImage} alt="Logo" className="w-20 h-16 mx-auto object-contain" />
           </div>
-          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-2">Welcome Back</h1>
-          <p className="text-[var(--brill-text-light)] font-light text-sm">Sign in to your account</p>
+          <h1 className="text-[#2d3748] text-2xl font-extrabold">Sign In</h1>
         </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 mb-6">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type="email"
-                        placeholder="Email Address"
-                        className="h-14 pl-12 border-[var(--brill-secondary)] rounded-brill font-medium placeholder:text-[var(--brill-text-light)] focus-visible:ring-[var(--brill-secondary)]"
-                        {...field}
-                      />
-                      <Mail className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--brill-text-light)] h-5 w-5" />
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Password"
-                        className="h-14 pl-12 pr-12 border-[var(--brill-secondary)] rounded-brill font-medium placeholder:text-[var(--brill-text-light)] focus-visible:ring-[var(--brill-secondary)]"
-                        {...field}
-                      />
-                      <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 text-[var(--brill-text-light)] h-5 w-5" />
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0"
-                        onClick={() => setShowPassword(!showPassword)}
-                      >
-                        {showPassword ? (
-                          <EyeOff className="h-4 w-4 text-[var(--brill-text-light)]" />
-                        ) : (
-                          <Eye className="h-4 w-4 text-[var(--brill-text-light)]" />
-                        )}
-                      </Button>
-                    </div>
-                  </FormControl>
-                  <FormMessage className="text-xs" />
-                </FormItem>
-              )}
-            />
-
-            <div className="flex items-center justify-between">
-              <FormField
-                control={form.control}
-                name="rememberMe"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center space-x-2 space-y-0">
-                    <FormControl>
-                      <Input
-                        type="checkbox"
-                        checked={field.value}
-                        onChange={field.onChange}
-                        className="h-4 w-4 border-[var(--brill-secondary)] focus-visible:ring-[var(--brill-secondary)]"
-                      />
-                    </FormControl>
-                    <label
-                      htmlFor={field.name}
-                      className="text-sm font-medium text-[var(--brill-text-light)] leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                    >
-                      Remember me
-                    </label>
-                  </FormItem>
-                )}
-              />
-
-              <Button
-                type="button"
-                variant="link"
-                onClick={() => setLocation("/forgot-password")}
-                className="text-[var(--brill-secondary)] text-sm font-medium p-0 h-auto"
-              >
-                Forgot Password?
-              </Button>
-            </div>
-
-            <LoadingButton
-              type="submit"
-              loading={signInMutation.isPending}
-              loadingText="Signing In..."
-              className="w-full h-14 mt-6"
-            >
-              Sign In
-            </LoadingButton>
-          </form>
-        </Form>
-
-        {/* Social Login Options */}
-        <div className="space-y-4 mb-6">
+        {/* Email Field */}
+        <div className="mb-4">
           <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-gray-300" />
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2.003 5.884L10 9.882l7.997-3.998A2 2 0 0016 4H4a2 2 0 00-1.997 1.884z"></path>
+                <path d="M18 8.118l-8 4-8-4V14a2 2 0 002 2h12a2 2 0 002-2V8.118z"></path>
+              </svg>
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-white px-2 text-[var(--brill-text-light)]">Or continue with</span>
-            </div>
-          </div>
-
-          <div className="flex justify-center gap-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleGoogleLogin}
-              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-            >
-              <img src={googleIcon} alt="Google" className="w-5 h-5" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleAppleLogin}
-              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-            >
-              <img src={appleIcon} alt="Apple" className="w-5 h-5" />
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleFacebookLogin}
-              className="h-12 w-12 rounded-full border-2 border-[var(--brill-secondary)] hover:bg-gray-50 p-0 flex items-center justify-center"
-            >
-              <img src={facebookLogo} alt="Facebook" className="w-5 h-5" />
-            </Button>
+            <input 
+              type="email" 
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 border border-gray-300 curved-input focus:ring-2 focus:ring-[#4682B4] focus:border-[#4682B4] text-base"
+              placeholder="Email or phone number"
+            />
           </div>
         </div>
 
+        {/* Password Field */}
+        <div className="mb-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd"></path>
+              </svg>
+            </div>
+            <input 
+              type={showPassword ? "text" : "password"}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-12 pr-14 py-4 border border-gray-300 curved-input focus:ring-2 focus:ring-[#4682B4] focus:border-[#4682B4] text-base"
+              placeholder="Password"
+            />
+            <button type="button" onClick={togglePassword} className="absolute inset-y-0 right-0 pr-5 flex items-center">
+              <svg className="w-5 h-5 text-gray-400 hover:text-gray-600" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M10 12a2 2 0 100-4 2 2 0 000 4z"></path>
+                <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Forgot Password Link */}
+        <div className="text-center mb-5">
+          <span className="text-[#2d3748] text-sm font-light">Forgot password? </span>
+          <a href="#" className="text-[#4682B4] text-sm font-bold hover:underline">Reset password</a>
+        </div>
+
+        {/* Sign In Button */}
+        <button 
+          onClick={handleSignIn}
+          className="w-full bg-[#4682B4] text-white py-4 px-4 curved-button font-medium hover:bg-[#3a70a0] transition duration-200 mb-10"
+        >
+          Sign In
+        </button>
+
+        {/* Divider */}
+        <div className="flex items-center mb-5">
+          <div className="flex-1 border-t border-black"></div>
+          <span className="px-2 text-[#2d3748] text-sm font-light">or continue with</span>
+          <div className="flex-1 border-t border-black"></div>
+        </div>
+
+        {/* Social Login Buttons */}
+        <div className="flex justify-center space-x-5 mb-5">
+          <button className="w-14 h-14 border border-gray-300 curved-social flex items-center justify-center hover:bg-gray-50 transition duration-200">
+            <div className="social-icon google-icon w-6 h-6 bg-gray-400 rounded"></div>
+          </button>
+          <button className="w-14 h-14 border border-gray-300 curved-social flex items-center justify-center hover:bg-gray-50 transition duration-200">
+            <div className="social-icon apple-icon w-6 h-6 bg-gray-400 rounded"></div>
+          </button>
+          <button className="w-14 h-14 border border-gray-300 curved-social flex items-center justify-center hover:bg-gray-50 transition duration-200">
+            <div className="social-icon facebook-icon w-6 h-6 bg-gray-400 rounded"></div>
+          </button>
+        </div>
+
+        {/* Sign Up Link */}
         <div className="text-center">
-          <p className="text-[var(--brill-text-light)] text-sm">
-            Don't have an account?{" "}
-            <Button
-              variant="link"
-              className="text-[var(--brill-secondary)] font-medium p-0 h-auto"
-              onClick={() => setLocation("/role-selection")}
-            >
-              Sign Up
-            </Button>
-          </p>
+          <span className="text-[#2d3748] text-sm font-light">Don't have an account? </span>
+          <a href="/signup" className="text-[#4682B4] text-sm font-bold hover:underline">Sign up</a>
         </div>
       </div>
     </div>
