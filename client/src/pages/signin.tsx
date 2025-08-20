@@ -36,7 +36,7 @@ export default function SignInPage() {
       if (data.success) {
         alert(`Welcome back! Signed in as ${data.user.role.toLowerCase()}`);
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/';
+        window.location.href = '/dashboard';
       } else {
         alert(data.message || 'Sign in failed');
       }
@@ -69,7 +69,7 @@ export default function SignInPage() {
         if (data.profile) {
           alert(`Welcome! Signed in with ${provider} as ${data.profile.name}`);
           localStorage.setItem('user', JSON.stringify(data.profile));
-          window.location.href = '/';
+          window.location.href = '/dashboard';
         }
       } else {
         alert(data.message || `${provider} login failed`);

@@ -47,9 +47,8 @@ export default function SignUpPage() {
 
       if (data.success) {
         alert(`Welcome! Account created successfully as ${selectedRole.toLowerCase()}`);
-        // In a real app, you would navigate to the dashboard
         localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/'; // For now, redirect to home
+        window.location.href = '/dashboard';
       } else {
         alert(data.message || 'Registration failed');
       }
@@ -86,7 +85,7 @@ export default function SignUpPage() {
         if (data.profile) {
           alert(`Welcome! Signed up with ${provider} as ${data.profile.name}`);
           localStorage.setItem('user', JSON.stringify(data.profile));
-          window.location.href = '/';
+          window.location.href = '/dashboard';
         }
       } else {
         alert(data.message || `${provider} signup failed`);
