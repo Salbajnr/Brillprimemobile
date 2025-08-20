@@ -29,44 +29,41 @@ export default function RoleSelectionPage() {
         <div className="space-y-4 mb-8">
           {/* Consumer Button */}
           <button 
-            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+            className={`w-full py-4 px-6 text-center border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "CONSUMER" 
-                ? "bg-[#4682B4] text-white border-[#4682B4]" 
-                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
+                ? "bg-[#f8f9fa] text-[#2d3748] border-gray-300" 
+                : "bg-[#2d3748] text-white border-[#2d3748] hover:bg-[#f8f9fa] hover:text-[#2d3748]"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("CONSUMER")}
           >
-            <div className="font-semibold text-lg mb-1">Consumer</div>
-            <div className="text-sm opacity-80">Order products and services</div>
+            <div className="font-semibold text-lg">Consumer</div>
           </button>
 
           {/* Merchant Button */}
           <button 
-            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+            className={`w-full py-4 px-6 text-center border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "MERCHANT" 
-                ? "bg-[#4682B4] text-white border-[#4682B4]" 
-                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
+                ? "bg-[#f8f9fa] text-[#2d3748] border-gray-300" 
+                : "bg-[#2d3748] text-white border-[#2d3748] hover:bg-[#f8f9fa] hover:text-[#2d3748]"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("MERCHANT")}
           >
-            <div className="font-semibold text-lg mb-1">Merchant</div>
-            <div className="text-sm opacity-80">Sell products and manage your business</div>
+            <div className="font-semibold text-lg">Merchant</div>
           </button>
 
           {/* Driver Button */}
           <button 
-            className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
+            className={`w-full py-4 px-6 text-center border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "DRIVER" 
-                ? "bg-[#4682B4] text-white border-[#4682B4]" 
-                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
+                ? "bg-[#f8f9fa] text-[#2d3748] border-gray-300" 
+                : "bg-[#2d3748] text-white border-[#2d3748] hover:bg-[#f8f9fa] hover:text-[#2d3748]"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("DRIVER")}
           >
-            <div className="font-semibold text-lg mb-1">Driver</div>
-            <div className="text-sm opacity-80">Deliver orders and earn money</div>
+            <div className="font-semibold text-lg">Driver</div>
           </button>
         </div>
 
