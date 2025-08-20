@@ -119,14 +119,14 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   forgotPasswordButton: {
-    paddingVertical: 10,
-    marginBottom: 10,
+    alignItems: 'center',
+    marginTop: 16,
+    paddingVertical: 8,
   },
   forgotPasswordText: {
-    fontSize: 16,
     color: '#4682b4',
-    textAlign: 'center',
-    textDecorationLine: 'underline',
+    fontSize: 16,
+    fontWeight: '500',
   },
   signUpButton: {
     paddingVertical: 10,
