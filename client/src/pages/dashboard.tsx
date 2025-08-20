@@ -1,252 +1,143 @@
 import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
-import { useWebSocket, useNotifications } from "@/hooks/use-websocket";
-import { apiClient, DashboardData } from "@/lib/api";
-import { 
-  User, 
-  ShoppingBag, 
-  CreditCard, 
-  Settings, 
-  Bell, 
-  TrendingUp,
-  Package,
-  Clock,
-  CheckCircle,
-  AlertCircle
-} from "lucide-react";
 
 export default function DashboardPage() {
-  const [, setLocation] = useLocation();
-  const { user, logout, loading: authLoading } = useAuth();
-  const { connected } = useWebSocket();
-  const { notifications } = useNotifications();
-  const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
-    if (!user) {
-      setLocation('/signin');
-      return;
+    // Check if user is logged in
+    const userData = localStorage.getItem('user');
+    if (userData) {
+      setUser(JSON.parse(userData));
+    } else {
+      // Redirect to sign in if not logged in
+      window.location.href = '/signin';
     }
+  }, []);
 
-    const loadDashboardData = async () => {
-      setLoading(true);
-      setError(null);
-
-      try {
-        const response = await apiClient.getDashboardData();
-
-        if (response.success && response.data) {
-          setDashboardData(response.data);
-        } else {
-          setError(response.error || 'Failed to load dashboard data');
-        }
-      } catch (err) {
-        setError('Failed to load dashboard data');
-        console.error('Dashboard error:', err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    loadDashboardData();
-  }, [user, setLocation]);
-
-  const handleRoleBasedRedirect = () => {
-    if (!user) return;
-    if (user.role === 'CONSUMER') {
-      setLocation("/consumer-home");
-    } else if (user.role === 'MERCHANT') {
-      setLocation("/merchant-dashboard");
-    } else if (user.role === 'DRIVER') {
-      setLocation("/driver-dashboard");
-    }
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    localStorage.removeItem('selectedRole');
+    alert('Logged out successfully');
+    window.location.href = '/';
   };
 
-  const handleQuickAction = (action: string) => {
-    switch(action) {
-      case 'Fund Wallet':
-        setLocation('/wallet-fund');
-        break;
-      case 'View Transactions':
-        setLocation('/wallet/transactions');
-        break;
-      case 'Send Money':
-        setLocation('/transfer');
-        break;
-      case 'Pay Bills':
-        setLocation('/bills');
-        break;
-      case 'View Orders':
-        setLocation('/merchant/orders');
-        break;
-      case 'Start Trip':
-        setLocation('/driver/trip-start');
-        break;
-      default:
-        console.log('Quick action:', action);
-    }
-  };
-
-  const renderRecentActivity = () => {
-    if (!dashboardData?.recentActivity || dashboardData.recentActivity.length === 0) {
-      return <p className="text-gray-500">No recent activity.</p>;
-    }
-
-    return dashboardData.recentActivity.map((activity) => (
-      <div key={activity.id} className="flex items-center justify-between mb-3 last:mb-0">
-        <div className="flex items-center">
-          {activity.type === 'order' && <Package className="h-5 w-5 text-blue-500 mr-2" />}
-          {activity.type === 'payment' && <CreditCard className="h-5 w-5 text-green-500 mr-2" />}
-          {activity.type === 'delivery' && <Clock className="h-5 w-5 text-yellow-500 mr-2" />}
-          
-          <div>
-            <p className="text-sm font-medium text-gray-900">{activity.description}</p>
-            <p className="text-xs text-gray-500">{activity.time}</p>
-          </div>
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-[#2d3748] mb-4">Loading...</h2>
+          <p className="text-[#718096]">Checking authentication status</p>
         </div>
-        {activity.type === 'order' && <Badge variant="outline">New</Badge>}
-        {activity.type === 'payment' && <Badge variant="secondary">Completed</Badge>}
-        {activity.type === 'delivery' && <Badge variant="outline">Pending</Badge>}
       </div>
-    ));
-  };
+    );
+  }
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 p-6">
-      <Card className="w-full max-w-xl mx-auto shadow-lg">
-        <CardHeader className="flex flex-row items-center justify-between bg-gradient-to-r from-blue-500 to-purple-600 text-white rounded-t-lg p-6">
-          <div className="flex items-center">
-            <User className="h-8 w-8 mr-4" />
-            <div>
-              <CardTitle className="text-2xl font-bold">
-                {user?.name || 'Dashboard'}
-              </CardTitle>
-              <CardDescription className="text-blue-100">
-                {user?.role || 'User'}
-              </CardDescription>
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <div className="bg-[#2c3e50] text-white p-4">
+        <div className="max-w-md mx-auto flex justify-between items-center">
+          <div>
+            <h1 className="text-lg font-bold">BrillPrime Dashboard</h1>
+            <p className="text-sm opacity-80">{user.role || 'User'} Portal</p>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="bg-[#4682B4] text-white px-4 py-2 curved-button text-sm hover:bg-[#3a70a0] transition duration-200"
+          >
+            Logout
+          </button>
+        </div>
+      </div>
+
+      {/* User Info Card */}
+      <div className="max-w-md mx-auto p-6">
+        <div className="bg-white rounded-lg shadow-lg p-6 mb-6">
+          <div className="text-center mb-4">
+            <div className="w-16 h-16 bg-[#4682B4] rounded-full flex items-center justify-center mx-auto mb-4">
+              <span className="text-white text-xl font-bold">
+                {user.fullName ? user.fullName.charAt(0).toUpperCase() : user.name ? user.name.charAt(0).toUpperCase() : 'U'}
+              </span>
+            </div>
+            <h2 className="text-xl font-bold text-[#2d3748]">
+              {user.fullName || user.name || 'Welcome!'}
+            </h2>
+            <p className="text-[#718096]">{user.email}</p>
+            <span className="inline-block bg-[#4682B4] text-white px-3 py-1 rounded-full text-sm mt-2">
+              {user.role || 'Consumer'}
+            </span>
+          </div>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <h3 className="text-lg font-bold text-[#2d3748] mb-4">Quick Actions</h3>
+          <div className="space-y-3">
+            {user.role === 'CONSUMER' && (
+              <>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">Browse Products</div>
+                  <div className="text-sm text-[#718096]">Explore our catalog</div>
+                </button>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">Track Orders</div>
+                  <div className="text-sm text-[#718096]">View order status</div>
+                </button>
+              </>
+            )}
+
+            {user.role === 'MERCHANT' && (
+              <>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">Manage Inventory</div>
+                  <div className="text-sm text-[#718096]">Add and update products</div>
+                </button>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">View Sales</div>
+                  <div className="text-sm text-[#718096]">Track your earnings</div>
+                </button>
+              </>
+            )}
+
+            {user.role === 'DRIVER' && (
+              <>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">Available Deliveries</div>
+                  <div className="text-sm text-[#718096]">Find delivery jobs</div>
+                </button>
+                <button className="w-full bg-[#f8f9fa] text-[#2d3748] p-4 rounded-lg text-left hover:bg-gray-100 transition duration-200">
+                  <div className="font-semibold">Earnings Report</div>
+                  <div className="text-sm text-[#718096]">View your income</div>
+                </button>
+              </>
+            )}
+
+            <button className="w-full bg-[#4682B4] text-white p-4 rounded-lg hover:bg-[#3a70a0] transition duration-200">
+              <div className="font-semibold">Get Started</div>
+              <div className="text-sm opacity-80">Begin using BrillPrime</div>
+            </button>
+          </div>
+        </div>
+
+        {/* Authentication Test Info */}
+        <div className="bg-white rounded-lg shadow-lg p-6 mt-6">
+          <h3 className="text-lg font-bold text-[#2d3748] mb-4">Authentication Status</h3>
+          <div className="text-sm space-y-2">
+            <div className="flex justify-between">
+              <span className="text-[#718096]">Status:</span>
+              <span className="text-green-600 font-semibold">✓ Authenticated</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#718096]">Role:</span>
+              <span className="font-semibold">{user.role || 'Consumer'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-[#718096]">Login Method:</span>
+              <span className="font-semibold">{user.provider ? `${user.provider} Social` : 'Email/Password'}</span>
             </div>
           </div>
-          <div className="flex items-center space-x-3">
-            <Badge variant="outline" className="text-white border-white">
-              {connected ? 'Online' : 'Offline'}
-            </Badge>
-            <Button variant="ghost" className="text-white hover:text-blue-200 p-0" onClick={() => setLocation('/notifications')}>
-              <Bell className="h-6 w-6" />
-              {notifications.length > 0 && (
-                <span className="ml-1 bg-red-500 text-white rounded-full px-2 py-0.5 text-xs">
-                  {notifications.length}
-                </span>
-              )}
-            </Button>
-            <Button variant="ghost" className="text-white hover:text-red-300 p-0" onClick={logout}>
-              <Settings className="h-6 w-6" />
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="p-6">
-          <div className="text-center mb-8">
-            <p className="text-lg text-gray-700 mb-1">Welcome back, {user?.name || 'Valued User'}!</p>
-            <p className="text-sm text-gray-500">Your financial hub.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card className="border-gray-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-normal text-muted-foreground">Total Orders</CardTitle>
-                <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p className="text-2xl font-bold">Loading...</p>
-                ) : error ? (
-                  <p className="text-2xl font-bold text-red-600">Error</p>
-                ) : (
-                  <p className="text-2xl font-bold">{dashboardData?.stats.totalOrders ?? 0}</p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {dashboardData?.stats.pendingOrders ?? 0} pending
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-normal text-muted-foreground">
-                  {user?.role === 'MERCHANT' ? 'Total Earnings' : user?.role === 'DRIVER' ? 'Total Earned' : 'Total Spent'}
-                </CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p className="text-2xl font-bold">Loading...</p>
-                ) : error ? (
-                  <p className="text-2xl font-bold text-red-600">Error</p>
-                ) : (
-                  <p className="text-2xl font-bold">
-                    ${dashboardData?.stats.totalEarnings?.toLocaleString() ?? (dashboardData?.stats.totalSpent?.toLocaleString() ?? 0)}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {user?.role === 'MERCHANT' ? `${dashboardData?.stats.completedOrders ?? 0} completed` : ''}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-gray-200">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-base font-normal text-muted-foreground">Payment Status</CardTitle>
-                <CreditCard className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p className="text-2xl font-bold">Loading...</p>
-                ) : error ? (
-                  <p className="text-2xl font-bold text-red-600">Error</p>
-                ) : (
-                  <p className={`text-2xl font-bold ${dashboardData?.stats.pendingOrders ?? 0 > 0 ? 'text-yellow-600' : 'text-green-600'}`}>
-                    {dashboardData?.stats.pendingOrders ?? 0 > 0 ? 'Pending' : 'Cleared'}
-                  </p>
-                )}
-                <p className="text-xs text-muted-foreground">
-                  {dashboardData?.stats.pendingOrders ?? 0} pending
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="text-lg font-semibold text-gray-800 mb-3">Recent Activity</h3>
-            {loading ? (
-              <div className="flex justify-center items-center h-20">
-                <p className="text-gray-600">Loading activity...</p>
-              </div>
-            ) : error ? (
-              <div className="flex flex-col justify-center items-center h-20">
-                <AlertCircle className="h-6 w-6 text-red-500 mb-2" />
-                <p className="text-red-600">Error loading activity.</p>
-              </div>
-            ) : (
-              renderRecentActivity()
-            )}
-          </div>
-
-          <div className="mt-8">
-            <Button 
-              className="w-full py-3 px-4 rounded-lg text-lg"
-              onClick={handleRoleBasedRedirect}
-              disabled={authLoading || loading}
-            >
-              Go to {user?.role || 'Main'} Dashboard
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
   );
 }

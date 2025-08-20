@@ -9,6 +9,7 @@ import Onboarding from './pages/onboarding';
 import RoleSelection from './pages/role-selection';
 import SignUp from './pages/signup';
 import SignIn from './pages/signin';
+import Dashboard from './pages/dashboard';
 import NotFound from './pages/not-found';
 
 // Create a client
@@ -32,6 +33,7 @@ function App() {
             <Route path="/role-selection" component={RoleSelection} />
             <Route path="/signup" component={SignUp} />
             <Route path="/signin" component={SignIn} />
+            <Route path="/dashboard" component={Dashboard} />
             <Route component={NotFound} />
           </Switch>
         </div>
