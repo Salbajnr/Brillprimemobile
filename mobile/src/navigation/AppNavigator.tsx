@@ -117,7 +117,7 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen 
           name="ResetPassword" 
           component={ResetPasswordScreen}
-          options={{ headerShown: false }}
+          options={{ headerShown: false }} 
         />
         <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
