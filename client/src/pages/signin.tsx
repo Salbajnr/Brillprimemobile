@@ -13,12 +13,12 @@ export default function SignInPage() {
       alert('Please enter a valid email');
       return;
     }
-    
+
     if (password.trim().length < 8) {
       alert('Password must be at least 8 characters');
       return;
     }
-    
+
     // For now just show success message
     alert('Sign in functionality would be implemented here');
   };
