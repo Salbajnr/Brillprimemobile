@@ -22,8 +22,8 @@ export default function RoleSelectionPage() {
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
             <img src={signUpLogo} alt="Sign Up" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
-          <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-3">Choose Your Role</h1>
-          <p className="text-[var(--brill-text-light)] font-light text-sm">Select how you'll be using Brillprime</p>
+          <h1 className="text-lg sm:text-xl font-extrabold text-[#2d3748] mb-3">Choose Your Role</h1>
+          <p className="text-[#718096] font-light text-sm">Select how you'll be using Brillprime</p>
         </div>
 
         <div className="space-y-4 mb-8">
@@ -31,8 +31,8 @@ export default function RoleSelectionPage() {
           <button 
             className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "CONSUMER" 
-                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                ? "bg-[#4682B4] text-white border-[#4682B4]" 
+                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("CONSUMER")}
@@ -45,8 +45,8 @@ export default function RoleSelectionPage() {
           <button 
             className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "MERCHANT" 
-                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                ? "bg-[#4682B4] text-white border-[#4682B4]" 
+                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("MERCHANT")}
@@ -59,8 +59,8 @@ export default function RoleSelectionPage() {
           <button 
             className={`w-full py-4 px-6 text-left border transition-all duration-200 hover:shadow-lg ${
               selectedRole === "DRIVER" 
-                ? "bg-[rgb(11,26,81)] text-white border-[rgb(11,26,81)]" 
-                : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                ? "bg-[#4682B4] text-white border-[#4682B4]" 
+                : "bg-[#f8f9fa] text-[#2d3748] border-gray-300 hover:bg-gray-100"
             }`}
             style={{ borderRadius: '25px' }}
             onClick={() => setSelectedRole("DRIVER")}
@@ -75,7 +75,7 @@ export default function RoleSelectionPage() {
           disabled={!selectedRole}
           className={`w-full py-4 px-6 font-medium shadow-lg transition-all text-base ${
             selectedRole 
-              ? "bg-[rgb(11,26,81)] text-white hover:bg-blue-900 cursor-pointer" 
+              ? "bg-[#4682B4] text-white hover:bg-[#3a70a0] cursor-pointer" 
               : "bg-gray-300 text-gray-500 cursor-not-allowed"
           }`}
           style={{ borderRadius: '25px' }}
