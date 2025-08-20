@@ -44,7 +44,7 @@ body {
   border-radius: 25px;
 }
 
-/* Curved styling for buttons and inputs */
+/* Curved styling for buttons and inputs - Enhanced */
 .curved-button {
   border-radius: 25px;
 }
@@ -55,6 +55,32 @@ body {
 
 .curved-social {
   border-radius: 20px;
+}
+
+.curved-card {
+  border-radius: 30px;
+}
+
+.curved-modal {
+  border-radius: 25px;
+}
+
+/* Apply curved styling to common elements */
+.rounded-brill {
+  border-radius: 25px;
+}
+
+/* Override default Tailwind rounded classes for consistency */
+.rounded-lg {
+  border-radius: 25px !important;
+}
+
+.rounded-md {
+  border-radius: 20px !important;
+}
+
+.rounded-xl {
+  border-radius: 30px !important;
 }
 
 .btn-scale {
