@@ -21,6 +21,12 @@ export type RootStackParamList = {
   ResetPassword: {
     token: string;
   };
+  OTPVerification: {
+    email?: string;
+    phone?: string;
+    verificationType?: 'email' | 'phone';
+  };
+  Dashboard: undefined;
   LocationSetup: undefined;
   BiometricSetup: undefined;
   MFASetup: undefined;
