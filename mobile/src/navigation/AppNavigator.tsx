@@ -104,20 +104,20 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Onboarding" component={OnboardingScreen} />
         <Stack.Screen name="SignIn" component={SignInScreen} />
         <Stack.Screen name="SignUp" component={SignUpScreen} />
-        <Stack.Screen 
-          name="OTPVerification" 
+        <Stack.Screen
+          name="OTPVerification"
           component={OTPVerificationScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="ForgotPassword" 
+        <Stack.Screen
+          name="ForgotPassword"
           component={ForgotPasswordScreen}
           options={{ headerShown: false }}
         />
-        <Stack.Screen 
-          name="ResetPassword" 
+        <Stack.Screen
+          name="ResetPassword"
           component={ResetPasswordScreen}
-          options={{ headerShown: false }} 
+          options={{ headerShown: false }}
         />
         <Stack.Screen name="RoleSelection" component={RoleSelectionScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />

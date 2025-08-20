@@ -27,6 +27,10 @@ export type RootStackParamList = {
     verificationType?: 'email' | 'phone';
   };
   Dashboard: undefined;
+  DriverDashboard: undefined;
+  MerchantDashboard: undefined;
+  VendorFeed: undefined;
+  BillPayments: undefined;
   LocationSetup: undefined;
   BiometricSetup: undefined;
   MFASetup: undefined;
