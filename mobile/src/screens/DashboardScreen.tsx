@@ -7,62 +7,70 @@ import { useAuth } from '../hooks/useAuth';
 const DashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
   const { user } = useAuth();
 
+  // Redirect to role-specific dashboard immediately
+  React.useEffect(() => {
+    if (user?.role) {
+      switch (user.role) {
+        case 'CONSUMER':
+          // Consumer stays on this general dashboard
+          break;
+        case 'DRIVER':
+          navigation.replace('DriverDashboard');
+          break;
+        case 'MERCHANT':
+          navigation.replace('MerchantDashboard');
+          break;
+        default:
+          break;
+      }
+    }
+  }, [user?.role, navigation]);
+
   const navigateToScreen = (screenName: string) => {
     navigation.navigate(screenName);
   };
 
   const renderRoleBasedContent = () => {
-    switch (user?.role) {
-      case 'CONSUMER':
-        return (
-          <View style={styles.roleContent}>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => navigateToScreen('FuelOrdering')}
-            >
-              <Text style={styles.actionTitle}>Order Fuel</Text>
-              <Text style={styles.actionSubtitle}>Get fuel delivered to your location</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => navigateToScreen('TollPayments')}
-            >
-              <Text style={styles.actionTitle}>Pay Toll</Text>
-              <Text style={styles.actionSubtitle}>Quick toll gate payments</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      
-      case 'DRIVER':
-        return (
-          <View style={styles.roleContent}>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => navigateToScreen('DriverDashboard')}
-            >
-              <Text style={styles.actionTitle}>Active Orders</Text>
-              <Text style={styles.actionSubtitle}>View and manage deliveries</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      
-      case 'MERCHANT':
-        return (
-          <View style={styles.roleContent}>
-            <TouchableOpacity 
-              style={styles.actionCard}
-              onPress={() => navigateToScreen('MerchantDashboard')}
-            >
-              <Text style={styles.actionTitle}>Manage Store</Text>
-              <Text style={styles.actionSubtitle}>Products and orders</Text>
-            </TouchableOpacity>
-          </View>
-        );
-      
-      default:
-        return null;
+    // Only show consumer dashboard content since other roles are redirected
+    if (user?.role === 'CONSUMER') {
+      return (
+        <View style={styles.roleContent}>
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigateToScreen('FuelOrdering')}
+          >
+            <Text style={styles.actionTitle}>Order Fuel</Text>
+            <Text style={styles.actionSubtitle}>Get fuel delivered to your location</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigateToScreen('TollPayments')}
+          >
+            <Text style={styles.actionTitle}>Pay Toll</Text>
+            <Text style={styles.actionSubtitle}>Quick toll gate payments</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigateToScreen('VendorFeed')}
+          >
+            <Text style={styles.actionTitle}>Browse Merchants</Text>
+            <Text style={styles.actionSubtitle}>Discover local businesses</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={styles.actionCard}
+            onPress={() => navigateToScreen('BillPayments')}
+          >
+            <Text style={styles.actionTitle}>Pay Bills</Text>
+            <Text style={styles.actionSubtitle}>Electricity, internet, and more</Text>
+          </TouchableOpacity>
+        </View>
+      );
     }
+    
+    return null;
   };
 
   return (
