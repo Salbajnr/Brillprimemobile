@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mobileConfig } from '../shared/config';
@@ -41,5 +40,57 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+// Add forgot password and reset password API methods
+api.resendOtp = async (email: string) => {
+    const response = await fetch(`${mobileConfig.apiBaseUrl}/auth/resend-otp`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to resend OTP');
+    }
+
+    return response.json();
+  };
+
+  api.forgotPassword = async (email: string) => {
+    const response = await fetch(`${mobileConfig.apiBaseUrl}/auth/forgot-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to send reset link');
+    }
+
+    return response.json();
+  };
+
+  api.resetPassword = async (token: string, newPassword: string) => {
+    const response = await fetch(`${mobileConfig.apiBaseUrl}/auth/reset-password`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ token, newPassword }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.message || 'Failed to reset password');
+    }
+
+    return response.json();
+  };
 
 export default api;
