@@ -81,10 +81,10 @@ export default function OnboardingPage() {
             />
           </div>
 
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[var(--brill-primary)] mb-3 sm:mb-4 leading-tight whitespace-pre-line px-2">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold text-[#2d3748] mb-3 sm:mb-4 leading-tight whitespace-pre-line px-2">
             {currentData.title}
           </h1>
-          <p className="text-[var(--brill-text-light)] font-light text-sm sm:text-base mb-6 sm:mb-8 max-w-xs sm:max-w-sm leading-relaxed px-2">
+          <p className="text-[#718096] font-light text-sm sm:text-base mb-6 sm:mb-8 max-w-xs sm:max-w-sm leading-relaxed px-2">
             {currentData.description}
           </p>
         </div>
@@ -97,7 +97,7 @@ export default function OnboardingPage() {
                 key={step}
                 className={`w-2 h-2 rounded-full transition-colors duration-300 ${
                   step === currentStep 
-                    ? 'bg-[var(--brill-primary)]' 
+                    ? 'bg-[#4682B4]' 
                     : 'bg-gray-300'
                 }`}
               />
@@ -107,7 +107,7 @@ export default function OnboardingPage() {
           {currentStep < onboardingData.length ? (
             <button
               onClick={handleNext}
-              className="w-12 h-12 sm:w-16 sm:h-16 bg-[rgb(11,26,81)] rounded-full text-white shadow-lg hover:bg-blue-900 transition-all duration-200 flex items-center justify-center"
+              className="w-12 h-12 sm:w-16 sm:h-16 bg-[#4682B4] rounded-full text-white shadow-lg hover:bg-[#3a70a0] transition-all duration-200 flex items-center justify-center"
             >
               <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
@@ -116,7 +116,7 @@ export default function OnboardingPage() {
           ) : (
             <button
               onClick={handleNext}
-              className="w-32 sm:w-40 h-10 sm:h-12 bg-[rgb(11,26,81)] text-white font-medium shadow-lg hover:bg-blue-900 transition-all duration-200 text-sm sm:text-base"
+              className="w-32 sm:w-40 h-10 sm:h-12 bg-[#4682B4] text-white font-medium shadow-lg hover:bg-[#3a70a0] transition-all duration-200 text-sm sm:text-base"
               style={{ borderRadius: '25px' }}
             >
               Get Started
