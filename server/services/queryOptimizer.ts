@@ -149,6 +149,98 @@ class QueryOptimizer {
     }
   }
 
+  // Query result caching
+  private queryCache: Map<string, { result: any; timestamp: number; ttl: number }> = new Map();
+
+  private getCachedResult(cacheKey: string): any | null {
+    const cached = this.queryCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < cached.ttl) {
+      return cached.result;
+    }
+    if (cached) {
+      this.queryCache.delete(cacheKey);
+    }
+    return null;
+  }
+
+  private setCachedResult(cacheKey: string, result: any, ttlSeconds: number = 300) {
+    this.queryCache.set(cacheKey, {
+      result,
+      timestamp: Date.now(),
+      ttl: ttlSeconds * 1000
+    });
+  }
+
+  // Enhanced query monitoring with caching
+  async monitorQueryWithCache<T>(
+    queryName: string, 
+    queryFn: () => Promise<T>, 
+    cacheKey?: string,
+    cacheTtl: number = 300
+  ): Promise<T> {
+    // Check cache first if cacheKey provided
+    if (cacheKey) {
+      const cached = this.getCachedResult(cacheKey);
+      if (cached) {
+        console.log(`Cache hit for query: ${queryName}`);
+        return cached;
+      }
+    }
+
+    const startTime = Date.now();
+    
+    try {
+      const result = await queryFn();
+      const duration = Date.now() - startTime;
+      
+      this.updateQueryStats(queryName, duration);
+      
+      // Cache successful results
+      if (cacheKey) {
+        this.setCachedResult(cacheKey, result, cacheTtl);
+      }
+      
+      // Log slow queries
+      if (duration > 1000) {
+        console.warn(`Slow query detected: ${queryName} took ${duration}ms`);
+      }
+      
+      return result;
+    } catch (error) {
+      console.error(`Query failed: ${queryName}`, error);
+      throw error;
+    }
+  }
+
+  // Connection pool optimization
+  async optimizeConnectionPool() {
+    try {
+      // Set optimal connection pool settings
+      await db.execute(sql`
+        ALTER SYSTEM SET max_connections = 200;
+        ALTER SYSTEM SET shared_buffers = '256MB';
+        ALTER SYSTEM SET effective_cache_size = '1GB';
+        ALTER SYSTEM SET work_mem = '4MB';
+        ALTER SYSTEM SET maintenance_work_mem = '64MB';
+        SELECT pg_reload_conf();
+      `);
+      
+      console.log('Connection pool optimized');
+    } catch (error) {
+      console.error('Connection pool optimization failed:', error);
+    }
+  }
+
+  // Clear expired cache entries
+  private cleanupCache() {
+    const now = Date.now();
+    for (const [key, value] of this.queryCache.entries()) {
+      if (now - value.timestamp > value.ttl) {
+        this.queryCache.delete(key);
+      }
+    }
+  }
+
   // Start periodic maintenance
   startMaintenance() {
     // Run ANALYZE every 4 hours
@@ -166,6 +258,14 @@ class QueryOptimizer {
       const stats = this.getQueryStats();
       console.log('Top 10 slowest queries:', stats.slice(0, 10));
     }, 60 * 60 * 1000);
+
+    // Clean up cache every 10 minutes
+    setInterval(() => {
+      this.cleanupCache();
+    }, 10 * 60 * 1000);
+
+    // Optimize connection pool on startup
+    this.optimizeConnectionPool();
   }
 }
 
