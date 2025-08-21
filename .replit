@@ -244,3 +244,6 @@ args = "cd mobile && npm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd mobile && npx react-native start"
+
+[agent]
+integrations = ["javascript_sendgrid==1.0.0"]

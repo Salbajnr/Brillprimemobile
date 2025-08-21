@@ -9,7 +9,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const { login, loading, error, clearError } = useAuth();
+  const { login, loading, error, clearError, setUser } = useAuth();
   const [, setLocation] = useLocation();
 
   const handleSignIn = async () => {
@@ -40,31 +40,185 @@ export default function SignInPage() {
 
   const handleSocialLogin = async (provider: 'google' | 'apple' | 'facebook') => {
     try {
-      const response = await fetch('/api/social-auth/social-login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          provider,
-          // In development mode, this will use mock data
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        if (data.profile) {
-          alert(`Welcome! Signed in with ${provider} as ${data.profile.name}`);
-          localStorage.setItem('user', JSON.stringify(data.profile));
-          window.location.href = '/dashboard';
-        }
-      } else {
-        alert(data.message || `${provider} login failed`);
+      if (provider === 'google') {
+        await handleGoogleLogin();
+      } else if (provider === 'facebook') {
+        await handleFacebookLogin();
+      } else if (provider === 'apple') {
+        await handleAppleLogin();
       }
     } catch (error) {
       console.error(`${provider} login error:`, error);
       alert(`${provider} login failed. Please try again.`);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    // Check if Google Client ID is available
+    if (!import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      alert('Google Sign-In is not configured. Please add GOOGLE_CLIENT_ID to environment variables.');
+      return;
+    }
+
+    // Dynamically load Google Sign-In SDK
+    if (!window.google) {
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      document.head.appendChild(script);
+      
+      await new Promise((resolve) => {
+        script.onload = resolve;
+      });
+    }
+
+    // Initialize Google Sign-In
+    window.google.accounts.id.initialize({
+      client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID,
+      callback: async (response: any) => {
+        try {
+          const result = await fetch('/api/social-auth/social-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              provider: 'google',
+              token: response.credential
+            })
+          });
+
+          const data = await result.json();
+          if (data.success && data.user) {
+            // Use AuthContext to set user directly
+            setUser(data.user);
+            setLocation('/dashboard');
+          } else {
+            throw new Error(data.message || 'Google login failed');
+          }
+        } catch (error) {
+          console.error('Google login error:', error);
+          alert('Google login failed. Please try again.');
+        }
+      }
+    });
+
+    // Prompt Google Sign-In
+    window.google.accounts.id.prompt();
+  };
+
+  const handleFacebookLogin = async () => {
+    // Check if Facebook App ID is available
+    if (!import.meta.env.VITE_FACEBOOK_APP_ID) {
+      alert('Facebook Login is not configured. Please add FACEBOOK_APP_ID to environment variables.');
+      return;
+    }
+
+    // Initialize Facebook SDK
+    if (!window.FB) {
+      const script = document.createElement('script');
+      script.src = 'https://connect.facebook.net/en_US/sdk.js';
+      script.async = true;
+      document.head.appendChild(script);
+      
+      await new Promise((resolve) => {
+        script.onload = () => {
+          window.FB.init({
+            appId: import.meta.env.VITE_FACEBOOK_APP_ID,
+            cookie: true,
+            xfbml: true,
+            version: 'v18.0'
+          });
+          resolve(undefined);
+        };
+      });
+    }
+
+    // Facebook Login
+    window.FB.login((response: any) => {
+      if (response.authResponse) {
+        window.FB.api('/me', { fields: 'name,email,picture' }, async () => {
+          try {
+            const result = await fetch('/api/social-auth/social-login', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                provider: 'facebook',
+                token: response.authResponse.accessToken
+              })
+            });
+
+            const data = await result.json();
+            if (data.success && data.user) {
+              setUser(data.user);
+              setLocation('/dashboard');
+            } else {
+              throw new Error(data.message || 'Facebook login failed');
+            }
+          } catch (error) {
+            console.error('Facebook login error:', error);
+            alert('Facebook login failed. Please try again.');
+          }
+        });
+      } else {
+        alert('Facebook login was cancelled or failed.');
+      }
+    }, { scope: 'email' });
+  };
+
+  const handleAppleLogin = async () => {
+    // Check if Apple Client ID is available
+    if (!import.meta.env.VITE_APPLE_CLIENT_ID) {
+      alert('Apple Sign In is not configured. Please add APPLE_CLIENT_ID to environment variables.');
+      return;
+    }
+
+    try {
+      // Initialize Apple Sign-In
+      if (!window.AppleID) {
+        const script = document.createElement('script');
+        script.src = 'https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js';
+        script.async = true;
+        document.head.appendChild(script);
+        
+        await new Promise((resolve) => {
+          script.onload = resolve;
+        });
+      }
+
+      await window.AppleID.auth.init({
+        clientId: import.meta.env.VITE_APPLE_CLIENT_ID,
+        scope: 'name email',
+        redirectURI: window.location.origin,
+        usePopup: true
+      });
+
+      const response = await window.AppleID.auth.signIn();
+      
+      if (response.authorization) {
+        const result = await fetch('/api/social-auth/social-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            provider: 'apple',
+            token: response.authorization.id_token,
+            profile: {
+              id: response.authorization.code,
+              email: response.user?.email || 'apple.user@privaterelay.appleid.com',
+              name: response.user?.name ? `${response.user.name.firstName} ${response.user.name.lastName}` : 'Apple User'
+            }
+          })
+        });
+
+        const data = await result.json();
+        if (data.success && data.user) {
+          setUser(data.user);
+          setLocation('/dashboard');
+        } else {
+          throw new Error(data.message || 'Apple login failed');
+        }
+      }
+    } catch (error) {
+      console.error('Apple login error:', error);
+      alert('Apple login failed. Please try again.');
     }
   };
 
