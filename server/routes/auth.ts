@@ -6,6 +6,27 @@ import { users } from '../../shared/schema';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 
+// Extend the session interface to include userId and user properties
+declare module 'express-session' {
+  interface SessionData {
+    userId?: number;
+    user?: {
+      id: number;
+      userId: string;
+      fullName: string;
+      email: string;
+      role: string;
+      isVerified: boolean;
+      profilePicture?: string;
+    };
+    lastActivity?: number;
+    ipAddress?: string;
+    userAgent?: string;
+    mfaVerified?: boolean;
+    mfaVerifiedAt?: number;
+  }
+}
+
 const router = express.Router();
 
 const loginSchema = z.object({
@@ -19,6 +40,51 @@ const registerSchema = z.object({
   fullName: z.string().min(2),
   phone: z.string().optional(),
   role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT']).default('CONSUMER')
+});
+
+// Session validation endpoint
+router.get('/validate-session', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'No active session' 
+      });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.session.userId))
+      .limit(1);
+
+    if (!user) {
+      // User no longer exists, destroy session
+      req.session.destroy((err) => {
+        if (err) console.error('Session destruction error:', err);
+      });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Session validation error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Session validation failed' 
+    });
+  }
 });
 
 // Login endpoint
@@ -302,7 +368,7 @@ router.post('/forgot-password', async (req, res) => {
     // Send reset email
     const { emailService } = await import('../services/email');
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
-    const emailSent = await emailService.sendPasswordReset(email, resetLink, user.fullName);
+    const emailSent = await emailService.sendPasswordResetEmail(email, resetLink, user.fullName);
 
     res.json({
       success: true,
@@ -348,6 +414,33 @@ router.post('/reset-password', async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to reset password'
+    });
+  }
+});
+
+// Logout endpoint
+router.post('/logout', async (req, res) => {
+  try {
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destruction error:', err);
+        return res.status(500).json({ 
+          success: false, 
+          message: 'Logout failed' 
+        });
+      }
+      
+      res.clearCookie('connect.sid'); // Clear session cookie
+      res.json({
+        success: true,
+        message: 'Logged out successfully'
+      });
+    });
+  } catch (error: any) {
+    console.error('Logout error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Logout failed' 
     });
   }
 });

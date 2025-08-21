@@ -22,7 +22,7 @@ if (rootElement) {
   } catch (error) {
     console.error("Error rendering app:", error);
     // Fallback direct DOM manipulation
-    rootElement.innerHTML = '<div style="padding: 20px; background: blue; color: white; text-align: center;">BrillPrime Loading Error: ' + error.message + '</div>';
+    rootElement.innerHTML = '<div style="padding: 20px; background: blue; color: white; text-align: center;">BrillPrime Loading Error: ' + (error instanceof Error ? error.message : String(error)) + '</div>';
   }
 } else {
   console.error("Root element not found!");

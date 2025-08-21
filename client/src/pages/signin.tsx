@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "../hooks/use-auth";
 
 // Using direct paths to avoid import issues during development
 const logoImage = "/src/assets/images/logo.png";
@@ -7,8 +9,12 @@ export default function SignInPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const { login, loading, error, clearError } = useAuth();
+  const [, setLocation] = useLocation();
 
   const handleSignIn = async () => {
+    clearError(); // Clear any previous errors
+    
     if (email.length < 4) {
       alert('Please enter a valid email');
       return;
@@ -20,29 +26,11 @@ export default function SignInPage() {
     }
 
     try {
-      const response = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert(`Welcome back! Signed in as ${data.user.role.toLowerCase()}`);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
-      } else {
-        alert(data.message || 'Sign in failed');
-      }
+      await login(email, password);
+      setLocation('/dashboard');
     } catch (error) {
+      // Error is already handled by the auth context
       console.error('Sign in error:', error);
-      alert('Sign in failed. Please try again.');
     }
   };
 
@@ -140,12 +128,20 @@ export default function SignInPage() {
           <a href="#" className="text-[#4682B4] text-sm font-bold hover:underline">Reset password</a>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Sign In Button */}
         <button 
           onClick={handleSignIn}
-          className="w-full bg-[#4682B4] text-white py-4 px-4 curved-button font-medium hover:bg-[#3a70a0] transition duration-200 mb-10"
+          disabled={loading}
+          className="w-full bg-[#4682B4] text-white py-4 px-4 curved-button font-medium hover:bg-[#3a70a0] transition duration-200 mb-10 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Sign In
+          {loading ? 'Signing In...' : 'Sign In'}
         </button>
 
         {/* Divider */}

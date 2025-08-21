@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => void
   signup: (email: string, password: string, role: string) => Promise<void>
   isLoading: boolean
+  loading: boolean
   refreshUser: () => Promise<void>;
   updateUser: (userData: Partial<User>) => Promise<void>;
   error: string | null;
@@ -54,18 +55,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false); // Renamed from isLoading to loading for clarity if needed, but keeping original name for now
 
   useEffect(() => {
-    // Check for existing session without blocking the UI
-    const storedUser = localStorage.getItem('user')
-    if (storedUser) {
-      try {
-        setUser(JSON.parse(storedUser))
-      } catch (error) {
-        console.error('Error parsing stored user:', error)
-        localStorage.removeItem('user')
+    // Check for existing session both from localStorage and server validation
+    const initializeAuth = async () => {
+      const storedUser = localStorage.getItem('user')
+      if (storedUser) {
+        try {
+          const userData = JSON.parse(storedUser)
+          setUser(userData)
+          
+          // Validate session with server
+          try {
+            const response = await apiRequest('/auth/validate-session');
+            if (!response.success) {
+              // Session invalid, clear local data
+              localStorage.removeItem('user')
+              setUser(null)
+            } else if (response.user) {
+              // Update user data with fresh server data
+              setUser(response.user)
+              localStorage.setItem('user', JSON.stringify(response.user))
+            }
+          } catch (error) {
+            console.error('Session validation failed:', error)
+            // Keep local user for offline functionality but mark as potentially stale
+          }
+        } catch (error) {
+          console.error('Error parsing stored user:', error)
+          localStorage.removeItem('user')
+        }
       }
+      setIsLoading(false)
     }
-    // Always set loading to false immediately to allow app to render
-    setIsLoading(false)
+
+    initializeAuth()
   }, [])
 
   const login = async (email: string, password: string) => {
@@ -116,9 +138,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem('user')
+  const logout = async () => {
+    try {
+      // Call server logout endpoint
+      await apiRequest('/auth/logout', { method: 'POST' });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      // Always clear local state regardless of server response
+      setUser(null)
+      localStorage.removeItem('user')
+      localStorage.removeItem('selectedRole')
+    }
   }
 
   const refreshUser = async (): Promise<void> => {
@@ -173,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, signup, isLoading: isLoading || loading, refreshUser, updateUser, error, clearError, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, signup, isLoading, loading, refreshUser, updateUser, error, clearError, isAuthenticated }}>
       {children}
     </AuthContext.Provider>
   )

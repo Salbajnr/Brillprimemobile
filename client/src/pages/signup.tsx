@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
+import { useAuth } from "../hooks/use-auth";
 
 // Using direct paths to avoid import issues during development
 const logoImage = "/src/assets/images/logo.png";
@@ -9,11 +11,15 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { signup, loading, error, clearError } = useAuth();
+  const [, setLocation] = useLocation();
 
   // Get selected role from localStorage
   const selectedRole = localStorage.getItem("selectedRole") || "CONSUMER";
 
   const handleSignUp = async () => {
+    clearError(); // Clear any previous errors
+    
     if (email.length < 4) {
       alert('Please enter a valid email');
       return;
@@ -30,31 +36,11 @@ export default function SignUpPage() {
     }
     
     try {
-      const response = await fetch('/api/auth/register', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          email,
-          password,
-          fullName: email.split('@')[0], // Use email prefix as default name
-          role: selectedRole,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        alert(`Welcome! Account created successfully as ${selectedRole.toLowerCase()}`);
-        localStorage.setItem('user', JSON.stringify(data.user));
-        window.location.href = '/dashboard';
-      } else {
-        alert(data.message || 'Registration failed');
-      }
+      await signup(email, password, selectedRole);
+      setLocation('/dashboard');
     } catch (error) {
+      // Error is already handled by the auth context
       console.error('Registration error:', error);
-      alert('Registration failed. Please try again.');
     }
   };
 
@@ -175,12 +161,20 @@ export default function SignUpPage() {
           </div>
         </div>
 
+        {/* Error Display */}
+        {error && (
+          <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-md text-sm">
+            {error}
+          </div>
+        )}
+
         {/* Sign Up Button */}
         <button 
           onClick={handleSignUp}
-          className="w-full bg-[#4682B4] text-white py-4 px-4 curved-button font-medium hover:bg-[#3a70a0] transition duration-200 mb-10"
+          disabled={loading}
+          className="w-full bg-[#4682B4] text-white py-4 px-4 curved-button font-medium hover:bg-[#3a70a0] transition duration-200 mb-10 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Sign Up
+          {loading ? 'Creating Account...' : 'Sign Up'}
         </button>
 
         {/* Divider */}
