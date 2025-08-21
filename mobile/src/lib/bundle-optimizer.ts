@@ -88,6 +88,8 @@ class MobileBundleOptimizer {
 
 export const mobileBundleOptimizer = new MobileBundleOptimizer();
 
+import React from 'react';
+
 // Mobile-specific lazy loading helpers
 export const createLazyMobileComponent = (loader: () => Promise<any>) => {
   return React.lazy(() => {
@@ -115,10 +117,8 @@ export const platformOptimize = {
     }
   },
   
-  animation: (config: any) => {
-    const { shouldReduceQuality } = usePerformance();
-    
-    if (shouldReduceQuality()) {
+  animation: (config: any, shouldReduce: boolean = false) => {
+    if (shouldReduce) {
       return {
         ...config,
         duration: config.duration * 0.5, // Reduce animation duration

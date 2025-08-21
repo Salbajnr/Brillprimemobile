@@ -15,11 +15,10 @@ import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
-import AppNavigator from './src/navigation/AppNavigator';
-import { AppWrapper } from './src/components/AppWrapper';
-import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { mobileBundleOptimizer } from './src/lib/bundle-optimizer';
 import { usePerformance } from './src/hooks/usePerformance';
+import { mobileCacheService } from './src/services/cache';
+import { mobileOfflineService } from './src/services/offline';
 
 
 const Stack = createStackNavigator();
@@ -32,7 +31,12 @@ const App = () => {
     const initializeOptimizations = async () => {
       try {
         await mobileBundleOptimizer.optimizeBundle();
+        await mobileCacheService.optimizeCacheSize();
         await preloadCriticalData();
+        
+        // Initialize offline support
+        console.log('🔄 Offline actions queued:', mobileOfflineService.getQueuedActionsCount());
+        
         console.log('✅ Mobile performance optimizations initialized');
       } catch (error) {
         console.error('❌ Failed to initialize optimizations:', error);
@@ -40,7 +44,7 @@ const App = () => {
     };
 
     initializeOptimizations();
-  }, []);
+  }, [preloadCriticalData]);
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

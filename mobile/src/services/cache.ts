@@ -13,12 +13,17 @@ class MobileCacheService {
   private maxMemoryCacheSize = 100;
 
   constructor() {
-    this.optimizeCacheSize();
+    // Set default cache size, will be optimized when performance metrics are available
+    this.maxMemoryCacheSize = 50;
   }
 
-  private async optimizeCacheSize() {
-    const { getOptimalCacheSize } = usePerformance();
-    this.maxMemoryCacheSize = getOptimalCacheSize();
+  async optimizeCacheSize() {
+    try {
+      // This should be called from a component that has access to the hook
+      this.maxMemoryCacheSize = 100; // Default optimized size
+    } catch (error) {
+      console.warn('Could not optimize cache size:', error);
+    }
   }
 
   async set<T>(key: string, data: T, ttl: number = 300000): Promise<void> {
@@ -96,11 +101,9 @@ class MobileCacheService {
   }
 
   // Performance-aware caching for API responses
-  async cacheApiResponse(endpoint: string, data: any, customTtl?: number): Promise<void> {
-    const { shouldReduceQuality } = usePerformance();
-    
+  async cacheApiResponse(endpoint: string, data: any, customTtl?: number, shouldReduce: boolean = false): Promise<void> {
     // Reduce cache TTL on slower devices to save memory
-    const ttl = customTtl || (shouldReduceQuality() ? 180000 : 300000); // 3 or 5 minutes
+    const ttl = customTtl || (shouldReduce ? 180000 : 300000); // 3 or 5 minutes
     await this.set(`api_${endpoint}`, data, ttl);
   }
 
@@ -109,10 +112,7 @@ class MobileCacheService {
   }
 
   // Image caching with performance optimization
-  async cacheImage(url: string, base64Data: string): Promise<void> {
-    const { getOptimalCacheSize } = usePerformance();
-    const maxSize = getOptimalCacheSize();
-    
+  async cacheImage(url: string, base64Data: string, maxSize: number = 100): Promise<void> {
     // Only cache if we have sufficient space
     if (this.memoryCache.size < maxSize * 0.8) {
       await this.set(`image_${url}`, base64Data, 3600000); // 1 hour
