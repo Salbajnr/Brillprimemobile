@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Image, View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useDeviceInfo } from '../../hooks/useDeviceInfo';
+import { usePerformance } from '../../hooks/usePerformance';
 
 interface OptimizedImageProps {
   source: { uri: string } | number;
@@ -23,18 +24,28 @@ export const OptimizedImage: React.FC<OptimizedImageProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
   const { getOptimalImageSize, shouldReduceAnimations, performance } = useDeviceInfo();
+  const { getOptimalImageQuality, shouldReduceQuality } = usePerformance();
 
   const getOptimizedSource = () => {
     if (typeof source === 'number') return source;
 
     const { width, height } = getOptimalImageSize();
-    const quality = performance?.isLowPowerMode ? 60 : 80;
+    const quality = getOptimalImageQuality();
+    
+    // Apply additional optimizations based on performance
+    const optimizedWidth = shouldReduceQuality() ? Math.floor(width * 0.8) : width;
+    const optimizedHeight = shouldReduceQuality() ? Math.floor(height * 0.8) : height;
     
     // Add optimization parameters to URL
     const url = new URL(source.uri);
-    url.searchParams.append('w', width.toString());
-    url.searchParams.append('h', height.toString());
+    url.searchParams.append('w', optimizedWidth.toString());
+    url.searchParams.append('h', optimizedHeight.toString());
     url.searchParams.append('q', quality.toString());
+    
+    // Add format optimization for better compression
+    if (shouldReduceQuality()) {
+      url.searchParams.append('f', 'webp');
+    }
     
     return { uri: url.toString() };
   };

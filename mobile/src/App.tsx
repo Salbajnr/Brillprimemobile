@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
@@ -15,10 +15,33 @@ import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
 
+import AppNavigator from './src/navigation/AppNavigator';
+import { AppWrapper } from './src/components/AppWrapper';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { mobileBundleOptimizer } from './src/lib/bundle-optimizer';
+import { usePerformance } from './src/hooks/usePerformance';
+
 
 const Stack = createStackNavigator();
 
-const App: React.FC = () => {
+const App = () => {
+  const { preloadCriticalData } = usePerformance();
+
+  useEffect(() => {
+    // Initialize performance optimizations
+    const initializeOptimizations = async () => {
+      try {
+        await mobileBundleOptimizer.optimizeBundle();
+        await preloadCriticalData();
+        console.log('✅ Mobile performance optimizations initialized');
+      } catch (error) {
+        console.error('❌ Failed to initialize optimizations:', error);
+      }
+    };
+
+    initializeOptimizations();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
