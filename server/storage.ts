@@ -398,5 +398,190 @@ export const storage = {
       console.error('Error creating notification:', error);
       throw error;
     }
+  },
+
+  // Admin User Management Methods
+  async getAllUsers(filters: any = {}) {
+    try {
+      let query = db.select({
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        phoneNumber: users.phoneNumber,
+        role: users.role,
+        isVerified: users.isVerified,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        lastLoginAt: users.lastLoginAt,
+        kycStatus: users.kycStatus,
+        totalSpent: users.totalSpent,
+        totalOrders: users.totalOrders
+      }).from(users);
+
+      // Apply filters
+      let whereConditions = [];
+
+      if (filters.role && filters.role !== 'all') {
+        whereConditions.push(eq(users.role, filters.role));
+      }
+
+      if (filters.status) {
+        if (filters.status === 'verified') {
+          whereConditions.push(eq(users.isVerified, true));
+        } else if (filters.status === 'unverified') {
+          whereConditions.push(eq(users.isVerified, false));
+        } else if (filters.status === 'active') {
+          whereConditions.push(eq(users.isActive, true));
+        } else if (filters.status === 'inactive') {
+          whereConditions.push(eq(users.isActive, false));
+        }
+      }
+
+      if (filters.search) {
+        whereConditions.push(
+          sql`${users.fullName} ILIKE ${'%' + filters.search + '%'} OR ${users.email} ILIKE ${'%' + filters.search + '%'}`
+        );
+      }
+
+      if (whereConditions.length > 0) {
+        query = query.where(and(...whereConditions));
+      }
+
+      // Apply pagination
+      const page = parseInt(filters.page) || 1;
+      const limit = parseInt(filters.limit) || 20;
+      const offset = (page - 1) * limit;
+
+      const usersData = await query
+        .orderBy(desc(users.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Get total count for pagination
+      const [totalCount] = await db.select({ count: count() })
+        .from(users)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+      return {
+        users: usersData,
+        pagination: {
+          page,
+          limit,
+          total: totalCount.count,
+          totalPages: Math.ceil(totalCount.count / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      throw error;
+    }
+  },
+
+  async getUserById(userId: number) {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      return user;
+    } catch (error) {
+      console.error('Error getting user by ID:', error);
+      return null;
+    }
+  },
+
+  async updateUserStatus(userId: number, isActive: boolean) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          isActive, 
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      throw error;
+    }
+  },
+
+  async updateUserRole(userId: number, newRole: string) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          role: newRole as any, 
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  },
+
+  async verifyUser(userId: number) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          isVerified: true, 
+          verifiedAt: new Date(),
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error verifying user:', error);
+      throw error;
+    }
+  },
+
+  async bulkUpdateUsers(userIds: number[], updates: any) {
+    try {
+      const results = [];
+      
+      for (const userId of userIds) {
+        const [updatedUser] = await db.update(users)
+          .set({ 
+            ...updates, 
+            updatedAt: new Date() 
+          })
+          .where(eq(users.id, userId))
+          .returning();
+        results.push(updatedUser);
+      }
+      
+      return results;
+    } catch (error) {
+      console.error('Error bulk updating users:', error);
+      throw error;
+    }
+  },
+
+  async getUserStats() {
+    try {
+      const [stats] = await db.select({
+        totalUsers: count(),
+        verifiedUsers: sql<number>`count(case when is_verified = true then 1 end)`,
+        activeUsers: sql<number>`count(case when is_active = true then 1 end)`,
+        consumers: sql<number>`count(case when role = 'CONSUMER' then 1 end)`,
+        merchants: sql<number>`count(case when role = 'MERCHANT' then 1 end)`,
+        drivers: sql<number>`count(case when role = 'DRIVER' then 1 end)`,
+        admins: sql<number>`count(case when role = 'ADMIN' then 1 end)`
+      }).from(users);
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting user stats:', error);
+      return {
+        totalUsers: 0,
+        verifiedUsers: 0,
+        activeUsers: 0,
+        consumers: 0,
+        merchants: 0,
+        drivers: 0,
+        admins: 0
+      };
+    }
   }
 };

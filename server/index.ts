@@ -20,6 +20,12 @@ import { redisClient } from './services/cache';
 import './mobile/mobile-config'; // For mobile app configurations
 import mobileHealthRoutes from './routes/mobile-health'; // Mobile health route
 
+// Import admin routes
+import { registerAdminUserManagementRoutes } from './routes/admin-user-management';
+import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
+import { registerMerchantKycRoutes } from './routes/merchant-kyc';
+
+
 // Extend express-session types
 declare module 'express-session' {
   interface SessionData {
@@ -398,6 +404,7 @@ apiRouter.use('/withdrawal', withdrawalSystemRoutes);
 // Register function-based routes directly on app
 registerProductRoutes(app);
 registerEscrowManagementRoutes(app);
+registerAdminUserManagementRoutes(app);
 
 app.use('/api', apiRouter);
 
@@ -544,7 +551,7 @@ if (process.env.NODE_ENV === 'production') {
     if (fs.existsSync(indexPath)) {
       // Read the file and inject debug script
       let indexContent = fs.readFileSync(indexPath, 'utf8');
-      
+
       // Add debug script to monitor script loading and execution
       const debugScript = `
       <script>
@@ -560,21 +567,21 @@ if (process.env.NODE_ENV === 'production') {
             }
           }, 3000);
         });
-        
+
         // Monitor script errors
         window.addEventListener('error', (e) => {
           console.error('Debug: Script error:', e.error, e.filename, e.lineno);
         });
-        
+
         // Monitor module errors
         window.addEventListener('unhandledrejection', (e) => {
           console.error('Debug: Module error:', e.reason);
         });
       </script>`;
-      
+
       // Insert debug script before closing head tag
       indexContent = indexContent.replace('</head>', debugScript + '</head>');
-      
+
       return res.send(indexContent);
     } else {
       console.log('Built index.html not found, serving development fallback');
