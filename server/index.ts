@@ -24,6 +24,7 @@ import mobileHealthRoutes from './routes/mobile-health'; // Mobile health route
 import { registerAdminUserManagementRoutes } from './routes/admin-user-management';
 import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
 import { registerMerchantKycRoutes } from './routes/merchant-kyc';
+import systemHealthRoutes from './routes/system-health';
 
 
 // Extend express-session types
@@ -684,5 +685,8 @@ app.use("/api/compliance", nigerianComplianceRoutes);
 
 // Register mobile health routes
 app.use('/api', mobileHealthRoutes);
+
+// Register system health routes
+app.use('/api/system-health', systemHealthRoutes);
 
 export default app;
