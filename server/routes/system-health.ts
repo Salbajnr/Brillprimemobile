@@ -4,7 +4,6 @@ import { db } from '../db';
 import { users, orders, transactions, products } from '../../shared/schema';
 import { eq, gte, lte, count, avg, sum } from 'drizzle-orm';
 import { requireAuth } from '../middleware/auth';
-import { requireAdminRole } from '../middleware/adminAuth';
 import os from 'os';
 import { performance } from 'perf_hooks';
 
@@ -38,7 +37,11 @@ interface SystemMetrics {
 }
 
 // Get real-time system health metrics
-router.get('/metrics', requireAuth, requireAdminRole, async (req, res) => {
+router.get('/metrics', requireAuth, async (req, res) => {
+  // Check if user is admin
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
   try {
     const startTime = performance.now();
     
@@ -122,7 +125,10 @@ router.get('/metrics', requireAuth, requireAdminRole, async (req, res) => {
 });
 
 // Get detailed system alerts
-router.get('/alerts', requireAuth, requireAdminRole, async (req, res) => {
+router.get('/alerts', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
   try {
     const alerts = [];
     
@@ -193,7 +199,10 @@ router.get('/alerts', requireAuth, requireAdminRole, async (req, res) => {
 });
 
 // Get historical performance data
-router.get('/performance/:timeframe', requireAuth, requireAdminRole, async (req, res) => {
+router.get('/performance/:timeframe', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
   try {
     const { timeframe } = req.params; // 1h, 24h, 7d, 30d
     
@@ -258,7 +267,10 @@ router.get('/performance/:timeframe', requireAuth, requireAdminRole, async (req,
 });
 
 // Get service health status
-router.get('/services', requireAuth, requireAdminRole, async (req, res) => {
+router.get('/services', requireAuth, async (req, res) => {
+  if (req.user?.role !== 'ADMIN') {
+    return res.status(403).json({ success: false, message: 'Admin access required' });
+  }
   try {
     const services = [
       {

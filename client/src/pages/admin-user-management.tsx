@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Search, Filter, MoreVertical, UserCheck, UserX, Shield, Eye } from 'lucide-react';
@@ -43,7 +42,7 @@ interface UserFilters {
 export function AdminUserManagement() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
+
   const [filters, setFilters] = useState<UserFilters>({
     role: 'all',
     status: 'all',
@@ -51,23 +50,43 @@ export function AdminUserManagement() {
     page: 1,
     limit: 20
   });
-  
+
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [showUserDetail, setShowUserDetail] = useState<User | null>(null);
 
-  // Fetch users with real API
-  const { data: usersData, isLoading, error } = useQuery({
-    queryKey: ['admin-users', filters],
-    queryFn: async () => {
-      const params = new URLSearchParams({
-        page: filters.page.toString(),
-        limit: filters.limit.toString(),
-        ...(filters.role !== 'all' && { role: filters.role }),
-        ...(filters.status !== 'all' && { status: filters.status }),
-        ...(filters.search && { search: filters.search })
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    verifiedUsers: 0,
+    pendingKyc: 0
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
+
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+        verificationStatus: verificationFilter
       });
 
-      const response = await fetch(`/api/admin/users?${params}`, {
+      const response = await fetch(`/api/admin/users?${queryParams}`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -78,194 +97,154 @@ export function AdminUserManagement() {
         throw new Error('Failed to fetch users');
       }
 
-      const result = await response.json();
-      return result.data;
-    },
-    refetchInterval: 30000, // Refetch every 30 seconds
-  });
-
-  // Fetch user statistics
-  const { data: userStats } = useQuery({
-    queryKey: ['admin-user-stats'],
-    queryFn: async () => {
-      const response = await fetch('/api/admin/users/stats', {
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch user stats');
-      }
-
-      const result = await response.json();
-      return result.data as UserStats;
-    },
-    refetchInterval: 60000, // Refetch every minute
-  });
-
-  // Update user status mutation
-  const updateUserStatusMutation = useMutation({
-    mutationFn: async ({ userId, isActive }: { userId: number; isActive: boolean }) => {
-      const response = await fetch(`/api/admin/users/${userId}/status`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ isActive }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to update user status');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] });
-      toast({
-        title: "Success",
-        description: "User status updated successfully",
-      });
-    },
-    onError: (error: Error) => {
+      const data = await response.json();
+      setUsers(data.data.users);
+      setStats(data.data.stats);
+      setPagination(data.data.pagination);
+    } catch (error: any) {
+      console.error('Failed to fetch users:', error);
       toast({
         title: "Error",
-        description: error.message,
-        variant: "destructive",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
       });
-    },
-  });
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Update user role mutation
-  const updateUserRoleMutation = useMutation({
-    mutationFn: async ({ userId, role }: { userId: number; role: string }) => {
-      const response = await fetch(`/api/admin/users/${userId}/role`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ role }),
-      });
+  useEffect(() => {
+    fetchUsers();
+  }, [pagination.page, searchTerm, roleFilter, statusFilter, verificationFilter]);
 
-      if (!response.ok) {
-        throw new Error('Failed to update user role');
-      }
+  useEffect(() => {
+    // Reset to page 1 when filters change
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [searchTerm, roleFilter, statusFilter, verificationFilter]);
 
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] });
-      toast({
-        title: "Success",
-        description: "User role updated successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
+  const handleBulkAction = async (action: string) => {
+    if (selectedUsers.length === 0) return;
 
-  // Verify user mutation
-  const verifyUserMutation = useMutation({
-    mutationFn: async (userId: number) => {
-      const response = await fetch(`/api/admin/users/${userId}/verify`, {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+    const reason = prompt(`Reason for ${action.toLowerCase()}:`);
+    if (!reason) return;
 
-      if (!response.ok) {
-        throw new Error('Failed to verify user');
-      }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] });
-      toast({
-        title: "Success",
-        description: "User verified successfully",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Bulk update mutation
-  const bulkUpdateMutation = useMutation({
-    mutationFn: async ({ userIds, updates }: { userIds: number[]; updates: any }) => {
+    try {
       const response = await fetch('/api/admin/users/bulk-update', {
         method: 'PATCH',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
-        body: JSON.stringify({ userIds, updates }),
+        body: JSON.stringify({
+          userIds: selectedUsers,
+          action,
+          reason
+        })
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to bulk update users');
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `${action} applied to ${selectedUsers.length} users`
+        });
+        setSelectedUsers([]);
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to perform bulk action",
+          variant: "destructive"
+        });
       }
-
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-users'] });
-      queryClient.invalidateQueries({ queryKey: ['admin-user-stats'] });
-      setSelectedUsers([]);
-      toast({
-        title: "Success",
-        description: "Users updated successfully",
-      });
-    },
-    onError: (error: Error) => {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
-        variant: "destructive",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
       });
-    },
-  });
-
-  const handleSearch = (searchTerm: string) => {
-    setFilters(prev => ({
-      ...prev,
-      search: searchTerm,
-      page: 1
-    }));
+    }
   };
 
-  const handleFilterChange = (filterType: 'role' | 'status', value: string) => {
-    setFilters(prev => ({
-      ...prev,
-      [filterType]: value,
-      page: 1
-    }));
+  const handleStatusChange = async (userId: number, newStatus: string) => {
+    const reason = prompt(`Reason for changing status to ${newStatus}:`);
+    if (!reason) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          reason
+        })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `User status updated to ${newStatus}`
+        });
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update status",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleVerification = async (userId: number) => {
+    const reason = prompt(`Reason for verification:`);
+    if (!reason) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/verify`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User verified successfully"
+        });
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify user",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
+    }
   };
 
   const handlePageChange = (newPage: number) => {
-    setFilters(prev => ({
-      ...prev,
-      page: newPage
-    }));
+    setPagination(prev => ({ ...prev, page: newPage }));
   };
 
   const handleUserSelection = (userId: number, selected: boolean) => {
@@ -277,57 +256,13 @@ export function AdminUserManagement() {
   };
 
   const handleSelectAll = (selected: boolean) => {
-    if (selected && usersData?.users) {
-      setSelectedUsers(usersData.users.map((user: User) => user.id));
+    if (selected) {
+      setSelectedUsers(users.map((user: any) => user.id));
     } else {
       setSelectedUsers([]);
     }
   };
 
-  const handleBulkAction = (action: string) => {
-    if (selectedUsers.length === 0) return;
-
-    let updates = {};
-    switch (action) {
-      case 'activate':
-        updates = { isActive: true };
-        break;
-      case 'deactivate':
-        updates = { isActive: false };
-        break;
-      case 'verify':
-        updates = { isVerified: true };
-        break;
-      default:
-        return;
-    }
-
-    bulkUpdateMutation.mutate({ userIds: selectedUsers, updates });
-  };
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">Failed to load users</p>
-          <Button onClick={() => queryClient.invalidateQueries({ queryKey: ['admin-users'] })}>
-            Retry
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  const users = usersData?.users || [];
-  const pagination = usersData?.pagination;
 
   return (
     <div className="space-y-6">
@@ -336,7 +271,7 @@ export function AdminUserManagement() {
         <div>
           <h2 className="text-2xl font-bold">User Management</h2>
           <p className="text-gray-600">
-            {userStats?.totalUsers || 0} total users • {userStats?.activeUsers || 0} active
+            {stats.totalUsers} total users • {stats.activeUsers} active
           </p>
         </div>
         {selectedUsers.length > 0 && (
@@ -345,7 +280,7 @@ export function AdminUserManagement() {
               size="sm"
               variant="outline"
               onClick={() => handleBulkAction('activate')}
-              disabled={bulkUpdateMutation.isPending}
+              disabled={loading}
             >
               <UserCheck className="h-4 w-4 mr-1" />
               Activate ({selectedUsers.length})
@@ -354,7 +289,7 @@ export function AdminUserManagement() {
               size="sm"
               variant="outline"
               onClick={() => handleBulkAction('deactivate')}
-              disabled={bulkUpdateMutation.isPending}
+              disabled={loading}
             >
               <UserX className="h-4 w-4 mr-1" />
               Deactivate ({selectedUsers.length})
@@ -363,7 +298,7 @@ export function AdminUserManagement() {
               size="sm"
               variant="outline"
               onClick={() => handleBulkAction('verify')}
-              disabled={bulkUpdateMutation.isPending}
+              disabled={loading}
             >
               <Shield className="h-4 w-4 mr-1" />
               Verify ({selectedUsers.length})
@@ -373,26 +308,24 @@ export function AdminUserManagement() {
       </div>
 
       {/* Stats Cards */}
-      {userStats && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-600">Total Users</div>
-            <div className="text-2xl font-bold">{userStats.totalUsers}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-600">Verified Users</div>
-            <div className="text-2xl font-bold text-green-600">{userStats.verifiedUsers}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-600">Merchants</div>
-            <div className="text-2xl font-bold text-blue-600">{userStats.merchants}</div>
-          </div>
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="text-sm text-gray-600">Drivers</div>
-            <div className="text-2xl font-bold text-purple-600">{userStats.drivers}</div>
-          </div>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Total Users</div>
+          <div className="text-2xl font-bold">{stats.totalUsers}</div>
         </div>
-      )}
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Verified Users</div>
+          <div className="text-2xl font-bold text-green-600">{stats.verifiedUsers}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Merchants</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.merchants}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Drivers</div>
+          <div className="text-2xl font-bold text-purple-600">{stats.drivers}</div>
+        </div>
+      </div>
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
@@ -400,14 +333,14 @@ export function AdminUserManagement() {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
           <Input
             placeholder="Search users by name or email..."
-            value={filters.search}
-            onChange={(e) => handleSearch(e.target.value)}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
           />
         </div>
         <select
-          value={filters.role}
-          onChange={(e) => handleFilterChange('role', e.target.value)}
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Roles</option>
@@ -417,13 +350,20 @@ export function AdminUserManagement() {
           <option value="ADMIN">Admins</option>
         </select>
         <select
-          value={filters.status}
-          onChange={(e) => handleFilterChange('status', e.target.value)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Status</option>
           <option value="active">Active</option>
           <option value="inactive">Inactive</option>
+        </select>
+        <select
+          value={verificationFilter}
+          onChange={(e) => setVerificationFilter(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Verification</option>
           <option value="verified">Verified</option>
           <option value="unverified">Unverified</option>
         </select>
@@ -459,117 +399,127 @@ export function AdminUserManagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user: User) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <input
-                    type="checkbox"
-                    checked={selectedUsers.includes(user.id)}
-                    onChange={(e) => handleUserSelection(user.id, e.target.checked)}
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                    {user.phoneNumber && (
-                      <div className="text-xs text-gray-400">{user.phoneNumber}</div>
-                    )}
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2">Loading users...</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Badge
-                    variant={
-                      user.role === 'ADMIN' ? 'destructive' :
-                      user.role === 'MERCHANT' ? 'default' :
-                      user.role === 'DRIVER' ? 'secondary' : 'outline'
-                    }
-                  >
-                    {user.role}
-                  </Badge>
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8 text-gray-500">
+                  No users found
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col gap-1">
+              </tr>
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={(e) => handleUserSelection(user.id, e.target.checked)}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                      {user.phoneNumber && (
+                        <div className="text-xs text-gray-400">{user.phoneNumber}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
                     <Badge
-                      variant={user.isActive ? 'default' : 'secondary'}
-                      className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                      variant={
+                        user.role === 'ADMIN' ? 'destructive' :
+                        user.role === 'MERCHANT' ? 'default' :
+                        user.role === 'DRIVER' ? 'secondary' : 'outline'
+                      }
                     >
-                      {user.isActive ? 'Active' : 'Inactive'}
+                      {user.role}
                     </Badge>
-                    {user.isVerified && (
-                      <Badge variant="outline" className="bg-blue-100 text-blue-800">
-                        Verified
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        variant={user.isActive ? 'default' : 'secondary'}
+                        className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                      >
+                        {user.isActive ? 'Active' : 'Inactive'}
                       </Badge>
-                    )}
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {new Date(user.createdAt).toLocaleDateString()}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setShowUserDetail(user)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => updateUserStatusMutation.mutate({
-                      userId: user.id,
-                      isActive: !user.isActive
-                    })}
-                    disabled={updateUserStatusMutation.isPending}
-                  >
-                    {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
-                  </Button>
-                  {!user.isVerified && (
+                      {user.isVerified && (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
                     <Button
                       size="sm"
                       variant="outline"
-                      onClick={() => verifyUserMutation.mutate(user.id)}
-                      disabled={verifyUserMutation.isPending}
+                      onClick={() => setShowUserDetail(user)}
                     >
-                      <Shield className="h-4 w-4" />
+                      <Eye className="h-4 w-4" />
                     </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusChange(user.id, user.isActive ? 'inactive' : 'active')}
+                      disabled={loading}
+                    >
+                      {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                    </Button>
+                    {!user.isVerified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerification(user.id)}
+                        disabled={loading}
+                      >
+                        <Shield className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              )))}
           </tbody>
         </table>
       </div>
 
       {/* Pagination */}
-      {pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-between">
-          <div className="text-sm text-gray-700">
-            Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
-            {Math.min(pagination.page * pagination.limit, pagination.total)} of{' '}
-            {pagination.total} results
-          </div>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page - 1)}
-              disabled={pagination.page <= 1}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handlePageChange(pagination.page + 1)}
-              disabled={pagination.page >= pagination.totalPages}
-            >
-              Next
-            </Button>
-          </div>
+      <div className="flex justify-between items-center mt-6 px-6 py-4 bg-gray-50 border-t">
+        <div className="text-sm text-gray-600">
+          Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} users
         </div>
-      )}
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handlePageChange(Math.max(1, pagination.page - 1))}
+            disabled={pagination.page === 1 || loading}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1">
+            Page {pagination.page} of {pagination.pages}
+          </span>
+          <button
+            onClick={() => handlePageChange(Math.min(pagination.pages, pagination.page + 1))}
+            disabled={pagination.page === pagination.pages || loading}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
 
       {/* User Detail Modal */}
       {showUserDetail && (
@@ -605,7 +555,7 @@ export function AdminUserManagement() {
               <div>
                 <label className="text-sm font-medium text-gray-500">Status</label>
                 <div className="text-sm">
-                  {showUserDetail.isActive ? 'Active' : 'Inactive'} • 
+                  {showUserDetail.isActive ? 'Active' : 'Inactive'} •
                   {showUserDetail.isVerified ? ' Verified' : ' Unverified'}
                 </div>
               </div>
@@ -620,5 +570,3 @@ export function AdminUserManagement() {
     </div>
   );
 }
-
-export default AdminUserManagement;
