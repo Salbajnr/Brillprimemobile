@@ -7,6 +7,11 @@ import { requireAuth } from '../middleware/auth';
 
 const router = Router();
 
+// Export the registration function
+export function registerAdminUserManagementRoutes(app: any) {
+  app.use('/api/admin/users', router);
+}
+
 // Get all users with filtering, searching, and pagination
 router.get('/users', requireAuth, async (req, res) => {
   if (req.user?.role !== 'ADMIN') {
