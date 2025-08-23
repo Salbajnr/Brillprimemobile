@@ -1,10 +1,10 @@
-modules = ["nodejs-20", "java-graalvm22.3", "bash", "web", "postgresql-16"]
+modules = ["nodejs-20", "java-graalvm22.3", "bash", "web", "postgresql-16", "nodejs-24", "postgresql-17"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-25_05"
-packages = ["postgresql"]
+packages = ["postgresql", "dotenv-cli"]
 
 [deployment]
 deploymentTarget = "autoscale"
