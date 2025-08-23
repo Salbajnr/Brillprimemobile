@@ -69,7 +69,7 @@ export const STORAGE_KEYS = {
 export const WEBSOCKET_CONFIG = {
   URL: __DEV__ 
     ? 'ws://0.0.0.0:5000'
-    : 'wss://your-production-domain.com',
+    : 'wss://brillprime-monorepo.replit.app',
   RECONNECT_INTERVAL: 5000,
   MAX_RECONNECT_ATTEMPTS: 5,
 };

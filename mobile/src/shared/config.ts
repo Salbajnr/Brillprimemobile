@@ -2,7 +2,7 @@
 export const mobileConfig = {
   // API Configuration
   apiBaseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000/api',
-  wsUrl: process.env.EXPO_PUBLIC_WS_URL || 'ws://0.0.0.0:5000',
+  wsUrl: process.env.EXPO_PUBLIC_WS_URL || (__DEV__ ? 'ws://0.0.0.0:5000' : 'wss://brillprime-monorepo.replit.app'),
   
   // Storage Keys
   storageKeys: {

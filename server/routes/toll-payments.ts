@@ -3,6 +3,7 @@ import { z } from "zod";
 import { db } from "../db";
 import { users, transactions, wallets } from "../../shared/schema";
 import { eq, and } from "drizzle-orm";
+import { pgTable, text, decimal, boolean, timestamp } from "drizzle-orm/pg-core";
 import { transactionService } from "../services/transaction";
 import { sanitizeInput, validateSchema } from "../middleware/validation";
 
@@ -24,15 +25,28 @@ const verifyQRSchema = z.object({
   )
 });
 
-// Get toll gates from database
+// Define toll_gates table schema (add this to your shared/schema.ts if not exists)
+const tollGates = pgTable('toll_gates', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  location: text('location').notNull(),
+  latitude: decimal('latitude', { precision: 10, scale: 8 }),
+  longitude: decimal('longitude', { precision: 11, scale: 8 }),
+  isActive: boolean('is_active').default(true),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Get toll gates from database using Drizzle
 async function getTollGateById(id: string) {
   try {
-    // Query from database - you should create a toll_gates table
-    const tollGates = await db.execute(`
-      SELECT * FROM toll_gates WHERE id = ?
-    `, [id]);
+    const result = await db
+      .select()
+      .from(tollGates)
+      .where(eq(tollGates.id, id))
+      .limit(1);
     
-    return tollGates[0] || null;
+    return result[0] || null;
   } catch (error) {
     console.error('Error fetching toll gate:', error);
     return null;
@@ -41,11 +55,12 @@ async function getTollGateById(id: string) {
 
 async function getAllTollGates() {
   try {
-    const tollGates = await db.execute(`
-      SELECT * FROM toll_gates WHERE is_active = true
-    `);
+    const result = await db
+      .select()
+      .from(tollGates)
+      .where(eq(tollGates.isActive, true));
     
-    return tollGates;
+    return result;
   } catch (error) {
     console.error('Error fetching toll gates:', error);
     return [];

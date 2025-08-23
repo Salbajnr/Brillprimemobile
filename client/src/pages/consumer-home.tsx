@@ -180,7 +180,13 @@ export default function ConsumerHome() {
     }
 
     // Fallback to OpenStreetMap-based service if no Google API key
-    return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/400x160@2x?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw`;
+    const mapboxToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
+    if (mapboxToken) {
+      return `https://api.mapbox.com/styles/v1/mapbox/streets-v11/static/pin-s-l+ff0000(${locationData.longitude},${locationData.latitude})/${locationData.longitude},${locationData.latitude},${zoom}/400x160@2x?access_token=${mapboxToken}`;
+    }
+    
+    // Fallback to static image if no Mapbox token
+    return "/attached_assets/image_1752989901533.png";
   };
 
   const quickActions: QuickAction[] = [
