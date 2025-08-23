@@ -1,5 +1,6 @@
 
 import { Pool } from 'pg';
+import { verifyAndCreateMissingTables } from './verify-database-tables';
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
@@ -143,6 +144,10 @@ export async function initializeDatabase() {
     `);
 
     console.log('Database initialized successfully');
+    
+    // Verify all tables exist and create missing ones
+    await verifyAndCreateMissingTables();
+    
   } catch (error) {
     console.error('Error initializing database:', error);
     throw error;
