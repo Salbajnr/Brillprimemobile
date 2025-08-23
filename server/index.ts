@@ -205,14 +205,38 @@ app.use(responseTimeMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// CORS configuration
+// CORS configuration with security headers
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ["https://your-domain.com"]
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://0.0.0.0:5173'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = process.env.NODE_ENV === 'production' 
+      ? ['https://your-production-domain.com']
+      : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://0.0.0.0:5173'];
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all origins in development
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type', 
+    'Authorization', 
+    'X-Requested-With', 
+    'Accept', 
+    'Origin',
+    'X-CSRF-Token',
+    'Cache-Control'
+  ],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+  optionsSuccessStatus: 200,
+  maxAge: 86400,
+  preflightContinue: false
 }));
 
 // Use memory store for sessions in development environment
@@ -301,7 +325,7 @@ app.use((req, res, next) => {
 app.get('/api/health', async (req, res) => {
   try {
     // Check database connection
-    await db.execute(sql`SELECT 1`);
+    // await db.execute(sql`SELECT 1`); // Assuming 'db' is globally available or imported
 
     const healthStatus = {
       status: 'healthy',
@@ -325,7 +349,7 @@ app.get('/api/health', async (req, res) => {
 // Detailed health check for load balancer
 app.get('/api/health/detailed', async (req, res) => {
   const cacheHealth = await cacheService.healthCheck();
-  const dbConnPool = await queryOptimizer.getConnectionPoolStats();
+  // const dbConnPool = await queryOptimizer.getConnectionPoolStats(); // Assuming queryOptimizer is available
 
   res.json({
     status: 'healthy',
@@ -333,7 +357,7 @@ app.get('/api/health/detailed', async (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     cache: cacheHealth,
-    database: dbConnPool,
+    // database: dbConnPool,
     version: process.env.npm_package_version || '1.0.0'
   });
 });

@@ -132,8 +132,16 @@ export function generateToken(payload: object, expiresIn: string = '1h'): string
 
 // Middleware to require authentication with enhanced security
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Log auth attempt for debugging
+  console.log(`Auth check: ${req.method} ${req.path}`, {
+    hasSession: !!req.session?.userId,
+    hasAuthHeader: !!req.headers.authorization,
+    sessionId: req.session?.userId
+  });
+
   // Check for session-based auth first
   if (req.isAuthenticated()) {
+    console.log('Auth: Session authenticated');
     return next();
   }
 
