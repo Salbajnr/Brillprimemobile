@@ -218,28 +218,20 @@ app.use(cors({
           'http://localhost:5173', 
           'http://localhost:3000', 
           'http://127.0.0.1:5173', 
-          'http://0.0.0.0:5173',
-          // Allow all Replit domains
-          /https:\/\/.*\.replit\.dev$/,
-          /https:\/\/.*\.repl\.co$/
+          'http://0.0.0.0:5173'
         ];
 
-    // Check if origin matches allowed patterns
-    const isAllowed = allowedOrigins.some(allowed => {
-      if (typeof allowed === 'string') {
-        return allowed === origin;
-      } else if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return false;
-    });
+    // Check if origin matches patterns
+    const isAllowed = allowedOrigins.includes(origin) || 
+                     (origin && origin.includes('replit.dev')) ||
+                     (origin && origin.includes('repl.co')) ||
+                     (origin && origin.includes('picard.replit.dev'));
 
-    if (isAllowed) {
+    if (isAllowed || process.env.NODE_ENV !== 'production') {
       callback(null, true);
     } else {
       console.warn(`CORS blocked origin: ${origin}`);
-      // Allow all origins in development for now
-      callback(null, true);
+      callback(null, true); // Allow all in development
     }
   },
   credentials: true,
@@ -445,7 +437,6 @@ apiRouter.use('/active-orders', activeOrdersRoutes);
 apiRouter.use('/qr-processing', qrProcessingRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
-apiRouter.use('/debug', debugRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
@@ -454,10 +445,28 @@ registerAdminUserManagementRoutes(app);
 
 app.use('/api', apiRouter);
 
+// Register debug routes directly on app after apiRouter
+app.use('/api/debug', debugRoutes);
+
 // Add general error logging endpoint outside of API routes
 app.post('/log-error', (req, res) => {
   console.error('Frontend error:', req.body);
   res.json({ success: true, message: 'Error logged' });
+});
+
+// Simple POST test endpoint for debugging
+app.post('/api/test-post', (req, res) => {
+  console.log('=== SIMPLE POST TEST ===');
+  console.log('Body received:', req.body);
+  console.log('Headers:', req.headers);
+  console.log('========================');
+  
+  res.json({
+    success: true,
+    message: 'POST endpoint is working!',
+    data: req.body,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Add missing /me endpoint for authentication
