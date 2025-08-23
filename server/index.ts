@@ -64,6 +64,7 @@ import qrProcessingRoutes from './routes/qr-processing';
 import paystackWebhooksRoutes from './routes/paystack-webhooks';
 import { registerEscrowManagementRoutes } from './routes/escrow-management';
 import withdrawalSystemRoutes from './routes/withdrawal-system';
+import debugRoutes from './routes/debug';
 // Import compliance routes
 import dataPrivacyRoutes from "./routes/data-privacy";
 import legalComplianceRoutes from "./routes/legal-compliance";
@@ -213,13 +214,32 @@ app.use(cors({
 
     const allowedOrigins = process.env.NODE_ENV === 'production' 
       ? ['https://your-production-domain.com']
-      : ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173', 'http://0.0.0.0:5173'];
+      : [
+          'http://localhost:5173', 
+          'http://localhost:3000', 
+          'http://127.0.0.1:5173', 
+          'http://0.0.0.0:5173',
+          // Allow all Replit domains
+          /https:\/\/.*\.replit\.dev$/,
+          /https:\/\/.*\.repl\.co$/
+        ];
 
-    if (allowedOrigins.includes(origin)) {
+    // Check if origin matches allowed patterns
+    const isAllowed = allowedOrigins.some(allowed => {
+      if (typeof allowed === 'string') {
+        return allowed === origin;
+      } else if (allowed instanceof RegExp) {
+        return allowed.test(origin);
+      }
+      return false;
+    });
+
+    if (isAllowed) {
       callback(null, true);
     } else {
       console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all origins in development
+      // Allow all origins in development for now
+      callback(null, true);
     }
   },
   credentials: true,
@@ -425,6 +445,7 @@ apiRouter.use('/active-orders', activeOrdersRoutes);
 apiRouter.use('/qr-processing', qrProcessingRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
+apiRouter.use('/debug', debugRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
@@ -644,8 +665,12 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   // Start cache warming
   await cacheService.warmCache();
 
-  // Start query optimizer maintenance
-  queryOptimizer.startMaintenance();
+  // Start query optimizer maintenance (safely)
+  try {
+    queryOptimizer.startMaintenance();
+  } catch (error) {
+    console.warn('Query optimizer maintenance failed to start:', error.message);
+  }
 
   // Log initial performance metrics
   const cacheHealth = await cacheService.healthCheck();
