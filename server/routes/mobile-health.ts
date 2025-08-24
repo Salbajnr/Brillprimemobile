@@ -233,7 +233,9 @@ router.get('/mobile/config', async (req, res) => {
         maxTransferAmount: 1000000, // ₦1,000,000
       },
       endpoints: {
-        websocket: process.env.WEBSOCKET_URL || 'ws://0.0.0.0:5000',
+        websocket: process.env.WEBSOCKET_URL || (process.env.NODE_ENV === 'production' 
+          ? 'wss://brillprime-monorepo.replit.app' 
+          : 'ws://0.0.0.0:5000'),
         payments: {
           paystack: !!process.env.PAYSTACK_PUBLIC_KEY,
           stripe: !!process.env.STRIPE_PUBLIC_KEY,
