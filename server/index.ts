@@ -71,6 +71,8 @@ import dataPrivacyRoutes from "./routes/data-privacy";
 import legalComplianceRoutes from "./routes/legal-compliance";
 import nigerianComplianceRoutes from "./routes/nigerian-compliance";
 import dashboardRoutes from "./routes/dashboard";
+// Import system status routes
+import systemStatusRoutes from './routes/system-status';
 
 // Validate environment variables
 validateEnvironment();
@@ -774,5 +776,8 @@ app.use("/api/tracking", realTimeTrackingRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/test", testRealtimeRoutes);
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
+
+// Register system status route
+app.use('/api/system', systemStatusRoutes);
 
 export default app;

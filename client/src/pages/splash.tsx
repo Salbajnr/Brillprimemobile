@@ -13,7 +13,7 @@ export default function SplashPage() {
         // Still loading auth state, wait a bit more
         return;
       }
-      
+
       if (isAuthenticated() && user) {
         console.log("Splash: User authenticated, redirecting to dashboard");
         setLocation("/dashboard");
@@ -38,9 +38,9 @@ export default function SplashPage() {
       {/* Logo with effects */}
       <div className="flex flex-col items-center justify-center">
         <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center">
-          <img 
-            src={logoImage} 
-            alt="Brillprime Logo" 
+          <img
+            src={logoImage}
+            alt="Brillprime Logo"
             className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-contain animate-bounce"
             style={{ animationDuration: '2s' }}
             onError={(e) => {
@@ -50,7 +50,7 @@ export default function SplashPage() {
             }}
           />
         </div>
-        
+
         {/* Loading animation */}
         <div className="mt-8 flex space-x-2">
           <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
