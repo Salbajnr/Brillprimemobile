@@ -4,8 +4,8 @@ import { Pool } from 'pg';
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
 import { eq, and, desc } from 'drizzle-orm';
 
-// Use placeholder URL for migration, actual database can be provisioned later
-const DATABASE_URL = process.env.DATABASE_URL || "postgres://test:test@localhost:5432/test";
+// External PostgreSQL database configuration
+const DATABASE_URL = process.env.DATABASE_URL || "postgresql://brillprimemobile:PrveAcaiCfun5AanWQtclfRYJ4LBBaOF@dpg-d2kond3uibrs73eesitg-a/dbbrillprimemobile";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -98,7 +98,12 @@ export const errorLogs = pgTable("error_logs", {
   metadata: jsonb("metadata")
 });
 
-export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+export const pool = new Pool({ 
+  connectionString: DATABASE_URL,
+  ssl: DATABASE_URL?.includes('render.com') || DATABASE_URL?.includes('railway.app') || DATABASE_URL?.includes('dpg-') ? {
+    rejectUnauthorized: false
+  } : false
+});
 export const db = drizzle(pool, { 
   schema: { 
     users, 

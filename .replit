@@ -298,4 +298,4 @@ task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
 
 [agent]
-integrations = ["javascript_sendgrid==1.0.0"]
+integrations = ["javascript_database==1.0.0", "javascript_sendgrid==1.0.0"]

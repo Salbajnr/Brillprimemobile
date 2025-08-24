@@ -791,7 +791,7 @@ export const categoryTypes = {
   BILL_PAYMENT: 'Bill Payments'
 } as const;
 
-export const categories = [
+export const categoryRelations = [
   { id: 'fuel', name: 'Fuel Services', icon: 'fuel', color: '#FF6B6B' },
   { id: 'toll', name: 'Toll Payments', icon: 'toll', color: '#4ECDC4' },
   { id: 'commodity', name: 'Commodities', icon: 'shopping', color: '#45B7D1' },

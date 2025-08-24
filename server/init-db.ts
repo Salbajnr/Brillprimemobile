@@ -2,7 +2,12 @@
 import { Pool } from 'pg';
 import { verifyAndCreateMissingTables } from './verify-database-tables';
 
-const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+const pool = new Pool({ 
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL?.includes('render.com') || process.env.DATABASE_URL?.includes('railway.app') || process.env.DATABASE_URL?.includes('dpg-') ? {
+    rejectUnauthorized: false
+  } : false
+});
 
 export async function initializeDatabase() {
   const client = await pool.connect();

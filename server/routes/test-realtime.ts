@@ -3,7 +3,7 @@ import { requireAuth } from "../middleware/auth";
 import { orderBroadcastingService } from "../services/order-broadcasting";
 import { liveChatService } from "../services/live-chat";
 
-export function registerTestRealtimeRoutes(app: Express) {
+export default function registerTestRealtimeRoutes(app: Express) {
   // Test order status broadcasting
   app.post("/api/test/order-status", requireAuth, async (req, res) => {
     try {
