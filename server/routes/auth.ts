@@ -12,12 +12,9 @@ declare module 'express-session' {
     userId?: number;
     user?: {
       id: number;
-      userId: string;
-      fullName: string;
       email: string;
+      fullName: string;
       role: string;
-      isVerified: boolean;
-      profilePicture?: string;
     };
     lastActivity?: number;
     ipAddress?: string;

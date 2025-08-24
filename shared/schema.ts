@@ -14,7 +14,7 @@ export const users: any = pgTable("users", {
   email: varchar("email", { length: 255 }).unique().notNull(),
   fullName: varchar("full_name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }),
-  password: text("password"), // Changed to text as per original, though snippet used varchar
+  passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").default('CONSUMER'),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
