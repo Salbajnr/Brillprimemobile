@@ -783,6 +783,21 @@ export const categorySchema = z.object({
   updatedAt: z.date()
 });
 
+// Categories lookup
+export const categoryTypes = {
+  FUEL: 'Fuel Services',
+  TOLL: 'Toll Payments',
+  COMMODITY: 'Commodities',
+  BILL_PAYMENT: 'Bill Payments'
+} as const;
+
+export const categories = [
+  { id: 'fuel', name: 'Fuel Services', icon: 'fuel', color: '#FF6B6B' },
+  { id: 'toll', name: 'Toll Payments', icon: 'toll', color: '#4ECDC4' },
+  { id: 'commodity', name: 'Commodities', icon: 'shopping', color: '#45B7D1' },
+  { id: 'bills', name: 'Bill Payments', icon: 'receipt', color: '#96CEB4' },
+  { id: 'transfer', name: 'Money Transfer', icon: 'send', color: '#FECA57' },
+] as const;
 
 // Insert schemas for forms
 export const insertProductSchema = createInsertSchema(products).omit({

@@ -129,3 +129,76 @@ export const platformOptimize = {
     return config;
   }
 };
+export class MobileBundleOptimizer {
+  private static instance: MobileBundleOptimizer;
+  private preloadedComponents = new Set<string>();
+  private componentCache = new Map<string, any>();
+
+  static getInstance(): MobileBundleOptimizer {
+    if (!this.instance) {
+      this.instance = new MobileBundleOptimizer();
+    }
+    return this.instance;
+  }
+
+  async optimizeBundle(): Promise<void> {
+    try {
+      // Preload critical screens
+      await this.preloadCriticalScreens();
+      
+      // Initialize lazy loading for non-critical components
+      this.setupLazyLoading();
+      
+      console.log('✅ Mobile bundle optimization completed');
+    } catch (error) {
+      console.error('❌ Bundle optimization failed:', error);
+    }
+  }
+
+  private async preloadCriticalScreens(): Promise<void> {
+    const criticalScreens = [
+      'SplashScreen',
+      'SignInScreen',
+      'HomeScreen',
+      'DashboardScreen'
+    ];
+
+    for (const screen of criticalScreens) {
+      if (!this.preloadedComponents.has(screen)) {
+        try {
+          const component = await import(`../screens/${screen}`);
+          this.componentCache.set(screen, component);
+          this.preloadedComponents.add(screen);
+        } catch (error) {
+          console.warn(`Failed to preload ${screen}:`, error);
+        }
+      }
+    }
+  }
+
+  private setupLazyLoading(): void {
+    // Configure lazy loading for heavy components
+    const lazyComponents = [
+      'QRScannerScreen',
+      'OrderHistoryScreen',
+      'AnalyticsScreen'
+    ];
+
+    lazyComponents.forEach(component => {
+      if (!this.componentCache.has(component)) {
+        // Set up lazy loading placeholder
+        this.componentCache.set(component, () => import(`../screens/${component}`));
+      }
+    });
+  }
+
+  getComponent(name: string): any {
+    return this.componentCache.get(name);
+  }
+
+  isPreloaded(name: string): boolean {
+    return this.preloadedComponents.has(name);
+  }
+}
+
+export const mobileBundleOptimizer = MobileBundleOptimizer.getInstance();

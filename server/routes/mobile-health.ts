@@ -20,6 +20,15 @@ router.get('/mobile/health', async (req, res) => {
       },
       version: '1.0.0',
       environment: process.env.NODE_ENV || 'development',
+      mobile: {
+        supportedPlatforms: ['ios', 'android'],
+        apiCompatibility: 'v1',
+        features: {
+          offline: true,
+          realtime: true,
+          pushNotifications: true,
+        },
+      },
     };
 
     res.json({
@@ -41,6 +50,9 @@ router.get('/mobile/config', async (req, res) => {
   try {
     const config = {
       apiVersion: '1.0.0',
+      baseUrl: process.env.NODE_ENV === 'production' 
+        ? 'https://brillprime-monorepo.replit.app/api' 
+        : 'http://0.0.0.0:5000/api',
       features: {
         qrScanner: true,
         biometricAuth: true,
@@ -48,6 +60,7 @@ router.get('/mobile/config', async (req, res) => {
         fuelOrdering: true,
         tollPayments: true,
         realTimeTracking: true,
+        offlineMode: true,
       },
       limits: {
         maxFileUploadSize: 10 * 1024 * 1024, // 10MB
@@ -55,7 +68,7 @@ router.get('/mobile/config', async (req, res) => {
         maxTransferAmount: 1000000, // ₦1,000,000
       },
       endpoints: {
-        websocket: process.env.WEBSOCKET_URL || 'ws://localhost:5000',
+        websocket: process.env.WEBSOCKET_URL || 'ws://0.0.0.0:5000',
         payments: {
           paystack: !!process.env.PAYSTACK_PUBLIC_KEY,
           stripe: !!process.env.STRIPE_PUBLIC_KEY,

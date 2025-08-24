@@ -1,3 +1,4 @@
+
 import React, { useEffect } from 'react';
 import { StatusBar } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
@@ -14,12 +15,16 @@ import SignInScreen from './screens/SignInScreen';
 import SignUpScreen from './screens/SignUpScreen';
 import HomeScreen from './screens/HomeScreen';
 import ProfileScreen from './screens/ProfileScreen';
+import DashboardScreen from './screens/DashboardScreen';
+import OrderHistoryScreen from './screens/OrderHistoryScreen';
+import WalletBalanceScreen from './screens/WalletBalanceScreen';
+import NotificationsScreen from './screens/NotificationsScreen';
 
-import { mobileBundleOptimizer } from './src/lib/bundle-optimizer';
-import { usePerformance } from './src/hooks/usePerformance';
-import { mobileCacheService } from './src/services/cache';
-import { mobileOfflineService } from './src/services/offline';
-
+// Import optimizations
+import { mobileBundleOptimizer } from './lib/bundle-optimizer';
+import { usePerformance } from './hooks/usePerformance';
+import { mobileCacheService } from './services/cache';
+import { mobileOfflineService } from './services/offline';
 
 const Stack = createStackNavigator();
 
@@ -65,7 +70,11 @@ const App = () => {
                 <Stack.Screen name="SignIn" component={SignInScreen} />
                 <Stack.Screen name="SignUp" component={SignUpScreen} />
                 <Stack.Screen name="Home" component={HomeScreen} />
+                <Stack.Screen name="Dashboard" component={DashboardScreen} />
                 <Stack.Screen name="Profile" component={ProfileScreen} />
+                <Stack.Screen name="OrderHistory" component={OrderHistoryScreen} />
+                <Stack.Screen name="WalletBalance" component={WalletBalanceScreen} />
+                <Stack.Screen name="Notifications" component={NotificationsScreen} />
               </Stack.Navigator>
             </NavigationContainer>
           </ToastProvider>

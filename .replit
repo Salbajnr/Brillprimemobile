@@ -271,5 +271,18 @@ args = "npm install"
 task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
 
+[[workflows.workflow]]
+name = "Mobile Development Complete"
+author = 46836043
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile && npm start"
+
 [agent]
 integrations = ["javascript_sendgrid==1.0.0"]

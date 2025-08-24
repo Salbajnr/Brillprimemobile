@@ -1,8 +1,8 @@
-
-import { useState, useEffect } from 'react';
-import { Platform } from 'react-native';
-import DeviceInfo from 'react-native-device-info';
+import { useCallback, useEffect, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
+import DeviceInfo from 'react-native-device-info';
+import { Platform } from 'react-native';
 
 interface MobilePerformanceMetrics {
   memoryUsage: number;
@@ -15,8 +15,90 @@ interface MobilePerformanceMetrics {
   appMemoryUsage: number;
 }
 
+interface PerformanceMetrics {
+  loadTime: number;
+  memoryUsage: number;
+  networkSpeed: number;
+  cacheHitRate: number;
+}
+
 export const usePerformance = () => {
   const [metrics, setMetrics] = useState<MobilePerformanceMetrics | null>(null);
+  const [appMetrics, setAppMetrics] = useState<PerformanceMetrics>({
+    loadTime: 0,
+    memoryUsage: 0,
+    networkSpeed: 0,
+    cacheHitRate: 0,
+  });
+
+  const [isOptimizing, setIsOptimizing] = useState(false);
+
+  const preloadCriticalData = useCallback(async () => {
+    try {
+      setIsOptimizing(true);
+
+      // Preload user session
+      const userSession = await AsyncStorage.getItem('userSession');
+
+      // Preload app configuration
+      await AsyncStorage.getItem('appConfig');
+
+      // Check network status
+      const networkState = await NetInfo.fetch();
+
+      console.log('✅ Critical data preloaded', {
+        hasUserSession: !!userSession,
+        networkConnected: networkState.isConnected
+      });
+
+    } catch (error) {
+      console.error('❌ Failed to preload critical data:', error);
+    } finally {
+      setIsOptimizing(false);
+    }
+  }, []);
+
+  const measureLoadTime = useCallback((startTime: number) => {
+    const loadTime = Date.now() - startTime;
+    setAppMetrics(prev => ({ ...prev, loadTime }));
+    return loadTime;
+  }, []);
+
+  const optimizeMemoryUsage = useCallback(async () => {
+    try {
+      // Clear old cache entries
+      const keys = await AsyncStorage.getAllKeys();
+      const oldCacheKeys = keys.filter(key => 
+        key.startsWith('cache_') && 
+        Date.now() - parseInt(key.split('_')[1]) > 24 * 60 * 60 * 1000 // 24 hours
+      );
+
+      if (oldCacheKeys.length > 0) {
+        await AsyncStorage.multiRemove(oldCacheKeys);
+        console.log(`🧹 Cleaned ${oldCacheKeys.length} old cache entries`);
+      }
+    } catch (error) {
+      console.error('❌ Memory optimization failed:', error);
+    }
+  }, []);
+
+  const trackNetworkPerformance = useCallback(async () => {
+    try {
+      const startTime = Date.now();
+      // Using a placeholder URL as the actual API endpoint is not provided.
+      // Replace 'http://0.0.0.0:5000/api/health' with your actual API health check endpoint.
+      const response = await fetch('http://0.0.0.0:5000/api/health'); 
+      const endTime = Date.now();
+
+      const networkSpeed = endTime - startTime;
+      setAppMetrics(prev => ({ ...prev, networkSpeed }));
+
+      return response.ok;
+    } catch (error) {
+      console.error('❌ Network performance tracking failed:', error);
+      return false;
+    }
+  }, []);
 
   useEffect(() => {
     const measurePerformance = async () => {
@@ -65,6 +147,12 @@ export const usePerformance = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    // Initial performance setup
+    optimizeMemoryUsage();
+    trackNetworkPerformance();
+  }, [optimizeMemoryUsage, trackNetworkPerformance]);
+
   const shouldReduceQuality = () => {
     if (!metrics) return false;
     return metrics.isSlowConnection || 
@@ -106,23 +194,17 @@ export const usePerformance = () => {
     };
   };
 
-  const preloadCriticalData = async () => {
-    if (!metrics || shouldReduceQuality()) return;
-
-    // Only preload on good connections and sufficient resources
-    if (!metrics.isSlowConnection && metrics.memoryUsage < 0.6) {
-      // Preload user's most accessed data
-      console.log('Preloading critical data...');
-      // Implementation would depend on your specific app needs
-    }
-  };
-
   return {
     metrics,
+    appMetrics,
+    isOptimizing,
     shouldReduceQuality,
     getOptimalImageQuality,
     getOptimalCacheSize,
     optimizeForDevice,
-    preloadCriticalData
+    preloadCriticalData,
+    measureLoadTime,
+    optimizeMemoryUsage,
+    trackNetworkPerformance,
   };
 };

@@ -1,127 +1,155 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { usePerformance } from '../hooks/usePerformance';
 
-interface CacheItem<T> {
+interface CacheEntry<T> {
   data: T;
   timestamp: number;
-  expiryTime: number;
+  expiresAt: number;
 }
 
 class MobileCacheService {
-  private memoryCache = new Map<string, any>();
-  private maxMemoryCacheSize = 100;
+  private static instance: MobileCacheService;
+  private readonly defaultTTL = 5 * 60 * 1000; // 5 minutes
+  private readonly maxCacheSize = 50 * 1024 * 1024; // 50MB
 
-  constructor() {
-    // Set default cache size, will be optimized when performance metrics are available
-    this.maxMemoryCacheSize = 50;
+  static getInstance(): MobileCacheService {
+    if (!this.instance) {
+      this.instance = new MobileCacheService();
+    }
+    return this.instance;
   }
 
-  async optimizeCacheSize() {
+  async set<T>(key: string, data: T, ttl?: number): Promise<void> {
     try {
-      // This should be called from a component that has access to the hook
-      this.maxMemoryCacheSize = 100; // Default optimized size
+      const expiresAt = Date.now() + (ttl || this.defaultTTL);
+      const entry: CacheEntry<T> = {
+        data,
+        timestamp: Date.now(),
+        expiresAt,
+      };
+
+      await AsyncStorage.setItem(`cache_${key}`, JSON.stringify(entry));
     } catch (error) {
-      console.warn('Could not optimize cache size:', error);
-    }
-  }
-
-  async set<T>(key: string, data: T, ttl: number = 300000): Promise<void> {
-    const item: CacheItem<T> = {
-      data,
-      timestamp: Date.now(),
-      expiryTime: Date.now() + ttl
-    };
-
-    // Store in memory cache for quick access
-    if (this.memoryCache.size >= this.maxMemoryCacheSize) {
-      const firstKey = this.memoryCache.keys().next().value;
-      this.memoryCache.delete(firstKey);
-    }
-    this.memoryCache.set(key, item);
-
-    // Store in persistent storage
-    try {
-      await AsyncStorage.setItem(key, JSON.stringify(item));
-    } catch (error) {
-      console.warn('Failed to store in persistent cache:', error);
+      console.error('Cache set error:', error);
     }
   }
 
   async get<T>(key: string): Promise<T | null> {
-    // Check memory cache first
-    if (this.memoryCache.has(key)) {
-      const item = this.memoryCache.get(key) as CacheItem<T>;
-      if (Date.now() < item.expiryTime) {
-        return item.data;
-      } else {
-        this.memoryCache.delete(key);
-      }
-    }
-
-    // Check persistent storage
     try {
-      const stored = await AsyncStorage.getItem(key);
-      if (stored) {
-        const item: CacheItem<T> = JSON.parse(stored);
-        if (Date.now() < item.expiryTime) {
-          // Add back to memory cache
-          this.memoryCache.set(key, item);
-          return item.data;
-        } else {
-          // Expired, remove from storage
-          await AsyncStorage.removeItem(key);
-        }
-      }
-    } catch (error) {
-      console.warn('Failed to get from persistent cache:', error);
-    }
+      const cached = await AsyncStorage.getItem(`cache_${key}`);
+      if (!cached) return null;
 
-    return null;
+      const entry: CacheEntry<T> = JSON.parse(cached);
+      
+      if (Date.now() > entry.expiresAt) {
+        await this.delete(key);
+        return null;
+      }
+
+      return entry.data;
+    } catch (error) {
+      console.error('Cache get error:', error);
+      return null;
+    }
   }
 
-  async remove(key: string): Promise<void> {
-    this.memoryCache.delete(key);
+  async delete(key: string): Promise<void> {
     try {
-      await AsyncStorage.removeItem(key);
+      await AsyncStorage.removeItem(`cache_${key}`);
     } catch (error) {
-      console.warn('Failed to remove from persistent cache:', error);
+      console.error('Cache delete error:', error);
     }
   }
 
   async clear(): Promise<void> {
-    this.memoryCache.clear();
     try {
       const keys = await AsyncStorage.getAllKeys();
       const cacheKeys = keys.filter(key => key.startsWith('cache_'));
       await AsyncStorage.multiRemove(cacheKeys);
     } catch (error) {
-      console.warn('Failed to clear persistent cache:', error);
+      console.error('Cache clear error:', error);
     }
   }
 
-  // Performance-aware caching for API responses
-  async cacheApiResponse(endpoint: string, data: any, customTtl?: number, shouldReduce: boolean = false): Promise<void> {
-    // Reduce cache TTL on slower devices to save memory
-    const ttl = customTtl || (shouldReduce ? 180000 : 300000); // 3 or 5 minutes
-    await this.set(`api_${endpoint}`, data, ttl);
-  }
+  async optimizeCacheSize(): Promise<void> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(key => key.startsWith('cache_'));
+      
+      // Get all cache entries with their sizes
+      const entries: Array<{ key: string; size: number; timestamp: number }> = [];
+      
+      for (const key of cacheKeys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          const entry: CacheEntry<any> = JSON.parse(value);
+          entries.push({
+            key,
+            size: new Blob([value]).size,
+            timestamp: entry.timestamp,
+          });
+        }
+      }
 
-  async getCachedApiResponse<T>(endpoint: string): Promise<T | null> {
-    return this.get<T>(`api_${endpoint}`);
-  }
+      // Sort by timestamp (oldest first)
+      entries.sort((a, b) => a.timestamp - b.timestamp);
 
-  // Image caching with performance optimization
-  async cacheImage(url: string, base64Data: string, maxSize: number = 100): Promise<void> {
-    // Only cache if we have sufficient space
-    if (this.memoryCache.size < maxSize * 0.8) {
-      await this.set(`image_${url}`, base64Data, 3600000); // 1 hour
+      let totalSize = entries.reduce((sum, entry) => sum + entry.size, 0);
+
+      // Remove oldest entries if cache is too large
+      while (totalSize > this.maxCacheSize && entries.length > 0) {
+        const oldestEntry = entries.shift()!;
+        await AsyncStorage.removeItem(oldestEntry.key);
+        totalSize -= oldestEntry.size;
+      }
+
+      console.log(`📦 Cache optimized: ${entries.length} entries, ${Math.round(totalSize / 1024)}KB`);
+    } catch (error) {
+      console.error('Cache optimization error:', error);
     }
   }
 
-  async getCachedImage(url: string): Promise<string | null> {
-    return this.get<string>(`image_${url}`);
+  async getCacheStats(): Promise<{
+    totalEntries: number;
+    totalSize: number;
+    oldestEntry: number;
+    newestEntry: number;
+  }> {
+    try {
+      const keys = await AsyncStorage.getAllKeys();
+      const cacheKeys = keys.filter(key => key.startsWith('cache_'));
+      
+      let totalSize = 0;
+      let oldestEntry = Date.now();
+      let newestEntry = 0;
+
+      for (const key of cacheKeys) {
+        const value = await AsyncStorage.getItem(key);
+        if (value) {
+          const entry: CacheEntry<any> = JSON.parse(value);
+          totalSize += new Blob([value]).size;
+          oldestEntry = Math.min(oldestEntry, entry.timestamp);
+          newestEntry = Math.max(newestEntry, entry.timestamp);
+        }
+      }
+
+      return {
+        totalEntries: cacheKeys.length,
+        totalSize,
+        oldestEntry,
+        newestEntry,
+      };
+    } catch (error) {
+      console.error('Cache stats error:', error);
+      return {
+        totalEntries: 0,
+        totalSize: 0,
+        oldestEntry: 0,
+        newestEntry: 0,
+      };
+    }
   }
 }
 
-export const mobileCacheService = new MobileCacheService();
+export const mobileCacheService = MobileCacheService.getInstance();
+export default mobileCacheService;
