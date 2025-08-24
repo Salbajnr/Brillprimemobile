@@ -69,6 +69,7 @@ import debugRoutes from './routes/debug';
 import dataPrivacyRoutes from "./routes/data-privacy";
 import legalComplianceRoutes from "./routes/legal-compliance";
 import nigerianComplianceRoutes from "./routes/nigerian-compliance";
+import dashboardRoutes from "./routes/dashboard";
 
 // Validate environment variables
 validateEnvironment();
@@ -444,6 +445,7 @@ apiRouter.use('/active-orders', activeOrdersRoutes);
 apiRouter.use('/qr-processing', qrProcessingRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);

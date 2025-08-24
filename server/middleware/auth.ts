@@ -71,6 +71,16 @@ export function setupAuth() {
       }
     }
 
+    // Add isAuthenticated method to request
+    req.isAuthenticated = function() {
+      return !!(req.session?.userId);
+    };
+
+    // Add user to request if authenticated
+    if (req.session?.user) {
+      req.user = req.session.user;
+    }
+
     // Update last activity
     if (req.session?.userId) {
       req.session.lastActivity = Date.now();
