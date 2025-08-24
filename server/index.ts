@@ -34,8 +34,18 @@ declare module 'express-session' {
     csrfToken?: string;
   }
 }
-import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
-import { xssProtection, csrfProtection } from './middleware/validation';
+// Enhanced security middleware
+import {
+  corsOptions,
+  helmetConfig,
+  generalRateLimit,
+  authRateLimit,
+  paymentRateLimit,
+  requestId,
+  securityHeaders,
+  sanitizeInput,
+  setupTrustedProxies
+} from './middleware/security';
 import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
 import { messageQueue } from './services/messageQueue';
 import { pushNotificationService } from './services/pushNotifications';
@@ -74,8 +84,8 @@ import dashboardRoutes from "./routes/dashboard";
 // Import system status routes
 import systemStatusRoutes from './routes/system-status';
 
-// Validate environment variables
-validateEnvironment();
+// Validate environment variables (after dotenv is loaded)
+const env = validateEnvironment();
 
 const app = express();
 const server = createServer(app);
@@ -200,60 +210,21 @@ app.use(resourceHints);
 app.use(assetVersioning);
 app.use(serviceWorkerCache);
 
-// Security middleware (disabled during development migration)
-// app.use(xssProtection);
-app.use(adaptiveRateLimit);
-app.use(generalLimiter);
-app.use(responseTimeMiddleware);
+// Setup trusted proxies
+setupTrustedProxies(app);
 
-// Middleware
+// Enhanced Security Middleware
+app.use(requestId);
+app.use(securityHeaders);
+app.use(helmetConfig);
+app.use(cors(corsOptions));
+app.use(generalRateLimit);
+app.use(sanitizeInput);
+
+// Application middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// CORS configuration with security headers
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (mobile apps, curl, etc.)
-    if (!origin) return callback(null, true);
-
-    const allowedOrigins = process.env.NODE_ENV === 'production'
-      ? ['https://your-production-domain.com']
-      : [
-          'http://localhost:5173',
-          'http://localhost:3000',
-          'http://127.0.0.1:5173',
-          'http://0.0.0.0:5173'
-        ];
-
-    // Check if origin matches patterns
-    const isAllowed = allowedOrigins.includes(origin) ||
-                     (origin && origin.includes('replit.dev')) ||
-                     (origin && origin.includes('repl.co')) ||
-                     (origin && origin.includes('picard.replit.dev'));
-
-    if (isAllowed || process.env.NODE_ENV !== 'production') {
-      callback(null, true);
-    } else {
-      console.warn(`CORS blocked origin: ${origin}`);
-      callback(null, true); // Allow all in development
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
-  allowedHeaders: [
-    'Content-Type',
-    'Authorization',
-    'X-Requested-With',
-    'Accept',
-    'Origin',
-    'X-CSRF-Token',
-    'Cache-Control'
-  ],
-  exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
-  optionsSuccessStatus: 200,
-  maxAge: 86400,
-  preflightContinue: false
-}));
+app.use(responseTimeMiddleware);
 
 // Use memory store for sessions in development environment
 if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_URL) {
@@ -416,9 +387,9 @@ const apiRouter = express.Router();
 apiRouter.use(validateSession);
 
 // Apply specific rate limiters and caching
-apiRouter.use('/auth', authLimiter);
-apiRouter.use('/payments', paymentLimiter);
-apiRouter.use('/wallet/fund', paymentLimiter);
+apiRouter.use('/auth', authRateLimit);
+apiRouter.use('/payments', paymentRateLimit);
+apiRouter.use('/wallet/fund', paymentRateLimit);
 
 // Apply caching middleware to appropriate routes
 apiRouter.use('/analytics', analyticsCache);
