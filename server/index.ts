@@ -775,7 +775,7 @@ app.use("/api/order-status", orderStatusRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/tracking", realTimeTrackingRoutes);
 app.use("/api/analytics", analyticsRoutes);
-app.use("/api/test", testRealtimeRoutes);
+testRealtimeRoutes.registerTestRealtimeRoutes(app);
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
 
 export default app;

@@ -21,13 +21,7 @@
     "check:db": "node -e \"require('pg').Pool({connectionString:process.env.DATABASE_URL}).query('SELECT 1').then(()=>console.log('✅ Database connected')).catch(e=>{console.error('❌ Database error:',e.message);process.exit(1)})\"",
     "db:push": "drizzle-kit push",
     "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh",
-    "install:all": "npm install && cd client && npm install && cd .. && cd mobile && npm install && cd ..",
-    "test-api": "node validate-endpoints.js",
-    "test:comprehensive": "cd server && npx tsx test-endpoints.ts",
-    "test:health": "curl -f http://0.0.0.0:5000/api/health/detailed || echo 'Server not running'",
-    "validate": "npm run test:health && npm run test:api",
-    "validate-endpoints": "node validate-endpoints.js",
-    "test-integrations": "node test-integrations.js"
+    "install:all": "npm install && cd client && npm install && cd .. && cd mobile && npm install && cd .."
   },
   "dependencies": {
     "@axe-core/playwright": "^4.10.2",
@@ -151,7 +145,13 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "test-api": "node validate-endpoints.js",
+    "test:comprehensive": "cd server && npx tsx test-endpoints.ts",
+    "test:health": "curl -f http://0.0.0.0:5000/api/health/detailed || echo 'Server not running'",
+    "validate": "npm run test:health && npm run test:api",
+    "validate-endpoints": "node validate-endpoints.js",
+    "test-integrations": "node test-integrations.js"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
