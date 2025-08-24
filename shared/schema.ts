@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, varchar, text, timestamp, boolean, integer, decimal, jsonb, pgEnum, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { z } from 'zod';
 import { createInsertSchema } from 'drizzle-zod';
 
@@ -14,7 +14,7 @@ export const users: any = pgTable("users", {
   email: varchar("email", { length: 255 }).unique().notNull(),
   fullName: varchar("full_name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 20 }),
-  password: text("password"), // Changed to text as per original, though snippet used varchar
+  passwordHash: text("password_hash").notNull(),
   role: roleEnum("role").default('CONSUMER'),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
@@ -125,8 +125,8 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Categories table (from original, unchanged)
-export const categories = pgTable("categories", {
+// Categories table (legacy - kept for migration compatibility)
+export const categoriesLegacy = pgTable("categories_legacy", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),
@@ -664,6 +664,98 @@ export const notifications = pgTable('notifications', {
   updatedAt: timestamp('updated_at').defaultNow().notNull()
 });
 
+// Categories table (New)
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull(),
+  description: text('description'),
+  parentId: integer('parent_id'),
+  isActive: boolean('is_active').default(true),
+  sortOrder: integer('sort_order').default(0),
+  createdBy: integer('created_by'),
+  updatedBy: integer('updated_by'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+// Analytics tables
+export const userBehaviorTracking = pgTable('user_behavior_tracking', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull(),
+  userRole: text('user_role').notNull(),
+  sessionId: text('session_id').notNull(),
+  eventType: text('event_type').notNull(),
+  eventCategory: text('event_category').notNull(),
+  eventAction: text('event_action').notNull(),
+  eventLabel: text('event_label'),
+  eventValue: decimal('event_value'),
+  pagePath: text('page_path'),
+  pageTitle: text('page_title'),
+  referrer: text('referrer'),
+  deviceType: text('device_type'),
+  browserName: text('browser_name'),
+  operatingSystem: text('operating_system'),
+  screenResolution: text('screen_resolution'),
+  ipAddress: text('ip_address'),
+  country: text('country'),
+  city: text('city'),
+  networkType: text('network_type'),
+  duration: integer('duration'),
+  customDimensions: jsonb('custom_dimensions'),
+  metadata: jsonb('metadata'),
+  timestamp: timestamp('timestamp').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+export const personalizationProfiles = pgTable('personalization_profiles', {
+  id: serial('id').primaryKey(),
+  userId: integer('user_id').notNull().unique(),
+  preferredCategories: jsonb('preferred_categories'),
+  peakActivityHours: jsonb('peak_activity_hours'),
+  averageOrderValue: decimal('average_order_value'),
+  churnRisk: decimal('churn_risk'),
+  lastUpdated: timestamp('last_updated').defaultNow(),
+  createdAt: timestamp('created_at').defaultNow()
+});
+
+export const crossRoleInteractions = pgTable('cross_role_interactions', {
+  id: text('id').primaryKey(),
+  initiatorId: integer('initiator_id').notNull(),
+  initiatorRole: text('initiator_role').notNull(),
+  targetId: integer('target_id').notNull(),
+  targetRole: text('target_role').notNull(),
+  interactionType: text('interaction_type').notNull(),
+  interactionStatus: text('interaction_status').default('INITIATED'),
+  relatedOrderId: text('related_order_id'),
+  relatedChatId: text('related_chat_id'),
+  outcome: text('outcome'),
+  workflowStage: text('workflow_stage'),
+  nextAction: text('next_action'),
+  satisfactionRating: integer('satisfaction_rating'),
+  duration: integer('duration'),
+  metadata: jsonb('metadata'),
+  startedAt: timestamp('started_at').defaultNow(),
+  completedAt: timestamp('completed_at'),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow()
+});
+
+export const systemMetrics = pgTable('system_metrics', {
+  id: serial('id').primaryKey(),
+  metricType: text('metric_type').notNull(),
+  metricName: text('metric_name').notNull(),
+  metricCategory: text('metric_category').notNull(),
+  value: decimal('value').notNull(),
+  unit: text('unit'),
+  dimensions: jsonb('dimensions'),
+  tags: jsonb('tags'),
+  aggregationType: text('aggregation_type').default('COUNT'),
+  timeWindow: text('time_window'),
+  source: text('source'),
+  environment: text('environment').default('production'),
+  version: text('version'),
+  createdAt: timestamp('created_at').defaultNow()
+});
 
 // Export types for TypeScript
 export type SelectUser = typeof users.$inferSelect;
@@ -677,7 +769,35 @@ export const signInSchema = z.object({
 
 export type SignInData = z.infer<typeof signInSchema>;
 
+// Categories schema (new schema definition)
+export const categorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().optional(),
+  parentId: z.number().optional(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().default(0),
+  createdBy: z.number().optional(),
+  updatedBy: z.number().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
 
+// Categories lookup
+export const categoryTypes = {
+  FUEL: 'Fuel Services',
+  TOLL: 'Toll Payments',
+  COMMODITY: 'Commodities',
+  BILL_PAYMENT: 'Bill Payments'
+} as const;
+
+export const categoryList = [
+  { id: 'fuel', name: 'Fuel Services', icon: 'fuel', color: '#FF6B6B' },
+  { id: 'toll', name: 'Toll Payments', icon: 'toll', color: '#4ECDC4' },
+  { id: 'commodity', name: 'Commodities', icon: 'shopping', color: '#45B7D1' },
+  { id: 'bills', name: 'Bill Payments', icon: 'receipt', color: '#96CEB4' },
+  { id: 'transfer', name: 'Money Transfer', icon: 'send', color: '#FECA57' },
+] as const;
 
 // Insert schemas for forms
 export const insertProductSchema = createInsertSchema(products).omit({

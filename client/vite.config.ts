@@ -16,9 +16,6 @@ export default defineConfig({
       buffer: 'buffer',
     },
   },
-  define: {
-    global: 'globalThis',
-  },
   optimizeDeps: {
     include: ['buffer']
   },

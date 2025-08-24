@@ -283,13 +283,49 @@ router.post('/toggle-availability', async (req, res) => {
 // Simple reverse geocoding function (in production, use Google Maps API)
 async function reverseGeocode(lat: number, lng: number): Promise<string> {
   try {
-    // This is a simplified version - in production use proper geocoding service
+    // Check if Google Maps API key is available
+    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (googleApiKey) {
+      try {
+        // Use Google Maps Geocoding API
+        const response = await fetch(
+          `https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.results && data.results.length > 0) {
+            const result = data.results[0];
+            // Extract meaningful address components
+            const addressComponents = result.address_components;
+            const locality = addressComponents.find((comp: any) => 
+              comp.types.includes('locality') || comp.types.includes('sublocality')
+            )?.long_name;
+            const state = addressComponents.find((comp: any) => 
+              comp.types.includes('administrative_area_level_1')
+            )?.long_name;
+            
+            return locality && state ? `${locality}, ${state}` : result.formatted_address;
+          }
+        }
+      } catch (apiError) {
+        console.warn('Google Maps API error, falling back to local detection:', apiError);
+      }
+    }
+    
+    // Enhanced fallback to local area detection for Nigerian locations
     const areas = [
       { name: "Victoria Island", lat: 6.4281, lng: 3.4106, radius: 3 },
       { name: "Ikeja", lat: 6.5958, lng: 3.3390, radius: 5 },
       { name: "Lekki", lat: 6.4474, lng: 3.4736, radius: 8 },
       { name: "Lagos Island", lat: 6.4541, lng: 3.3947, radius: 2 },
-      { name: "Surulere", lat: 6.4969, lng: 3.3614, radius: 4 }
+      { name: "Surulere", lat: 6.4969, lng: 3.3614, radius: 4 },
+      { name: "Yaba", lat: 6.5158, lng: 3.3744, radius: 3 },
+      { name: "Maryland", lat: 6.5631, lng: 3.3673, radius: 2 },
+      { name: "Gbagada", lat: 6.5447, lng: 3.3920, radius: 3 },
+      { name: "Ajah", lat: 6.4698, lng: 3.5582, radius: 5 },
+      { name: "Ikoyi", lat: 6.4420, lng: 3.4348, radius: 2 }
     ];
 
     for (const area of areas) {
@@ -302,8 +338,20 @@ async function reverseGeocode(lat: number, lng: number): Promise<string> {
       }
     }
 
-    return "Lagos, Nigeria";
+    // Enhanced fallback based on coordinate ranges
+    if (lat >= 6.2 && lat <= 6.8 && lng >= 3.0 && lng <= 3.7) {
+      return "Lagos, Nigeria";
+    } else if (lat >= 9.0 && lat <= 9.2 && lng >= 7.4 && lng <= 7.6) {
+      return "Abuja, FCT";
+    } else if (lat >= 7.3 && lat <= 7.5 && lng >= 3.8 && lng <= 4.0) {
+      return "Ibadan, Oyo";
+    } else if (lat >= 12.0 && lat <= 12.2 && lng >= 8.5 && lng <= 8.7) {
+      return "Kano, Kano";
+    }
+    
+    return "Nigeria";
   } catch (error) {
+    console.error('Reverse geocoding error:', error);
     return "Current Location";
   }
 }

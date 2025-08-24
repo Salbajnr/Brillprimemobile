@@ -71,6 +71,16 @@ export function setupAuth() {
       }
     }
 
+    // Add isAuthenticated method to request
+    req.isAuthenticated = function() {
+      return !!(req.session?.userId);
+    };
+
+    // Add user to request if authenticated
+    if (req.session?.user) {
+      req.user = req.session.user;
+    }
+
     // Update last activity
     if (req.session?.userId) {
       req.session.lastActivity = Date.now();
@@ -132,8 +142,16 @@ export function generateToken(payload: object, expiresIn: string = '1h'): string
 
 // Middleware to require authentication with enhanced security
 export function requireAuth(req: Request, res: Response, next: NextFunction) {
+  // Log auth attempt for debugging
+  console.log(`Auth check: ${req.method} ${req.path}`, {
+    hasSession: !!req.session?.userId,
+    hasAuthHeader: !!req.headers.authorization,
+    sessionId: req.session?.userId
+  });
+
   // Check for session-based auth first
   if (req.isAuthenticated()) {
+    console.log('Auth: Session authenticated');
     return next();
   }
 

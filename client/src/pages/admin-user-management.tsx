@@ -1,117 +1,371 @@
 import React, { useState, useEffect } from 'react';
-import { UserDetailModal } from '../components/user-detail-modal';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Search, Filter, MoreVertical, UserCheck, UserX, Shield, Eye } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 
 interface User {
-  id: string;
+  id: number;
+  fullName: string;
   email: string;
-  name: string;
-  role: string;
-  status: 'ACTIVE' | 'SUSPENDED' | 'PENDING';
+  phoneNumber: string;
+  role: 'CONSUMER' | 'MERCHANT' | 'DRIVER' | 'ADMIN';
+  isVerified: boolean;
+  isActive: boolean;
   createdAt: string;
-  lastLogin?: string;
+  lastLoginAt?: string;
+  kycStatus?: string;
+  totalSpent?: number;
+  totalOrders?: number;
+}
+
+interface UserStats {
+  totalUsers: number;
+  verifiedUsers: number;
+  activeUsers: number;
+  consumers: number;
+  merchants: number;
+  drivers: number;
+  admins: number;
+}
+
+interface UserFilters {
+  role: string;
+  status: string;
+  search: string;
+  page: number;
+  limit: number;
 }
 
 export function AdminUserManagement() {
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterRole, setFilterRole] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
+  const [filters, setFilters] = useState<UserFilters>({
+    role: 'all',
+    status: 'all',
+    search: '',
+    page: 1,
+    limit: 20
+  });
+
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
+  const [showUserDetail, setShowUserDetail] = useState<User | null>(null);
+
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [verificationFilter, setVerificationFilter] = useState('all');
+
+  const [users, setUsers] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    verifiedUsers: 0,
+    pendingKyc: 0
+  });
+  const [pagination, setPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    pages: 0
+  });
 
   const fetchUsers = async () => {
     try {
-      const response = await fetch('/api/admin/users', {
+      setLoading(true);
+      const queryParams = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+        search: searchTerm,
+        role: roleFilter,
+        status: statusFilter,
+        verificationStatus: verificationFilter
+      });
+
+      const response = await fetch(`/api/admin/users?${queryParams}`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
       });
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch users');
       }
-    } catch (error) {
+
+      const data = await response.json();
+      setUsers(data.data.users);
+      setStats(data.data.stats);
+      setPagination(data.data.pagination);
+    } catch (error: any) {
       console.error('Failed to fetch users:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUserAction = async (userId: string, action: string) => {
+  useEffect(() => {
+    fetchUsers();
+  }, [pagination.page, searchTerm, roleFilter, statusFilter, verificationFilter]);
+
+  useEffect(() => {
+    // Reset to page 1 when filters change
+    setPagination(prev => ({ ...prev, page: 1 }));
+  }, [searchTerm, roleFilter, statusFilter, verificationFilter]);
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedUsers.length === 0) return;
+
+    const reason = prompt(`Reason for ${action.toLowerCase()}:`);
+    if (!reason) return;
+
     try {
-      const response = await fetch(`/api/admin/users/${userId}/${action}`, {
-        method: 'POST',
+      const response = await fetch('/api/admin/users/bulk-update', {
+        method: 'PATCH',
         credentials: 'include',
         headers: {
-          'Content-Type': 'application/json',
+          'Content-Type': 'application/json'
         },
+        body: JSON.stringify({
+          userIds: selectedUsers,
+          action,
+          reason
+        })
       });
 
       if (response.ok) {
-        await fetchUsers(); // Refresh the list
+        toast({
+          title: "Success",
+          description: `${action} applied to ${selectedUsers.length} users`
+        });
+        setSelectedUsers([]);
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to perform bulk action",
+          variant: "destructive"
+        });
       }
-    } catch (error) {
-      console.error(`Failed to ${action} user:`, error);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
     }
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = filterRole === 'all' || user.role === filterRole;
-    const matchesStatus = filterStatus === 'all' || user.status === filterStatus;
+  const handleStatusChange = async (userId: number, newStatus: string) => {
+    const reason = prompt(`Reason for changing status to ${newStatus}:`);
+    if (!reason) return;
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          reason
+        })
+      });
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: `User status updated to ${newStatus}`
+        });
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to update status",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleVerification = async (userId: number) => {
+    const reason = prompt(`Reason for verification:`);
+    if (!reason) return;
+
+    try {
+      const response = await fetch(`/api/admin/users/${userId}/verify`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ reason })
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Success",
+          description: "User verified successfully"
+        });
+        fetchUsers(); // Refresh data
+      } else {
+        const error = await response.json();
+        toast({
+          title: "Error",
+          description: error.message || "Failed to verify user",
+          variant: "destructive"
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Network error occurred",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setPagination(prev => ({ ...prev, page: newPage }));
+  };
+
+  const handleUserSelection = (userId: number, selected: boolean) => {
+    if (selected) {
+      setSelectedUsers(prev => [...prev, userId]);
+    } else {
+      setSelectedUsers(prev => prev.filter(id => id !== userId));
+    }
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    if (selected) {
+      setSelectedUsers(users.map((user: any) => user.id));
+    } else {
+      setSelectedUsers([]);
+    }
+  };
+
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">User Management</h2>
+        <div>
+          <h2 className="text-2xl font-bold">User Management</h2>
+          <p className="text-gray-600">
+            {stats.totalUsers} total users • {stats.activeUsers} active
+          </p>
+        </div>
+        {selectedUsers.length > 0 && (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkAction('activate')}
+              disabled={loading}
+            >
+              <UserCheck className="h-4 w-4 mr-1" />
+              Activate ({selectedUsers.length})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkAction('deactivate')}
+              disabled={loading}
+            >
+              <UserX className="h-4 w-4 mr-1" />
+              Deactivate ({selectedUsers.length})
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleBulkAction('verify')}
+              disabled={loading}
+            >
+              <Shield className="h-4 w-4 mr-1" />
+              Verify ({selectedUsers.length})
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Total Users</div>
+          <div className="text-2xl font-bold">{stats.totalUsers}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Verified Users</div>
+          <div className="text-2xl font-bold text-green-600">{stats.verifiedUsers}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Merchants</div>
+          <div className="text-2xl font-bold text-blue-600">{stats.merchants}</div>
+        </div>
+        <div className="bg-white p-4 rounded-lg shadow">
+          <div className="text-sm text-gray-600">Drivers</div>
+          <div className="text-2xl font-bold text-purple-600">{stats.drivers}</div>
+        </div>
       </div>
 
       {/* Filters */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+          <Input
+            placeholder="Search users by name or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
         <select
-          value={filterRole}
-          onChange={(e) => setFilterRole(e.target.value)}
+          value={roleFilter}
+          onChange={(e) => setRoleFilter(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Roles</option>
-          <option value="CONSUMER">Consumer</option>
-          <option value="MERCHANT">Merchant</option>
-          <option value="DRIVER">Driver</option>
-          <option value="ADMIN">Admin</option>
+          <option value="CONSUMER">Consumers</option>
+          <option value="MERCHANT">Merchants</option>
+          <option value="DRIVER">Drivers</option>
+          <option value="ADMIN">Admins</option>
         </select>
         <select
-          value={filterStatus}
-          onChange={(e) => setFilterStatus(e.target.value)}
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
           className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="all">All Status</option>
-          <option value="ACTIVE">Active</option>
-          <option value="SUSPENDED">Suspended</option>
-          <option value="PENDING">Pending</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <select
+          value={verificationFilter}
+          onChange={(e) => setVerificationFilter(e.target.value)}
+          className="border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">All Verification</option>
+          <option value="verified">Verified</option>
+          <option value="unverified">Unverified</option>
         </select>
       </div>
 
@@ -120,6 +374,13 @@ export function AdminUserManagement() {
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left">
+                <input
+                  type="checkbox"
+                  checked={selectedUsers.length === users.length && users.length > 0}
+                  onChange={(e) => handleSelectAll(e.target.checked)}
+                />
+              </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 User
               </th>
@@ -130,7 +391,7 @@ export function AdminUserManagement() {
                 Status
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Last Login
+                Joined
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Actions
@@ -138,70 +399,174 @@ export function AdminUserManagement() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredUsers.map((user) => (
-              <tr key={user.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div>
-                    <div className="text-sm font-medium text-gray-900">{user.name}</div>
-                    <div className="text-sm text-gray-500">{user.email}</div>
+            {loading ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8">
+                  <div className="flex justify-center items-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                    <span className="ml-2">Loading users...</span>
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {user.role}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                    user.status === 'ACTIVE' ? 'bg-green-100 text-green-800' :
-                    user.status === 'SUSPENDED' ? 'bg-red-100 text-red-800' :
-                    'bg-yellow-100 text-yellow-800'
-                  }`}>
-                    {user.status}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {user.lastLogin ? new Date(user.lastLogin).toLocaleDateString() : 'Never'}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                  <button
-                    onClick={() => setSelectedUser(user)}
-                    className="text-blue-600 hover:text-blue-900"
-                  >
-                    View
-                  </button>
-                  {user.status === 'ACTIVE' ? (
-                    <button
-                      onClick={() => handleUserAction(user.id, 'suspend')}
-                      className="text-red-600 hover:text-red-900"
-                    >
-                      Suspend
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => handleUserAction(user.id, 'activate')}
-                      className="text-green-600 hover:text-green-900"
-                    >
-                      Activate
-                    </button>
-                  )}
+              </tr>
+            ) : users.length === 0 ? (
+              <tr>
+                <td colSpan="8" className="text-center py-8 text-gray-500">
+                  No users found
                 </td>
               </tr>
-            ))}
+            ) : (
+              users.map((user) => (
+                <tr key={user.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.id)}
+                      onChange={(e) => handleUserSelection(user.id, e.target.checked)}
+                    />
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{user.fullName}</div>
+                      <div className="text-sm text-gray-500">{user.email}</div>
+                      {user.phoneNumber && (
+                        <div className="text-xs text-gray-400">{user.phoneNumber}</div>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <Badge
+                      variant={
+                        user.role === 'ADMIN' ? 'destructive' :
+                        user.role === 'MERCHANT' ? 'default' :
+                        user.role === 'DRIVER' ? 'secondary' : 'outline'
+                      }
+                    >
+                      {user.role}
+                    </Badge>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col gap-1">
+                      <Badge
+                        variant={user.isActive ? 'default' : 'secondary'}
+                        className={user.isActive ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}
+                      >
+                        {user.isActive ? 'Active' : 'Inactive'}
+                      </Badge>
+                      {user.isVerified && (
+                        <Badge variant="outline" className="bg-blue-100 text-blue-800">
+                          Verified
+                        </Badge>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(user.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setShowUserDetail(user)}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleStatusChange(user.id, user.isActive ? 'inactive' : 'active')}
+                      disabled={loading}
+                    >
+                      {user.isActive ? <UserX className="h-4 w-4" /> : <UserCheck className="h-4 w-4" />}
+                    </Button>
+                    {!user.isVerified && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleVerification(user.id)}
+                        disabled={loading}
+                      >
+                        <Shield className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </td>
+                </tr>
+              )))}
           </tbody>
         </table>
       </div>
 
-      {selectedUser && (
-        <UserDetailModal
-          user={selectedUser}
-          isOpen={!!selectedUser}
-          onClose={() => setSelectedUser(null)}
-          onUserUpdate={fetchUsers}
-        />
+      {/* Pagination */}
+      <div className="flex justify-between items-center mt-6 px-6 py-4 bg-gray-50 border-t">
+        <div className="text-sm text-gray-600">
+          Showing {((pagination.page - 1) * pagination.limit) + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} users
+        </div>
+        <div className="flex items-center space-x-2">
+          <button
+            onClick={() => handlePageChange(Math.max(1, pagination.page - 1))}
+            disabled={pagination.page === 1 || loading}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Previous
+          </button>
+          <span className="px-3 py-1">
+            Page {pagination.page} of {pagination.pages}
+          </span>
+          <button
+            onClick={() => handlePageChange(Math.min(pagination.pages, pagination.page + 1))}
+            disabled={pagination.page === pagination.pages || loading}
+            className="px-3 py-1 border rounded disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      </div>
+
+      {/* User Detail Modal */}
+      {showUserDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">User Details</h3>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowUserDetail(null)}
+              >
+                ×
+              </Button>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="text-sm font-medium text-gray-500">Name</label>
+                <div className="text-sm">{showUserDetail.fullName}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Email</label>
+                <div className="text-sm">{showUserDetail.email}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Phone</label>
+                <div className="text-sm">{showUserDetail.phoneNumber || 'Not provided'}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Role</label>
+                <div className="text-sm">{showUserDetail.role}</div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Status</label>
+                <div className="text-sm">
+                  {showUserDetail.isActive ? 'Active' : 'Inactive'} •
+                  {showUserDetail.isVerified ? ' Verified' : ' Unverified'}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-500">Member Since</label>
+                <div className="text-sm">{new Date(showUserDetail.createdAt).toLocaleDateString()}</div>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
 }
-
-export default AdminUserManagement;

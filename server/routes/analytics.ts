@@ -305,12 +305,270 @@ router.get("/admin/dashboard", requireAdminAuth, async (req, res) => {
   }
 });
 
+// Dashboard Analytics Endpoints
+
+// Get user dashboard analytics
+router.get("/dashboard/user", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const days = parseInt(req.query.days as string) || 30;
+
+    let dashboardData;
+
+    switch (userRole) {
+      case 'CONSUMER':
+        dashboardData = await AnalyticsService.getConsumerDashboard(userId, days);
+        break;
+      case 'MERCHANT':
+        dashboardData = await AnalyticsService.getMerchantDashboard(userId, days);
+        break;
+      case 'DRIVER':
+        dashboardData = await AnalyticsService.getDriverDashboard(userId, days);
+        break;
+      default:
+        return res.status(400).json({ success: false, error: "Invalid user role" });
+    }
+
+    if (dashboardData.success) {
+      res.json({ success: true, dashboard: dashboardData.dashboard });
+    } else {
+      res.status(500).json({ success: false, error: dashboardData.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get real-time metrics
+router.get("/realtime/metrics", requireAuth, async (req, res) => {
+  try {
+    const metrics = await AnalyticsService.getRealTimeMetrics();
+
+    if (metrics.success) {
+      res.json({ success: true, metrics: metrics.data });
+    } else {
+      res.status(500).json({ success: false, error: metrics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get order analytics
+router.get("/orders/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const { period = '7d', orderType } = req.query;
+
+    const analytics = await AnalyticsService.getOrderAnalytics(userId, {
+      period: period as string,
+      orderType: orderType as string
+    });
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get revenue analytics (Merchant/Admin only)
+router.get("/revenue/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+
+    if (userRole !== 'MERCHANT' && userRole !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    const { period = '30d', breakdown = 'daily' } = req.query;
+
+    const analytics = await AnalyticsService.getRevenueAnalytics(userId, {
+      period: period as string,
+      breakdown: breakdown as string
+    });
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get performance analytics
+router.get("/performance/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const days = parseInt(req.query.days as string) || 7;
+
+    const analytics = await AnalyticsService.getPerformanceAnalytics(userId, userRole as any, days);
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
 // Add missing log-error endpoint
 router.post('/log-error', (req, res) => {
   console.error('Frontend error:', req.body);
   res.json({ success: true, message: 'Error logged' });
 });
 
+// Analytics routes
+router.get('/overview', async (req, res) => {
+  try {
+    // Get overview analytics
+    const analytics = await AnalyticsService.getOverviewAnalytics();
+    res.json({
+      success: true,
+      data: analytics
+    });
+  } catch (error) {
+    console.error('Analytics overview error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch analytics'
+    });
+  }
+});
 
+// Real-time metrics endpoint
+router.get('/metrics/realtime', async (req, res) => {
+  try {
+    const metrics = await AnalyticsService.getRealTimeMetrics();
+    res.json({
+      success: true,
+      data: {
+        activeUsers: metrics.activeUsers,
+        activeOrders: metrics.activeOrders,
+        systemLoad: metrics.systemLoad,
+        responseTime: metrics.averageResponseTime,
+        errorRate: metrics.errorRate,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Real-time metrics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch real-time metrics'
+    });
+  }
+});
+
+// User behavior analytics
+router.get('/user-behavior', async (req, res) => {
+  try {
+    const { timeframe = '7d', userRole } = req.query;
+    const behavior = await AnalyticsService.getUserBehaviorAnalytics(timeframe as string, userRole as string);
+
+    res.json({
+      success: true,
+      data: behavior
+    });
+  } catch (error) {
+    console.error('User behavior analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch user behavior analytics'
+    });
+  }
+});
+
+// Revenue analytics
+router.get('/revenue', async (req, res) => {
+  try {
+    if (!req.session?.userId || req.session.user?.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Admin access required'
+      });
+    }
+
+    const { timeframe = '30d' } = req.query;
+    const revenue = await AnalyticsService.getRevenueAnalytics(timeframe as string);
+
+    res.json({
+      success: true,
+      data: revenue
+    });
+  } catch (error) {
+    console.error('Revenue analytics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch revenue analytics'
+    });
+  }
+});
+
+// Performance metrics
+router.get('/performance', async (req, res) => {
+  try {
+    const performance = await AnalyticsService.getPerformanceMetrics();
+
+    res.json({
+      success: true,
+      data: {
+        databaseQueries: performance.databaseQueries,
+        cacheHitRate: performance.cacheHitRate,
+        memoryUsage: performance.memoryUsage,
+        cpuUsage: performance.cpuUsage,
+        activeConnections: performance.activeConnections
+      }
+    });
+  } catch (error) {
+    console.error('Performance metrics error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch performance metrics'
+    });
+  }
+});
+
+// Track custom event
+router.post('/events', async (req, res) => {
+  try {
+    const { eventType, eventData, userId } = req.body;
+
+    if (!eventType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Event type is required'
+      });
+    }
+
+    await AnalyticsService.trackEvent({
+      type: eventType,
+      data: eventData,
+      userId: userId || req.session?.userId,
+      timestamp: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: 'Event tracked successfully'
+    });
+  } catch (error) {
+    console.error('Event tracking error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to track event'
+    });
+  }
+});
 
 export default router;

@@ -528,7 +528,51 @@ async function handleFailedPayment(data: any) {
 
 async function handleSuccessfulTransfer(data: any) {
   try {
-    // Handle successful transfer logic
+    const transferCode = data.transfer_code;
+    const reference = data.reference;
+    const amount = data.amount;
+    const recipient = data.recipient;
+    
+    // Update wallet transaction status
+    await db
+      .update(transactions)
+      .set({
+        paymentStatus: 'COMPLETED',
+        gatewayResponse: data,
+        completedAt: new Date()
+      })
+      .where(eq(transactions.transactionRef, reference));
+    
+    // Update user wallet balance for successful withdrawal
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.transactionRef, reference))
+      .limit(1);
+    
+    if (transaction && transaction.type === 'WITHDRAWAL') {
+      // Deduct from user's available balance
+      await db
+        .update(users)
+        .set({
+          walletBalance: sql`${users.walletBalance} - ${amount / 100}` // Paystack sends amount in kobo
+        })
+        .where(eq(users.id, transaction.userId));
+      
+      // Log the withdrawal
+      console.log(`✅ Withdrawal successful: ₦${amount / 100} for user ${transaction.userId}`);
+      
+      // Send real-time notification
+      if (global.io) {
+        global.io.to(`user_${transaction.userId}`).emit('wallet_update', {
+          type: 'WITHDRAWAL_COMPLETED',
+          amount: amount / 100,
+          reference,
+          timestamp: Date.now()
+        });
+      }
+    }
+    
     console.log("Transfer successful:", data);
   } catch (error) {
     console.error("Handle successful transfer error:", error);
@@ -537,7 +581,50 @@ async function handleSuccessfulTransfer(data: any) {
 
 async function handleFailedTransfer(data: any) {
   try {
-    // Handle failed transfer logic
+    const transferCode = data.transfer_code;
+    const reference = data.reference;
+    const amount = data.amount;
+    
+    // Update transaction status to failed
+    await db
+      .update(transactions)
+      .set({
+        paymentStatus: 'FAILED',
+        gatewayResponse: data,
+        failedAt: new Date()
+      })
+      .where(eq(transactions.transactionRef, reference));
+    
+    // Get transaction details
+    const [transaction] = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.transactionRef, reference))
+      .limit(1);
+    
+    if (transaction && transaction.type === 'WITHDRAWAL') {
+      // Refund the amount back to user's wallet (it was held during processing)
+      await db
+        .update(users)
+        .set({
+          walletBalance: sql`${users.walletBalance} + ${amount / 100}` // Refund the held amount
+        })
+        .where(eq(users.id, transaction.userId));
+      
+      console.log(`❌ Withdrawal failed, refunded ₦${amount / 100} to user ${transaction.userId}`);
+      
+      // Send real-time notification
+      if (global.io) {
+        global.io.to(`user_${transaction.userId}`).emit('wallet_update', {
+          type: 'WITHDRAWAL_FAILED',
+          amount: amount / 100,
+          reference,
+          reason: data.message || 'Transfer failed',
+          timestamp: Date.now()
+        });
+      }
+    }
+    
     console.log("Transfer failed:", data);
   } catch (error) {
     console.error("Handle failed transfer error:", error);

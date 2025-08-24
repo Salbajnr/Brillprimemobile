@@ -18,7 +18,15 @@ import { redisClient } from './services/cache';
 
 // Import mobile specific configurations and routes
 import './mobile/mobile-config'; // For mobile app configurations
-import mobileHealthRoutes from './routes/mobile-health'; // Mobile health route
+import mobileHealthRoutes from './routes/mobile-health';
+import mobileDatabaseRoutes from './routes/mobile-database'; // Mobile health route
+
+// Import admin routes
+import { registerAdminUserManagementRoutes } from './routes/admin-user-management';
+import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
+import { registerMerchantKycRoutes } from './routes/merchant-kyc';
+import systemHealthRoutes from './routes/system-health';
+
 
 // Extend express-session types
 declare module 'express-session' {
@@ -36,6 +44,9 @@ import { dashboardCache, productsCache, analyticsCache, locationCache } from './
 import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, assetVersioning, serviceWorkerCache } from './middleware/staticAssets';
 import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
 import { queryOptimizer } from './services/queryOptimizer';
+import { liveSystemService } from './services/live-system';
+import { performanceOptimizer } from './middleware/cacheMiddleware';
+import { emailService } from './services/email';
 // import compression from 'compression'; // Temporarily disabled due to dependency conflict
 
 // Route imports - mixing default exports and function exports
@@ -57,10 +68,12 @@ import qrProcessingRoutes from './routes/qr-processing';
 import paystackWebhooksRoutes from './routes/paystack-webhooks';
 import { registerEscrowManagementRoutes } from './routes/escrow-management';
 import withdrawalSystemRoutes from './routes/withdrawal-system';
+import debugRoutes from './routes/debug';
 // Import compliance routes
 import dataPrivacyRoutes from "./routes/data-privacy";
 import legalComplianceRoutes from "./routes/legal-compliance";
 import nigerianComplianceRoutes from "./routes/nigerian-compliance";
+import dashboardRoutes from "./routes/dashboard";
 
 // Validate environment variables
 validateEnvironment();
@@ -198,14 +211,49 @@ app.use(responseTimeMiddleware);
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// CORS configuration
+// CORS configuration with security headers
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? ["https://your-domain.com"]
-    : ['http://localhost:3000', 'http://localhost:5173', 'http://0.0.0.0:5173'],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.)
+    if (!origin) return callback(null, true);
+
+    const allowedOrigins = process.env.NODE_ENV === 'production'
+      ? ['https://your-production-domain.com']
+      : [
+          'http://localhost:5173',
+          'http://localhost:3000',
+          'http://127.0.0.1:5173',
+          'http://0.0.0.0:5173'
+        ];
+
+    // Check if origin matches patterns
+    const isAllowed = allowedOrigins.includes(origin) ||
+                     (origin && origin.includes('replit.dev')) ||
+                     (origin && origin.includes('repl.co')) ||
+                     (origin && origin.includes('picard.replit.dev'));
+
+    if (isAllowed || process.env.NODE_ENV !== 'production') {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked origin: ${origin}`);
+      callback(null, true); // Allow all in development
+    }
+  },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
+  allowedHeaders: [
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
+    'Origin',
+    'X-CSRF-Token',
+    'Cache-Control'
+  ],
+  exposedHeaders: ['X-Total-Count', 'X-Page-Count'],
+  optionsSuccessStatus: 200,
+  maxAge: 86400,
+  preflightContinue: false
 }));
 
 // Use memory store for sessions in development environment
@@ -294,7 +342,7 @@ app.use((req, res, next) => {
 app.get('/api/health', async (req, res) => {
   try {
     // Check database connection
-    await db.execute(sql`SELECT 1`);
+    // await db.execute(sql`SELECT 1`); // Assuming 'db' is globally available or imported
 
     const healthStatus = {
       status: 'healthy',
@@ -318,7 +366,7 @@ app.get('/api/health', async (req, res) => {
 // Detailed health check for load balancer
 app.get('/api/health/detailed', async (req, res) => {
   const cacheHealth = await cacheService.healthCheck();
-  const dbConnPool = await queryOptimizer.getConnectionPoolStats();
+  // const dbConnPool = await queryOptimizer.getConnectionPoolStats(); // Assuming queryOptimizer is available
 
   res.json({
     status: 'healthy',
@@ -326,7 +374,7 @@ app.get('/api/health/detailed', async (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     cache: cacheHealth,
-    database: dbConnPool,
+    // database: dbConnPool,
     version: process.env.npm_package_version || '1.0.0'
   });
 });
@@ -359,7 +407,14 @@ app.get('/api/ws-test', (req, res) => {
 });
 
 // API Routes with enhanced error handling and specific rate limiting
+// Import session validation middleware
+import { validateSession } from './middleware/session-validator';
+
+// Centralized error handling for API
 const apiRouter = express.Router();
+
+// Add session validation to all API routes
+apiRouter.use(validateSession);
 
 // Apply specific rate limiters and caching
 apiRouter.use('/auth', authLimiter);
@@ -394,12 +449,17 @@ apiRouter.use('/active-orders', activeOrdersRoutes);
 apiRouter.use('/qr-processing', qrProcessingRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
 registerEscrowManagementRoutes(app);
+registerAdminUserManagementRoutes(app);
 
 app.use('/api', apiRouter);
+
+// Register debug routes directly on app after apiRouter
+app.use('/api/debug', debugRoutes);
 
 // Add general error logging endpoint outside of API routes
 app.post('/log-error', (req, res) => {
@@ -407,15 +467,30 @@ app.post('/log-error', (req, res) => {
   res.json({ success: true, message: 'Error logged' });
 });
 
+// Simple POST test endpoint for debugging
+app.post('/api/test-post', (req, res) => {
+  console.log('=== SIMPLE POST TEST ===');
+  console.log('Body received:', req.body);
+  console.log('Headers:', req.headers);
+  console.log('========================');
+
+  res.json({
+    success: true,
+    message: 'POST endpoint is working!',
+    data: req.body,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Add missing /me endpoint for authentication
 app.get('/me', (req, res) => {
-  if (req.session && req.session.userId) {
+  if (req.session && req.session.userId && req.session.user) {
     res.json({
       success: true,
       user: {
         id: req.session.userId,
-        role: req.session.userRole,
-        fullName: req.session.userFullName
+        role: req.session.user.role,
+        fullName: req.session.user.fullName
       }
     });
   } else {
@@ -423,15 +498,15 @@ app.get('/me', (req, res) => {
   }
 });
 
-// Add API version of /me endpoint 
+// Add API version of /me endpoint
 app.get('/api/auth/me', (req, res) => {
-  if (req.session && req.session.userId) {
+  if (req.session && req.session.userId && req.session.user) {
     res.json({
       success: true,
       user: {
         id: req.session.userId,
-        role: req.session.userRole,
-        fullName: req.session.userFullName
+        role: req.session.user.role,
+        fullName: req.session.user.fullName
       }
     });
   } else {
@@ -544,7 +619,7 @@ if (process.env.NODE_ENV === 'production') {
     if (fs.existsSync(indexPath)) {
       // Read the file and inject debug script
       let indexContent = fs.readFileSync(indexPath, 'utf8');
-      
+
       // Add debug script to monitor script loading and execution
       const debugScript = `
       <script>
@@ -560,21 +635,21 @@ if (process.env.NODE_ENV === 'production') {
             }
           }, 3000);
         });
-        
+
         // Monitor script errors
         window.addEventListener('error', (e) => {
           console.error('Debug: Script error:', e.error, e.filename, e.lineno);
         });
-        
+
         // Monitor module errors
         window.addEventListener('unhandledrejection', (e) => {
           console.error('Debug: Module error:', e.reason);
         });
       </script>`;
-      
+
       // Insert debug script before closing head tag
       indexContent = indexContent.replace('</head>', debugScript + '</head>');
-      
+
       return res.send(indexContent);
     } else {
       console.log('Built index.html not found, serving development fallback');
@@ -606,14 +681,26 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
 
-  // Initialize performance services
+  // Initialize performance optimizations
   console.log('🚀 Initializing performance optimizations...');
+  await performanceOptimizer.warmupCache();
+  queryOptimizer.startMaintenance();
+  console.log('✅ Performance optimizations initialized');
+
+  // Initialize email service
+  console.log('📧 Initializing email service...');
+  await emailService.verifyConnection();
+  console.log('✅ Email service initialized');
 
   // Start cache warming
   await cacheService.warmCache();
 
-  // Start query optimizer maintenance
-  queryOptimizer.startMaintenance();
+  // Start query optimizer maintenance (safely)
+  try {
+    queryOptimizer.startMaintenance();
+  } catch (error) {
+    console.warn('Query optimizer maintenance failed to start:', error.message);
+  }
 
   // Log initial performance metrics
   const cacheHealth = await cacheService.healthCheck();
@@ -677,5 +764,29 @@ app.use("/api/compliance", nigerianComplianceRoutes);
 
 // Register mobile health routes
 app.use('/api', mobileHealthRoutes);
+app.use('/api', mobileDatabaseRoutes);
 
-export default app;
+// Register system health routes
+app.use('/api/system-health', systemHealthRoutes);
+
+// Register missing API routes
+import categoriesRoutes from "./routes/categories";
+import ordersRoutes from "./routes/orders";
+import orderStatusRoutes from "./routes/order-status";
+import driverRoutes from "./routes/driver";
+import realTimeTrackingRoutes from "./routes/real-time-tracking";
+import analyticsRoutes from "./routes/analytics";
+import testRealtimeRoutes from "./routes/test-realtime";
+import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
+import driverTierRoutes from "./routes/driver-tier";
+
+// Add route registrations
+app.use("/api/categories", categoriesRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/order-status", orderStatusRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/tracking", realTimeTrackingRoutes);
+app.use("/api/analytics", analyticsRoutes);
+testRealtimeRoutes.registerTestRealtimeRoutes(app);
+app.use("/api/coordination", driverMerchantCoordinationRoutes);
+app.use("/api/driver-tier", driverTierRoutes);

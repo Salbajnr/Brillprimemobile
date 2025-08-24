@@ -1,71 +1,72 @@
-const CACHE_NAME = 'brillprime-v2-performance';
-const STATIC_CACHE = 'static-v2';
-const DYNAMIC_CACHE = 'dynamic-v2';
-const IMAGE_CACHE = 'images-v2';
 
-const urlsToCache = [
+const CACHE_NAME = 'brillprime-v1.2.0';
+const CRITICAL_RESOURCES = [
   '/',
-  '/static/js/bundle.js',
-  '/static/css/main.css',
-  '/manifest.json',
-  '/offline.html'
+  '/src/main.tsx',
+  '/src/index.css',
+  '/src/pages/signin.tsx',
+  '/src/pages/dashboard.tsx'
 ];
 
-// Cache strategies by content type
-const cacheStrategies = {
-  static: ['/', '/static/', '/assets/', '/favicon.ico'],
-  api: ['/api/'],
-  images: ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg'],
-  fonts: ['.woff', '.woff2', '.ttf', '.otf']
-};
+const API_CACHE_NAME = 'brillprime-api-v1';
+const IMAGE_CACHE_NAME = 'brillprime-images-v1';
 
-// Performance-optimized install
+// Install event - cache critical resources
 self.addEventListener('install', event => {
   event.waitUntil(
-    Promise.all([
-      caches.open(STATIC_CACHE).then(cache => cache.addAll(urlsToCache)),
-      self.skipWaiting()
-    ])
+    caches.open(CACHE_NAME)
+      .then(cache => cache.addAll(CRITICAL_RESOURCES))
+      .then(() => self.skipWaiting())
   );
 });
 
-// Intelligent caching with network-first for API, cache-first for assets
+// Activate event - clean up old caches
+self.addEventListener('activate', event => {
+  event.waitUntil(
+    caches.keys()
+      .then(cacheNames => {
+        return Promise.all(
+          cacheNames.map(cacheName => {
+            if (cacheName !== CACHE_NAME && 
+                cacheName !== API_CACHE_NAME && 
+                cacheName !== IMAGE_CACHE_NAME) {
+              return caches.delete(cacheName);
+            }
+          })
+        );
+      })
+      .then(() => self.clients.claim())
+  );
+});
+
+// Fetch event - implement caching strategies
 self.addEventListener('fetch', event => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Handle API requests with network-first strategy
+  // API requests - Network first, fallback to cache
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(
-      networkFirstStrategy(request, DYNAMIC_CACHE)
-    );
+    event.respondWith(networkFirst(request, API_CACHE_NAME));
     return;
   }
 
-  // Handle images with cache-first strategy
-  if (cacheStrategies.images.some(ext => url.pathname.includes(ext))) {
-    event.respondWith(
-      cacheFirstStrategy(request, IMAGE_CACHE)
-    );
+  // Images - Cache first, fallback to network
+  if (request.destination === 'image') {
+    event.respondWith(cacheFirst(request, IMAGE_CACHE_NAME));
     return;
   }
 
-  // Handle static assets with stale-while-revalidate
-  if (cacheStrategies.static.some(path => url.pathname.startsWith(path))) {
-    event.respondWith(
-      staleWhileRevalidateStrategy(request, STATIC_CACHE)
-    );
+  // Static assets - Stale while revalidate
+  if (request.destination === 'script' || 
+      request.destination === 'style' ||
+      request.destination === 'document') {
+    event.respondWith(staleWhileRevalidate(request, CACHE_NAME));
     return;
   }
-
-  // Default to network-first
-  event.respondWith(
-    networkFirstStrategy(request, DYNAMIC_CACHE)
-  );
 });
 
-// Cache strategies
-async function networkFirstStrategy(request, cacheName) {
+// Network first strategy
+async function networkFirst(request, cacheName) {
   try {
     const networkResponse = await fetch(request);
     if (networkResponse.ok) {
@@ -79,11 +80,10 @@ async function networkFirstStrategy(request, cacheName) {
   }
 }
 
-async function cacheFirstStrategy(request, cacheName) {
+// Cache first strategy
+async function cacheFirst(request, cacheName) {
   const cachedResponse = await caches.match(request);
-  if (cachedResponse) {
-    return cachedResponse;
-  }
+  if (cachedResponse) return cachedResponse;
 
   try {
     const networkResponse = await fetch(request);
@@ -97,16 +97,44 @@ async function cacheFirstStrategy(request, cacheName) {
   }
 }
 
-async function staleWhileRevalidateStrategy(request, cacheName) {
-  const cache = await caches.open(cacheName);
-  const cachedResponse = await cache.match(request);
+// Stale while revalidate strategy
+async function staleWhileRevalidate(request, cacheName) {
+  const cachedResponse = await caches.match(request);
+  
+  const networkResponsePromise = fetch(request)
+    .then(response => {
+      if (response.ok) {
+        const cache = caches.open(cacheName);
+        cache.then(c => c.put(request, response.clone()));
+      }
+      return response;
+    })
+    .catch(() => null);
 
-  const fetchPromise = fetch(request).then(networkResponse => {
-    if (networkResponse.ok) {
-      cache.put(request, networkResponse.clone());
+  return cachedResponse || await networkResponsePromise;
+}
+
+// Background sync for offline actions
+self.addEventListener('sync', event => {
+  if (event.tag === 'offline-actions') {
+    event.waitUntil(processOfflineActions());
+  }
+});
+
+async function processOfflineActions() {
+  const cache = await caches.open(API_CACHE_NAME);
+  const offlineActions = await cache.match('/offline-actions');
+  
+  if (offlineActions) {
+    const actions = await offlineActions.json();
+    
+    for (const action of actions) {
+      try {
+        await fetch(action.url, action.options);
+        // Remove processed action
+      } catch (error) {
+        console.log('Failed to sync action:', error);
+      }
     }
-    return networkResponse;
-  }).catch(() => cachedResponse);
-
-  return cachedResponse || fetchPromise;
+  }
 }

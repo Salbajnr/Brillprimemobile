@@ -145,3 +145,106 @@ export const useDeviceInfo = () => {
 
   return { deviceInfo, loading };
 };
+import { useState, useEffect } from 'react';
+import { Dimensions, Platform } from 'react-native';
+import DeviceInfo from 'react-native-device-info';
+
+interface DeviceOptimization {
+  width: number;
+  height: number;
+  pixelDensity: number;
+  shouldReduceAnimations: boolean;
+  performance: 'low' | 'medium' | 'high';
+}
+
+export const useDeviceInfo = () => {
+  const [optimization, setOptimization] = useState<DeviceOptimization | null>(null);
+
+  useEffect(() => {
+    const getDeviceOptimization = async () => {
+      const { width, height } = Dimensions.get('window');
+      const pixelDensity = Dimensions.get('window').scale;
+      
+      try {
+        const [
+          totalMemory,
+          usedMemory,
+          isTablet,
+          powerState
+        ] = await Promise.all([
+          DeviceInfo.getTotalMemory(),
+          DeviceInfo.getUsedMemory(),
+          DeviceInfo.isTablet(),
+          DeviceInfo.getPowerState()
+        ]);
+
+        const memoryRatio = usedMemory / totalMemory;
+        const isLowPower = powerState.lowPowerMode;
+        
+        let performance: 'low' | 'medium' | 'high' = 'medium';
+        
+        if (memoryRatio > 0.8 || isLowPower) {
+          performance = 'low';
+        } else if (isTablet && memoryRatio < 0.5) {
+          performance = 'high';
+        }
+
+        setOptimization({
+          width: Math.floor(width),
+          height: Math.floor(height),
+          pixelDensity,
+          shouldReduceAnimations: isLowPower || memoryRatio > 0.7,
+          performance
+        });
+      } catch (error) {
+        console.error('Error getting device info:', error);
+        // Fallback values
+        setOptimization({
+          width: Math.floor(width),
+          height: Math.floor(height),
+          pixelDensity,
+          shouldReduceAnimations: false,
+          performance: 'medium'
+        });
+      }
+    };
+
+    getDeviceOptimization();
+  }, []);
+
+  const getOptimalImageSize = () => {
+    if (!optimization) return { width: 300, height: 300 };
+    
+    const baseWidth = optimization.width * 0.8;
+    const baseHeight = optimization.height * 0.8;
+    
+    switch (optimization.performance) {
+      case 'low':
+        return { 
+          width: Math.floor(baseWidth * 0.6), 
+          height: Math.floor(baseHeight * 0.6) 
+        };
+      case 'high':
+        return { 
+          width: Math.floor(baseWidth * 1.2), 
+          height: Math.floor(baseHeight * 1.2) 
+        };
+      default:
+        return { 
+          width: Math.floor(baseWidth), 
+          height: Math.floor(baseHeight) 
+        };
+    }
+  };
+
+  const shouldReduceAnimations = () => {
+    return optimization?.shouldReduceAnimations || false;
+  };
+
+  return {
+    optimization,
+    getOptimalImageSize,
+    shouldReduceAnimations,
+    performance: optimization?.performance || 'medium'
+  };
+};

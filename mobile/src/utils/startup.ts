@@ -1,4 +1,3 @@
-
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import NetInfo from '@react-native-community/netinfo';
@@ -15,6 +14,23 @@ export interface AppInitializationResult {
 export const initializeApp = async (): Promise<AppInitializationResult> => {
   try {
     console.log('🚀 Initializing BrillPrime Mobile App...');
+
+    // Check API connectivity
+    const healthCheck = await apiService.healthCheck();
+    if (!healthCheck.success) {
+      throw new Error('Backend API is not accessible');
+    }
+
+    // Verify database connection (shared with web app)
+    const dbStatus = await apiService.get('/mobile/database-status');
+    if (!dbStatus.success || !dbStatus.data?.sharedWithWebApp) {
+      throw new Error('Database connection not properly shared with web app');
+    }
+
+    console.log('✅ Database connection verified:', {
+      tables: dbStatus.data.tables,
+      sharedWithWebApp: dbStatus.data.sharedWithWebApp
+    });
 
     // Check if this is the first launch
     const hasLaunched = await AsyncStorage.getItem(STORAGE_KEYS.ONBOARDING_COMPLETED);
@@ -34,7 +50,7 @@ export const initializeApp = async (): Promise<AppInitializationResult> => {
           // Validate session with server
           const response = await apiService.getCurrentUser();
           hasValidSession = response.success;
-          
+
           if (!hasValidSession) {
             // Clear invalid session
             await AsyncStorage.removeItem(STORAGE_KEYS.USER_SESSION);
@@ -80,14 +96,6 @@ export const initializeApp = async (): Promise<AppInitializationResult> => {
       console.log('📈 Analytics initialized');
     } catch (error) {
       console.error('❌ Analytics initialization failed:', error);
-    }
-
-    // Health check with backend
-    try {
-      await apiService.healthCheck();
-      console.log('✅ Backend health check passed');
-    } catch (error) {
-      console.warn('⚠️ Backend health check failed:', error);
     }
 
     const result: AppInitializationResult = {

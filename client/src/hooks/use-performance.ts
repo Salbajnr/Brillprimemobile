@@ -53,9 +53,45 @@ export const usePerformance = () => {
     return 90
   }
 
+  const preloadCriticalResources = () => {
+    if (!metrics) return
+
+    // Preload based on user role
+    const userRole = localStorage.getItem('userRole')
+    const preloadMap = {
+      consumer: ['/src/pages/dashboard.tsx', '/src/pages/commodities.tsx'],
+      merchant: ['/src/pages/merchant-dashboard.tsx', '/src/pages/order-management.tsx'],
+      driver: ['/src/pages/driver-dashboard.tsx', '/src/pages/real-time-tracking.tsx'],
+      admin: ['/src/pages/admin-dashboard.tsx', '/src/pages/admin-user-management.tsx']
+    }
+
+    const routesToPreload = preloadMap[userRole as keyof typeof preloadMap] || preloadMap.consumer
+    
+    routesToPreload.forEach(route => {
+      const link = document.createElement('link')
+      link.rel = 'modulepreload'
+      link.href = route
+      document.head.appendChild(link)
+    })
+  }
+
+  const optimizeForDevice = () => {
+    if (!metrics) return {}
+
+    return {
+      enableServiceWorker: !metrics.isSlowConnection,
+      enablePushNotifications: metrics.memoryUsage < 0.7,
+      prefetchNextPage: !metrics.isSlowConnection && metrics.memoryUsage < 0.6,
+      useImagePlaceholders: metrics.isSlowConnection,
+      enableAnimations: metrics.memoryUsage < 0.8
+    }
+  }
+
   return {
     metrics,
     shouldReduceQuality,
-    getOptimalImageQuality
+    getOptimalImageQuality,
+    preloadCriticalResources,
+    optimizeForDevice
   }
 }

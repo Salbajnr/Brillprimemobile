@@ -1,9 +1,10 @@
-modules = ["nodejs-20", "web", "bash"]
+modules = ["nodejs-20", "java-graalvm22.3", "bash", "web"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["postgresql"]
 
 [deployment]
 deploymentTarget = "autoscale"
@@ -243,3 +244,58 @@ args = "cd mobile && npm install"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd mobile && npx react-native start"
+
+[[workflows.workflow]]
+name = "Fixed Development Server"
+author = 46719998
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd server && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Start BrillPrime Server"
+author = 46836043
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow]]
+name = "Mobile Development Complete"
+author = 46836043
+mode = "parallel"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd mobile && npm start"
+
+[[workflows.workflow]]
+name = "Start BrillPrime Development"
+author = 46836043
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
+[agent]
+integrations = ["javascript_sendgrid==1.0.0"]

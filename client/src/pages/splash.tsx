@@ -1,19 +1,37 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "../hooks/use-auth";
 import logoImage from "../assets/images/logo.png";
 
 export default function SplashPage() {
   const [, setLocation] = useLocation();
+  const { user, isLoading, isAuthenticated } = useAuth();
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      // Always go to onboarding for now, bypassing auth checks
-      console.log("Splash: Redirecting to onboarding");
-      setLocation("/onboarding");
+      if (isLoading) {
+        // Still loading auth state, wait a bit more
+        return;
+      }
+      
+      if (isAuthenticated() && user) {
+        console.log("Splash: User authenticated, redirecting to dashboard");
+        setLocation("/dashboard");
+      } else {
+        // Check if user has seen onboarding
+        const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");
+        if (hasSeenOnboarding === "true") {
+          console.log("Splash: User not authenticated, redirecting to signin");
+          setLocation("/signin");
+        } else {
+          console.log("Splash: New user, redirecting to onboarding");
+          setLocation("/onboarding");
+        }
+      }
     }, 2000); // Show splash for 2 seconds
 
     return () => clearTimeout(timer);
-  }, [setLocation]);
+  }, [setLocation, isLoading, user, isAuthenticated]);
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center relative overflow-hidden">

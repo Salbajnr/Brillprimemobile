@@ -1,488 +1,227 @@
-import type { Express } from "express";
+
+import { Router } from "express";
+import { z } from "zod";
 import { storage } from "../storage";
 import { requireAuth } from "../middleware/auth";
-import { z } from "zod";
 
-// Driver-Merchant Coordination schemas
-const acceptDeliverySchema = z.object({
-  deliveryId: z.string(),
-  estimatedPickupTime: z.string().optional(),
-  notes: z.string().optional()
-});
+const router = Router();
 
-const updateDeliveryStatusSchema = z.object({
-  deliveryId: z.string(),
-  status: z.enum(['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']),
+// Validation schemas
+const coordinationRequestSchema = z.object({
+  orderId: z.string(),
+  merchantId: z.number(),
+  driverId: z.number(),
+  requestType: z.enum(['PICKUP_READY', 'DELIVERY_CONFIRMATION', 'ISSUE_REPORT']),
+  message: z.string().optional(),
   location: z.object({
     latitude: z.number(),
     longitude: z.number()
   }).optional(),
-  notes: z.string().optional(),
-  proof: z.object({
-    type: z.enum(['PHOTO', 'SIGNATURE', 'QR_CODE']),
-    data: z.string()
-  }).optional()
+  estimatedTime: z.number().optional()
 });
 
-const requestDeliverySchema = z.object({
-  orderId: z.string(),
-  customerId: z.number(),
-  deliveryType: z.enum(['PACKAGE', 'FOOD', 'DOCUMENT', 'OTHER']),
-  pickupAddress: z.string(),
-  deliveryAddress: z.string(),
-  estimatedDistance: z.number(),
-  deliveryFee: z.number(),
-  preferredDriverTier: z.enum(['STANDARD', 'PREMIUM']).optional(),
-  specialInstructions: z.string().optional(),
-  urgency: z.enum(['LOW', 'MEDIUM', 'HIGH', 'URGENT']).default('MEDIUM'),
-  notes: z.string().optional()
+const responseSchema = z.object({
+  coordinationId: z.string(),
+  response: z.enum(['ACKNOWLEDGED', 'CONFIRMED', 'REJECTED']),
+  message: z.string().optional(),
+  newEstimatedTime: z.number().optional()
 });
 
-const communicateWithDriverSchema = z.object({
-  deliveryId: z.string(),
-  message: z.string(),
-  messageType: z.enum(['TEXT', 'LOCATION_UPDATE', 'ETA_UPDATE', 'ISSUE_REPORT']).default('TEXT')
-});
+// Create coordination request
+router.post("/request", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session!.userId!;
+    const validatedData = coordinationRequestSchema.parse(req.body);
 
-export function registerDriverMerchantCoordinationRoutes(app: Express) {
-  // Merchant requests delivery
-  app.post("/api/coordination/request-delivery", requireAuth, async (req, res) => {
-    try {
-      const data = requestDeliverySchema.parse(req.body);
-      const merchantId = req.session!.userId!;
-
-      // Create delivery request
-      const deliveryRequest = await storage.createDeliveryRequest({
-        id: `DEL_${Date.now()}_${merchantId}`,
-        merchantId,
-        orderId: data.orderId,
-        customerId: data.customerId,
-        deliveryType: data.deliveryType,
-        pickupAddress: data.pickupAddress,
-        deliveryAddress: data.deliveryAddress,
-        estimatedDistance: data.estimatedDistance,
-        deliveryFee: data.deliveryFee,
-        preferredDriverTier: data.preferredDriverTier || 'STANDARD',
-        specialInstructions: data.specialInstructions,
-        urgency: data.urgency,
-        status: 'PENDING',
-        notes: data.notes
-      });
-
-      // Emit real-time notification to available drivers
-      if (global.io) {
-        const driverRoom = data.preferredDriverTier === 'PREMIUM' ? 'drivers_premium' : 'drivers_all';
-        
-        global.io.to(driverRoom).emit('new_delivery_request', {
-          deliveryId: deliveryRequest.id,
-          merchantId,
-          deliveryType: data.deliveryType,
-          pickupAddress: data.pickupAddress,
-          deliveryAddress: data.deliveryAddress,
-          deliveryFee: data.deliveryFee,
-          estimatedDistance: data.estimatedDistance,
-          urgency: data.urgency,
-          timestamp: Date.now()
-        });
-
-        // Notify specific order room
-        global.io.to(`order_${data.orderId}`).emit('delivery_requested', {
-          deliveryId: deliveryRequest.id,
-          status: 'PENDING',
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Delivery request created successfully",
-        deliveryRequest: {
-          id: deliveryRequest.id,
-          status: 'PENDING',
-          estimatedPickupTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes
-          createdAt: deliveryRequest.createdAt
-        }
-      });
-
-    } catch (error: any) {
-      console.error('Delivery request error:', error);
-      res.status(400).json({
+    // Verify user has permission for this order
+    const order = await storage.getOrderById(validatedData.orderId);
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        message: error.message || "Failed to create delivery request"
+        message: "Order not found"
       });
     }
-  });
 
-  // Driver accepts delivery
-  app.post("/api/coordination/accept-delivery", requireAuth, async (req, res) => {
-    try {
-      const data = acceptDeliverySchema.parse(req.body);
-      const driverId = req.session!.userId!;
+    const hasPermission = order.customerId === userId || 
+                         order.merchantId === userId || 
+                         order.driverId === userId;
 
-      // Check if driver profile exists and is available
-      const driverProfile = await storage.getDriverProfile(driverId);
-      if (!driverProfile || !driverProfile.isAvailable) {
-        return res.status(400).json({
-          success: false,
-          message: "Driver not available for deliveries"
-        });
-      }
-
-      // Accept the delivery job
-      await storage.acceptDeliveryJob(data.deliveryId, driverId);
-
-      // Update driver availability
-      await storage.updateDriverLocation(driverId, {
-        latitude: "0", // Driver should update location after accepting
-        longitude: "0"
-      });
-
-      // Get delivery details for notifications
-      const deliveryDetails = await storage.getOrderTracking(data.deliveryId);
-
-      // Emit real-time notifications
-      if (global.io) {
-        // Notify merchant
-        if (deliveryDetails?.sellerId) {
-          global.io.to(`user_${deliveryDetails.sellerId}`).emit('delivery_accepted', {
-            deliveryId: data.deliveryId,
-            driverId,
-            driverName: driverProfile.userId, // You might want to get actual driver name
-            estimatedPickupTime: data.estimatedPickupTime || new Date(Date.now() + 30 * 60 * 1000),
-            timestamp: Date.now()
-          });
-        }
-
-        // Notify customer
-        if (deliveryDetails?.buyerId) {
-          global.io.to(`user_${deliveryDetails.buyerId}`).emit('delivery_assigned', {
-            deliveryId: data.deliveryId,
-            driverId,
-            status: 'ACCEPTED',
-            timestamp: Date.now()
-          });
-        }
-
-        // Update order room
-        global.io.to(`order_${data.deliveryId}`).emit('delivery_status_update', {
-          status: 'ACCEPTED',
-          driverId,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Delivery accepted successfully",
-        deliveryId: data.deliveryId,
-        estimatedPickupTime: data.estimatedPickupTime
-      });
-
-    } catch (error: any) {
-      console.error('Accept delivery error:', error);
-      res.status(400).json({
+    if (!hasPermission) {
+      return res.status(403).json({
         success: false,
-        message: error.message || "Failed to accept delivery"
+        message: "Access denied"
       });
     }
-  });
 
-  // Update delivery status (Driver)
-  app.put("/api/coordination/delivery-status", requireAuth, async (req, res) => {
-    try {
-      const data = updateDeliveryStatusSchema.parse(req.body);
-      const driverId = req.session!.userId!;
+    const coordination = await storage.createCoordinationRequest({
+      ...validatedData,
+      requesterId: userId,
+      status: 'PENDING',
+      createdAt: new Date()
+    });
 
-      // Update delivery status
-      await storage.updateOrderTracking(data.deliveryId, data.status.toLowerCase(), data.location);
+    // Send real-time notification
+    if ((global as any).io) {
+      const targetUserId = validatedData.requestType === 'PICKUP_READY' 
+        ? validatedData.driverId 
+        : validatedData.merchantId;
 
-      // Prepare status update data
-      const statusUpdate = {
-        deliveryId: data.deliveryId,
-        status: data.status,
-        location: data.location,
-        notes: data.notes,
-        proof: data.proof,
-        driverId,
+      (global as any).io.to(`user_${targetUserId}`).emit('coordination_request', {
+        coordinationId: coordination.id,
+        orderId: validatedData.orderId,
+        requestType: validatedData.requestType,
+        message: validatedData.message,
+        requesterId: userId,
         timestamp: Date.now()
-      };
-
-      // Get delivery details for notifications
-      const deliveryDetails = await storage.getOrderTracking(data.deliveryId);
-
-      // Emit real-time notifications
-      if (global.io) {
-        // Notify merchant
-        if (deliveryDetails?.sellerId) {
-          global.io.to(`user_${deliveryDetails.sellerId}`).emit('delivery_status_update', statusUpdate);
-        }
-
-        // Notify customer
-        if (deliveryDetails?.buyerId) {
-          global.io.to(`user_${deliveryDetails.buyerId}`).emit('delivery_status_update', statusUpdate);
-        }
-
-        // Update order room
-        global.io.to(`order_${data.deliveryId}`).emit('delivery_status_update', statusUpdate);
-
-        // Update delivery room
-        global.io.to(`delivery_${data.deliveryId}`).emit('status_update', statusUpdate);
-      }
-
-      // Handle special status updates
-      if (data.status === 'DELIVERED') {
-        // Mark driver as available again
-        // await storage.updateDriverAvailability(driverId, true);
-        
-        // Process delivery completion
-        // This might include payment processing, ratings, etc.
-      }
-
-      res.json({
-        success: true,
-        message: `Delivery status updated to ${data.status}`,
-        statusUpdate
-      });
-
-    } catch (error: any) {
-      console.error('Delivery status update error:', error);
-      res.status(400).json({
-        success: false,
-        message: error.message || "Failed to update delivery status"
       });
     }
-  });
 
-  // Communication between merchant and driver
-  app.post("/api/coordination/communicate", requireAuth, async (req, res) => {
-    try {
-      const data = communicateWithDriverSchema.parse(req.body);
-      const senderId = req.session!.userId!;
-
-      // Get delivery details to determine recipient
-      const deliveryDetails = await storage.getOrderTracking(data.deliveryId);
-      if (!deliveryDetails) {
-        return res.status(404).json({
-          success: false,
-          message: "Delivery not found"
-        });
-      }
-
-      // Determine recipient (merchant or driver)
-      const recipientId = deliveryDetails.sellerId === senderId ? 
-        deliveryDetails.driverId : deliveryDetails.sellerId;
-
-      if (!recipientId) {
-        return res.status(400).json({
-          success: false,
-          message: "Recipient not found"
-        });
-      }
-
-      // Create conversation if it doesn't exist
-      let conversation;
-      try {
-        conversation = await storage.createConversation({
-          id: `DELIVERY_${data.deliveryId}`,
-          customerId: deliveryDetails.sellerId, // Merchant
-          vendorId: recipientId, // Driver or vice versa
-          conversationType: 'DELIVERY',
-          status: 'ACTIVE'
-        });
-      } catch (error) {
-        // Conversation might already exist
-      }
-
-      // Send message
-      const message = await storage.sendMessage({
-        id: `MSG_${Date.now()}_${senderId}`,
-        conversationId: `DELIVERY_${data.deliveryId}`,
-        senderId,
-        content: data.message,
-        messageType: data.messageType === 'TEXT' ? 'TEXT' : 'ORDER_UPDATE'
-      });
-
-      // Emit real-time message
-      if (global.io) {
-        global.io.to(`user_${recipientId}`).emit('delivery_message', {
-          deliveryId: data.deliveryId,
-          senderId,
-          message: data.message,
-          messageType: data.messageType,
-          timestamp: Date.now()
-        });
-
-        // Update delivery room
-        global.io.to(`delivery_${data.deliveryId}`).emit('new_message', {
-          senderId,
-          message: data.message,
-          messageType: data.messageType,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Message sent successfully",
-        messageId: message.id
-      });
-
-    } catch (error: any) {
-      console.error('Communication error:', error);
-      res.status(400).json({
+    res.status(201).json({
+      success: true,
+      message: "Coordination request sent",
+      coordination
+    });
+  } catch (error: any) {
+    console.error("Create coordination request error:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
         success: false,
-        message: error.message || "Failed to send message"
+        message: "Invalid request data",
+        errors: error.errors
       });
     }
-  });
+    res.status(500).json({
+      success: false,
+      message: "Failed to create coordination request"
+    });
+  }
+});
 
-  // Get available drivers (Merchant view)
-  app.get("/api/coordination/available-drivers", requireAuth, async (req, res) => {
-    try {
-      const { latitude, longitude, radius = 10000, driverTier } = req.query;
+// Respond to coordination request
+router.post("/respond", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session!.userId!;
+    const validatedData = responseSchema.parse(req.body);
 
-      // Get nearby available drivers
-      let nearbyDrivers = [];
-      if (latitude && longitude) {
-        const nearbyUsers = await storage.getNearbyUsers(
-          parseFloat(latitude as string),
-          parseFloat(longitude as string),
-          parseFloat(radius as string),
-          'DRIVER'
-        );
-        nearbyDrivers = nearbyUsers;
+    const coordination = await storage.getCoordinationRequest(validatedData.coordinationId);
+    if (!coordination) {
+      return res.status(404).json({
+        success: false,
+        message: "Coordination request not found"
+      });
+    }
+
+    // Verify user can respond to this request
+    const order = await storage.getOrderById(coordination.orderId);
+    const canRespond = order && (order.merchantId === userId || order.driverId === userId);
+
+    if (!canRespond) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied"
+      });
+    }
+
+    const updatedCoordination = await storage.updateCoordinationRequest(
+      validatedData.coordinationId,
+      {
+        status: validatedData.response,
+        response: validatedData.message,
+        responderId: userId,
+        respondedAt: new Date(),
+        newEstimatedTime: validatedData.newEstimatedTime
       }
+    );
 
-      // Filter by driver tier if specified
-      // This would need additional implementation in storage layer
-
-      res.json({
-        success: true,
-        drivers: nearbyDrivers.map(driver => ({
-          id: driver.userId,
-          location: {
-            latitude: driver.latitude,
-            longitude: driver.longitude
-          },
-          isAvailable: true,
-          // Add more driver details as needed
-        }))
-      });
-
-    } catch (error: any) {
-      console.error('Available drivers error:', error);
-      res.status(500).json({
-        success: false,
-        message: "Failed to get available drivers"
+    // Send real-time notification
+    if ((global as any).io) {
+      (global as any).io.to(`user_${coordination.requesterId}`).emit('coordination_response', {
+        coordinationId: validatedData.coordinationId,
+        response: validatedData.response,
+        message: validatedData.message,
+        responderId: userId,
+        timestamp: Date.now()
       });
     }
-  });
 
-  // Get delivery assignments (Driver view)
-  app.get("/api/coordination/my-deliveries", requireAuth, async (req, res) => {
-    try {
-      const driverId = req.session!.userId!;
-      const { status } = req.query;
-
-      const deliveries = await storage.getDriverOrders(driverId, status as string);
-
-      // Enrich with tracking data
-      const enrichedDeliveries = await Promise.all(
-        deliveries.map(async (delivery) => {
-          const trackingData = await storage.getOrderTracking(delivery.id);
-          return {
-            ...delivery,
-            tracking: trackingData
-          };
-        })
-      );
-
-      res.json({
-        success: true,
-        deliveries: enrichedDeliveries
-      });
-
-    } catch (error: any) {
-      console.error('Driver deliveries error:', error);
-      res.status(500).json({
+    res.json({
+      success: true,
+      message: "Response sent successfully",
+      coordination: updatedCoordination
+    });
+  } catch (error: any) {
+    console.error("Respond to coordination error:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
         success: false,
-        message: "Failed to get deliveries"
+        message: "Invalid response data",
+        errors: error.errors
       });
     }
-  });
+    res.status(500).json({
+      success: false,
+      message: "Failed to send response"
+    });
+  }
+});
 
-  // Get delivery requests (Merchant view)
-  app.get("/api/coordination/my-delivery-requests", requireAuth, async (req, res) => {
-    try {
-      const merchantId = req.session!.userId!;
+// Get coordination history for order
+router.get("/order/:orderId", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session!.userId!;
+    const { orderId } = req.params;
 
-      // Get merchant's delivery requests
-      // This would need additional implementation in storage layer
-      const deliveryRequests = []; // Placeholder
-
-      res.json({
-        success: true,
-        requests: deliveryRequests
-      });
-
-    } catch (error: any) {
-      console.error('Merchant delivery requests error:', error);
-      res.status(500).json({
+    const order = await storage.getOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({
         success: false,
-        message: "Failed to get delivery requests"
+        message: "Order not found"
       });
     }
-  });
 
-  // Emergency contact (Driver or Merchant)
-  app.post("/api/coordination/emergency", requireAuth, async (req, res) => {
-    try {
-      const { deliveryId, emergencyType, description, location } = req.body;
-      const userId = req.session!.userId!;
+    const hasAccess = order.customerId === userId || 
+                     order.merchantId === userId || 
+                     order.driverId === userId;
 
-      const emergencyReport = {
-        id: `EMERGENCY_${Date.now()}_${userId}`,
-        deliveryId,
-        reportedBy: userId,
-        emergencyType,
-        description,
-        location,
-        timestamp: Date.now(),
-        status: 'ACTIVE'
-      };
-
-      // Emit immediate notifications to all relevant parties
-      if (global.io) {
-        // Notify admin
-        global.io.to('admin_emergency').emit('emergency_report', emergencyReport);
-
-        // Notify other party in delivery
-        const deliveryDetails = await storage.getOrderTracking(deliveryId);
-        if (deliveryDetails) {
-          const otherParties = [deliveryDetails.sellerId, deliveryDetails.buyerId, deliveryDetails.driverId]
-            .filter(id => id && id !== userId);
-
-          otherParties.forEach(partyId => {
-            global.io.to(`user_${partyId}`).emit('delivery_emergency', emergencyReport);
-          });
-        }
-
-        // Update delivery room
-        global.io.to(`delivery_${deliveryId}`).emit('emergency_alert', emergencyReport);
-      }
-
-      res.json({
-        success: true,
-        message: "Emergency report submitted",
-        emergencyId: emergencyReport.id
-      });
-
-    } catch (error: any) {
-      console.error('Emergency report error:', error);
-      res.status(500).json({
+    if (!hasAccess) {
+      return res.status(403).json({
         success: false,
-        message: "Failed to submit emergency report"
+        message: "Access denied"
       });
     }
-  });
-}
+
+    const coordinationHistory = await storage.getOrderCoordinationHistory(orderId);
+
+    res.json({
+      success: true,
+      coordinationHistory
+    });
+  } catch (error) {
+    console.error("Get coordination history error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch coordination history"
+    });
+  }
+});
+
+// Get active coordination requests for user
+router.get("/active", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session!.userId!;
+    const activeRequests = await storage.getActiveCoordinationRequests(userId);
+
+    res.json({
+      success: true,
+      requests: activeRequests
+    });
+  } catch (error) {
+    console.error("Get active coordination requests error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch active requests"
+    });
+  }
+});
+
+export default router;

@@ -3,7 +3,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 
 // Get the base URL from environment or use the Replit backend URL
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000';
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000/api';
+
+// Ensure we're using the same backend as web app
+console.log('Mobile app connecting to backend:', BASE_URL);
 
 const config = {
   apiBaseUrl: BASE_URL,

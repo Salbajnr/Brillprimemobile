@@ -9,11 +9,282 @@ import {
   fuelOrders,
   wallets,
   supportTickets,
-  notifications
+  notifications,
+  categories
 } from '../shared/schema';
-import { eq, desc, and, gte, sql, isNull, lte, count, sum } from 'drizzle-orm';
+import { eq, desc, and, gte, sql, isNull, lte, count, sum, inArray, avg } from 'drizzle-orm';
 
 export const storage = {
+  // Categories management
+  async getCategories(filters: { includeInactive?: boolean; parentId?: number } = {}) {
+    const conditions = [];
+
+    if (!filters.includeInactive) {
+      conditions.push(eq(categories.isActive, true));
+    }
+
+    if (filters.parentId) {
+      conditions.push(eq(categories.parentId, filters.parentId));
+    }
+
+    return await db.select().from(categories)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(categories.sortOrder, categories.name);
+  },
+
+  async getCategoryById(id: number) {
+    const [category] = await db.select().from(categories)
+      .where(eq(categories.id, id))
+      .limit(1);
+    return category;
+  },
+
+  async createCategory(categoryData: any) {
+    const [category] = await db.insert(categories).values(categoryData).returning();
+    return category;
+  },
+
+  async updateCategory(id: number, data: any) {
+    const [category] = await db.update(categories)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+      .returning();
+    return category;
+  },
+
+  async deleteCategory(id: number) {
+    await db.delete(categories).where(eq(categories.id, id));
+  },
+
+  // Orders management
+  async createOrder(orderData: any) {
+    const [order] = await db.insert(orders).values(orderData).returning();
+    return order;
+  },
+
+  async getOrderById(orderId: string) {
+    const [order] = await db.select().from(orders)
+      .where(eq(orders.id, parseInt(orderId)))
+      .limit(1);
+    return order;
+  },
+
+  async getCustomerOrders(userId: number, filters: any) {
+    const conditions = [eq(orders.customerId, userId)];
+
+    if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit)
+      .offset((filters.page - 1) * filters.limit);
+
+    return {
+      orders: ordersList,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async getMerchantOrders(userId: number, filters: any) {
+    const conditions = [eq(orders.merchantId, userId)];
+
+    if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit)
+      .offset((filters.page - 1) * filters.limit);
+
+    return {
+      orders: ordersList,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async getDriverOrders(userId: number, filters: any = {}) {
+    const conditions = [eq(orders.driverId, userId)];
+
+    if (filters.status && typeof filters === 'string') {
+      conditions.push(eq(orders.status, filters));
+    } else if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit || 50)
+      .offset(((filters.page || 1) - 1) * (filters.limit || 50));
+
+    return filters.status && typeof filters === 'string' ? ordersList : {
+      orders: ordersList,
+      pagination: {
+        page: filters.page || 1,
+        limit: filters.limit || 50,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async updateOrderStatus(orderId: string, statusData: any) {
+    const [order] = await db.update(orders)
+      .set({
+        status: statusData.status,
+        notes: statusData.notes,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)))
+      .returning();
+    return order;
+  },
+
+  async getOrderTransactions(orderId: string) {
+    return await db.select().from(transactions)
+      .where(eq(transactions.orderId, parseInt(orderId)))
+      .orderBy(desc(transactions.createdAt));
+  },
+
+  async getOrderTracking(orderId: string) {
+    // Mock tracking data - implement based on your tracking system
+    return {
+      orderId,
+      status: 'IN_TRANSIT',
+      location: { latitude: 6.5244, longitude: 3.3792 },
+      estimatedArrival: new Date(Date.now() + 30 * 60 * 1000),
+      updates: []
+    };
+  },
+
+  async assignDriverToOrder(orderId: string, driverId: number) {
+    await db.update(orders)
+      .set({
+        driverId,
+        status: 'ASSIGNED',
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+  },
+
+  async cancelOrder(orderId: string, cancelData: any) {
+    await db.update(orders)
+      .set({
+        status: 'CANCELLED',
+        notes: cancelData.reason,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+  },
+
+  async getDriverActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.driverId, userId),
+        inArray(orders.status, ['ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  async getMerchantActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.merchantId, userId),
+        inArray(orders.status, ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  async getCustomerActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.customerId, userId),
+        inArray(orders.status, ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'PICKED_UP', 'OUT_FOR_DELIVERY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  // Driver-specific methods
+  async getDriverDeliveryAnalytics(driverId: number, period: string) {
+    // Mock analytics - implement based on your analytics system
+    return {
+      totalDeliveries: 45,
+      completedDeliveries: 42,
+      successRate: 93.3,
+      averageDeliveryTime: 28,
+      earnings: 15750,
+      ratings: 4.7
+    };
+  },
+
+  async getDriverRatings(driverId: number, limit: number) {
+    // Mock ratings - implement based on your ratings system
+    return [
+      { orderId: '123', rating: 5, comment: 'Excellent service', date: new Date() },
+      { orderId: '124', rating: 4, comment: 'Good delivery', date: new Date() }
+    ];
+  },
+
+  async updateDriverVehicle(driverId: number, vehicleData: any) {
+    const [profile] = await db.update(driverProfiles)
+      .set({
+        vehicleType: vehicleData.vehicleType,
+        vehiclePlate: vehicleData.vehiclePlate,
+        vehicleModel: vehicleData.vehicleModel,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, driverId))
+      .returning();
+    return profile;
+  },
+
+  async getNearbyDeliveryOpportunities(driverId: number, location: any, radius: number) {
+    // Mock opportunities - implement based on your location system
+    return [
+      {
+        orderId: '125',
+        pickupLocation: { lat: 6.5244, lng: 3.3792 },
+        deliveryLocation: { lat: 6.4281, lng: 3.4106 },
+        estimatedEarnings: 850,
+        distance: 5.2,
+        urgency: 'normal'
+      }
+    ];
+  },
+
+  async createDriverFeedback(feedbackData: any) {
+    // Mock feedback creation - implement based on your feedback system
+    return { id: Date.now(), ...feedbackData };
+  },
+
+  async getDriverSchedule(driverId: number, date: string) {
+    // Mock schedule - implement based on your scheduling system
+    return {
+      date,
+      shifts: [
+        { start: '09:00', end: '17:00', type: 'regular' }
+      ],
+      availability: true
+    };
+  },
+
+  async updateDriverSchedule(driverId: number, scheduleData: any) {
+    // Mock schedule update - implement based on your scheduling system
+    return { id: driverId, ...scheduleData };
+  },
+
   // User management
   async getUser(userId: number) {
     try {
@@ -56,7 +327,7 @@ export const storage = {
       // Get today's deliveries and earnings
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const [todayStats] = await db.select({
         deliveries: count(orders.id),
         earnings: sum(transactions.amount)
@@ -122,7 +393,7 @@ export const storage = {
       // Get today's orders and revenue
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const [todayStats] = await db.select({
         orders: count(orders.id),
         revenue: sum(orders.totalAmount)
@@ -340,11 +611,11 @@ export const storage = {
   async getSupportTickets(filters: any = {}) {
     try {
       let query = db.select().from(supportTickets);
-      
+
       if (filters.status) {
         query = query.where(eq(supportTickets.status, filters.status));
       }
-      
+
       if (filters.priority) {
         query = query.where(eq(supportTickets.priority, filters.priority));
       }
@@ -374,6 +645,267 @@ export const storage = {
     }
   },
 
+  // Coordination management
+  async createCoordinationRequest(requestData: any) {
+    // Mock coordination request creation
+    const coordination = {
+      id: `coord_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...requestData,
+      createdAt: new Date()
+    };
+    return coordination;
+  },
+
+  async getCoordinationRequest(coordinationId: string) {
+    // Mock coordination request retrieval
+    return {
+      id: coordinationId,
+      orderId: '123',
+      requesterId: 1,
+      merchantId: 2,
+      driverId: 3,
+      requestType: 'PICKUP_READY',
+      status: 'PENDING',
+      createdAt: new Date()
+    };
+  },
+
+  async updateCoordinationRequest(coordinationId: string, updates: any) {
+    // Mock coordination request update
+    return {
+      id: coordinationId,
+      ...updates,
+      updatedAt: new Date()
+    };
+  },
+
+  async getOrderCoordinationHistory(orderId: string) {
+    // Mock coordination history
+    return [
+      {
+        id: 'coord_1',
+        orderId,
+        requestType: 'PICKUP_READY',
+        status: 'CONFIRMED',
+        createdAt: new Date(Date.now() - 3600000),
+        respondedAt: new Date(Date.now() - 3000000)
+      }
+    ];
+  },
+
+  async getActiveCoordinationRequests(userId: number) {
+    // Mock active coordination requests
+    return [
+      {
+        id: 'coord_2',
+        orderId: '124',
+        requestType: 'DELIVERY_CONFIRMATION',
+        status: 'PENDING',
+        message: 'Ready for pickup at merchant location',
+        createdAt: new Date(Date.now() - 1800000)
+      }
+    ];
+  },
+
+  // Additional driver methods
+  async getDriverProfile(driverId: number) {
+    try {
+      const [profile] = await db.select().from(driverProfiles)
+        .where(eq(driverProfiles.userId, driverId))
+        .limit(1);
+      return profile;
+    } catch (error) {
+      console.error('Error getting driver profile:', error);
+      return null;
+    }
+  },
+
+  async updateDriverStatus(driverId: number, isOnline: boolean, location?: { lat: number; lng: number }) {
+    try {
+      const updates: any = {
+        isOnline,
+        updatedAt: new Date()
+      };
+
+      if (location) {
+        updates.currentLatitude = location.lat.toString();
+        updates.currentLongitude = location.lng.toString();
+      }
+
+      await db.update(driverProfiles)
+        .set(updates)
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver status:', error);
+      throw error;
+    }
+  },
+
+  async getAvailableDeliveryRequests(driverId: number) {
+    // Mock delivery requests
+    return [
+      {
+        id: 'req_1',
+        orderId: '125',
+        deliveryType: 'PACKAGE',
+        pickupAddress: '123 Merchant Street, Lagos',
+        deliveryAddress: '456 Customer Avenue, Lagos',
+        pickupCoords: { lat: 6.5244, lng: 3.3792 },
+        deliveryCoords: { lat: 6.4281, lng: 3.4106 },
+        customerName: 'John Doe',
+        customerPhone: '+234801234567',
+        merchantName: 'ABC Store',
+        merchantPhone: '+234802345678',
+        deliveryFee: 850,
+        distance: 5.2,
+        estimatedTime: 30,
+        orderValue: 12500,
+        paymentMethod: 'Card',
+        specialInstructions: 'Handle with care',
+        urgentDelivery: false,
+        temperatureSensitive: false,
+        fragile: true,
+        requiresVerification: false,
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date()
+      }
+    ];
+  },
+
+  async acceptDeliveryRequest(requestId: string, driverId: number) {
+    // Mock delivery acceptance
+    return {
+      id: requestId,
+      orderId: '125',
+      driverId,
+      customerId: 1,
+      merchantId: 2,
+      customerName: 'John Doe',
+      customerPhone: '+234801234567',
+      pickupAddress: '123 Merchant Street, Lagos',
+      deliveryAddress: '456 Customer Avenue, Lagos',
+      deliveryFee: 850,
+      estimatedTime: 30,
+      orderItems: [],
+      specialInstructions: 'Handle with care',
+      acceptedAt: new Date()
+    };
+  },
+
+  async updateDriverAvailability(driverId: number, isAvailable: boolean) {
+    try {
+      await db.update(driverProfiles)
+        .set({
+          isAvailable,
+          updatedAt: new Date()
+        })
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver availability:', error);
+      throw error;
+    }
+  },
+
+  async getDeliveryById(deliveryId: string) {
+    // Mock delivery retrieval
+    return {
+      id: deliveryId,
+      orderId: '125',
+      driverId: 1,
+      customerId: 2,
+      merchantId: 3,
+      status: 'ACCEPTED',
+      deliveryFee: 850,
+      createdAt: new Date()
+    };
+  },
+
+  async updateDeliveryStatus(deliveryId: string, status: string, options: any = {}) {
+    // Mock delivery status update
+    return {
+      id: deliveryId,
+      status,
+      proof: options.proof,
+      notes: options.notes,
+      location: options.location,
+      updatedAt: new Date()
+    };
+  },
+
+  async updateDriverEarnings(driverId: number, amount: number) {
+    try {
+      await db.update(driverProfiles)
+        .set({
+          totalEarnings: sql`${driverProfiles.totalEarnings} + ${amount}`,
+          totalDeliveries: sql`${driverProfiles.totalDeliveries} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver earnings:', error);
+      throw error;
+    }
+  },
+
+  async getDriverDeliveriesForDate(driverId: number, date: Date) {
+    // Mock deliveries for date
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        completedAt: date
+      }
+    ];
+  },
+
+  async getDriverDeliveriesForPeriod(driverId: number, startDate: Date, endDate: Date) {
+    // Mock deliveries for period
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      },
+      {
+        id: 'del_2',
+        orderId: '126',
+        deliveryFee: 1200,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      }
+    ];
+  },
+
+  async getDriverDeliveries(driverId: number) {
+    // Mock all driver deliveries
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      }
+    ];
+  },
+
+  async createTransaction(transactionData: any) {
+    try {
+      const [transaction] = await db.insert(transactions).values(transactionData).returning();
+      return transaction;
+    } catch (error) {
+      console.error('Error creating transaction:', error);
+      throw error;
+    }
+  },
+
   // Real-time notification system
   async getNotifications(userId: number, limit: number = 10) {
     try {
@@ -398,5 +930,408 @@ export const storage = {
       console.error('Error creating notification:', error);
       throw error;
     }
+  },
+
+  // Admin User Management Methods
+  async getAllUsers(filters: any = {}) {
+    try {
+      let query = db.select({
+        id: users.id,
+        fullName: users.fullName,
+        email: users.email,
+        phoneNumber: users.phoneNumber,
+        role: users.role,
+        isVerified: users.isVerified,
+        isActive: users.isActive,
+        createdAt: users.createdAt,
+        lastLoginAt: users.lastLoginAt,
+        kycStatus: users.kycStatus,
+        totalSpent: users.totalSpent,
+        totalOrders: users.totalOrders
+      }).from(users);
+
+      // Apply filters
+      let whereConditions = [];
+
+      if (filters.role && filters.role !== 'all') {
+        whereConditions.push(eq(users.role, filters.role));
+      }
+
+      if (filters.status) {
+        if (filters.status === 'verified') {
+          whereConditions.push(eq(users.isVerified, true));
+        } else if (filters.status === 'unverified') {
+          whereConditions.push(eq(users.isVerified, false));
+        } else if (filters.status === 'active') {
+          whereConditions.push(eq(users.isActive, true));
+        } else if (filters.status === 'inactive') {
+          whereConditions.push(eq(users.isActive, false));
+        }
+      }
+
+      if (filters.search) {
+        whereConditions.push(
+          sql`${users.fullName} ILIKE ${'%' + filters.search + '%'} OR ${users.email} ILIKE ${'%' + filters.search + '%'}`
+        );
+      }
+
+      if (whereConditions.length > 0) {
+        query = query.where(and(...whereConditions));
+      }
+
+      // Apply pagination
+      const page = parseInt(filters.page) || 1;
+      const limit = parseInt(filters.limit) || 20;
+      const offset = (page - 1) * limit;
+
+      const usersData = await query
+        .orderBy(desc(users.createdAt))
+        .limit(limit)
+        .offset(offset);
+
+      // Get total count for pagination
+      const [totalCount] = await db.select({ count: count() })
+        .from(users)
+        .where(whereConditions.length > 0 ? and(...whereConditions) : undefined);
+
+      return {
+        users: usersData,
+        pagination: {
+          page,
+          limit,
+          total: totalCount.count,
+          totalPages: Math.ceil(totalCount.count / limit)
+        }
+      };
+    } catch (error) {
+      console.error('Error getting all users:', error);
+      throw error;
+    }
+  },
+
+  async getUserById(userId: number) {
+    try {
+      const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+      return user;
+    } catch (error) {
+      console.error('Error getting user by ID:', error);
+      return null;
+    }
+  },
+
+  async updateUserStatus(userId: number, isActive: boolean) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          isActive, 
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      throw error;
+    }
+  },
+
+  async updateUserRole(userId: number, newRole: string) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          role: newRole as any, 
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error updating user role:', error);
+      throw error;
+    }
+  },
+
+  async verifyUser(userId: number) {
+    try {
+      const [updatedUser] = await db.update(users)
+        .set({ 
+          isVerified: true, 
+          verifiedAt: new Date(),
+          updatedAt: new Date() 
+        })
+        .where(eq(users.id, userId))
+        .returning();
+      return updatedUser;
+    } catch (error) {
+      console.error('Error verifying user:', error);
+      throw error;
+    }
+  },
+
+  async bulkUpdateUsers(userIds: number[], updates: any) {
+    try {
+      const results = [];
+
+      for (const userId of userIds) {
+        const [updatedUser] = await db.update(users)
+          .set({ 
+            ...updates, 
+            updatedAt: new Date() 
+          })
+          .where(eq(users.id, userId))
+          .returning();
+        results.push(updatedUser);
+      }
+
+      return results;
+    } catch (error) {
+      console.error('Error bulk updating users:', error);
+      throw error;
+    }
+  },
+
+  async getUserStats() {
+    try {
+      const [stats] = await db.select({
+        totalUsers: count(),
+        verifiedUsers: sql<number>`count(case when is_verified = true then 1 end)`,
+        activeUsers: sql<number>`count(case when is_active = true then 1 end)`,
+        consumers: sql<number>`count(case when role = 'CONSUMER' then 1 end)`,
+        merchants: sql<number>`count(case when role = 'MERCHANT' then 1 end)`,
+        drivers: sql<number>`count(case when role = 'DRIVER' then 1 end)`,
+        admins: sql<number>`count(case when role = 'ADMIN' then 1 end)`
+      }).from(users);
+
+      return stats;
+    } catch (error) {
+      console.error('Error getting user stats:', error);
+      return {
+        totalUsers: 0,
+        verifiedUsers: 0,
+        activeUsers: 0,
+        consumers: 0,
+        merchants: 0,
+        drivers: 0,
+        admins: 0
+      };
+    }
+  },
+
+  async getVendorPostAnalytics(userId: number) {
+    // Implementation for vendor post analytics
+    return {
+      totalPosts: 0,
+      totalViews: 0,
+      totalLikes: 0,
+      engagementRate: 0
+    };
+  },
+
+  // Analytics methods
+  async getDashboardAnalytics(timeRange?: string) {
+    const now = new Date();
+    const startDate = new Date();
+
+    switch (timeRange) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+
+    const [totalOrders] = await db.select({ count: count() }).from(orders);
+    const [totalUsers] = await db.select({ count: count() }).from(users);
+    const [totalRevenue] = await db.select({ 
+      total: sum(orders.totalAmount) 
+    }).from(orders).where(eq(orders.status, 'DELIVERED'));
+
+    const recentOrders = await db.select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(10);
+
+    return {
+      totalOrders: totalOrders.count || 0,
+      totalUsers: totalUsers.count || 0,
+      totalRevenue: totalRevenue.total || 0,
+      recentOrders,
+      growth: {
+        orders: 12.5,
+        users: 8.3,
+        revenue: 15.2
+      }
+    };
+  },
+
+  async getOrderAnalytics(params: any) {
+    const conditions = [];
+
+    if (params.startDate) {
+      conditions.push(gte(orders.createdAt, new Date(params.startDate)));
+    }
+
+    if (params.endDate) {
+      conditions.push(lte(orders.createdAt, new Date(params.endDate)));
+    }
+
+    const orderStats = await db.select({
+      status: orders.status,
+      count: count(),
+      totalAmount: sum(orders.totalAmount)
+    }).from(orders)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(orders.status);
+
+    return {
+      statusBreakdown: orderStats,
+      totalOrders: orderStats.reduce((sum, stat) => sum + stat.count, 0),
+      totalRevenue: orderStats.reduce((sum, stat) => sum + (Number(stat.totalAmount) || 0), 0)
+    };
+  },
+
+  async getRevenueAnalytics(params: any) {
+    const conditions = [eq(orders.status, 'DELIVERED')];
+
+    if (params.startDate) {
+      conditions.push(gte(orders.createdAt, new Date(params.startDate)));
+    }
+
+    if (params.endDate) {
+      conditions.push(lte(orders.createdAt, new Date(params.endDate)));
+    }
+
+    const revenueData = await db.select({
+      date: orders.createdAt,
+      amount: orders.totalAmount
+    }).from(orders)
+      .where(and(...conditions))
+      .orderBy(orders.createdAt);
+
+    return {
+      dailyRevenue: revenueData,
+      totalRevenue: revenueData.reduce((sum, order) => sum + Number(order.amount), 0),
+      averageOrderValue: revenueData.length > 0 ? 
+        revenueData.reduce((sum, order) => sum + Number(order.amount), 0) / revenueData.length : 0
+    };
+  },
+
+  async getRealTimeMetrics() {
+    const [activeOrders] = await db.select({ count: count() })
+      .from(orders)
+      .where(eq(orders.status, 'IN_PROGRESS'));
+
+    const [onlineDrivers] = await db.select({ count: count() })
+      .from(driverProfiles)
+      .where(eq(driverProfiles.isAvailable, true));
+
+    return {
+      activeOrders: activeOrders.count || 0,
+      onlineDrivers: onlineDrivers.count || 0,
+      systemLoad: Math.random() * 100, // Mock system load
+      timestamp: new Date().toISOString()
+    };
+  },
+
+  async getPerformanceMetrics() {
+    const avgDeliveryTime = await db.select({
+      avg: avg(orders.estimatedPreparationTime)
+    }).from(orders)
+      .where(eq(orders.status, 'DELIVERED'));
+
+    return {
+      averageDeliveryTime: avgDeliveryTime[0]?.avg || 0,
+      orderFulfillmentRate: 95.2,
+      customerSatisfaction: 4.6,
+      driverEfficiency: 87.3
+    };
+  },
+
+  // Driver coordination methods
+  async getAvailableDriversForOrder(orderId: string, location: any) {
+    const availableDrivers = await db.select({
+      id: driverProfiles.userId,
+      name: users.fullName,
+      rating: driverProfiles.rating,
+      currentLatitude: driverProfiles.currentLatitude,
+      currentLongitude: driverProfiles.currentLongitude,
+      vehicleType: driverProfiles.vehicleType
+    }).from(driverProfiles)
+      .innerJoin(users, eq(driverProfiles.userId, users.id))
+      .where(and(
+        eq(driverProfiles.isAvailable, true),
+        eq(users.isActive, true)
+      ));
+
+    return availableDrivers;
+  },
+
+  async assignDriverToOrder(orderId: string, driverId: number) {
+    await db.update(orders)
+      .set({ 
+        driverId,
+        status: 'CONFIRMED',
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+
+    await db.update(driverProfiles)
+      .set({ isAvailable: false })
+      .where(eq(driverProfiles.userId, driverId));
+
+    return { success: true };
+  },
+
+  async updateDriverLocation(driverId: number, location: any) {
+    await db.update(driverProfiles)
+      .set({
+        currentLatitude: location.latitude.toString(),
+        currentLongitude: location.longitude.toString(),
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, driverId));
+
+    return { success: true };
+  },
+
+  async getDriverDashboard(driverId: number) {
+    const driver = await db.select()
+      .from(driverProfiles)
+      .innerJoin(users, eq(driverProfiles.userId, users.id))
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+
+    const activeOrders = await db.select()
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'IN_PROGRESS')
+      ));
+
+    const earnings = await db.select({
+      total: sum(orders.deliveryFee)
+    }).from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED')
+      ));
+
+    return {
+      driver: driver[0],
+      activeOrders,
+      todayEarnings: earnings[0]?.total || 0,
+      completedTrips: await db.select({ count: count() })
+        .from(orders)
+        .where(and(
+          eq(orders.driverId, driverId),
+          eq(orders.status, 'DELIVERED')
+        ))
+    };
   }
 };

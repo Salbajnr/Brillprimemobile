@@ -1,8 +1,12 @@
 
 export const mobileConfig = {
-  // API Configuration
+  // API Configuration - Same backend as web app
   apiBaseUrl: process.env.EXPO_PUBLIC_API_URL || 'http://0.0.0.0:5000/api',
-  wsUrl: process.env.EXPO_PUBLIC_WS_URL || 'ws://0.0.0.0:5000',
+  wsUrl: process.env.EXPO_PUBLIC_WS_URL || (__DEV__ ? 'ws://0.0.0.0:5000' : 'wss://brillprime-monorepo.replit.app'),
+  
+  // Database Configuration - Shared with web app
+  sharedDatabase: true,
+  useWebAppSchemas: true,
   
   // Storage Keys
   storageKeys: {
