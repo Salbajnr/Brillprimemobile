@@ -36,8 +36,17 @@ export default function SignUpPage() {
     }
     
     try {
-      await signup(email, password, selectedRole);
-      setLocation('/dashboard');
+      const result = await signup(email, password, selectedRole);
+      
+      // Check if email verification is required
+      if (result?.requiresEmailVerification) {
+        // Store email for OTP verification
+        localStorage.setItem('verificationEmail', email);
+        setLocation('/otp-verification');
+      } else {
+        // Direct to dashboard if no verification needed
+        setLocation('/dashboard');
+      }
     } catch (error) {
       // Error is already handled by the auth context
       console.error('Registration error:', error);

@@ -157,7 +157,7 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(userData.password, 10);
 
     // Create user
-    const [newUser] = await db
+    const newUsers = await db
       .insert(users)
       .values({
         email: userData.email,
@@ -168,8 +168,37 @@ router.post('/register', async (req, res) => {
         createdAt: new Date()
       })
       .returning();
+    
+    const newUser = newUsers[0];
 
-    // Create session
+    // Generate OTP for email verification
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    
+    // Store OTP in database
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: newUser.id,
+        token: hashedOtp,
+        method: 'EMAIL',
+        expiresAt
+      });
+    
+    // Send OTP email
+    try {
+      const { emailService } = await import('../services/email');
+      const emailSent = await emailService.sendOTP(userData.email, otpCode, userData.fullName);
+      
+      if (!emailSent) {
+        console.warn('Failed to send OTP email, but user was created');
+      }
+    } catch (emailError) {
+      console.error('Email service error:', emailError);
+    }
+
+    // Create session but mark as unverified
     req.session.userId = newUser.id;
     req.session.user = {
       id: newUser.id,
@@ -180,11 +209,13 @@ router.post('/register', async (req, res) => {
 
     res.json({
       success: true,
+      requiresEmailVerification: true,
       user: {
         id: newUser.id,
         email: newUser.email,
         fullName: newUser.fullName,
-        role: newUser.role
+        role: newUser.role,
+        isVerified: false
       }
     });
   } catch (error: any) {
