@@ -552,3 +552,82 @@ function getRequiredSteps(user: any, documents: any[]) {
 }
 
 export default router;
+import express from 'express';
+import { db } from '../db';
+import { users } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const router = express.Router();
+
+// Get enhanced verification status
+router.get('/enhanced-status', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authenticated'
+      });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.session.userId))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Calculate verification status based on user data
+    const verificationSteps = [
+      {
+        id: 'email_verification',
+        title: 'Email Verification',
+        description: 'Verify your email address',
+        status: user.isVerified ? 'completed' : 'pending',
+        required: true
+      },
+      {
+        id: 'phone_verification', 
+        title: 'Phone Verification',
+        description: 'Verify your phone number',
+        status: user.phone ? 'completed' : 'pending',
+        required: false
+      },
+      {
+        id: 'identity_verification',
+        title: 'Identity Verification', 
+        description: 'Upload identity documents',
+        status: 'pending',
+        required: user.role === 'DRIVER'
+      }
+    ];
+
+    const completedSteps = verificationSteps.filter(step => step.status === 'completed').length;
+    const requiredSteps = verificationSteps.filter(step => step.required && step.status !== 'completed').map(step => step.id);
+    const progress = (completedSteps / verificationSteps.length) * 100;
+
+    res.json({
+      success: true,
+      verificationSteps,
+      overall: {
+        progress: Math.round(progress),
+        level: progress >= 80 ? 'PREMIUM' : progress >= 50 ? 'STANDARD' : 'BASIC'
+      },
+      requiredSteps
+    });
+
+  } catch (error) {
+    console.error('Enhanced verification status error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get verification status'
+    });
+  }
+});
+
+export default router;

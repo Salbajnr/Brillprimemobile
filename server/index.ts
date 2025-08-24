@@ -790,5 +790,3 @@ app.use("/api/analytics", analyticsRoutes);
 testRealtimeRoutes.registerTestRealtimeRoutes(app);
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
 app.use("/api/driver-tier", driverTierRoutes);
-
-export default app;
