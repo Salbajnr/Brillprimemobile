@@ -5,7 +5,7 @@ import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgE
 import { eq, and, desc } from 'drizzle-orm';
 
 // External PostgreSQL database configuration
-const DATABASE_URL = process.env.DATABASE_URL || "postgresql://brillprimemobile:PrveAcaiCfun5AanWQtclfRYJ4LBBaOF@dpg-d2kond3uibrs73eesitg-a/dbbrillprimemobile";
+const DATABASE_URL = process.env.DATABASE_URL;
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
