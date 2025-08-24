@@ -471,13 +471,13 @@ app.post('/api/test-post', (req, res) => {
 
 // Add missing /me endpoint for authentication
 app.get('/me', (req, res) => {
-  if (req.session && req.session.userId) {
+  if (req.session && req.session.userId && req.session.user) {
     res.json({
       success: true,
       user: {
         id: req.session.userId,
-        role: req.session.userRole,
-        fullName: req.session.userFullName
+        role: req.session.user.role,
+        fullName: req.session.user.fullName
       }
     });
   } else {
@@ -487,13 +487,13 @@ app.get('/me', (req, res) => {
 
 // Add API version of /me endpoint 
 app.get('/api/auth/me', (req, res) => {
-  if (req.session && req.session.userId) {
+  if (req.session && req.session.userId && req.session.user) {
     res.json({
       success: true,
       user: {
         id: req.session.userId,
-        role: req.session.userRole,
-        fullName: req.session.userFullName
+        role: req.session.user.role,
+        fullName: req.session.user.fullName
       }
     });
   } else {

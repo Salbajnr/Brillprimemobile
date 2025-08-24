@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setLoading(true)
     setError(null);
     try {
-      const response = await apiRequest('/auth/signin', {
+      const response = await apiRequest('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ email, password })
       });
@@ -114,13 +114,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signup = async (email: string, password: string, role: string) => {
+  const signup = async (email: string, password: string, role: string, fullName?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest('/auth/signup', {
+      const response = await apiRequest('/auth/register', {
         method: 'POST',
-        body: JSON.stringify({ email, password, role })
+        body: JSON.stringify({ email, password, role, fullName: fullName || email.split('@')[0] })
       });
 
       if (!response.success) {
