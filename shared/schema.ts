@@ -769,6 +769,19 @@ export const signInSchema = z.object({
 
 export type SignInData = z.infer<typeof signInSchema>;
 
+// Categories schema (new schema definition)
+export const categorySchema = z.object({
+  id: z.number(),
+  name: z.string(),
+  description: z.string().optional(),
+  parentId: z.number().optional(),
+  isActive: z.boolean().default(true),
+  sortOrder: z.number().default(0),
+  createdBy: z.number().optional(),
+  updatedBy: z.number().optional(),
+  createdAt: z.date(),
+  updatedAt: z.date()
+});
 
 
 // Insert schemas for forms
