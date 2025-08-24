@@ -9,9 +9,10 @@ import {
   fuelOrders,
   wallets,
   supportTickets,
-  notifications
+  notifications,
+  categories
 } from '../shared/schema';
-import { eq, desc, and, gte, sql, isNull, lte, count, sum } from 'drizzle-orm';
+import { eq, desc, and, gte, sql, isNull, lte, count, sum, inArray } from 'drizzle-orm';
 
 export const storage = {
   // Categories management
@@ -640,6 +641,267 @@ export const storage = {
       return ticket;
     } catch (error) {
       console.error('Error updating support ticket:', error);
+      throw error;
+    }
+  },
+
+  // Coordination management
+  async createCoordinationRequest(requestData: any) {
+    // Mock coordination request creation
+    const coordination = {
+      id: `coord_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      ...requestData,
+      createdAt: new Date()
+    };
+    return coordination;
+  },
+
+  async getCoordinationRequest(coordinationId: string) {
+    // Mock coordination request retrieval
+    return {
+      id: coordinationId,
+      orderId: '123',
+      requesterId: 1,
+      merchantId: 2,
+      driverId: 3,
+      requestType: 'PICKUP_READY',
+      status: 'PENDING',
+      createdAt: new Date()
+    };
+  },
+
+  async updateCoordinationRequest(coordinationId: string, updates: any) {
+    // Mock coordination request update
+    return {
+      id: coordinationId,
+      ...updates,
+      updatedAt: new Date()
+    };
+  },
+
+  async getOrderCoordinationHistory(orderId: string) {
+    // Mock coordination history
+    return [
+      {
+        id: 'coord_1',
+        orderId,
+        requestType: 'PICKUP_READY',
+        status: 'CONFIRMED',
+        createdAt: new Date(Date.now() - 3600000),
+        respondedAt: new Date(Date.now() - 3000000)
+      }
+    ];
+  },
+
+  async getActiveCoordinationRequests(userId: number) {
+    // Mock active coordination requests
+    return [
+      {
+        id: 'coord_2',
+        orderId: '124',
+        requestType: 'DELIVERY_CONFIRMATION',
+        status: 'PENDING',
+        message: 'Ready for pickup at merchant location',
+        createdAt: new Date(Date.now() - 1800000)
+      }
+    ];
+  },
+
+  // Additional driver methods
+  async getDriverProfile(driverId: number) {
+    try {
+      const [profile] = await db.select().from(driverProfiles)
+        .where(eq(driverProfiles.userId, driverId))
+        .limit(1);
+      return profile;
+    } catch (error) {
+      console.error('Error getting driver profile:', error);
+      return null;
+    }
+  },
+
+  async updateDriverStatus(driverId: number, isOnline: boolean, location?: { lat: number; lng: number }) {
+    try {
+      const updates: any = {
+        isOnline,
+        updatedAt: new Date()
+      };
+
+      if (location) {
+        updates.currentLatitude = location.lat.toString();
+        updates.currentLongitude = location.lng.toString();
+      }
+
+      await db.update(driverProfiles)
+        .set(updates)
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver status:', error);
+      throw error;
+    }
+  },
+
+  async getAvailableDeliveryRequests(driverId: number) {
+    // Mock delivery requests
+    return [
+      {
+        id: 'req_1',
+        orderId: '125',
+        deliveryType: 'PACKAGE',
+        pickupAddress: '123 Merchant Street, Lagos',
+        deliveryAddress: '456 Customer Avenue, Lagos',
+        pickupCoords: { lat: 6.5244, lng: 3.3792 },
+        deliveryCoords: { lat: 6.4281, lng: 3.4106 },
+        customerName: 'John Doe',
+        customerPhone: '+234801234567',
+        merchantName: 'ABC Store',
+        merchantPhone: '+234802345678',
+        deliveryFee: 850,
+        distance: 5.2,
+        estimatedTime: 30,
+        orderValue: 12500,
+        paymentMethod: 'Card',
+        specialInstructions: 'Handle with care',
+        urgentDelivery: false,
+        temperatureSensitive: false,
+        fragile: true,
+        requiresVerification: false,
+        expiresAt: new Date(Date.now() + 3600000),
+        createdAt: new Date()
+      }
+    ];
+  },
+
+  async acceptDeliveryRequest(requestId: string, driverId: number) {
+    // Mock delivery acceptance
+    return {
+      id: requestId,
+      orderId: '125',
+      driverId,
+      customerId: 1,
+      merchantId: 2,
+      customerName: 'John Doe',
+      customerPhone: '+234801234567',
+      pickupAddress: '123 Merchant Street, Lagos',
+      deliveryAddress: '456 Customer Avenue, Lagos',
+      deliveryFee: 850,
+      estimatedTime: 30,
+      orderItems: [],
+      specialInstructions: 'Handle with care',
+      acceptedAt: new Date()
+    };
+  },
+
+  async updateDriverAvailability(driverId: number, isAvailable: boolean) {
+    try {
+      await db.update(driverProfiles)
+        .set({
+          isAvailable,
+          updatedAt: new Date()
+        })
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver availability:', error);
+      throw error;
+    }
+  },
+
+  async getDeliveryById(deliveryId: string) {
+    // Mock delivery retrieval
+    return {
+      id: deliveryId,
+      orderId: '125',
+      driverId: 1,
+      customerId: 2,
+      merchantId: 3,
+      status: 'ACCEPTED',
+      deliveryFee: 850,
+      createdAt: new Date()
+    };
+  },
+
+  async updateDeliveryStatus(deliveryId: string, status: string, options: any = {}) {
+    // Mock delivery status update
+    return {
+      id: deliveryId,
+      status,
+      proof: options.proof,
+      notes: options.notes,
+      location: options.location,
+      updatedAt: new Date()
+    };
+  },
+
+  async updateDriverEarnings(driverId: number, amount: number) {
+    try {
+      await db.update(driverProfiles)
+        .set({
+          totalEarnings: sql`${driverProfiles.totalEarnings} + ${amount}`,
+          totalDeliveries: sql`${driverProfiles.totalDeliveries} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(driverProfiles.userId, driverId));
+    } catch (error) {
+      console.error('Error updating driver earnings:', error);
+      throw error;
+    }
+  },
+
+  async getDriverDeliveriesForDate(driverId: number, date: Date) {
+    // Mock deliveries for date
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        completedAt: date
+      }
+    ];
+  },
+
+  async getDriverDeliveriesForPeriod(driverId: number, startDate: Date, endDate: Date) {
+    // Mock deliveries for period
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      },
+      {
+        id: 'del_2',
+        orderId: '126',
+        deliveryFee: 1200,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      }
+    ];
+  },
+
+  async getDriverDeliveries(driverId: number) {
+    // Mock all driver deliveries
+    return [
+      {
+        id: 'del_1',
+        orderId: '125',
+        deliveryFee: 850,
+        status: 'delivered',
+        onTime: true,
+        completedAt: new Date()
+      }
+    ];
+  },
+
+  async createTransaction(transactionData: any) {
+    try {
+      const [transaction] = await db.insert(transactions).values(transactionData).returning();
+      return transaction;
+    } catch (error) {
+      console.error('Error creating transaction:', error);
       throw error;
     }
   },
