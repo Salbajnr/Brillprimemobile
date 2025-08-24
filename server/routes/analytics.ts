@@ -305,12 +305,127 @@ router.get("/admin/dashboard", requireAdminAuth, async (req, res) => {
   }
 });
 
+// Dashboard Analytics Endpoints
+
+// Get user dashboard analytics
+router.get("/dashboard/user", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const days = parseInt(req.query.days as string) || 30;
+
+    let dashboardData;
+
+    switch (userRole) {
+      case 'CONSUMER':
+        dashboardData = await AnalyticsService.getConsumerDashboard(userId, days);
+        break;
+      case 'MERCHANT':
+        dashboardData = await AnalyticsService.getMerchantDashboard(userId, days);
+        break;
+      case 'DRIVER':
+        dashboardData = await AnalyticsService.getDriverDashboard(userId, days);
+        break;
+      default:
+        return res.status(400).json({ success: false, error: "Invalid user role" });
+    }
+
+    if (dashboardData.success) {
+      res.json({ success: true, dashboard: dashboardData.dashboard });
+    } else {
+      res.status(500).json({ success: false, error: dashboardData.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get real-time metrics
+router.get("/realtime/metrics", requireAuth, async (req, res) => {
+  try {
+    const metrics = await AnalyticsService.getRealTimeMetrics();
+    
+    if (metrics.success) {
+      res.json({ success: true, metrics: metrics.data });
+    } else {
+      res.status(500).json({ success: false, error: metrics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get order analytics
+router.get("/orders/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const { period = '7d', orderType } = req.query;
+
+    const analytics = await AnalyticsService.getOrderAnalytics(userId, {
+      period: period as string,
+      orderType: orderType as string
+    });
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get revenue analytics (Merchant/Admin only)
+router.get("/revenue/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+
+    if (userRole !== 'MERCHANT' && userRole !== 'ADMIN') {
+      return res.status(403).json({ success: false, error: "Access denied" });
+    }
+
+    const { period = '30d', breakdown = 'daily' } = req.query;
+
+    const analytics = await AnalyticsService.getRevenueAnalytics(userId, {
+      period: period as string,
+      breakdown: breakdown as string
+    });
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
+// Get performance analytics
+router.get("/performance/analytics", requireAuth, async (req, res) => {
+  try {
+    const userId = req.user!.id;
+    const userRole = req.user!.role;
+    const days = parseInt(req.query.days as string) || 7;
+
+    const analytics = await AnalyticsService.getPerformanceAnalytics(userId, userRole as any, days);
+
+    if (analytics.success) {
+      res.json({ success: true, analytics: analytics.data });
+    } else {
+      res.status(500).json({ success: false, error: analytics.error });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, error: "Internal server error" });
+  }
+});
+
 // Add missing log-error endpoint
 router.post('/log-error', (req, res) => {
   console.error('Frontend error:', req.body);
   res.json({ success: true, message: 'Error logged' });
 });
-
-
 
 export default router;

@@ -213,17 +213,17 @@ app.use(cors({
     // Allow requests with no origin (mobile apps, curl, etc.)
     if (!origin) return callback(null, true);
 
-    const allowedOrigins = process.env.NODE_ENV === 'production' 
+    const allowedOrigins = process.env.NODE_ENV === 'production'
       ? ['https://your-production-domain.com']
       : [
-          'http://localhost:5173', 
-          'http://localhost:3000', 
-          'http://127.0.0.1:5173', 
+          'http://localhost:5173',
+          'http://localhost:3000',
+          'http://127.0.0.1:5173',
           'http://0.0.0.0:5173'
         ];
 
     // Check if origin matches patterns
-    const isAllowed = allowedOrigins.includes(origin) || 
+    const isAllowed = allowedOrigins.includes(origin) ||
                      (origin && origin.includes('replit.dev')) ||
                      (origin && origin.includes('repl.co')) ||
                      (origin && origin.includes('picard.replit.dev'));
@@ -238,10 +238,10 @@ app.use(cors({
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD'],
   allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With', 
-    'Accept', 
+    'Content-Type',
+    'Authorization',
+    'X-Requested-With',
+    'Accept',
     'Origin',
     'X-CSRF-Token',
     'Cache-Control'
@@ -406,7 +406,7 @@ app.get('/api/ws-test', (req, res) => {
 // Import session validation middleware
 import { validateSession } from './middleware/session-validator';
 
-// Centralized error handling for API 
+// Centralized error handling for API
 const apiRouter = express.Router();
 
 // Add session validation to all API routes
@@ -494,7 +494,7 @@ app.get('/me', (req, res) => {
   }
 });
 
-// Add API version of /me endpoint 
+// Add API version of /me endpoint
 app.get('/api/auth/me', (req, res) => {
   if (req.session && req.session.userId && req.session.user) {
     res.json({
@@ -755,5 +755,25 @@ app.use('/api', mobileHealthRoutes);
 
 // Register system health routes
 app.use('/api/system-health', systemHealthRoutes);
+
+// Register missing API routes
+import categoriesRoutes from "./routes/categories";
+import ordersRoutes from "./routes/orders";
+import orderStatusRoutes from "./routes/order-status";
+import driverRoutes from "./routes/driver";
+import realTimeTrackingRoutes from "./routes/real-time-tracking";
+import analyticsRoutes from "./routes/analytics";
+import testRealtimeRoutes from "./routes/test-realtime";
+import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
+
+// Add route registrations
+app.use("/api/categories", categoriesRoutes);
+app.use("/api/orders", ordersRoutes);
+app.use("/api/order-status", orderStatusRoutes);
+app.use("/api/driver", driverRoutes);
+app.use("/api/tracking", realTimeTrackingRoutes);
+app.use("/api/analytics", analyticsRoutes);
+app.use("/api/test", testRealtimeRoutes);
+app.use("/api/coordination", driverMerchantCoordinationRoutes);
 
 export default app;

@@ -464,4 +464,162 @@ router.get("/deliveries", requireAuth, async (req, res) => {
   }
 });
 
+// Get driver delivery analytics
+router.get("/analytics/deliveries", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { period = '30d' } = req.query;
+
+    const analytics = await storage.getDriverDeliveryAnalytics(driverId, period as string);
+
+    res.json({
+      success: true,
+      analytics
+    });
+  } catch (error) {
+    console.error("Get delivery analytics error:", error);
+    res.status(500).json({ message: "Failed to fetch delivery analytics" });
+  }
+});
+
+// Get driver performance ratings
+router.get("/performance/ratings", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { limit = 50 } = req.query;
+
+    const ratings = await storage.getDriverRatings(driverId, parseInt(limit as string));
+
+    const avgRating = ratings.length > 0 
+      ? ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length 
+      : 0;
+
+    res.json({
+      success: true,
+      ratings,
+      averageRating: Math.round(avgRating * 10) / 10,
+      totalRatings: ratings.length
+    });
+  } catch (error) {
+    console.error("Get performance ratings error:", error);
+    res.status(500).json({ message: "Failed to fetch performance ratings" });
+  }
+});
+
+// Update driver vehicle information
+router.put("/vehicle", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { vehicleType, vehiclePlate, vehicleModel, vehicleColor } = req.body;
+
+    const updatedProfile = await storage.updateDriverVehicle(driverId, {
+      vehicleType,
+      vehiclePlate,
+      vehicleModel,
+      vehicleColor
+    });
+
+    res.json({
+      success: true,
+      message: "Vehicle information updated successfully",
+      profile: updatedProfile
+    });
+  } catch (error) {
+    console.error("Update vehicle error:", error);
+    res.status(500).json({ message: "Failed to update vehicle information" });
+  }
+});
+
+// Get nearby delivery opportunities
+router.get("/opportunities", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { radius = 10 } = req.query;
+
+    const driverProfile = await storage.getDriverProfile(driverId);
+    if (!driverProfile || !driverProfile.currentLocation) {
+      return res.status(400).json({ 
+        message: "Driver location not available" 
+      });
+    }
+
+    const opportunities = await storage.getNearbyDeliveryOpportunities(
+      driverId,
+      driverProfile.currentLocation,
+      parseInt(radius as string)
+    );
+
+    res.json({
+      success: true,
+      opportunities
+    });
+  } catch (error) {
+    console.error("Get opportunities error:", error);
+    res.status(500).json({ message: "Failed to fetch delivery opportunities" });
+  }
+});
+
+// Submit driver feedback
+router.post("/feedback", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { orderId, rating, comment, category } = req.body;
+
+    const feedback = await storage.createDriverFeedback({
+      driverId,
+      orderId,
+      rating,
+      comment,
+      category,
+      timestamp: new Date()
+    });
+
+    res.json({
+      success: true,
+      message: "Feedback submitted successfully",
+      feedback
+    });
+  } catch (error) {
+    console.error("Submit feedback error:", error);
+    res.status(500).json({ message: "Failed to submit feedback" });
+  }
+});
+
+// Get driver schedule/availability
+router.get("/schedule", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { date } = req.query;
+
+    const schedule = await storage.getDriverSchedule(driverId, date as string);
+
+    res.json({
+      success: true,
+      schedule
+    });
+  } catch (error) {
+    console.error("Get schedule error:", error);
+    res.status(500).json({ message: "Failed to fetch schedule" });
+  }
+});
+
+// Update driver schedule
+router.put("/schedule", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.session!.userId!;
+    const { scheduleData } = req.body;
+
+    const updatedSchedule = await storage.updateDriverSchedule(driverId, scheduleData);
+
+    res.json({
+      success: true,
+      message: "Schedule updated successfully",
+      schedule: updatedSchedule
+    });
+  } catch (error) {
+    console.error("Update schedule error:", error);
+    res.status(500).json({ message: "Failed to update schedule" });
+  }
+});
+
 export default router;

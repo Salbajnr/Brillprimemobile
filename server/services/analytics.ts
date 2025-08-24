@@ -7,6 +7,171 @@ import {
 import { eq, and, desc, gte, lte, sql, count, avg, sum } from "drizzle-orm";
 
 export class AnalyticsService {
+  // Dashboard Analytics Methods
+  static async getConsumerDashboard(userId: number, days: number) {
+    try {
+      // Mock consumer dashboard data
+      const dashboard = {
+        totalOrders: 12,
+        pendingOrders: 2,
+        completedOrders: 10,
+        totalSpent: 45600,
+        averageOrderValue: 3800,
+        favoriteCategories: ['Fuel', 'Toll', 'Commodities'],
+        recentActivity: [
+          { type: 'order', action: 'completed', timestamp: Date.now() - 3600000 },
+          { type: 'payment', action: 'successful', timestamp: Date.now() - 7200000 }
+        ],
+        savings: 2300,
+        loyaltyPoints: 450
+      };
+
+      return { success: true, dashboard };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch consumer dashboard' };
+    }
+  }
+
+  static async getMerchantDashboard(userId: number, days: number) {
+    try {
+      // Mock merchant dashboard data
+      const dashboard = {
+        totalRevenue: 125000,
+        totalOrders: 89,
+        pendingOrders: 5,
+        completedOrders: 84,
+        averageOrderValue: 1404,
+        topProducts: [
+          { name: 'Premium Fuel', sales: 45, revenue: 67500 },
+          { name: 'Diesel', sales: 32, revenue: 38400 }
+        ],
+        customerSatisfaction: 4.6,
+        performanceMetrics: {
+          orderFulfillmentRate: 94.4,
+          averagePreparationTime: 18,
+          customerRetentionRate: 78.5
+        }
+      };
+
+      return { success: true, dashboard };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch merchant dashboard' };
+    }
+  }
+
+  static async getDriverDashboard(userId: number, days: number) {
+    try {
+      // Mock driver dashboard data
+      const dashboard = {
+        totalEarnings: 28500,
+        totalDeliveries: 67,
+        completedDeliveries: 64,
+        activeDeliveries: 2,
+        successRate: 95.5,
+        averageDeliveryTime: 25,
+        rating: 4.8,
+        tier: 'PREMIUM',
+        performanceMetrics: {
+          onTimeDeliveryRate: 92.1,
+          customerSatisfactionRate: 96.2,
+          fuelEfficiency: 85.3
+        }
+      };
+
+      return { success: true, dashboard };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch driver dashboard' };
+    }
+  }
+
+  static async getRealTimeMetrics() {
+    try {
+      const metrics = {
+        activeUsers: 1247,
+        activeOrders: 89,
+        activeDrivers: 156,
+        systemLoad: 67.8,
+        averageResponseTime: 145,
+        errorRate: 0.02
+      };
+
+      return { success: true, data: metrics };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch real-time metrics' };
+    }
+  }
+
+  static async getOrderAnalytics(userId: number, options: any) {
+    try {
+      const analytics = {
+        totalOrders: 45,
+        ordersByStatus: {
+          pending: 3,
+          confirmed: 5,
+          preparing: 2,
+          ready: 1,
+          delivered: 34
+        },
+        ordersByType: {
+          fuel: 28,
+          toll: 12,
+          commodity: 5
+        },
+        averageOrderValue: 2500,
+        orderTrends: [
+          { date: '2024-01-15', orders: 5, value: 12500 },
+          { date: '2024-01-16', orders: 8, value: 20000 }
+        ]
+      };
+
+      return { success: true, data: analytics };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch order analytics' };
+    }
+  }
+
+  static async getRevenueAnalytics(userId: number, options: any) {
+    try {
+      const analytics = {
+        totalRevenue: 125000,
+        revenueByPeriod: [
+          { period: '2024-01-15', revenue: 8500 },
+          { period: '2024-01-16', revenue: 12000 }
+        ],
+        revenueByCategory: {
+          fuel: 85000,
+          toll: 25000,
+          commodity: 15000
+        },
+        averageTransactionValue: 1875,
+        growthRate: 12.5
+      };
+
+      return { success: true, data: analytics };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch revenue analytics' };
+    }
+  }
+
+  static async getPerformanceAnalytics(userId: number, userRole: string, days: number) {
+    try {
+      const analytics = {
+        efficiency: 87.5,
+        satisfaction: 4.6,
+        responseTime: 2.3,
+        errorRate: 0.8,
+        uptime: 99.2,
+        trends: [
+          { metric: 'efficiency', value: 87.5, change: +2.1 },
+          { metric: 'satisfaction', value: 4.6, change: +0.3 }
+        ]
+      };
+
+      return { success: true, data: analytics };
+    } catch (error) {
+      return { success: false, error: 'Failed to fetch performance analytics' };
+    }
+  }
   // User Behavior Tracking
   static async trackUserBehavior(behaviorData: Omit<InsertUserBehaviorTracking, 'id' | 'createdAt'>) {
     try {

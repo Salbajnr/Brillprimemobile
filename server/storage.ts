@@ -14,6 +14,276 @@ import {
 import { eq, desc, and, gte, sql, isNull, lte, count, sum } from 'drizzle-orm';
 
 export const storage = {
+  // Categories management
+  async getCategories(filters: { includeInactive?: boolean; parentId?: number } = {}) {
+    const conditions = [];
+    
+    if (!filters.includeInactive) {
+      conditions.push(eq(categories.isActive, true));
+    }
+    
+    if (filters.parentId) {
+      conditions.push(eq(categories.parentId, filters.parentId));
+    }
+
+    return await db.select().from(categories)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .orderBy(categories.sortOrder, categories.name);
+  },
+
+  async getCategoryById(id: number) {
+    const [category] = await db.select().from(categories)
+      .where(eq(categories.id, id))
+      .limit(1);
+    return category;
+  },
+
+  async createCategory(categoryData: any) {
+    const [category] = await db.insert(categories).values(categoryData).returning();
+    return category;
+  },
+
+  async updateCategory(id: number, data: any) {
+    const [category] = await db.update(categories)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(categories.id, id))
+      .returning();
+    return category;
+  },
+
+  async deleteCategory(id: number) {
+    await db.delete(categories).where(eq(categories.id, id));
+  },
+
+  // Orders management
+  async createOrder(orderData: any) {
+    const [order] = await db.insert(orders).values(orderData).returning();
+    return order;
+  },
+
+  async getOrderById(orderId: string) {
+    const [order] = await db.select().from(orders)
+      .where(eq(orders.id, parseInt(orderId)))
+      .limit(1);
+    return order;
+  },
+
+  async getCustomerOrders(userId: number, filters: any) {
+    const conditions = [eq(orders.customerId, userId)];
+    
+    if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+    
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit)
+      .offset((filters.page - 1) * filters.limit);
+
+    return {
+      orders: ordersList,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async getMerchantOrders(userId: number, filters: any) {
+    const conditions = [eq(orders.merchantId, userId)];
+    
+    if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+    
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit)
+      .offset((filters.page - 1) * filters.limit);
+
+    return {
+      orders: ordersList,
+      pagination: {
+        page: filters.page,
+        limit: filters.limit,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async getDriverOrders(userId: number, filters: any = {}) {
+    const conditions = [eq(orders.driverId, userId)];
+    
+    if (filters.status && typeof filters === 'string') {
+      conditions.push(eq(orders.status, filters));
+    } else if (filters.status) {
+      conditions.push(eq(orders.status, filters.status));
+    }
+    
+    const ordersList = await db.select().from(orders)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(filters.limit || 50)
+      .offset(((filters.page || 1) - 1) * (filters.limit || 50));
+
+    return filters.status && typeof filters === 'string' ? ordersList : {
+      orders: ordersList,
+      pagination: {
+        page: filters.page || 1,
+        limit: filters.limit || 50,
+        total: ordersList.length
+      }
+    };
+  },
+
+  async updateOrderStatus(orderId: string, statusData: any) {
+    const [order] = await db.update(orders)
+      .set({
+        status: statusData.status,
+        notes: statusData.notes,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)))
+      .returning();
+    return order;
+  },
+
+  async getOrderTransactions(orderId: string) {
+    return await db.select().from(transactions)
+      .where(eq(transactions.orderId, parseInt(orderId)))
+      .orderBy(desc(transactions.createdAt));
+  },
+
+  async getOrderTracking(orderId: string) {
+    // Mock tracking data - implement based on your tracking system
+    return {
+      orderId,
+      status: 'IN_TRANSIT',
+      location: { latitude: 6.5244, longitude: 3.3792 },
+      estimatedArrival: new Date(Date.now() + 30 * 60 * 1000),
+      updates: []
+    };
+  },
+
+  async assignDriverToOrder(orderId: string, driverId: number) {
+    await db.update(orders)
+      .set({
+        driverId,
+        status: 'ASSIGNED',
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+  },
+
+  async cancelOrder(orderId: string, cancelData: any) {
+    await db.update(orders)
+      .set({
+        status: 'CANCELLED',
+        notes: cancelData.reason,
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+  },
+
+  async getDriverActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.driverId, userId),
+        inArray(orders.status, ['ASSIGNED', 'PICKED_UP', 'OUT_FOR_DELIVERY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  async getMerchantActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.merchantId, userId),
+        inArray(orders.status, ['PENDING', 'CONFIRMED', 'PREPARING', 'READY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  async getCustomerActiveOrders(userId: number) {
+    return await db.select().from(orders)
+      .where(and(
+        eq(orders.customerId, userId),
+        inArray(orders.status, ['PENDING', 'CONFIRMED', 'PREPARING', 'READY', 'PICKED_UP', 'OUT_FOR_DELIVERY'])
+      ))
+      .orderBy(desc(orders.createdAt));
+  },
+
+  // Driver-specific methods
+  async getDriverDeliveryAnalytics(driverId: number, period: string) {
+    // Mock analytics - implement based on your analytics system
+    return {
+      totalDeliveries: 45,
+      completedDeliveries: 42,
+      successRate: 93.3,
+      averageDeliveryTime: 28,
+      earnings: 15750,
+      ratings: 4.7
+    };
+  },
+
+  async getDriverRatings(driverId: number, limit: number) {
+    // Mock ratings - implement based on your ratings system
+    return [
+      { orderId: '123', rating: 5, comment: 'Excellent service', date: new Date() },
+      { orderId: '124', rating: 4, comment: 'Good delivery', date: new Date() }
+    ];
+  },
+
+  async updateDriverVehicle(driverId: number, vehicleData: any) {
+    const [profile] = await db.update(driverProfiles)
+      .set({
+        vehicleType: vehicleData.vehicleType,
+        vehiclePlate: vehicleData.vehiclePlate,
+        vehicleModel: vehicleData.vehicleModel,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, driverId))
+      .returning();
+    return profile;
+  },
+
+  async getNearbyDeliveryOpportunities(driverId: number, location: any, radius: number) {
+    // Mock opportunities - implement based on your location system
+    return [
+      {
+        orderId: '125',
+        pickupLocation: { lat: 6.5244, lng: 3.3792 },
+        deliveryLocation: { lat: 6.4281, lng: 3.4106 },
+        estimatedEarnings: 850,
+        distance: 5.2,
+        urgency: 'normal'
+      }
+    ];
+  },
+
+  async createDriverFeedback(feedbackData: any) {
+    // Mock feedback creation - implement based on your feedback system
+    return { id: Date.now(), ...feedbackData };
+  },
+
+  async getDriverSchedule(driverId: number, date: string) {
+    // Mock schedule - implement based on your scheduling system
+    return {
+      date,
+      shifts: [
+        { start: '09:00', end: '17:00', type: 'regular' }
+      ],
+      availability: true
+    };
+  },
+
+  async updateDriverSchedule(driverId: number, scheduleData: any) {
+    // Mock schedule update - implement based on your scheduling system
+    return { id: driverId, ...scheduleData };
+  },
+
   // User management
   async getUser(userId: number) {
     try {
