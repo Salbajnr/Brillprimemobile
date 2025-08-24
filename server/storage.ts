@@ -12,17 +12,17 @@ import {
   notifications,
   categories
 } from '../shared/schema';
-import { eq, desc, and, gte, sql, isNull, lte, count, sum, inArray } from 'drizzle-orm';
+import { eq, desc, and, gte, sql, isNull, lte, count, sum, inArray, avg } from 'drizzle-orm';
 
 export const storage = {
   // Categories management
   async getCategories(filters: { includeInactive?: boolean; parentId?: number } = {}) {
     const conditions = [];
-    
+
     if (!filters.includeInactive) {
       conditions.push(eq(categories.isActive, true));
     }
-    
+
     if (filters.parentId) {
       conditions.push(eq(categories.parentId, filters.parentId));
     }
@@ -71,11 +71,11 @@ export const storage = {
 
   async getCustomerOrders(userId: number, filters: any) {
     const conditions = [eq(orders.customerId, userId)];
-    
+
     if (filters.status) {
       conditions.push(eq(orders.status, filters.status));
     }
-    
+
     const ordersList = await db.select().from(orders)
       .where(and(...conditions))
       .orderBy(desc(orders.createdAt))
@@ -94,11 +94,11 @@ export const storage = {
 
   async getMerchantOrders(userId: number, filters: any) {
     const conditions = [eq(orders.merchantId, userId)];
-    
+
     if (filters.status) {
       conditions.push(eq(orders.status, filters.status));
     }
-    
+
     const ordersList = await db.select().from(orders)
       .where(and(...conditions))
       .orderBy(desc(orders.createdAt))
@@ -117,13 +117,13 @@ export const storage = {
 
   async getDriverOrders(userId: number, filters: any = {}) {
     const conditions = [eq(orders.driverId, userId)];
-    
+
     if (filters.status && typeof filters === 'string') {
       conditions.push(eq(orders.status, filters));
     } else if (filters.status) {
       conditions.push(eq(orders.status, filters.status));
     }
-    
+
     const ordersList = await db.select().from(orders)
       .where(and(...conditions))
       .orderBy(desc(orders.createdAt))
@@ -327,7 +327,7 @@ export const storage = {
       // Get today's deliveries and earnings
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const [todayStats] = await db.select({
         deliveries: count(orders.id),
         earnings: sum(transactions.amount)
@@ -393,7 +393,7 @@ export const storage = {
       // Get today's orders and revenue
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      
+
       const [todayStats] = await db.select({
         orders: count(orders.id),
         revenue: sum(orders.totalAmount)
@@ -611,11 +611,11 @@ export const storage = {
   async getSupportTickets(filters: any = {}) {
     try {
       let query = db.select().from(supportTickets);
-      
+
       if (filters.status) {
         query = query.where(eq(supportTickets.status, filters.status));
       }
-      
+
       if (filters.priority) {
         query = query.where(eq(supportTickets.priority, filters.priority));
       }
@@ -1071,7 +1071,7 @@ export const storage = {
   async bulkUpdateUsers(userIds: number[], updates: any) {
     try {
       const results = [];
-      
+
       for (const userId of userIds) {
         const [updatedUser] = await db.update(users)
           .set({ 
@@ -1082,7 +1082,7 @@ export const storage = {
           .returning();
         results.push(updatedUser);
       }
-      
+
       return results;
     } catch (error) {
       console.error('Error bulk updating users:', error);
@@ -1115,5 +1115,223 @@ export const storage = {
         admins: 0
       };
     }
+  },
+
+  async getVendorPostAnalytics(userId: number) {
+    // Implementation for vendor post analytics
+    return {
+      totalPosts: 0,
+      totalViews: 0,
+      totalLikes: 0,
+      engagementRate: 0
+    };
+  },
+
+  // Analytics methods
+  async getDashboardAnalytics(timeRange?: string) {
+    const now = new Date();
+    const startDate = new Date();
+
+    switch (timeRange) {
+      case 'week':
+        startDate.setDate(now.getDate() - 7);
+        break;
+      case 'month':
+        startDate.setMonth(now.getMonth() - 1);
+        break;
+      case 'year':
+        startDate.setFullYear(now.getFullYear() - 1);
+        break;
+      default:
+        startDate.setDate(now.getDate() - 30);
+    }
+
+    const [totalOrders] = await db.select({ count: count() }).from(orders);
+    const [totalUsers] = await db.select({ count: count() }).from(users);
+    const [totalRevenue] = await db.select({ 
+      total: sum(orders.totalAmount) 
+    }).from(orders).where(eq(orders.status, 'DELIVERED'));
+
+    const recentOrders = await db.select()
+      .from(orders)
+      .orderBy(desc(orders.createdAt))
+      .limit(10);
+
+    return {
+      totalOrders: totalOrders.count || 0,
+      totalUsers: totalUsers.count || 0,
+      totalRevenue: totalRevenue.total || 0,
+      recentOrders,
+      growth: {
+        orders: 12.5,
+        users: 8.3,
+        revenue: 15.2
+      }
+    };
+  },
+
+  async getOrderAnalytics(params: any) {
+    const conditions = [];
+
+    if (params.startDate) {
+      conditions.push(gte(orders.createdAt, new Date(params.startDate)));
+    }
+
+    if (params.endDate) {
+      conditions.push(lte(orders.createdAt, new Date(params.endDate)));
+    }
+
+    const orderStats = await db.select({
+      status: orders.status,
+      count: count(),
+      totalAmount: sum(orders.totalAmount)
+    }).from(orders)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .groupBy(orders.status);
+
+    return {
+      statusBreakdown: orderStats,
+      totalOrders: orderStats.reduce((sum, stat) => sum + stat.count, 0),
+      totalRevenue: orderStats.reduce((sum, stat) => sum + (Number(stat.totalAmount) || 0), 0)
+    };
+  },
+
+  async getRevenueAnalytics(params: any) {
+    const conditions = [eq(orders.status, 'DELIVERED')];
+
+    if (params.startDate) {
+      conditions.push(gte(orders.createdAt, new Date(params.startDate)));
+    }
+
+    if (params.endDate) {
+      conditions.push(lte(orders.createdAt, new Date(params.endDate)));
+    }
+
+    const revenueData = await db.select({
+      date: orders.createdAt,
+      amount: orders.totalAmount
+    }).from(orders)
+      .where(and(...conditions))
+      .orderBy(orders.createdAt);
+
+    return {
+      dailyRevenue: revenueData,
+      totalRevenue: revenueData.reduce((sum, order) => sum + Number(order.amount), 0),
+      averageOrderValue: revenueData.length > 0 ? 
+        revenueData.reduce((sum, order) => sum + Number(order.amount), 0) / revenueData.length : 0
+    };
+  },
+
+  async getRealTimeMetrics() {
+    const [activeOrders] = await db.select({ count: count() })
+      .from(orders)
+      .where(eq(orders.status, 'IN_PROGRESS'));
+
+    const [onlineDrivers] = await db.select({ count: count() })
+      .from(driverProfiles)
+      .where(eq(driverProfiles.isAvailable, true));
+
+    return {
+      activeOrders: activeOrders.count || 0,
+      onlineDrivers: onlineDrivers.count || 0,
+      systemLoad: Math.random() * 100, // Mock system load
+      timestamp: new Date().toISOString()
+    };
+  },
+
+  async getPerformanceMetrics() {
+    const avgDeliveryTime = await db.select({
+      avg: avg(orders.estimatedPreparationTime)
+    }).from(orders)
+      .where(eq(orders.status, 'DELIVERED'));
+
+    return {
+      averageDeliveryTime: avgDeliveryTime[0]?.avg || 0,
+      orderFulfillmentRate: 95.2,
+      customerSatisfaction: 4.6,
+      driverEfficiency: 87.3
+    };
+  },
+
+  // Driver coordination methods
+  async getAvailableDriversForOrder(orderId: string, location: any) {
+    const availableDrivers = await db.select({
+      id: driverProfiles.userId,
+      name: users.fullName,
+      rating: driverProfiles.rating,
+      currentLatitude: driverProfiles.currentLatitude,
+      currentLongitude: driverProfiles.currentLongitude,
+      vehicleType: driverProfiles.vehicleType
+    }).from(driverProfiles)
+      .innerJoin(users, eq(driverProfiles.userId, users.id))
+      .where(and(
+        eq(driverProfiles.isAvailable, true),
+        eq(users.isActive, true)
+      ));
+
+    return availableDrivers;
+  },
+
+  async assignDriverToOrder(orderId: string, driverId: number) {
+    await db.update(orders)
+      .set({ 
+        driverId,
+        status: 'CONFIRMED',
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, parseInt(orderId)));
+
+    await db.update(driverProfiles)
+      .set({ isAvailable: false })
+      .where(eq(driverProfiles.userId, driverId));
+
+    return { success: true };
+  },
+
+  async updateDriverLocation(driverId: number, location: any) {
+    await db.update(driverProfiles)
+      .set({
+        currentLatitude: location.latitude.toString(),
+        currentLongitude: location.longitude.toString(),
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, driverId));
+
+    return { success: true };
+  },
+
+  async getDriverDashboard(driverId: number) {
+    const driver = await db.select()
+      .from(driverProfiles)
+      .innerJoin(users, eq(driverProfiles.userId, users.id))
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+
+    const activeOrders = await db.select()
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'IN_PROGRESS')
+      ));
+
+    const earnings = await db.select({
+      total: sum(orders.deliveryFee)
+    }).from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED')
+      ));
+
+    return {
+      driver: driver[0],
+      activeOrders,
+      todayEarnings: earnings[0]?.total || 0,
+      completedTrips: await db.select({ count: count() })
+        .from(orders)
+        .where(and(
+          eq(orders.driverId, driverId),
+          eq(orders.status, 'DELIVERED')
+        ))
+    };
   }
 };

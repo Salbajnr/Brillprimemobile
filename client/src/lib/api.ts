@@ -417,6 +417,46 @@ export const orderApi = {
     }),
 };
 
+// Categories API
+export const categoryApi = {
+  getCategories: (params: {
+    includeInactive?: boolean;
+    parentId?: number;
+  } = {}) => {
+    const queryParams = new URLSearchParams();
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined) queryParams.append(key, value.toString());
+    });
+
+    return apiRequest(`/categories?${queryParams}`);
+  },
+
+  getCategory: (id: string) => apiRequest(`/categories/${id}`),
+
+  createCategory: (categoryData: {
+    name: string;
+    description?: string;
+    parentId?: number;
+    isActive?: boolean;
+    sortOrder?: number;
+  }) =>
+    apiRequest('/categories', {
+      method: 'POST',
+      body: JSON.stringify(categoryData),
+    }),
+
+  updateCategory: (id: string, categoryData: any) =>
+    apiRequest(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(categoryData),
+    }),
+
+  deleteCategory: (id: string) =>
+    apiRequest(`/categories/${id}`, {
+      method: 'DELETE',
+    }),
+};
+
 // Enhanced Product APIs with real-time inventory
 export const productApi = {
   getProducts: (params: {
@@ -793,6 +833,7 @@ const apiClient = {
   wallet: walletApi,
   order: orderApi,
   product: productApi,
+  category: categoryApi,
   driver: driverApi,
   tracking: trackingApi,
   support: supportApi,

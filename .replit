@@ -269,10 +269,6 @@ args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd server && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
 
 [agent]
