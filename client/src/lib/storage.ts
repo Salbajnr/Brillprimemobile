@@ -1,4 +1,3 @@
-
 export const localStorage = {
   getItem: (key: string): string | null => {
     try {
@@ -7,7 +6,7 @@ export const localStorage = {
       return null;
     }
   },
-  
+
   setItem: (key: string, value: string): void => {
     try {
       window.localStorage.setItem(key, value);
@@ -15,7 +14,7 @@ export const localStorage = {
       // Handle storage quota exceeded or other errors silently
     }
   },
-  
+
   removeItem: (key: string): void => {
     try {
       window.localStorage.removeItem(key);
@@ -23,7 +22,7 @@ export const localStorage = {
       // Handle errors silently
     }
   },
-  
+
   getUser: () => {
     try {
       const userData = window.localStorage.getItem('user');
@@ -31,5 +30,17 @@ export const localStorage = {
     } catch {
       return null;
     }
-  }
+  },
+
+  setVerificationEmail(email: string): void {
+    this.setItem('verification-email', email);
+  },
+
+  getVerificationEmail(): string | null {
+    return this.getItem('verification-email');
+  },
+
+  removeVerificationEmail(): void {
+    this.removeItem('verification-email');
+  },
 };

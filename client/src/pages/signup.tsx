@@ -19,12 +19,12 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     clearError(); // Clear any previous errors
-    
+
     if (email.length < 4) {
       alert('Please enter a valid email');
       return;
     }
-    
+
     if (password.trim().length < 8) {
       alert('Password must be at least 8 characters');
       return;
@@ -34,10 +34,10 @@ export default function SignUpPage() {
       alert('Passwords do not match');
       return;
     }
-    
+
     try {
       const result = await signup(email, password, selectedRole);
-      
+
       // Check if email verification is required
       if (result?.requiresEmailVerification) {
         // Store email for OTP verification

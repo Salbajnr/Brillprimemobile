@@ -44,6 +44,9 @@ import { dashboardCache, productsCache, analyticsCache, locationCache } from './
 import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, assetVersioning, serviceWorkerCache } from './middleware/staticAssets';
 import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
 import { queryOptimizer } from './services/queryOptimizer';
+import { liveSystemService } from './services/live-system';
+import { performanceOptimizer } from './middleware/cacheMiddleware';
+import { emailService } from './services/email';
 // import compression from 'compression'; // Temporarily disabled due to dependency conflict
 
 // Route imports - mixing default exports and function exports
@@ -678,8 +681,16 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
   console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
 
-  // Initialize performance services
+  // Initialize performance optimizations
   console.log('🚀 Initializing performance optimizations...');
+  await performanceOptimizer.warmupCache();
+  queryOptimizer.startMaintenance();
+  console.log('✅ Performance optimizations initialized');
+
+  // Initialize email service
+  console.log('📧 Initializing email service...');
+  await emailService.verifyConnection();
+  console.log('✅ Email service initialized');
 
   // Start cache warming
   await cacheService.warmCache();

@@ -4,7 +4,7 @@ import { Shield, Mail } from "lucide-react";
 import logo from "../assets/images/logo.png";
 import { useMutation } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
-import { localStorage as storage } from "@/lib/storage";
+import { localStorage } from "@/lib/storage";
 
 import { OtpInput } from "@/components/ui/otp-input";
 import { LoadingButton } from "@/components/ui/loading-button";
@@ -163,7 +163,7 @@ export default function OtpVerificationPage() {
         description="Your account has been successfully verified. Welcome to Brillprime!"
         actionText="Continue to Dashboard"
         onAction={() => {
-          const userData = storage.getUser();
+          const userData = localStorage.getUser();
           if (userData) {
             if (userData.role === "CONSUMER") {
               setLocation("/consumer-home");
