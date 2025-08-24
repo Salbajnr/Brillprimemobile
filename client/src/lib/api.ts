@@ -38,17 +38,35 @@ async function apiRequest<T = any>(
       ...options,
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || `HTTP ${response.status}: Request failed`);
+    // Handle different content types
+    let data;
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType && contentType.includes('application/json')) {
+      data = await response.json();
+    } else {
+      const text = await response.text();
+      data = { message: text };
     }
 
-    return data;
+    if (!response.ok) {
+      const errorMessage = data.message || data.error || `HTTP ${response.status}: Request failed`;
+      throw new Error(errorMessage);
+    }
+
+    // Ensure consistent response format
+    if (data.success !== undefined) {
+      return data;
+    } else {
+      return {
+        success: true,
+        data: data
+      };
+    }
   } catch (error: any) {
     console.error(`API Error (${endpoint}):`, error);
 
-    // Log frontend errors to backend
+    // Log frontend errors to backend (only if not already logging)
     if (endpoint !== '/analytics/log-error') {
       try {
         await fetch('/api/analytics/log-error', {

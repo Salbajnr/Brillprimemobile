@@ -110,6 +110,9 @@ router.post('/login', async (req, res) => {
       fullName: user.fullName,
       role: user.role
     };
+    req.session.lastActivity = Date.now();
+    req.session.ipAddress = req.ip;
+    req.session.userAgent = req.get('User-Agent');
 
     res.json({
       success: true,
@@ -117,7 +120,8 @@ router.post('/login', async (req, res) => {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
+        role: user.role,
+        isVerified: user.isVerified || false
       }
     });
   } catch (error: any) {
@@ -191,32 +195,51 @@ router.post('/register', async (req, res) => {
   }
 });
 
-// Logout endpoint
-router.post('/logout', (req, res) => {
-  req.session.destroy((err) => {
-    if (err) {
-      return res.status(500).json({ 
+// Get current user
+router.get('/me', async (req, res) => {
+  try {
+    if (!req.session.userId) {
+      return res.status(401).json({ 
         success: false, 
-        message: 'Logout failed' 
+        message: 'Not authenticated' 
       });
     }
-    res.json({ success: true, message: 'Logged out successfully' });
-  });
-});
 
-// Get current user
-router.get('/me', (req, res) => {
-  if (!req.session.userId) {
-    return res.status(401).json({ 
+    // Verify user still exists in database
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, req.session.userId))
+      .limit(1);
+
+    if (!user) {
+      // User no longer exists, destroy session
+      req.session.destroy((err) => {
+        if (err) console.error('Session destruction error:', err);
+      });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'User not found' 
+      });
+    }
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role,
+        isVerified: user.isVerified || false
+      }
+    });
+  } catch (error: any) {
+    console.error('Get current user error:', error);
+    res.status(500).json({ 
       success: false, 
-      message: 'Not authenticated' 
+      message: 'Failed to get user information' 
     });
   }
-
-  res.json({
-    success: true,
-    user: req.session.user
-  });
 });
 
 // OTP verification endpoint
@@ -493,12 +516,13 @@ router.post('/signup', async (req, res) => {
     req.session.userId = newUser.id;
     req.session.user = {
       id: newUser.id,
-      userId: newUser.id.toString(),
       email: newUser.email,
       fullName: newUser.fullName,
-      role: newUser.role,
-      isVerified: newUser.isVerified || false
+      role: newUser.role
     };
+    req.session.lastActivity = Date.now();
+    req.session.ipAddress = req.ip;
+    req.session.userAgent = req.get('User-Agent');
 
     res.json({
       success: true,
@@ -506,7 +530,8 @@ router.post('/signup', async (req, res) => {
         id: newUser.id,
         email: newUser.email,
         fullName: newUser.fullName,
-        role: newUser.role
+        role: newUser.role,
+        isVerified: newUser.isVerified || false
       }
     });
   } catch (error: any) {
@@ -547,12 +572,13 @@ router.post('/signin', async (req, res) => {
     req.session.userId = user.id;
     req.session.user = {
       id: user.id,
-      userId: user.id.toString(),
       email: user.email,
       fullName: user.fullName,
-      role: user.role,
-      isVerified: user.isVerified || false
+      role: user.role
     };
+    req.session.lastActivity = Date.now();
+    req.session.ipAddress = req.ip;
+    req.session.userAgent = req.get('User-Agent');
 
     res.json({
       success: true,
@@ -560,7 +586,8 @@ router.post('/signin', async (req, res) => {
         id: user.id,
         email: user.email,
         fullName: user.fullName,
-        role: user.role
+        role: user.role,
+        isVerified: user.isVerified || false
       }
     });
   } catch (error: any) {

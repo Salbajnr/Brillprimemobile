@@ -402,7 +402,14 @@ app.get('/api/ws-test', (req, res) => {
 });
 
 // API Routes with enhanced error handling and specific rate limiting
+// Import session validation middleware
+import { validateSession } from './middleware/session-validator';
+
+// Centralized error handling for API 
 const apiRouter = express.Router();
+
+// Add session validation to all API routes
+apiRouter.use(validateSession);
 
 // Apply specific rate limiters and caching
 apiRouter.use('/auth', authLimiter);
@@ -460,7 +467,7 @@ app.post('/api/test-post', (req, res) => {
   console.log('Body received:', req.body);
   console.log('Headers:', req.headers);
   console.log('========================');
-  
+
   res.json({
     success: true,
     message: 'POST endpoint is working!',
