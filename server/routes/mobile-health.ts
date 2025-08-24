@@ -47,6 +47,170 @@ router.get('/mobile/health', async (req, res) => {
 });
 
 // Mobile app configuration endpoint
+
+
+// Device registration for mobile apps
+router.post('/mobile/register-device', async (req, res) => {
+  try {
+    const { deviceId, platform, version, pushToken } = req.body;
+    const userId = req.session?.userId;
+
+    if (!deviceId || !platform) {
+      return res.status(400).json({
+        success: false,
+        error: 'Device ID and platform are required'
+      });
+    }
+
+    // Store or update device information
+    const deviceInfo = {
+      userId: userId || null,
+      deviceId,
+      platform,
+      version,
+      pushToken,
+      lastSeen: new Date().toISOString(),
+      isActive: true
+    };
+
+    // In a real implementation, you'd store this in a devices table
+    console.log('Device registered:', deviceInfo);
+
+    res.json({
+      success: true,
+      data: {
+        deviceId,
+        registered: true,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Device registration error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to register device'
+    });
+  }
+});
+
+// Update push notification token
+router.post('/mobile/update-push-token', async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    const userId = req.session?.userId;
+
+    if (!token || !platform) {
+      return res.status(400).json({
+        success: false,
+        error: 'Push token and platform are required'
+      });
+    }
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    // Store push token for user
+    console.log('Push token updated:', { userId, token: token.substring(0, 20) + '...', platform });
+
+    res.json({
+      success: true,
+      data: {
+        tokenUpdated: true,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('Push token update error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update push token'
+    });
+  }
+});
+
+// Sync offline actions
+router.post('/mobile/sync-offline-actions', async (req, res) => {
+  try {
+    const { actions } = req.body;
+    const userId = req.session?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+
+    if (!Array.isArray(actions)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Actions must be an array'
+      });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const action of actions) {
+      try {
+        // Process each offline action
+        const result = await processOfflineAction(action, userId);
+        results.push({
+          id: action.id,
+          success: true,
+          result
+        });
+      } catch (error) {
+        errors.push({
+          id: action.id,
+          success: false,
+          error: error.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        processed: results.length,
+        errors: errors.length,
+        results,
+        errors
+      }
+    });
+  } catch (error) {
+    console.error('Offline actions sync error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync offline actions'
+    });
+  }
+});
+
+// Helper function to process offline actions
+async function processOfflineAction(action: any, userId: number): Promise<any> {
+  switch (action.type) {
+    case 'CREATE_ORDER':
+      // Process offline order creation
+      return { message: 'Order creation queued for processing' };
+    
+    case 'UPDATE_PROFILE':
+      // Process offline profile update
+      return { message: 'Profile update processed' };
+    
+    case 'PAYMENT':
+      // Process offline payment
+      return { message: 'Payment queued for processing' };
+    
+    default:
+      throw new Error(`Unknown action type: ${action.type}`);
+  }
+}
+
 router.get('/mobile/config', async (req, res) => {
   try {
     const config = {

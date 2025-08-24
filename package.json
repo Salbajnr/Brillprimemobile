@@ -149,7 +149,9 @@
     "test-api": "node validate-endpoints.js",
     "test:comprehensive": "cd server && npx tsx test-endpoints.ts",
     "test:health": "curl -f http://0.0.0.0:5000/api/health/detailed || echo 'Server not running'",
-    "validate": "npm run test:health && npm run test:api"
+    "validate": "npm run test:health && npm run test:api",
+    "validate-endpoints": "node validate-endpoints.js",
+    "test-integrations": "node test-integrations.js"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"

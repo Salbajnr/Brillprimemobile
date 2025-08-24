@@ -197,6 +197,138 @@ export const authApi = {
 
   verifyOtp: (data: { phone: string; code: string }) =>
     apiRequest('/auth/verify-otp', {
+
+
+// Mobile-specific API methods
+export const mobileApi = {
+  // Health check for mobile app
+  healthCheck: async (): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/health');
+  },
+
+  // Database status for mobile
+  databaseStatus: async (): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/database-status');
+  },
+
+  // Sync test for mobile
+  syncTest: async (): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/sync-test');
+  },
+
+  // Get user data for mobile sync
+  getUserData: async (since?: string): Promise<ApiResponse<any>> => {
+    const url = since ? `/auth/me?since=${since}` : '/auth/me';
+    return apiRequest(url);
+  },
+
+  // Get orders for mobile sync
+  getOrdersSync: async (since?: string): Promise<ApiResponse<any>> => {
+    const url = since ? `/orders?since=${since}` : '/orders';
+    return apiRequest(url);
+  },
+
+  // Get transactions for mobile sync
+  getTransactionsSync: async (since?: string): Promise<ApiResponse<any>> => {
+    const url = since ? `/transactions?since=${since}` : '/transactions';
+    return apiRequest(url);
+  },
+
+  // Get notifications for mobile
+  getNotifications: async (since?: string): Promise<ApiResponse<any>> => {
+    const url = since ? `/notifications?since=${since}` : '/notifications';
+    return apiRequest(url);
+  },
+
+  // Real-time analytics for mobile dashboards
+  getRealTimeAnalytics: async (): Promise<ApiResponse<any>> => {
+    return apiRequest('/analytics/metrics/realtime');
+  },
+
+  // Mobile device registration
+  registerDevice: async (deviceInfo: {
+    deviceId: string;
+    platform: 'ios' | 'android';
+    version: string;
+    pushToken?: string;
+  }): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/register-device', {
+      method: 'POST',
+      body: JSON.stringify(deviceInfo),
+    });
+  },
+
+  // Update push notification token
+  updatePushToken: async (token: string, platform: 'ios' | 'android'): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/update-push-token', {
+      method: 'POST',
+      body: JSON.stringify({ token, platform }),
+    });
+  },
+
+  // Offline action queue sync
+  syncOfflineActions: async (actions: any[]): Promise<ApiResponse<any>> => {
+    return apiRequest('/mobile/sync-offline-actions', {
+      method: 'POST',
+      body: JSON.stringify({ actions }),
+    });
+  },
+};
+
+// Enhanced error handling for mobile
+export const handleMobileApiError = (error: any): string => {
+  if (error.name === 'TypeError' && error.message === 'Network request failed') {
+    return 'No internet connection. Please check your connection and try again.';
+  }
+  
+  if (error.name === 'AbortError') {
+    return 'Request timed out. Please try again.';
+  }
+  
+  if (error.status === 401) {
+    return 'Your session has expired. Please sign in again.';
+  }
+  
+  if (error.status === 403) {
+    return 'You do not have permission to perform this action.';
+  }
+  
+  if (error.status >= 500) {
+    return 'Server error. Please try again later.';
+  }
+  
+  return error.message || 'An unexpected error occurred.';
+};
+
+// Retry mechanism for mobile
+export const apiRequestWithRetry = async (
+  endpoint: string,
+  options: RequestInit = {},
+  maxRetries: number = 3
+): Promise<ApiResponse<any>> => {
+  let lastError;
+  
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      return await apiRequest(endpoint, options);
+    } catch (error) {
+      lastError = error;
+      
+      // Don't retry on client errors (4xx)
+      if (error.status >= 400 && error.status < 500) {
+        throw error;
+      }
+      
+      // Wait before retry with exponential backoff
+      if (i < maxRetries - 1) {
+        await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
+      }
+    }
+  }
+  
+  throw lastError;
+};
+
       method: 'POST',
       body: JSON.stringify(data),
     }),
