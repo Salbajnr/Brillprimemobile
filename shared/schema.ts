@@ -126,7 +126,7 @@ export const products = pgTable("products", {
 });
 
 // Categories table (from original, unchanged)
-export const categories = pgTable("categories", {
+export const categoriesOriginal = pgTable("categories_original", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),

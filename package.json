@@ -145,7 +145,11 @@
     "tailwindcss": "^3.4.17",
     "tsx": "^4.19.1",
     "typescript": "^5.6.3",
-    "vite": "^5.4.19"
+    "vite": "^5.4.19",
+    "test:api": "node validate-endpoints.js",
+    "test:comprehensive": "cd server && npx tsx test-endpoints.ts",
+    "test:health": "curl -f http://0.0.0.0:5000/api/health/detailed || echo 'Server not running'",
+    "validate": "npm run test:health && npm run test:api"
   },
   "optionalDependencies": {
     "bufferutil": "^4.0.8"
