@@ -155,7 +155,10 @@ router.post('/register', async (req, res) => {
     const [newUser] = await db
       .insert(users)
       .values({
-        ...userData,
+        email: userData.email,
+        fullName: userData.fullName,
+        phone: userData.phone,
+        role: userData.role,
         passwordHash,
         createdAt: new Date()
       })
