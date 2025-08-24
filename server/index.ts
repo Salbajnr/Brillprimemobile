@@ -280,7 +280,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_URL) {
     }
   };
 
-  app.use(session(sessionConfig));
+  app.use(session(sessionConfig) as any);
 
 } else {
   console.log('🔄 Using Redis store for sessions');
@@ -306,7 +306,7 @@ if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_URL) {
     }
   };
 
-  app.use(session(sessionConfig));
+  app.use(session(sessionConfig) as any);
 }
 
 // CSRF token generation
@@ -762,9 +762,6 @@ app.use('/api/system-health', systemHealthRoutes);
 import categoriesRoutes from "./routes/categories";
 import ordersRoutes from "./routes/orders";
 import orderStatusRoutes from "./routes/order-status";
-import driverRoutes from "./routes/driver";
-import realTimeTrackingRoutes from "./routes/real-time-tracking";
-import analyticsRoutes from "./routes/analytics";
 import testRealtimeRoutes from "./routes/test-realtime";
 import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
 

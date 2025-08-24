@@ -56,6 +56,52 @@ export const storage = {
     await db.delete(categories).where(eq(categories.id, id));
   },
 
+  // Products management
+  async getProducts(filters: any = {}) {
+    const conditions = [];
+    
+    if (filters.categoryId) conditions.push(eq(products.categoryId, filters.categoryId));
+    if (filters.sellerId) conditions.push(eq(products.sellerId, filters.sellerId));
+    if (filters.inStock !== undefined) conditions.push(eq(products.inStock, filters.inStock));
+    
+    return await db.select().from(products)
+      .where(conditions.length > 0 ? and(...conditions) : undefined)
+      .limit(filters.limit || 20)
+      .offset((filters.page - 1) * (filters.limit || 20) || 0);
+  },
+
+  async getProductById(id: number) {
+    const [product] = await db.select().from(products)
+      .where(eq(products.id, id))
+      .limit(1);
+    return product;
+  },
+
+  async createProduct(productData: any) {
+    const [product] = await db.insert(products).values(productData).returning();
+    return product;
+  },
+
+  async updateProduct(id: number, data: any) {
+    const [product] = await db.update(products)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(products.id, id))
+      .returning();
+    return product;
+  },
+
+  async deleteProduct(id: number) {
+    await db.delete(products).where(eq(products.id, id));
+  },
+
+  // User management
+  async getUserById(id: number) {
+    const [user] = await db.select().from(users)
+      .where(eq(users.id, id))
+      .limit(1);
+    return user;
+  },
+
   // Orders management
   async createOrder(orderData: any) {
     const [order] = await db.insert(orders).values(orderData).returning();

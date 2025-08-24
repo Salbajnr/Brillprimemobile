@@ -12,9 +12,12 @@ declare module 'express-session' {
     userId?: number;
     user?: {
       id: number;
+      userId: string;
       email: string;
       fullName: string;
       role: string;
+      isVerified: boolean;
+      profilePicture?: string;
     };
     lastActivity?: number;
     ipAddress?: string;
@@ -106,9 +109,12 @@ router.post('/login', async (req, res) => {
     req.session.userId = user.id;
     req.session.user = {
       id: user.id,
+      userId: user.id.toString(),
       email: user.email,
       fullName: user.fullName,
-      role: user.role
+      role: user.role,
+      isVerified: user.isVerified || false,
+      profilePicture: user.profilePicture
     };
     req.session.lastActivity = Date.now();
     req.session.ipAddress = req.ip;
@@ -172,9 +178,12 @@ router.post('/register', async (req, res) => {
     req.session.userId = newUser.id;
     req.session.user = {
       id: newUser.id,
+      userId: newUser.id.toString(),
       email: newUser.email,
       fullName: newUser.fullName,
-      role: newUser.role
+      role: newUser.role,
+      isVerified: newUser.isVerified || false,
+      profilePicture: newUser.profilePicture
     };
 
     res.json({
@@ -516,9 +525,12 @@ router.post('/signup', async (req, res) => {
     req.session.userId = newUser.id;
     req.session.user = {
       id: newUser.id,
+      userId: newUser.id.toString(),
       email: newUser.email,
       fullName: newUser.fullName,
-      role: newUser.role
+      role: newUser.role,
+      isVerified: newUser.isVerified || false,
+      profilePicture: newUser.profilePicture
     };
     req.session.lastActivity = Date.now();
     req.session.ipAddress = req.ip;
@@ -572,9 +584,12 @@ router.post('/signin', async (req, res) => {
     req.session.userId = user.id;
     req.session.user = {
       id: user.id,
+      userId: user.id.toString(),
       email: user.email,
       fullName: user.fullName,
-      role: user.role
+      role: user.role,
+      isVerified: user.isVerified || false,
+      profilePicture: user.profilePicture
     };
     req.session.lastActivity = Date.now();
     req.session.ipAddress = req.ip;
