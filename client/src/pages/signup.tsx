@@ -41,11 +41,16 @@ export default function SignUpPage() {
       // Check if email verification is required
       if (result?.requiresEmailVerification) {
         // Store email for OTP verification
-        localStorage.setItem('verificationEmail', email);
+        localStorage.setItem('verification-email', email);
         setLocation('/otp-verification');
-      } else {
-        // Direct to dashboard if no verification needed
+      } else if (result?.user) {
+        // Set user in context if registration is complete
+        setUser(result.user);
         setLocation('/dashboard');
+      } else {
+        // Fallback - should not happen with proper backend response
+        console.warn('Unexpected signup response:', result);
+        setLocation('/signin');
       }
     } catch (error) {
       // Error is already handled by the auth context

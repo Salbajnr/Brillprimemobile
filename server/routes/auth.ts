@@ -183,7 +183,8 @@ router.post('/register', async (req, res) => {
         userId: newUser.id,
         token: hashedOtp,
         method: 'EMAIL',
-        expiresAt
+        expiresAt,
+        isUsed: false
       });
     
     // Send OTP email
@@ -413,6 +414,19 @@ router.post('/resend-otp', async (req, res) => {
 
     // Generate new OTP
     const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    
+    // Store OTP in database
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: user.id,
+        token: hashedOtp,
+        method: 'EMAIL',
+        expiresAt,
+        isUsed: false
+      });
     
     // Send OTP email
     const { emailService } = await import('../services/email');

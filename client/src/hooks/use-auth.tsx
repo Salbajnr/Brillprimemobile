@@ -25,7 +25,9 @@ const authAPI = {
     if (email === 'existing@example.com') {
       return { success: false, message: 'Email already exists' };
     }
-    return { success: true, user: { id: '2', email: email, fullName: fullName, role: role }, token: 'fake_token' };
+    // Simulate a scenario where email verification might be required
+    const requiresEmailVerification = email.endsWith('@verify.com');
+    return { success: true, user: requiresEmailVerification ? null : { id: '2', email: email, fullName: fullName, role: role }, token: 'fake_token', requiresEmailVerification: requiresEmailVerification };
   },
   validateSession: async () => {
     // Simulate token validation
@@ -188,7 +190,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, role: string = 'CONSUMER', fullName?: string, phone?: string) => {
+  const signup = async (email: string, password: string, role?: string, fullName?: string, phone?: string) => {
     setLoading(true);
     clearError();
 
@@ -204,15 +206,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role
       });
 
+      // Only set user if email verification is not required
       if (result.success && result.user) {
         setUser(result.user);
-        setIsAuthenticated(true);
+        setIsAuthenticated(true); // Assume signup implies authentication if user is returned
         localStorage.setItem('user', JSON.stringify(result.user));
         // Store token if provided
         if (result.token) {
           localStorage.setItem('token', result.token);
         }
-      } else {
+      } else if (result.success && result.requiresEmailVerification) {
+        // Handle case where email verification is required, but registration was otherwise successful
+        // Typically you might redirect to an "email verification pending" page
+        console.log('Email verification required for', email);
+        // No user is set, and no authentication occurs until verification
+      }
+      else {
         throw new Error(result.message || 'Registration failed');
       }
     } catch (error: any) {
