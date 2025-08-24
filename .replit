@@ -30,7 +30,7 @@ externalPort = 5173
 PORT = "5000"
 
 [workflows]
-runButton = "Start BrillPrime Server"
+runButton = "Start BrillPrime Development"
 
 [[workflows.workflow]]
 name = "Project"
@@ -283,6 +283,19 @@ args = "REDIS_DISABLED=true npm run dev"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd mobile && npm start"
+
+[[workflows.workflow]]
+name = "Start BrillPrime Development"
+author = 46836043
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
 
 [agent]
 integrations = ["javascript_sendgrid==1.0.0"]

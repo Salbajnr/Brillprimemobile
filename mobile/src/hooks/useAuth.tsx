@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { mobileConfig } from '../shared/config';
-import api from './api'; // Assuming you have an api instance configured
+import { apiService } from '../services/api';
+import { databaseSyncService } from '../services/databaseSync';
 
 interface User {
   id: string;
@@ -28,16 +29,31 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signIn = async (email: string, password: string) => {
     try {
       setIsLoading(true);
-      const response = await api.post('/auth/signin', { email, password });
-      const userData = response.data.user;
-      setUser(userData);
-      await AsyncStorage.setItem('user', JSON.stringify(userData));
-      await AsyncStorage.setItem('token', response.data.token);
-      return { success: true };
+      const response = await apiService.post('/auth/signin', { email, password });
+      
+      if (response.success && response.data) {
+        setUser(response.data.user);
+
+        // Verify database sync after successful login
+        const syncStatus = await databaseSyncService.verifySyncStatus();
+        if (!syncStatus.success) {
+          console.warn('⚠️ Database sync verification failed, but login successful');
+        }
+
+        await AsyncStorage.setItem('user', JSON.stringify(response.data.user));
+        await AsyncStorage.setItem('token', response.data.token);
+        return { success: true };
+      } else {
+        return {
+          success: false,
+          error: response.error || 'Sign in failed'
+        };
+      }
     } catch (error: any) {
+      console.error('Sign in error:', error);
       return {
         success: false,
-        error: error.response?.data?.error || 'Sign in failed'
+        error: error.message || 'Sign in failed'
       };
     } finally {
       setIsLoading(false);
@@ -47,9 +63,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const signUp = async (userData: any) => {
     try {
       setIsLoading(true);
-      const response = await api.post('/auth/signup', userData);
+      const response = await apiService.post('/auth/signup', userData);
       return { success: true };
     } catch (error: any) {
+      console.error('Sign up error:', error);
       return {
         success: false,
         error: error.response?.data?.error || 'Sign up failed'

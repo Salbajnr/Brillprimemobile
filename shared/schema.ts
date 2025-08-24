@@ -125,8 +125,8 @@ export const products = pgTable("products", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
-// Categories table (original - renamed to avoid conflict)
-export const categoriesOriginal = pgTable("categories_original", {
+// Categories table (legacy - kept for migration compatibility)
+export const categoriesLegacy = pgTable("categories_legacy", {
   id: serial("id").primaryKey(),
   name: text("name").unique().notNull(),
   description: text("description"),

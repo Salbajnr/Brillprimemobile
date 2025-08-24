@@ -18,7 +18,8 @@ import { redisClient } from './services/cache';
 
 // Import mobile specific configurations and routes
 import './mobile/mobile-config'; // For mobile app configurations
-import mobileHealthRoutes from './routes/mobile-health'; // Mobile health route
+import mobileHealthRoutes from './routes/mobile-health';
+import mobileDatabaseRoutes from './routes/mobile-database'; // Mobile health route
 
 // Import admin routes
 import { registerAdminUserManagementRoutes } from './routes/admin-user-management';
@@ -752,6 +753,7 @@ app.use("/api/compliance", nigerianComplianceRoutes);
 
 // Register mobile health routes
 app.use('/api', mobileHealthRoutes);
+app.use('/api', mobileDatabaseRoutes);
 
 // Register system health routes
 app.use('/api/system-health', systemHealthRoutes);
