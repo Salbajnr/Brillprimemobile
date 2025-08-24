@@ -1,7 +1,13 @@
 
 import express from 'express';
 import { db } from '../db';
-import { db } from '../db';
+
+// Extend session interface
+declare module 'express-session' {
+  interface SessionData {
+    userId?: number;
+  }
+}
 
 const router = express.Router();
 
@@ -152,8 +158,8 @@ router.post('/mobile/sync-offline-actions', async (req, res) => {
       });
     }
 
-    const results = [];
-    const errors = [];
+    const results: any[] = [];
+    const errors: any[] = [];
 
     for (const action of actions) {
       try {
@@ -164,7 +170,7 @@ router.post('/mobile/sync-offline-actions', async (req, res) => {
           success: true,
           result
         });
-      } catch (error) {
+      } catch (error: any) {
         errors.push({
           id: action.id,
           success: false,
@@ -177,7 +183,7 @@ router.post('/mobile/sync-offline-actions', async (req, res) => {
       success: true,
       data: {
         processed: results.length,
-        errors: errors.length,
+        errorCount: errors.length,
         results,
         errors
       }
