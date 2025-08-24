@@ -81,10 +81,10 @@ export class AuthAPI {
   private baseURL = '/api/auth';
 
   async signUp(data: {
-    fullName: string;
+    fullName?: string;
     email: string;
     password: string;
-    phone: string;
+    phone?: string;
     role: string;
   }) {
     const response = await fetch(`${this.baseURL}/signup`, {
@@ -92,15 +92,26 @@ export class AuthAPI {
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(data),
+      credentials: 'include', // Include cookies for session
+      body: JSON.stringify({
+        ...data,
+        fullName: data.fullName || data.email.split('@')[0] // Generate fullName if not provided
+      }),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ message: 'Sign up failed' }));
       throw new Error(error.message || 'Sign up failed');
     }
 
-    return response.json();
+    const result = await response.json();
+    
+    // Store user data
+    if (result.success && result.user) {
+      localStorage.setItem('user', JSON.stringify(result.user));
+    }
+
+    return result;
   }
 
   async signIn(data: {
@@ -112,19 +123,20 @@ export class AuthAPI {
       headers: {
         'Content-Type': 'application/json',
       },
+      credentials: 'include', // Include cookies for session
       body: JSON.stringify(data),
     });
 
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ message: 'Sign in failed' }));
       throw new Error(error.message || 'Sign in failed');
     }
 
     const result = await response.json();
 
-    // Store token if provided
-    if (result.token) {
-      localStorage.setItem('token', result.token);
+    // Store user data
+    if (result.success && result.user) {
+      localStorage.setItem('user', JSON.stringify(result.user));
     }
 
     return result;
@@ -151,8 +163,47 @@ export class AuthAPI {
   }
 
   async signOut() {
-    localStorage.removeItem('token');
-    window.location.href = '/signin';
+    try {
+      await fetch(`${this.baseURL}/logout`, {
+        method: 'POST',
+        credentials: 'include'
+      });
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      window.location.href = '/signin';
+    }
+  }
+
+  async validateSession() {
+    try {
+      const response = await fetch(`${this.baseURL}/validate-session`, {
+        method: 'GET',
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.user) {
+          localStorage.setItem('user', JSON.stringify(result.user));
+          return result.user;
+        }
+      }
+      
+      // Clear invalid session
+      localStorage.removeItem('user');
+      return null;
+    } catch (error) {
+      console.error('Session validation error:', error);
+      return null;
+    }
+  }
+
+  getCurrentUser() {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
   }
 
   getToken(): string | null {
@@ -160,7 +211,7 @@ export class AuthAPI {
   }
 
   isAuthenticated(): boolean {
-    return !!this.getToken();
+    return !!this.getCurrentUser();
   }
 }
 

@@ -445,4 +445,131 @@ router.post('/logout', async (req, res) => {
   }
 });
 
+// Add aliases for frontend compatibility
+router.post('/signup', async (req, res) => {
+  try {
+    const { email, password, role = 'CONSUMER' } = req.body;
+    
+    // Generate a fullName from email if not provided
+    const fullName = req.body.fullName || email.split('@')[0];
+    
+    const userData = {
+      email,
+      password,
+      fullName,
+      role
+    };
+    
+    const validatedData = registerSchema.parse(userData);
+    
+    // Check if user exists
+    const [existingUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, validatedData.email))
+      .limit(1);
+
+    if (existingUser) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'User already exists' 
+      });
+    }
+
+    // Hash password
+    const passwordHash = await bcrypt.hash(validatedData.password, 10);
+
+    // Create user
+    const [newUser] = await db
+      .insert(users)
+      .values({
+        ...validatedData,
+        passwordHash,
+        createdAt: new Date()
+      })
+      .returning();
+
+    // Create session
+    req.session.userId = newUser.id;
+    req.session.user = {
+      id: newUser.id,
+      userId: newUser.id.toString(),
+      email: newUser.email,
+      fullName: newUser.fullName,
+      role: newUser.role,
+      isVerified: newUser.isVerified || false
+    };
+
+    res.json({
+      success: true,
+      user: {
+        id: newUser.id,
+        email: newUser.email,
+        fullName: newUser.fullName,
+        role: newUser.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Signup error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Signup failed' 
+    });
+  }
+});
+
+// Add signin alias
+router.post('/signin', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+
+    if (!user || !await bcrypt.compare(password, user.passwordHash)) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
+    }
+
+    // Create session
+    req.session.userId = user.id;
+    req.session.user = {
+      id: user.id,
+      userId: user.id.toString(),
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      isVerified: user.isVerified || false
+    };
+
+    res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.fullName,
+        role: user.role
+      }
+    });
+  } catch (error: any) {
+    console.error('Signin error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Signin failed' 
+    });
+  }
+});
+
 export default router;

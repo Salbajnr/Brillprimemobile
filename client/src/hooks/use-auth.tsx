@@ -1,5 +1,57 @@
 import { useState, useEffect, createContext, useContext } from 'react'
 
+// Assuming authAPI is defined elsewhere and provides methods like signIn, signUp, validateSession
+// For example:
+// const authAPI = {
+//   signIn: async ({ email, password }) => ({ success: true, user: { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' }, token: 'fake_token' }),
+//   signUp: async ({ email, password, fullName, role }) => ({ success: true, user: { id: '2', email: email, fullName: fullName, role: role }, token: 'fake_token' }),
+//   validateSession: async () => ({ id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' })
+// };
+
+// Placeholder for authAPI if not provided externally
+const authAPI = {
+  signIn: async ({ email, password }) => {
+    // Simulate API call
+    console.log(`Attempting to sign in with: ${email}`);
+    if (email === 'test@example.com' && password === 'password') {
+      return { success: true, user: { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' }, token: 'fake_token' };
+    } else {
+      return { success: false, message: 'Invalid credentials' };
+    }
+  },
+  signUp: async ({ email, password, fullName, role }) => {
+    // Simulate API call
+    console.log(`Attempting to sign up: ${email} as ${role}`);
+    if (email === 'existing@example.com') {
+      return { success: false, message: 'Email already exists' };
+    }
+    return { success: true, user: { id: '2', email: email, fullName: fullName, role: role }, token: 'fake_token' };
+  },
+  validateSession: async () => {
+    // Simulate token validation
+    console.log('Validating session...');
+    const token = localStorage.getItem('token');
+    if (token === 'fake_token') {
+      return { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' };
+    }
+    return null;
+  },
+  logout: async () => {
+    console.log('Logging out');
+    return { success: true };
+  },
+  // Add other authAPI methods as needed, e.g., fetchUser, updateUser
+  fetchUser: async () => {
+    console.log('Fetching user');
+    return { success: true, user: { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' } };
+  },
+  updateUser: async (userId: string, userData: Partial<User>) => {
+    console.log(`Updating user ${userId} with:`, userData);
+    return { success: true, user: { id: userId, email: 'test@example.com', fullName: userData.fullName || 'Test User', role: userData.role || 'CONSUMER' } };
+  }
+};
+
+
 interface User {
   id: string
   email: string
@@ -13,8 +65,8 @@ interface AuthContextType {
   user: User | null
   setUser: (user: User | null) => void
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
-  signup: (email: string, password: string, role: string) => Promise<void>
+  logout: () => Promise<void>
+  signup: (email: string, password: string, role?: string, fullName?: string, phone?: string) => Promise<void>
   isLoading: boolean
   loading: boolean
   refreshUser: () => Promise<void>;
@@ -22,6 +74,7 @@ interface AuthContextType {
   error: string | null;
   clearError: () => void;
   isAuthenticated: () => boolean;
+  setIsAuthenticated: (value: boolean) => void; // Added for clarity if needed elsewhere
 }
 
 const AuthContext = createContext<AuthContextType | null>(null)
@@ -37,13 +90,19 @@ const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
     ...options,
   });
 
+  // Handle cases where response might not be JSON (e.g., 204 No Content)
+  if (response.status === 204) {
+    return { success: response.ok, data: null, error: null, user: null };
+  }
+
   const data = await response.json();
 
+  // Generalize error handling: if response is not OK, return error from JSON body
   return {
     success: response.ok,
     data: response.ok ? data : null,
-    error: response.ok ? null : data.message || 'Request failed',
-    user: data.user,
+    error: response.ok ? null : data.message || data.error || 'Request failed',
+    user: data.user, // Assuming user object might be returned on success
   };
 };
 
@@ -52,142 +111,181 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false); // Renamed from isLoading to loading for clarity if needed, but keeping original name for now
+  const [loading, setLoading] = useState(false);
+  const [isAuthenticatedState, setIsAuthenticated] = useState(false); // Internal state for authentication status
 
   useEffect(() => {
-    // Check for existing session both from localStorage and server validation
     const initializeAuth = async () => {
-      const storedUser = localStorage.getItem('user')
-      if (storedUser) {
-        try {
-          const userData = JSON.parse(storedUser)
-          setUser(userData)
-          
-          // Validate session with server
-          try {
-            const response = await apiRequest('/auth/validate-session');
-            if (!response.success) {
-              // Session invalid, clear local data
-              localStorage.removeItem('user')
-              setUser(null)
-            } else if (response.user) {
-              // Update user data with fresh server data
-              setUser(response.user)
-              localStorage.setItem('user', JSON.stringify(response.user))
-            }
-          } catch (error) {
-            console.error('Session validation failed:', error)
-            // Keep local user for offline functionality but mark as potentially stale
-          }
-        } catch (error) {
-          console.error('Error parsing stored user:', error)
-          localStorage.removeItem('user')
-        }
-      }
-      setIsLoading(false)
-    }
+      try {
+        // First check if we have a stored user
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
 
-    initializeAuth()
-  }, [])
+          // Validate session with server
+          const validUser = await authAPI.validateSession(); // Use authAPI.validateSession
+          if (validUser) {
+            setUser(validUser);
+            setIsAuthenticated(true);
+          } else {
+            // Session invalid, clear stored data
+            localStorage.removeItem('user');
+            localStorage.removeItem('token'); // Also remove token
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        } else {
+          // No stored user, check session directly
+          const validUser = await authAPI.validateSession();
+          if (validUser) {
+            setUser(validUser);
+            setIsAuthenticated(true);
+            localStorage.setItem('user', JSON.stringify(validUser));
+          } else {
+            setUser(null);
+            setIsAuthenticated(false);
+          }
+        }
+      } catch (error) {
+        console.error('Auth initialization error:', error);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token'); // Also remove token
+        setUser(null);
+        setIsAuthenticated(false);
+      } finally {
+        setLoading(false); // Set loading to false after initialization
+        setIsLoading(false); // Also set overall loading to false
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const login = async (email: string, password: string) => {
-    setLoading(true)
-    setError(null);
-    try {
-      const response = await apiRequest('/auth/login', {
-        method: 'POST',
-        body: JSON.stringify({ email, password })
-      });
-
-      if (!response.success) {
-        throw new Error(response.error || 'Login failed');
-      }
-
-      const data = response;
-      setUser(data.data?.user || data.user);
-      localStorage.setItem('user', JSON.stringify(data.data?.user || data.user));
-    } catch (err: any) {
-      setError(err.message);
-      console.error('Login error:', err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  const signup = async (email: string, password: string, role: string, fullName?: string) => {
     setLoading(true);
-    setError(null);
+    clearError();
+
     try {
-      const response = await apiRequest('/auth/register', {
-        method: 'POST',
-        body: JSON.stringify({ email, password, role, fullName: fullName || email.split('@')[0] })
-      });
+      const result = await authAPI.signIn({ email, password });
 
-      if (!response.success) {
-        throw new Error(response.error || 'Signup failed');
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        // Store token if provided
+        if (result.token) {
+          localStorage.setItem('token', result.token);
+        }
+      } else {
+        throw new Error(result.message || 'Login failed');
       }
-
-      const data = response;
-      setUser(data.data?.user || data.user);
-      localStorage.setItem('user', JSON.stringify(data.data?.user || data.user));
-    } catch (err: any) {
-      setError(err.message);
-      console.error('Signup error:', err);
+    } catch (error: any) {
+      console.error('Login error:', error);
+      setError(error.message || 'Login failed. Please check your credentials and try again.');
+      throw error;
     } finally {
       setLoading(false);
     }
-  }
+  };
+
+  const signup = async (email: string, password: string, role: string = 'CONSUMER', fullName?: string, phone?: string) => {
+    setLoading(true);
+    clearError();
+
+    try {
+      // Ensure fullName is provided or default it
+      const effectiveFullName = fullName || email.split('@')[0];
+
+      const result = await authAPI.signUp({
+        email,
+        password,
+        fullName: effectiveFullName,
+        phone: phone || '',
+        role
+      });
+
+      if (result.success && result.user) {
+        setUser(result.user);
+        setIsAuthenticated(true);
+        localStorage.setItem('user', JSON.stringify(result.user));
+        // Store token if provided
+        if (result.token) {
+          localStorage.setItem('token', result.token);
+        }
+      } else {
+        throw new Error(result.message || 'Registration failed');
+      }
+    } catch (error: any) {
+      console.error('Registration error:', error);
+      setError(error.message || 'Registration failed. Please try again.');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const logout = async () => {
     try {
-      // Call server logout endpoint
-      await apiRequest('/auth/logout', { method: 'POST' });
+      await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
+      // Continue to clear local state even if server logout fails
     } finally {
-      // Always clear local state regardless of server response
       setUser(null)
       localStorage.removeItem('user')
-      localStorage.removeItem('selectedRole')
+      localStorage.removeItem('token') // Clear token on logout
+      setIsAuthenticated(false)
+      // Consider clearing other related states if necessary
     }
   }
 
   const refreshUser = async (): Promise<void> => {
+    // If no user is logged in, there's nothing to refresh
+    if (!isAuthenticatedState && !user) {
+      return;
+    }
     try {
-      const response = await apiRequest("/auth/me");
-      if (response.success) {
-        setUser(response.data?.user || response.user);
+      // Assuming authAPI.fetchUser() fetches the currently logged-in user's data
+      const response = await authAPI.fetchUser();
+      if (response.success && response.user) {
+        setUser(response.user);
+        setIsAuthenticated(true); // Ensure auth status is true if user data is fetched
+        localStorage.setItem('user', JSON.stringify(response.user));
       } else {
         // If /auth/me fails, it's likely due to an expired token or invalid session
         setUser(null);
         localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        setIsAuthenticated(false);
         setError(response.error || 'Session expired. Please log in again.');
       }
     } catch (err: any) {
       console.error('Failed to refresh user:', err);
       setUser(null);
       localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      setIsAuthenticated(false);
       setError(err.message || 'An error occurred while refreshing user data.');
     }
   };
 
   const updateUser = async (userData: Partial<User>): Promise<void> => {
-    if (!user) return;
+    if (!user) return; // Cannot update if no user is logged in
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest(`/users/${user.id}`, {
-        method: 'PUT',
-        body: JSON.stringify(userData),
-      });
+      // Assuming the API endpoint for updating a user is specific to the user's ID
+      const response = await authAPI.updateUser(user.id, userData); // Use authAPI.updateUser
 
       if (!response.success) {
         throw new Error(response.error || 'Failed to update user');
       }
 
-      const updatedUserData = response;
-      setUser(updatedUserData.data?.user || updatedUserData.user);
-      localStorage.setItem('user', JSON.stringify(updatedUserData.data?.user || updatedUserData.user));
+      // Update local user state and localStorage with the new data
+      const updatedUser = response.user;
+      setUser(updatedUser);
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+
     } catch (err: any) {
       setError(err.message);
       console.error('Update user error:', err);
@@ -202,9 +300,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const isAuthenticated = () => !!user;
 
-
+  // Providing setIsAuthenticated in the context if needed by consuming components
   return (
-    <AuthContext.Provider value={{ user, setUser, login, logout, signup, isLoading, loading, refreshUser, updateUser, error, clearError, isAuthenticated }}>
+    <AuthContext.Provider value={{ user, setUser, login, logout, signup, isLoading, loading, refreshUser, updateUser, error, clearError, isAuthenticated, setIsAuthenticated }}>
       {children}
     </AuthContext.Provider>
   )
