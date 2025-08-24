@@ -3,6 +3,9 @@ import { storage } from "../storage";
 import { requireAuth } from "../middleware/auth";
 import { z } from "zod";
 import { liveChatService } from "../services/live-chat";
+import { db } from "../db";
+import { chatMessages } from "../../shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 
 // Live Chat schemas
 const startChatSchema = z.object({
@@ -207,10 +210,13 @@ export function registerLiveChatRoutes(app: Express) {
             })
           );
 
+          // Calculate unread messages count
+          const unreadCount = await calculateUnreadCount(room.id, userId);
+          
           return {
             ...room,
             participantsInfo: participantsInfo.filter(Boolean),
-            unreadCount: 0 // This would need to be calculated from database
+            unreadCount
           };
         })
       );
@@ -474,4 +480,28 @@ export function registerLiveChatRoutes(app: Express) {
       });
     }
   });
+}
+
+// Helper function to calculate unread messages count
+async function calculateUnreadCount(roomId: string, userId: number): Promise<number> {
+  try {
+    // Get conversation ID from room ID (assuming room ID maps to conversation ID)
+    const conversationId = parseInt(roomId);
+    
+    // Count messages in this conversation that the user hasn't read
+    const [result] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(chatMessages)
+      .where(and(
+        eq(chatMessages.conversationId, conversationId),
+        eq(chatMessages.isDeleted, false),
+        // Message not read by this user (userId not in readBy array)
+        sql`NOT (${chatMessages.readBy} ? ${userId.toString()})`
+      ));
+    
+    return result?.count || 0;
+  } catch (error) {
+    console.error('Calculate unread count error:', error);
+    return 0;
+  }
 }

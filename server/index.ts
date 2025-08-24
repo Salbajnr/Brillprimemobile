@@ -767,6 +767,7 @@ import realTimeTrackingRoutes from "./routes/real-time-tracking";
 import analyticsRoutes from "./routes/analytics";
 import testRealtimeRoutes from "./routes/test-realtime";
 import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
+import driverTierRoutes from "./routes/driver-tier";
 
 // Add route registrations
 app.use("/api/categories", categoriesRoutes);
@@ -777,5 +778,6 @@ app.use("/api/tracking", realTimeTrackingRoutes);
 app.use("/api/analytics", analyticsRoutes);
 testRealtimeRoutes.registerTestRealtimeRoutes(app);
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
+app.use("/api/driver-tier", driverTierRoutes);
 
 export default app;
