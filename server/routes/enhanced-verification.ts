@@ -43,7 +43,15 @@ const biometricVerificationSchema = z.object({
   })
 });
 
-const requireAuth = (req: any, res: any, next: any) => {
+import { Request, Response, NextFunction } from 'express';
+
+declare module 'express-session' {
+  interface SessionData {
+    userId?: number;
+  }
+}
+
+const requireAuth = (req: Request, res: Response, next: NextFunction) => {
   if (!req.session?.userId) {
     return res.status(401).json({ success: false, message: 'Authentication required' });
   }
@@ -78,7 +86,7 @@ router.post('/documents/upload', requireAuth, upload.single('document'), async (
 
     // Store document information
     const [document] = await db.insert(verificationDocuments).values({
-      userId,
+      userId: userId,
       documentType: data.documentType,
       documentNumber: data.documentNumber,
       fileName,
@@ -87,7 +95,7 @@ router.post('/documents/upload', requireAuth, upload.single('document'), async (
       expiryDate: data.expiryDate ? new Date(data.expiryDate) : null,
       validationScore: validationResult.confidence,
       extractedData: JSON.stringify(validationResult.extractedData),
-      status: validationResult.confidence > 0.8 ? 'VERIFIED' : 'PENDING_REVIEW',
+      status: validationResult.confidence > 0.8 ? 'VERIFIED' : 'PENDING',
       uploadedAt: new Date()
     }).returning();
 
@@ -531,8 +539,8 @@ function getVerificationLevel(user: any, documents: any[]): string {
 }
 
 // Get required verification steps
-function getRequiredSteps(user: any, documents: any[]) {
-  const steps = [];
+function getRequiredSteps(user: any, documents: any[]): string[] {
+  const steps: string[] = [];
   
   if (!user.emailVerified) steps.push('EMAIL_VERIFICATION');
   if (!user.phoneVerified) steps.push('PHONE_VERIFICATION');
@@ -550,14 +558,6 @@ function getRequiredSteps(user: any, documents: any[]) {
   
   return steps;
 }
-
-export default router;
-import express from 'express';
-import { db } from '../db';
-import { users } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
-
-const router = express.Router();
 
 // Get enhanced verification status
 router.get('/enhanced-status', async (req, res) => {

@@ -45,7 +45,7 @@ import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, a
 import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
 import { queryOptimizer } from './services/queryOptimizer';
 import { liveSystemService } from './services/live-system';
-import { performanceOptimizer } from './middleware/cacheMiddleware';
+// import { performanceOptimizer } from './middleware/cacheMiddleware'; // Not exported - commenting out
 import { emailService } from './services/email';
 // import compression from 'compression'; // Temporarily disabled due to dependency conflict
 
@@ -683,7 +683,7 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
 
   // Initialize performance optimizations
   console.log('🚀 Initializing performance optimizations...');
-  await performanceOptimizer.warmupCache();
+  // await performanceOptimizer.warmupCache(); // TODO: Implement performance optimizer
   queryOptimizer.startMaintenance();
   console.log('✅ Performance optimizations initialized');
 
