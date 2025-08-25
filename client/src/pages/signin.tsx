@@ -12,6 +12,21 @@ export default function SignInPage() {
   const { login, loading, error, clearError, setUser } = useAuth();
   const [, setLocation] = useLocation();
 
+  // Helper function for role-based redirection
+  const redirectToRoleDashboard = (userData: any) => {
+    if (userData.role === "CONSUMER") {
+      setLocation("/dashboard");
+    } else if (userData.role === "MERCHANT") {
+      setLocation("/merchant-dashboard");
+    } else if (userData.role === "DRIVER") {
+      setLocation("/driver-dashboard");
+    } else if (userData.role === "ADMIN") {
+      setLocation("/admin-dashboard");
+    } else {
+      setLocation("/dashboard");
+    }
+  };
+
   const handleSignIn = async () => {
     clearError(); // Clear any previous errors
     
@@ -26,8 +41,12 @@ export default function SignInPage() {
     }
 
     try {
-      await login(email, password);
-      setLocation('/dashboard');
+      const userData = await login(email, password);
+      if (userData) {
+        redirectToRoleDashboard(userData);
+      } else {
+        setLocation('/dashboard');
+      }
     } catch (error) {
       // Error is already handled by the auth context
       console.error('Sign in error:', error);
@@ -90,7 +109,7 @@ export default function SignInPage() {
           if (data.success && data.user) {
             // Use AuthContext to set user directly
             setUser(data.user);
-            setLocation('/dashboard');
+            redirectToRoleDashboard(data.user);
           } else {
             throw new Error(data.message || 'Google login failed');
           }
@@ -149,7 +168,7 @@ export default function SignInPage() {
             const data = await result.json();
             if (data.success && data.user) {
               setUser(data.user);
-              setLocation('/dashboard');
+              redirectToRoleDashboard(data.user);
             } else {
               throw new Error(data.message || 'Facebook login failed');
             }
@@ -211,7 +230,7 @@ export default function SignInPage() {
         const data = await result.json();
         if (data.success && data.user) {
           setUser(data.user);
-          setLocation('/dashboard');
+          redirectToRoleDashboard(data.user);
         } else {
           throw new Error(data.message || 'Apple login failed');
         }

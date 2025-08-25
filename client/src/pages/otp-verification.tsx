@@ -166,9 +166,11 @@ export default function OtpVerificationPage() {
             if (userData.role === "CONSUMER") {
               setLocation("/dashboard");
             } else if (userData.role === "MERCHANT") {
-              setLocation("/dashboard");
+              setLocation("/merchant-dashboard");
             } else if (userData.role === "DRIVER") {
-              setLocation("/dashboard");
+              setLocation("/driver-dashboard");
+            } else if (userData.role === "ADMIN") {
+              setLocation("/admin-dashboard");
             } else {
               setLocation("/dashboard");
             }

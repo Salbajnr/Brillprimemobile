@@ -10,6 +10,10 @@ import RoleSelection from './pages/role-selection';
 import SignUp from './pages/signup';
 import SignIn from './pages/signin';
 import Dashboard from './pages/dashboard';
+import MerchantDashboard from './pages/merchant-dashboard';
+import DriverDashboard from './pages/driver-dashboard';
+import AdminDashboard from './pages/admin-dashboard';
+import OtpVerification from './pages/otp-verification';
 import NotFound from './pages/not-found';
 import AdminSupport from './pages/admin-support';
 import Support from './pages/support';
@@ -37,10 +41,14 @@ function App() {
               <Route path="/role-selection" component={RoleSelection} />
               <Route path="/signup" component={SignUp} />
               <Route path="/signin" component={SignIn} />
+              <Route path="/otp-verification" component={OtpVerification} />
               <Route path="/dashboard" component={Dashboard} />
+              <Route path="/merchant-dashboard" component={MerchantDashboard} />
+              <Route path="/driver-dashboard" component={DriverDashboard} />
+              <Route path="/admin-dashboard" component={AdminDashboard} />
               <Route path="/admin-support" element={<AdminSupport />} />
-          <Route path="/support" element={<Support />} />
-          <Route path="/system-health-dashboard" element={<SystemHealthDashboard />} />
+              <Route path="/support" element={<Support />} />
+              <Route path="/system-health-dashboard" element={<SystemHealthDashboard />} />
               <Route component={NotFound} />
             </Switch>
           </div>
