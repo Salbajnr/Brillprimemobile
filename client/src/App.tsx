@@ -9,6 +9,7 @@ import Onboarding from './pages/onboarding';
 import RoleSelection from './pages/role-selection';
 import SignUp from './pages/signup';
 import SignIn from './pages/signin';
+import ConsumerHome from './pages/consumer-home';
 import MerchantDashboard from './pages/merchant-dashboard';
 import DriverDashboard from './pages/driver-dashboard';
 import AdminDashboard from './pages/admin-dashboard';
@@ -41,6 +42,7 @@ function App() {
               <Route path="/signup" component={SignUp} />
               <Route path="/signin" component={SignIn} />
               <Route path="/otp-verification" component={OtpVerification} />
+              <Route path="/consumer-home" component={ConsumerHome} />
               <Route path="/merchant-dashboard" component={MerchantDashboard} />
               <Route path="/driver-dashboard" component={DriverDashboard} />
               <Route path="/admin-dashboard" component={AdminDashboard} />

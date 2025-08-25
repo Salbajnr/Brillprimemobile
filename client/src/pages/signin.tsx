@@ -15,7 +15,7 @@ export default function SignInPage() {
   // Helper function for role-based redirection
   const redirectToRoleDashboard = (userData: any) => {
     if (userData.role === "CONSUMER") {
-      setLocation("/dashboard");
+      setLocation("/consumer-home");
     } else if (userData.role === "MERCHANT") {
       setLocation("/merchant-dashboard");
     } else if (userData.role === "DRIVER") {
@@ -23,7 +23,7 @@ export default function SignInPage() {
     } else if (userData.role === "ADMIN") {
       setLocation("/admin-dashboard");
     } else {
-      setLocation("/dashboard");
+      setLocation("/consumer-home");
     }
   };
 
@@ -44,18 +44,6 @@ export default function SignInPage() {
       const userData = await login(email, password);
       if (userData) {
         redirectToRoleDashboard(userData);
-      } else {
-        if (user.role === 'CONSUMER') {
-          setLocation('/consumer-home');
-        } else if (user.role === 'MERCHANT') {
-          setLocation('/merchant-dashboard');
-        } else if (user.role === 'DRIVER') {
-          setLocation('/driver-dashboard');
-        } else if (user.role === 'ADMIN') {
-          setLocation('/admin-dashboard');
-        } else {
-          setLocation('/consumer-home'); // Default fallback
-        }
       }
     } catch (error) {
       // Error is already handled by the auth context
