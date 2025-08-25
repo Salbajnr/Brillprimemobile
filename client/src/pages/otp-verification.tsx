@@ -1,17 +1,16 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
-import { Shield, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import logo from "../assets/images/logo.png";
 import { useMutation } from "@tanstack/react-query";
-import { useAuth } from "@/hooks/use-auth";
-import { localStorage } from "@/lib/storage";
+import { useAuth } from "../hooks/use-auth";
 
-import { OtpInput } from "@/components/ui/otp-input";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
-import { authAPI } from "@/lib/auth";
-import { NotificationModal } from "@/components/ui/notification-modal";
+import { OtpInput } from "../components/ui/otp-input";
+import { LoadingButton } from "../components/ui/loading-button";
+import { Button } from "../components/ui/button";
+import { useToast } from "../hooks/use-toast";
+import { authAPI } from "../lib/auth";
+import { SimpleNotificationModal } from "../components/ui/notification-modal";
 
 export default function OtpVerificationPage() {
   const [otp, setOtp] = useState("");
@@ -72,7 +71,6 @@ export default function OtpVerificationPage() {
     },
     onError: (error: Error) => {
       toast({
-        variant: "destructive",
         title: "Failed to Send OTP",
         description: error.message,
       });
@@ -155,31 +153,22 @@ export default function OtpVerificationPage() {
       </div>
 
       {/* Success Modal */}
-      <NotificationModal
+      <SimpleNotificationModal
         isOpen={showSuccessModal}
         onClose={() => setShowSuccessModal(false)}
         type="success"
         title="Registration Complete!"
-        description="Your account has been successfully verified. Welcome to Brillprime!"
-        actionText="Continue to Dashboard"
-        onAction={() => {
-          const userData = localStorage.getUser();
+        message="Your account has been successfully verified. Welcome to Brillprime!"
+        confirmText="Continue to Dashboard"
+        onConfirm={() => {
+          const userData = JSON.parse(localStorage.getItem("user") || "{}");
           if (userData) {
             if (userData.role === "CONSUMER") {
-              setLocation("/consumer-home");
+              setLocation("/dashboard");
             } else if (userData.role === "MERCHANT") {
-              setLocation("/merchant-dashboard");
+              setLocation("/dashboard");
             } else if (userData.role === "DRIVER") {
-              // Check if driver has selected a tier
-              const selectedTier = sessionStorage.getItem('selectedDriverTier');
-              if (!selectedTier) {
-                // No tier selected, go to tier selection
-                setLocation("/driver-tier-selection");
-              } else {
-                // Tier already selected, go to dashboard and prompt KYC
-                sessionStorage.setItem('promptKYCVerification', 'true');
-                setLocation("/driver-dashboard");
-              }
+              setLocation("/dashboard");
             } else {
               setLocation("/dashboard");
             }
@@ -190,14 +179,14 @@ export default function OtpVerificationPage() {
       />
 
       {/* Error Modal */}
-      <NotificationModal
+      <SimpleNotificationModal
         isOpen={showErrorModal}
         onClose={() => setShowErrorModal(false)}
         type="error"
         title="Verification Failed"
-        description={errorMessage}
-        actionText="Try Again"
-        onAction={() => setShowErrorModal(false)}
+        message={errorMessage}
+        confirmText="Try Again"
+        onConfirm={() => setShowErrorModal(false)}
       />
     </div>
   );

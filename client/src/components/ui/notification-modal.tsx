@@ -5,9 +5,9 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent } from '@/components/ui/card';
+} from "./dialog"
+import { Button } from "./button"
+import { Card, CardContent } from './card';
 import { X, Bell, CheckCircle, XCircle, AlertCircle, Info, AlertTriangle } from "lucide-react"
 
 interface SimpleNotificationModalProps {
