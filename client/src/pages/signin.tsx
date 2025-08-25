@@ -45,7 +45,17 @@ export default function SignInPage() {
       if (userData) {
         redirectToRoleDashboard(userData);
       } else {
-        setLocation('/dashboard');
+        if (user.role === 'CONSUMER') {
+          setLocation('/consumer-home');
+        } else if (user.role === 'MERCHANT') {
+          setLocation('/merchant-dashboard');
+        } else if (user.role === 'DRIVER') {
+          setLocation('/driver-dashboard');
+        } else if (user.role === 'ADMIN') {
+          setLocation('/admin-dashboard');
+        } else {
+          setLocation('/consumer-home'); // Default fallback
+        }
       }
     } catch (error) {
       // Error is already handled by the auth context
