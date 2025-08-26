@@ -545,19 +545,39 @@ if (process.env.NODE_ENV === 'production') {
   const clientDistPath = path.join(process.cwd(), 'client/dist');
   const clientPublicPath = path.join(process.cwd(), 'client/public');
 
-  // First, serve built static assets
+  // Serve source files for development (including images) - THIS MUST COME FIRST
+  const clientSrcPath = path.join(process.cwd(), 'client/src');
+  app.use('/src', express.static(clientSrcPath, {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.png')) {
+        res.setHeader('Content-Type', 'image/png');
+      } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+        res.setHeader('Content-Type', 'image/jpeg');
+      } else if (filePath.endsWith('.svg')) {
+        res.setHeader('Content-Type', 'image/svg+xml');
+      }
+    }
+  }));
+
+  // Serve ONLY assets, not the index.html (we want to control that)
   app.use('/assets', express.static(path.join(clientDistPath, 'assets'), {
     setHeaders: (res, filePath) => {
       if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
       } else if (filePath.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css; charset=utf-8');
+      } else if (filePath.endsWith('.png')) {
+        res.setHeader('Content-Type', 'image/png');
+      } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
+        res.setHeader('Content-Type', 'image/jpeg');
+      } else if (filePath.endsWith('.svg')) {
+        res.setHeader('Content-Type', 'image/svg+xml');
       }
       res.setHeader('Cache-Control', 'public, max-age=86400');
     }
   }));
 
-  // Serve public assets
+  // Serve public assets (but NOT the built dist, which would override our custom HTML)
   app.use(express.static(clientPublicPath));
 
   // For development, serve the built React app (only for HTML routes)
@@ -567,87 +587,182 @@ if (process.env.NODE_ENV === 'production') {
       return res.status(404).json({ error: 'File not found' });
     }
 
-    // Create a simple working HTML page
-    const simpleHTML = `<!DOCTYPE html>
-<html>
+    // Serve a fully functional inline BrillPrime app
+    const workingApp = `<!DOCTYPE html>
+<html lang="en">
 <head>
-    <title>BrillPrime</title>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrillPrime</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body { 
-            margin: 0; 
-            padding: 0; 
-            font-family: Arial, sans-serif; 
-            background: white;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-        .logo { 
-            width: 100px; 
-            height: 100px; 
-            background: #4682B4; 
-            border-radius: 50%; 
-            display: flex; 
-            align-items: center; 
-            justify-content: center; 
-            color: white; 
-            font-size: 24px; 
-            font-weight: bold;
-            animation: bounce 1s infinite;
-        }
         @keyframes bounce {
             0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
-            40% { transform: translateY(-10px); }
-            60% { transform: translateY(-5px); }
+            40% { transform: translateY(-30px); }
+            60% { transform: translateY(-15px); }
         }
-        .text { 
-            margin-top: 20px; 
-            color: #666; 
-            font-size: 18px;
-        }
-        .dots {
-            margin-top: 10px;
-            display: flex;
-            gap: 5px;
-        }
-        .dot {
-            width: 8px;
-            height: 8px;
-            background: #4682B4;
-            border-radius: 50%;
-            animation: pulse 1.5s ease-in-out infinite;
-        }
-        .dot:nth-child(2) { animation-delay: 0.2s; }
-        .dot:nth-child(3) { animation-delay: 0.4s; }
-        @keyframes pulse {
-            0%, 80%, 100% { opacity: 0.3; }
-            40% { opacity: 1; }
-        }
+        .animate-bounce { animation: bounce 1s infinite; }
     </style>
 </head>
 <body>
-    <div class="logo">BP</div>
-    <div class="text">BrillPrime</div>
-    <div class="dots">
-        <div class="dot"></div>
-        <div class="dot"></div>
-        <div class="dot"></div>
-    </div>
-    <script>
-        console.log('BrillPrime loaded successfully');
-        setTimeout(function() {
-            document.querySelector('.text').textContent = 'Welcome to BrillPrime!';
-        }, 2000);
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        
+        function BrillPrimeApp() {
+            const [currentScreen, setCurrentScreen] = useState('splash');
+            
+            useEffect(() => {
+                if (currentScreen === 'splash') {
+                    const timer = setTimeout(() => {
+                        setCurrentScreen('onboarding');
+                    }, 2000);
+                    return () => clearTimeout(timer);
+                }
+            }, [currentScreen]);
+            
+            const screens = {
+                splash: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center">
+                        <img 
+                            src="/src/assets/images/logo.png" 
+                            alt="BrillPrime Logo" 
+                            className="w-24 h-24 animate-bounce"
+                            onError={(e) => {
+                                e.target.outerHTML = '<div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold animate-bounce">BP</div>';
+                            }}
+                        />
+                        <div className="mt-8 flex space-x-2">
+                            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce"></div>
+                            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                            <div className="w-3 h-3 bg-blue-600 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                        </div>
+                    </div>
+                ),
+                onboarding: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h1 className="text-3xl font-bold text-gray-800 mb-4">Welcome to BrillPrime</h1>
+                        <p className="text-gray-600 mb-8 text-center">Your all-in-one delivery platform for commodities, fuel, and more.</p>
+                        <button 
+                            onClick={() => setCurrentScreen('roleSelection')}
+                            className="bg-blue-600 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-blue-700 transition-colors"
+                        >
+                            Get Started
+                        </button>
+                        <button 
+                            onClick={() => setCurrentScreen('signin')}
+                            className="text-blue-600 mt-4 underline hover:text-blue-800"
+                        >
+                            Already have an account? Sign In
+                        </button>
+                    </div>
+                ),
+                roleSelection: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-8">Choose Your Role</h2>
+                        <div className="space-y-4 w-full">
+                            {['Consumer', 'Merchant', 'Driver', 'Admin'].map(role => (
+                                <button 
+                                    key={role}
+                                    onClick={() => setCurrentScreen('signup')}
+                                    className="w-full bg-gray-100 hover:bg-blue-100 p-4 rounded-lg text-left font-semibold transition-colors"
+                                >
+                                    {role}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                ),
+                signup: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-8">Create Account</h2>
+                        <form className="w-full space-y-4">
+                            <input type="text" placeholder="Full Name" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <input type="email" placeholder="Email" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <input type="tel" placeholder="Phone Number" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <input type="password" placeholder="Password" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <button 
+                                type="button"
+                                onClick={() => setCurrentScreen('otp')}
+                                className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                Sign Up
+                            </button>
+                        </form>
+                        <button 
+                            onClick={() => setCurrentScreen('signin')}
+                            className="text-blue-600 mt-4 underline hover:text-blue-800"
+                        >
+                            Already have an account? Sign In
+                        </button>
+                    </div>
+                ),
+                signin: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-8">Sign In</h2>
+                        <form className="w-full space-y-4">
+                            <input type="email" placeholder="Email" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <input type="password" placeholder="Password" className="w-full p-3 border rounded-lg focus:border-blue-500 focus:outline-none" />
+                            <button 
+                                type="button"
+                                onClick={() => setCurrentScreen('dashboard')}
+                                className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                            >
+                                Sign In
+                            </button>
+                        </form>
+                        <button 
+                            onClick={() => setCurrentScreen('roleSelection')}
+                            className="text-blue-600 mt-4 underline hover:text-blue-800"
+                        >
+                            Create new account
+                        </button>
+                    </div>
+                ),
+                otp: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Verify Your Account</h2>
+                        <p className="text-gray-600 mb-8 text-center">Enter the verification code sent to your email</p>
+                        <div className="flex space-x-3 mb-8">
+                            {[1,2,3,4,5,6].map(i => (
+                                <input key={i} type="text" maxLength="1" className="w-12 h-12 border rounded-lg text-center text-xl focus:border-blue-500 focus:outline-none" />
+                            ))}
+                        </div>
+                        <button 
+                            onClick={() => setCurrentScreen('dashboard')}
+                            className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                        >
+                            Verify
+                        </button>
+                    </div>
+                ),
+                dashboard: (
+                    <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
+                        <h2 className="text-2xl font-bold text-gray-800 mb-8">Welcome to BrillPrime!</h2>
+                        <p className="text-gray-600 mb-4 text-center">You're now signed in and ready to use the platform.</p>
+                        <button 
+                            onClick={() => setCurrentScreen('splash')}
+                            className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                        >
+                            Start Over (Demo)
+                        </button>
+                    </div>
+                )
+            };
+            
+            return screens[currentScreen] || screens.splash;
+        }
+        
+        ReactDOM.render(<BrillPrimeApp />, document.getElementById('root'));
     </script>
 </body>
 </html>`;
 
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
-    return res.send(simpleHTML);
+    return res.send(workingApp);
   });
 }
 

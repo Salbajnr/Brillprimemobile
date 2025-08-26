@@ -61,14 +61,18 @@ export const helmetConfig = helmet({
         "'self'", 
         "'unsafe-inline'",
         'https://fonts.googleapis.com',
-        'https://cdn.jsdelivr.net'
+        'https://cdn.jsdelivr.net',
+        'https://cdn.tailwindcss.com'
       ],
       scriptSrc: [
         "'self'",
         "'unsafe-inline'", // For development - remove in production
+        "'unsafe-eval'", // Required for Babel transpilation
         'https://js.paystack.co',
         'https://maps.googleapis.com',
-        'https://connect.facebook.net'
+        'https://connect.facebook.net',
+        'https://unpkg.com',
+        'https://cdn.tailwindcss.com'
       ],
       imgSrc: [
         "'self'", 
@@ -88,6 +92,7 @@ export const helmetConfig = helmet({
         'https://maps.googleapis.com',
         'wss://*.replit.app',
         'ws://localhost:*',
+        'https://unpkg.com',
         env.WEBSOCKET_URL || 'wss://localhost:5000'
       ],
       frameSrc: [
