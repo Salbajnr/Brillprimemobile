@@ -7,7 +7,7 @@ channel = "stable-25_05"
 packages = ["postgresql", "dotenv-cli"]
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "gce"
 run = ["npm", "run", "start"]
 build = ["npm", "run", "build"]
 
