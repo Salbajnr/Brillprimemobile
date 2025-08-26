@@ -7,8 +7,8 @@ const onboardingImg3 = "/src/assets/images/onboarding_img3.png";
 
 const onboardingData = [
   {
-    title: "Welcome to\nBrillprime",
-    description: "Your trusted financial partner for secure transactions and seamless money management",
+    title: "Welcome to\nBrillPrime",
+    description: "Your trusted financial partner for secure transactions and seamless money management in Nigeria",
     image: onboardingImg1,
   },
   {
@@ -76,8 +76,11 @@ export default function OnboardingPage() {
           <div className="w-48 sm:w-56 md:w-64 h-56 sm:h-64 md:h-72 lg:h-80 mb-6 sm:mb-8 flex items-center justify-center mx-auto">
             <img
               src={currentData.image}
-              alt="Financial illustration"
-              className="w-full h-full object-cover rounded-xl shadow-lg"
+              alt="BrillPrime onboarding illustration"
+              className="w-full h-full object-contain rounded-xl shadow-lg"
+              onError={(e) => {
+                e.currentTarget.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjIwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSIjZjBmMGYwIi8+PHRleHQgeD0iNTAlIiB5PSI1MCUiIGZvbnQtc2l6ZT0iMTQiIGZpbGw9IiM2NjYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGR5PSIuM2VtIj5CcmlsbFByaW1lPC90ZXh0Pjwvc3ZnPg==';
+              }}
             />
           </div>
 

@@ -19,19 +19,19 @@ const OnboardingScreen: React.FC<NavigationProps> = ({ navigation }) => {
     {
       id: 1,
       title: "Welcome to BrillPrime",
-      description: "Your all-in-one platform for delivery, payments, and financial services in Nigeria",
+      description: "Your trusted financial partner for secure transactions and seamless money management in Nigeria",
       image: "onboarding_img1"
     },
     {
       id: 2,
-      title: "Fast & Reliable Delivery",
-      description: "Get your orders delivered quickly and safely to your doorstep",
+      title: "Smart Financial Management",
+      description: "Track your expenses, manage multiple accounts, and make informed financial decisions with our advanced analytics",
       image: "onboarding_img2"
     },
     {
       id: 3,
-      title: "Secure Payments",
-      description: "Make payments safely with our secure and encrypted payment system",
+      title: "Bank-Level Security",
+      description: "Your data is protected with end-to-end encryption, biometric authentication, and advanced fraud detection",
       image: "onboarding_img3"
     }
   ];
@@ -57,9 +57,14 @@ const OnboardingScreen: React.FC<NavigationProps> = ({ navigation }) => {
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.slideContainer}>
           <View style={styles.imageContainer}>
-            <View style={styles.imagePlaceholder}>
-              <Text style={styles.imagePlaceholderText}>{slides[currentSlide].image}</Text>
-            </View>
+            <Image
+              source={{ uri: `../assets/${slides[currentSlide].image}.png` }}
+              style={styles.onboardingImage}
+              resizeMode="contain"
+              onError={() => {
+                // Fallback to placeholder if image fails to load
+              }}
+            />
           </View>
 
           <View style={styles.textContainer}>
@@ -122,9 +127,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 40,
   },
+  onboardingImage: {
+    width: 250,
+    height: 250,
+    borderRadius: 20,
+  },
   imagePlaceholder: {
-    width: 200,
-    height: 200,
+    width: 250,
+    height: 250,
     backgroundColor: '#f0f0f0',
     borderRadius: 20,
     justifyContent: 'center',
@@ -133,6 +143,7 @@ const styles = StyleSheet.create({
   imagePlaceholderText: {
     color: '#666',
     fontSize: 14,
+    textAlign: 'center',
   },
   textContainer: {
     alignItems: 'center',
