@@ -1,2 +1,0 @@
-import{u as a,r as t}from"./index-CVqmz7v7.js";function L(){a();const{user:r}=useAuth(),[n,i]=t.useState(null),[o,u]=t.useState(""),[c,l]=t.useState(!1),[d,s]=t.useState(null);t.useEffect(()=>{navigator.geolocation&&navigator.geolocation.getCurrentPosition(e=>{s({latitude:e.coords.latitude,longitude:e.coords.longitude})},e=>{console.error("Error getting location:",e)})},[]),mockStations.filter(e=>e.name.toLowerCase().includes(o.toLowerCase())||e.address.toLowerCase().includes(o.toLowerCase()))}export{L as default};
-//# sourceMappingURL=fuel-ordering-C1OP4Aex.js.map

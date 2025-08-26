@@ -80,7 +80,6 @@ export default function DriverRegistration() {
       toast({
         title: "Registration Failed",
         description: "Please check your information and try again.",
-        variant: "destructive",
       });
     }
   };
@@ -276,11 +275,11 @@ export default function DriverRegistration() {
                                           checked={field.value?.includes(spec)}
                                           onCheckedChange={(checked) => {
                                             return checked
-                                              ? field.onChange([...field.value, spec])
+                                              ? field.onChange([...(field.value || []), spec])
                                               : field.onChange(
                                                   field.value?.filter(
                                                     (value) => value !== spec
-                                                  )
+                                                  ) || []
                                                 )
                                           }}
                                         />
