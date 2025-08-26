@@ -3,6 +3,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { MapPin, Navigation, Clock, AlertCircle, Truck } from 'lucide-react';
 import { useAuth } from '../hooks/use-auth';
 import api from '../lib/api';
+import LiveMap from './LiveMap';
 
 interface LocationData {
   latitude: number;
@@ -282,6 +283,33 @@ export default function RealTimeLocationTracking({
         <div className="mb-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded-lg flex items-center">
           <AlertCircle className="h-4 w-4 mr-2" />
           {error}
+        </div>
+      )}
+
+      {/* Real-Time Map Display */}
+      {(currentLocation || orderTracking?.currentLocation) && (
+        <div className="mb-6">
+          <h4 className="font-medium text-gray-900 mb-3 flex items-center">
+            <MapPin className="h-5 w-5 mr-2 text-blue-600" />
+            Live Location Tracking
+          </h4>
+          <div className="rounded-lg overflow-hidden border">
+            <LiveMap
+              showUserLocation={true}
+              showDriverLocation={user?.role === 'CONSUMER' && orderTracking?.currentLocation ? true : false}
+              userCoordinates={currentLocation ? {
+                lat: currentLocation.latitude,
+                lng: currentLocation.longitude
+              } : undefined}
+              driverCoordinates={orderTracking?.currentLocation ? {
+                lat: orderTracking.currentLocation.latitude,
+                lng: orderTracking.currentLocation.longitude
+              } : undefined}
+              className="w-full"
+              height="300px"
+              zoom={15}
+            />
+          </div>
         </div>
       )}
 

@@ -8,6 +8,7 @@ export default defineConfig({
   define: {
     global: 'globalThis',
     Buffer: ['buffer', 'Buffer'],
+    'import.meta.env.VITE_GOOGLE_MAPS_API_KEY': JSON.stringify(process.env.GOOGLE_MAPS_API_KEY),
   },
   resolve: {
     alias: {
