@@ -7,6 +7,7 @@ const logoImage = "/src/assets/images/logo.png";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -20,8 +21,13 @@ export default function SignUpPage() {
   const handleSignUp = async () => {
     clearError(); // Clear any previous errors
 
-    if (email.length < 4) {
-      alert('Please enter a valid email');
+    if (email.length < 4 || !email.includes('@')) {
+      alert('Please enter a valid email address');
+      return;
+    }
+
+    if (phone.length < 10) {
+      alert('Please enter a valid phone number');
       return;
     }
 
@@ -36,7 +42,7 @@ export default function SignUpPage() {
     }
 
     try {
-      const result = await signup(email, password, selectedRole);
+      const result = await signup(email, password, selectedRole, email.split('@')[0], phone);
 
       // Check if email verification is required
       if (result?.requiresEmailVerification) {
@@ -246,7 +252,27 @@ export default function SignUpPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full pl-12 pr-4 py-4 border border-gray-300 curved-input focus:ring-2 focus:ring-[#4682B4] focus:border-[#4682B4] text-base"
-              placeholder="Email or phone number"
+              placeholder="Email address"
+              required
+            />
+          </div>
+        </div>
+
+        {/* Phone Field */}
+        <div className="mb-4">
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-5 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"></path>
+              </svg>
+            </div>
+            <input 
+              type="tel" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              className="w-full pl-12 pr-4 py-4 border border-gray-300 curved-input focus:ring-2 focus:ring-[#4682B4] focus:border-[#4682B4] text-base"
+              placeholder="Phone number"
+              required
             />
           </div>
         </div>
