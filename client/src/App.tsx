@@ -1,4 +1,4 @@
-import { Router, Route, Switch } from 'wouter';
+import { Router, Route } from 'wouter';
 import { Toaster } from './components/ui/toaster';
 import { AuthProvider } from './hooks/use-auth';
 
@@ -23,22 +23,20 @@ function App() {
     <AuthProvider>
       <Router>
         <div className="min-h-screen bg-white">
-          <Switch>
-            <Route path="/" component={Splash} />
-            <Route path="/onboarding" component={Onboarding} />
-            <Route path="/role-selection" component={RoleSelection} />
-            <Route path="/signup" component={SignUp} />
-            <Route path="/signin" component={SignIn} />
-            <Route path="/otp-verification" component={OtpVerification} />
-            <Route path="/consumer-home" component={ConsumerHome} />
-            <Route path="/merchant-dashboard" component={MerchantDashboard} />
-            <Route path="/driver-dashboard" component={DriverDashboard} />
-            <Route path="/admin-dashboard" component={AdminDashboard} />
-            <Route path="/admin-support" component={() => <AdminSupport />} />
-            <Route path="/support" component={() => <Support />} />
-            <Route path="/system-health-dashboard" component={() => <SystemHealthDashboard />} />
-            <Route component={NotFound} />
-          </Switch>
+          <Route path="/" component={Splash} />
+          <Route path="/onboarding" component={Onboarding} />
+          <Route path="/role-selection" component={RoleSelection} />
+          <Route path="/signup" component={SignUp} />
+          <Route path="/signin" component={SignIn} />
+          <Route path="/otp-verification" component={OtpVerification} />
+          <Route path="/consumer-home" component={ConsumerHome} />
+          <Route path="/merchant-dashboard" component={MerchantDashboard} />
+          <Route path="/driver-dashboard" component={DriverDashboard} />
+          <Route path="/admin-dashboard" component={AdminDashboard} />
+          <Route path="/admin-support" component={() => <AdminSupport />} />
+          <Route path="/support" component={() => <Support />} />
+          <Route path="/system-health-dashboard" component={() => <SystemHealthDashboard />} />
+          <Route component={NotFound} />
         </div>
         <Toaster />
       </Router>

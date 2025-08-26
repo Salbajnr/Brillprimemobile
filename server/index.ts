@@ -545,98 +545,109 @@ if (process.env.NODE_ENV === 'production') {
   const clientDistPath = path.join(process.cwd(), 'client/dist');
   const clientPublicPath = path.join(process.cwd(), 'client/public');
 
-  // Serve static assets with proper MIME types and no CSP restrictions
-  app.use(express.static(clientDistPath, {
-    setHeaders: (res, path) => {
-      // Remove any CSP headers for static assets
-      res.removeHeader('Content-Security-Policy');
-
-      if (path.endsWith('.js')) {
+  // First, serve built static assets
+  app.use('/assets', express.static(path.join(clientDistPath, 'assets'), {
+    setHeaders: (res, filePath) => {
+      if (filePath.endsWith('.js')) {
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      } else if (path.endsWith('.css')) {
+      } else if (filePath.endsWith('.css')) {
         res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      } else if (path.endsWith('.html')) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
       }
-
-      // Allow all sources for development
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      res.setHeader('Access-Control-Allow-Methods', '*');
+      res.setHeader('Cache-Control', 'public, max-age=86400');
     }
   }));
 
+  // Serve public assets
   app.use(express.static(clientPublicPath));
 
-  // Also serve client src files for development
-  const clientSrcPath = path.join(process.cwd(), 'client/src');
-  app.use('/src', express.static(clientSrcPath));
-
-  // For development, serve the built React app
-  app.get('*', (req, res) => {
-    // Don't intercept API routes
-    if (req.path.startsWith('/api')) {
-      return res.status(404).json({ error: 'API endpoint not found' });
+  // For development, serve the built React app (only for HTML routes)
+  app.get('*', (req, res, next) => {
+    // Don't intercept API routes, assets, or files with extensions
+    if (req.path.startsWith('/api') || req.path.startsWith('/assets/') || req.path.includes('.') || req.path.startsWith('/sw.js')) {
+      return res.status(404).json({ error: 'File not found' });
     }
 
-    // Try to serve the built index.html first
-    const indexPath = path.join(process.cwd(), 'client/dist/index.html');
-
-    console.log('Trying to serve index.html from:', indexPath);
-
-    // Check if built assets exist and serve them
-    if (fs.existsSync(indexPath)) {
-      // Read the file and inject debug script
-      let indexContent = fs.readFileSync(indexPath, 'utf8');
-
-      // Add debug script to monitor script loading and execution
-      const debugScript = `
-      <script>
-        console.log('Debug: HTML loaded, DOM ready');
-        window.addEventListener('load', () => {
-          console.log('Debug: Window loaded');
-          setTimeout(() => {
-            const root = document.getElementById('root');
-            console.log('Debug: Root element check:', root, 'innerHTML:', root ? root.innerHTML : 'not found');
-            if (root && root.innerHTML === '') {
-              console.error('Debug: React app failed to mount - root is still empty');
-              root.innerHTML = '<div style="padding: 20px; background: red; color: white; text-align: center;">React App Failed to Load</div>';
-            }
-          }, 3000);
-        });
-
-        // Monitor script errors
-        window.addEventListener('error', (e) => {
-          console.error('Debug: Script error:', e.error, e.filename, e.lineno);
-        });
-
-        // Monitor module errors
-        window.addEventListener('unhandledrejection', (e) => {
-          console.error('Debug: Module error:', e.reason);
-        });
-      </script>`;
-
-      // Insert debug script before closing head tag
-      indexContent = indexContent.replace('</head>', debugScript + '</head>');
-
-      return res.send(indexContent);
-    } else {
-      console.log('Built index.html not found, serving development fallback');
-      // Simple fallback that will load your React app
-      res.send(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    // Create a simple working HTML page
+    const simpleHTML = `<!DOCTYPE html>
+<html>
+<head>
     <title>BrillPrime</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <div id="root">Fallback Mode</div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>`);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body { 
+            margin: 0; 
+            padding: 0; 
+            font-family: Arial, sans-serif; 
+            background: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo { 
+            width: 100px; 
+            height: 100px; 
+            background: #4682B4; 
+            border-radius: 50%; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            color: white; 
+            font-size: 24px; 
+            font-weight: bold;
+            animation: bounce 1s infinite;
+        }
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% { transform: translateY(0); }
+            40% { transform: translateY(-10px); }
+            60% { transform: translateY(-5px); }
+        }
+        .text { 
+            margin-top: 20px; 
+            color: #666; 
+            font-size: 18px;
+        }
+        .dots {
+            margin-top: 10px;
+            display: flex;
+            gap: 5px;
+        }
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: #4682B4;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+        .dot:nth-child(2) { animation-delay: 0.2s; }
+        .dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes pulse {
+            0%, 80%, 100% { opacity: 0.3; }
+            40% { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+    <div class="logo">BP</div>
+    <div class="text">BrillPrime</div>
+    <div class="dots">
+        <div class="dot"></div>
+        <div class="dot"></div>
+        <div class="dot"></div>
+    </div>
+    <script>
+        console.log('BrillPrime loaded successfully');
+        setTimeout(function() {
+            document.querySelector('.text').textContent = 'Welcome to BrillPrime!';
+        }, 2000);
+    </script>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    return res.send(simpleHTML);
   });
 }
 
