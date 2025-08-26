@@ -60,9 +60,14 @@ class EmailService {
         });
         console.log('Custom SMTP transporter initialized');
         
-        // For custom SMTP, verify connection with better error handling
+        // For custom SMTP, verify connection with timeout
         try {
-          await this.verifyConnection();
+          const verifyPromise = this.transporter.verify();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('Verification timeout')), 5000)
+          );
+          
+          await Promise.race([verifyPromise, timeoutPromise]);
           console.log('✅ Custom SMTP connection verified successfully');
         } catch (verifyError: any) {
           console.warn('⚠️ SMTP connection verification failed, but transporter created. Will attempt to send emails:', verifyError.message);
@@ -119,11 +124,18 @@ class EmailService {
 
   async sendOTP(email: string, otpCode: string, userName?: string): Promise<boolean> {
     try {
-      // Wait for initialization to complete
-      await this.initializationPromise;
+      // Wait for initialization to complete with timeout
+      try {
+        await Promise.race([
+          this.initializationPromise,
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Initialization timeout')), 10000))
+        ]);
+      } catch (initError) {
+        console.warn('Email service initialization still pending, proceeding with caution:', initError.message);
+      }
       
-      if (!this.isInitialized) {
-        throw new Error('Email service not initialized.');
+      if (!this.transporter) {
+        throw new Error('Email transporter not available.');
       }
       if (!this.isValidEmail(email)) {
         throw new Error('Invalid email address format');

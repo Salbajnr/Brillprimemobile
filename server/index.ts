@@ -956,10 +956,8 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   queryOptimizer.startMaintenance();
   console.log('✅ Performance optimizations initialized');
 
-  // Initialize email service
-  console.log('📧 Initializing email service...');
-  await emailService.verifyConnection();
-  console.log('✅ Email service initialized');
+  // Email service will initialize automatically
+  console.log('📧 Email service initializing in background...');
 
   // Start cache warming
   await cacheService.warmCache();
