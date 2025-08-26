@@ -14,9 +14,10 @@ interface EmailConfig {
 class EmailService {
   private transporter: nodemailer.Transporter;
   private isInitialized = false;
+  private initializationPromise: Promise<void>;
 
   constructor() {
-    this.initializeTransporter();
+    this.initializationPromise = this.initializeTransporter();
   }
 
   private async initializeTransporter() {
@@ -58,12 +59,24 @@ class EmailService {
           }
         });
         console.log('Custom SMTP transporter initialized');
+        
+        // For custom SMTP, verify connection with better error handling
+        try {
+          await this.verifyConnection();
+          console.log('✅ Custom SMTP connection verified successfully');
+        } catch (verifyError: any) {
+          console.warn('⚠️ SMTP connection verification failed, but transporter created. Will attempt to send emails:', verifyError.message);
+          // Continue without verification since some SMTP servers don't support verify()
+        }
+        this.isInitialized = true;
+        return;
       } else {
         // Fallback to Ethereal for development
         await this.createTestAccount();
+        return;
       }
 
-      // Verify connection
+      // Verify connection for Gmail and SendGrid
       await this.verifyConnection();
       this.isInitialized = true;
     } catch (error) {
@@ -106,6 +119,9 @@ class EmailService {
 
   async sendOTP(email: string, otpCode: string, userName?: string): Promise<boolean> {
     try {
+      // Wait for initialization to complete
+      await this.initializationPromise;
+      
       if (!this.isInitialized) {
         throw new Error('Email service not initialized.');
       }
@@ -137,6 +153,9 @@ class EmailService {
 
   async sendPasswordResetEmail(email: string, resetToken: string, userName?: string): Promise<boolean> {
     try {
+      // Wait for initialization to complete
+      await this.initializationPromise;
+      
       if (!this.isInitialized) {
         throw new Error('Email service not initialized.');
       }
@@ -285,6 +304,9 @@ class EmailService {
   }
 
   async verifyConnection(): Promise<boolean> {
+    // Wait for initialization to complete
+    await this.initializationPromise;
+    
     if (!this.transporter) {
       console.error('Email transporter not available for verification.');
       return false;
