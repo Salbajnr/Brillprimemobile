@@ -8,8 +8,8 @@ packages = ["postgresql", "dotenv-cli"]
 
 [deployment]
 deploymentTarget = "gce"
-run = ["npm", "run", "start"]
-build = ["npm", "run", "build"]
+run = ["sh", "-c", "npm start"]
+build = ["sh", "-c", "cd client && npm run build"]
 
 [[ports]]
 localPort = 3000
