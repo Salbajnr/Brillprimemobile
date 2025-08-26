@@ -135,7 +135,7 @@ export default function DriverRegistration() {
               Driver Registration
             </CardTitle>
             <CardDescription className="text-gray-600">
-              Complete your profile to start delivering with BrillPrime
+              Complete your profile to start delivering with Brill Prime
             </CardDescription>
           </CardHeader>
 

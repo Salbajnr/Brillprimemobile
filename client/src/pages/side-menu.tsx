@@ -50,7 +50,7 @@ export default function SideMenu() {
     },
     {
       id: "about",
-      title: "About Brillprime",
+      title: "About Brill Prime",
       icon: <Info className="w-5 h-5" />,
       route: "/about"
     }
@@ -106,8 +106,8 @@ export default function SideMenu() {
           <div className="bg-gradient-to-r from-[#4682b4] to-[#0b1a51] p-6 text-white">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
-                <img src={logo} alt="Brillprime" className="w-8 h-8" />
-                <span className="font-semibold">Brillprime</span>
+                <img src={logo} alt="Brill Prime" className="w-8 h-8" />
+                <span className="font-semibold">Brill Prime</span>
               </div>
               <Button
                 variant="ghost"
@@ -224,7 +224,7 @@ export default function SideMenu() {
 
             {/* App Version */}
             <div className="text-center text-xs text-gray-500 pt-2">
-              Brillprime v1.0.0
+              Brill Prime v1.0.0
             </div>
           </div>
         </div>

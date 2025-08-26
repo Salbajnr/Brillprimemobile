@@ -50,7 +50,7 @@ export default function SplashPage() {
         <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 lg:w-56 lg:h-56 flex items-center justify-center">
           <img
             src={logoImage}
-            alt="Brillprime Logo"
+            alt="Brill Prime Logo"
             className="w-24 h-24 sm:w-32 sm:h-32 md:w-40 md:h-40 lg:w-48 lg:h-48 object-contain animate-bounce"
             style={{ animationDuration: '2s' }}
             onError={(e) => {

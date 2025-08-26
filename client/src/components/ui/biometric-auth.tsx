@@ -142,7 +142,7 @@ export function BiometricAuth({
     const publicKeyCredentialCreationOptions: PublicKeyCredentialCreationOptions = {
       challenge: challenge,
       rp: {
-        name: "BrillPrime",
+        name: "Brill Prime",
         id: window.location.hostname,
       },
       user: {

@@ -46,7 +46,7 @@ export function AdminLayout({ children, currentPage, onPageChange }: AdminLayout
       <div className="w-64 bg-white shadow-lg">
         <div className="p-6 border-b">
           <h1 className="text-xl font-bold text-gray-800">Admin Panel</h1>
-          <p className="text-sm text-gray-600">BrillPrime Management</p>
+          <p className="text-sm text-gray-600">Brill Prime Management</p>
         </div>
         
         <nav className="mt-6">

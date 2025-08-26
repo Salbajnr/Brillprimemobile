@@ -121,7 +121,7 @@ export default function LocationSetup() {
           </Button>
           
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="Brillprime" className="w-8 h-8" />
+            <img src={logo} alt="Brill Prime" className="w-8 h-8" />
             <span className="font-semibold text-[#131313]">Location Setup</span>
           </div>
           

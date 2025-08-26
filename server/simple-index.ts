@@ -25,7 +25,7 @@ const io = new SocketIOServer(server, {
 
 // Basic health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'BrillPrime server is running', timestamp: new Date().toISOString() });
+  res.json({ status: 'OK', message: 'Brill Prime server is running', timestamp: new Date().toISOString() });
 });
 
 // Basic auth endpoints (simplified)
@@ -53,7 +53,7 @@ io.on('connection', (socket) => {
 const PORT = process.env.PORT || 5000;
 
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 BrillPrime server running on port ${PORT}`);
+  console.log(`🚀 Brill Prime server running on port ${PORT}`);
   console.log(`📡 Socket.IO server ready for real-time connections`);
 });
 

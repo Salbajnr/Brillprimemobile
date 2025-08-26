@@ -23,7 +23,7 @@ export default function RoleSelectionPage() {
             <img src={signUpLogo} alt="Sign Up" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
           <h1 className="text-lg sm:text-xl font-extrabold text-[#2d3748] mb-3">Choose Your Role</h1>
-          <p className="text-[#718096] font-light text-sm">Select how you'll be using Brillprime</p>
+          <p className="text-[#718096] font-light text-sm">Select how you'll be using Brill Prime</p>
         </div>
 
         <div className="space-y-4 mb-8">

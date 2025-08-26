@@ -97,7 +97,7 @@ export default function OtpVerificationPage() {
       <div className="px-4 sm:px-6 py-6 sm:py-8 pt-12 sm:pt-16">
         <div className="text-center mb-8">
           <div className="w-16 h-16 sm:w-20 sm:h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6 shadow-lg">
-            <img src={logo} alt="Brillprime Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
+            <img src={logo} alt="Brill Prime Logo" className="w-12 h-12 sm:w-16 sm:h-16 object-contain" />
           </div>
           <h1 className="text-lg sm:text-xl font-extrabold text-[var(--brill-primary)] mb-2">Verify it's you</h1>
           <div className="flex items-center justify-center space-x-2 mb-4">
@@ -158,7 +158,7 @@ export default function OtpVerificationPage() {
         onClose={() => setShowSuccessModal(false)}
         type="success"
         title="Registration Complete!"
-        message="Your account has been successfully verified. Welcome to Brillprime!"
+        message="Your account has been successfully verified. Welcome to Brill Prime!"
         confirmText="Continue to Dashboard"
         onConfirm={() => {
           const userData = JSON.parse(localStorage.getItem("user") || "{}");

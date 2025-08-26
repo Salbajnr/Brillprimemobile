@@ -303,12 +303,12 @@ export default function ConsumerHome() {
       <div className="bg-white shadow-sm border-b border-blue-100/50 animate-fade-in">
         <div className="flex items-center justify-between p-4">
           <div className="flex items-center space-x-3">
-            <img src={logo} alt="Brillprime" className="w-8 h-8 animate-pulse" />
+            <img src={logo} alt="Brill Prime" className="w-8 h-8 animate-pulse" />
             <div className="animate-slide-up">
               <h1 className="text-lg font-semibold text-[#131313]">
                 Good morning, {user?.fullName?.split(' ')[0] || 'User'}
               </h1>
-              <p className="text-sm text-gray-600">Welcome back to Brillprime</p>
+              <p className="text-sm text-gray-600">Welcome back to Brill Prime</p>
             </div>
           </div>
           <div className="flex items-center space-x-3 animate-slide-in-right">

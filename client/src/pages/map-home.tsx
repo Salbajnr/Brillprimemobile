@@ -111,8 +111,8 @@ export default function MapHome() {
           </Button>
           
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="Brillprime" className="w-8 h-8" />
-            <span className="font-semibold text-[#131313]">Brillprime</span>
+            <img src={logo} alt="Brill Prime" className="w-8 h-8" />
+            <span className="font-semibold text-[#131313]">Brill Prime</span>
           </div>
           
           <Button

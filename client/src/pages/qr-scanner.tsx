@@ -176,7 +176,7 @@ export default function QRScanner() {
         return {
           type: "payment",
           data: {
-            merchantName: "BrillPrime Merchant " + Math.floor(Math.random() * 100),
+            merchantName: "Brill Prime Merchant " + Math.floor(Math.random() * 100),
             merchantId: "MERCHANT_" + Math.random().toString(36).substr(2, 9),
             reference: "PAY_" + Date.now(),
             amount: `$${(Math.random() * 5000).toFixed(2)}`
@@ -187,7 +187,7 @@ export default function QRScanner() {
         return {
           type: "merchant",
           data: {
-            businessName: "BrillPrime Service",
+            businessName: "Brill Prime Service",
             address: "123 Main St, Lagos",
             phone: "+234 " + Math.floor(Math.random() * 900000000 + 100000000),
             services: ["Delivery", "Payment", "Support"]
@@ -387,7 +387,7 @@ export default function QRScanner() {
           isOpen: true,
           type: "success",
           title: "Delivery Confirmed ✅",
-          message: "Your delivery has been verified and confirmed successfully. Payment has been processed. Thank you for using Brillprime!"
+          message: "Your delivery has been verified and confirmed successfully. Payment has been processed. Thank you for using Brill Prime!"
         });
 
         // Navigate to order history after a delay

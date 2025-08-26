@@ -595,7 +595,7 @@ if (process.env.NODE_ENV === 'production') {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BrillPrime</title>
+    <title>Brill Prime</title>
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -631,7 +631,7 @@ if (process.env.NODE_ENV === 'production') {
                     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center">
                         <img 
                             src="/src/assets/images/logo.png" 
-                            alt="BrillPrime Logo" 
+                            alt="Brill Prime Logo" 
                             className="w-24 h-24 animate-bounce"
                             onError={(e) => {
                                 e.target.outerHTML = '<div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold animate-bounce">BP</div>';
@@ -905,7 +905,7 @@ if (process.env.NODE_ENV === 'production') {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                     </svg>
                                 </div>
-                                <h1 className="text-[#2d3748] text-3xl font-extrabold mb-4">Welcome to BrillPrime!</h1>
+                                <h1 className="text-[#2d3748] text-3xl font-extrabold mb-4">Welcome to Brill Prime!</h1>
                                 <p className="text-[#718096] text-base max-w-sm mx-auto leading-relaxed">Your account has been successfully created. You're now ready to start using all our amazing features.</p>
                             </div>
                             <div className="space-y-4">
@@ -946,7 +946,7 @@ if (process.env.NODE_ENV === 'production') {
 const PORT = process.env.PORT || 5000;
 
 server.listen(Number(PORT), '0.0.0.0', async () => {
-  console.log(`🚀 BrillPrime server running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Brill Prime server running on http://0.0.0.0:${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);

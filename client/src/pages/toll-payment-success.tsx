@@ -79,7 +79,7 @@ Toll Gate: ${transactionDetails?.metadata?.tollGateName}
 Vehicle Type: ${transactionDetails?.metadata?.vehicleType}
 QR Code: ${qrCode}
 ===================
-BrillPrime Toll Services
+Brill Prime Toll Services
     `;
 
     const element = document.createElement('a');

@@ -118,7 +118,7 @@ export default function ResetPasswordPage() {
         <div className="text-center mb-8">
           <img 
             src={logo} 
-            alt="Brillprime Logo" 
+            alt="Brill Prime Logo" 
             className="w-16 h-16 mx-auto mb-4"
           />
           <h2 className="text-2xl font-bold text-[var(--brill-secondary)] mb-2">

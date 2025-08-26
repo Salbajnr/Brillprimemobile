@@ -142,9 +142,9 @@ class EmailService {
       }
 
       const mailOptions = {
-        from: process.env.EMAIL_FROM || 'BrillPrime <noreply@brillprime.com>',
+        from: process.env.EMAIL_FROM || 'Brill Prime <noreply@brillprime.com>',
         to: email,
-        subject: 'Your BrillPrime Verification Code',
+        subject: 'Your Brill Prime Verification Code',
         html: this.generateOTPEmailTemplate(otpCode, userName)
       };
 
@@ -178,9 +178,9 @@ class EmailService {
       const resetUrl = `${process.env.CLIENT_URL || 'http://localhost:5000'}/reset-password?token=${resetToken}`;
 
       const mailOptions = {
-        from: process.env.EMAIL_FROM || 'BrillPrime <noreply@brillprime.com>',
+        from: process.env.EMAIL_FROM || 'Brill Prime <noreply@brillprime.com>',
         to: email,
-        subject: 'Reset Your BrillPrime Password',
+        subject: 'Reset Your Brill Prime Password',
         html: this.generatePasswordResetTemplate(resetUrl, userName)
       };
 
@@ -205,7 +205,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>BrillPrime Verification Code</title>
+        <title>Brill Prime Verification Code</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -232,13 +232,13 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🚀 BrillPrime</div>
+            <div class="logo">🚀 Brill Prime</div>
             <h2>Email Verification</h2>
           </div>
 
           <p>Hello ${userName || 'there'},</p>
 
-          <p>Thank you for signing up with BrillPrime! To complete your registration, please enter the verification code below:</p>
+          <p>Thank you for signing up with Brill Prime! To complete your registration, please enter the verification code below:</p>
 
           <div class="otp-box">
             <p>Your verification code is:</p>
@@ -249,7 +249,7 @@ class EmailService {
           <p>If you didn't request this verification code, please ignore this email.</p>
 
           <div class="footer">
-            <p>© 2024 BrillPrime. All rights reserved.</p>
+            <p>© 2024 Brill Prime. All rights reserved.</p>
             <p>This is an automated message, please do not reply to this email.</p>
           </div>
         </div>
@@ -265,7 +265,7 @@ class EmailService {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Reset Your BrillPrime Password</title>
+        <title>Reset Your Brill Prime Password</title>
         <style>
           body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
           .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -286,13 +286,13 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">🚀 BrillPrime</div>
+            <div class="logo">🚀 Brill Prime</div>
             <h2>Password Reset Request</h2>
           </div>
 
           <p>Hello ${userName || 'there'},</p>
 
-          <p>We received a request to reset your BrillPrime account password. Click the button below to reset your password:</p>
+          <p>We received a request to reset your Brill Prime account password. Click the button below to reset your password:</p>
 
           <div style="text-align: center;">
             <a href="${resetUrl}" class="button">Reset Password</a>
@@ -306,7 +306,7 @@ class EmailService {
           <p>If you didn't request a password reset, please ignore this email or contact support if you have concerns.</p>
 
           <div class="footer">
-            <p>© 2024 BrillPrime. All rights reserved.</p>
+            <p>© 2024 Brill Prime. All rights reserved.</p>
             <p>This is an automated message, please do not reply to this email.</p>
           </div>
         </div>

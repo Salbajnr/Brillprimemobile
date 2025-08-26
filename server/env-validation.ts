@@ -85,7 +85,7 @@ const envSchema = z.object({
   METRICS_ENABLED: z.coerce.boolean().default(true),
   
   // App Configuration
-  APP_NAME: z.string().default('BrillPrime'),
+  APP_NAME: z.string().default('Brill Prime'),
   APP_URL: z.string().url().optional(),
   SUPPORT_EMAIL: z.string().email().optional()
 });

@@ -672,7 +672,7 @@ export async function setupWebSocketServer(server: HTTPServer) {
     socket.emit(MessageType.CONNECTION_ACK, {
       socketId: socket.id,
       serverTime: Date.now(),
-      message: 'Connected to BrillPrime WebSocket server',
+      message: 'Connected to Brill Prime WebSocket server',
       serverMetrics: {
         activeConnections: connectionManager.getMetrics().activeConnections,
         serverLoad: process.cpuUsage(),

@@ -7,7 +7,7 @@ const onboardingImg3 = "/src/assets/images/onboarding_img3.png";
 
 const onboardingData = [
   {
-    title: "Welcome to\nBrillPrime",
+    title: "Welcome to\nBrill Prime",
     description: "Your trusted financial partner for secure transactions and seamless money management in Nigeria",
     image: onboardingImg1,
   },
