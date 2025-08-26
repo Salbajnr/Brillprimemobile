@@ -227,5 +227,3 @@ export default function registerTestRealtimeRoutes(app: Express) {
   });
 }
 
-// Export default for compatibility with import pattern
-export default { registerTestRealtimeRoutes };

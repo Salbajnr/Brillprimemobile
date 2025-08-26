@@ -54,7 +54,7 @@ import { dashboardCache, productsCache, analyticsCache, locationCache } from './
 import { staticAssetsMiddleware, cdnHeaders, resourceHints, compressionConfig, assetVersioning, serviceWorkerCache } from './middleware/staticAssets';
 import { requestTracker, circuitBreaker, adaptiveRateLimit, loadBalancerHeaders, healthCheck } from './middleware/loadBalancer';
 import { queryOptimizer } from './services/queryOptimizer';
-import { liveSystemService } from './services/live-system';
+import { LiveSystemService } from './services/live-system';
 // import { performanceOptimizer } from './middleware/cacheMiddleware'; // Not exported - commenting out
 import { emailService } from './services/email';
 // import compression from 'compression'; // Temporarily disabled due to dependency conflict
@@ -389,10 +389,7 @@ const apiRouter = express.Router();
 // Add session validation to all API routes
 apiRouter.use(validateSession);
 
-// Apply specific rate limiters and caching
-apiRouter.use('/auth', authRateLimit);
-apiRouter.use('/payments', paymentRateLimit);
-apiRouter.use('/wallet/fund', paymentRateLimit);
+// Note: Specific rate limiters are already applied globally above
 
 // Apply caching middleware to appropriate routes
 apiRouter.use('/analytics', analyticsCache);
@@ -757,14 +754,11 @@ app.use("/api/order-status", orderStatusRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/tracking", realTimeTrackingRoutes);
 app.use("/api/analytics", analyticsRoutes);
-testRealtimeRoutes.registerTestRealtimeRoutes(app);
+testRealtimeRoutes(app);
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
-<<<<<<< HEAD
+app.use("/api/driver-tier", driverTierRoutes);
 
-// Register system status route
+// Register system status route  
 app.use('/api/system', systemStatusRoutes);
 
 export default app;
-=======
-app.use("/api/driver-tier", driverTierRoutes);
->>>>>>> c808424d9ae893a6c8cdd6a17d0bd1dd8cbf6e03

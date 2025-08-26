@@ -791,11 +791,7 @@ export const categoryTypes = {
   BILL_PAYMENT: 'Bill Payments'
 } as const;
 
-<<<<<<< HEAD
-export const categoryRelations = [
-=======
 export const categoryList = [
->>>>>>> c808424d9ae893a6c8cdd6a17d0bd1dd8cbf6e03
   { id: 'fuel', name: 'Fuel Services', icon: 'fuel', color: '#FF6B6B' },
   { id: 'toll', name: 'Toll Payments', icon: 'toll', color: '#4ECDC4' },
   { id: 'commodity', name: 'Commodities', icon: 'shopping', color: '#45B7D1' },
