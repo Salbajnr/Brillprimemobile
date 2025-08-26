@@ -108,7 +108,7 @@ export function validateEnvironment() {
       });
       
       // In development, provide helpful message but don't exit
-      if (process.env.NODE_ENV === 'development') {
+      if (process.env.NODE_ENV !== 'production') {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
         // Return defaults for development
         return {
@@ -118,6 +118,9 @@ export function validateEnvironment() {
             ...process.env
           })
         };
+      } else {
+        console.error('❌ Production environment validation failed. Exiting...');
+        process.exit(1);
       }
     }
     process.exit(1);
