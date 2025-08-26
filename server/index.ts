@@ -32,6 +32,7 @@ import systemHealthRoutes from './routes/system-health';
 declare module 'express-session' {
   interface SessionData {
     csrfToken?: string;
+    userId?: number;
   }
 }
 // Enhanced security middleware
@@ -98,7 +99,7 @@ const server = createServer(app);
 const io = new SocketIOServer(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? ["https://your-domain.com"]
+      ? ["https://brillprime.com", "https://www.brillprime.com", "https://brill-prime.com", "https://www.brill-prime.com"]
       : ["http://localhost:5173", "http://localhost:3000"],
     credentials: true
   },

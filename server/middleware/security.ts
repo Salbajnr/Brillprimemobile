@@ -162,7 +162,7 @@ export const paymentRateLimit = rateLimit({
     message: 'Too many payment attempts. Please wait before trying again.',
   },
   handler: (req, res) => {
-    console.warn(`Payment rate limit exceeded for IP: ${req.ip}, User: ${req.session?.userId}`);
+    console.warn(`Payment rate limit exceeded for IP: ${req.ip}, User: ${(req.session as any)?.userId}`);
     res.status(429).json({
       success: false,
       error: 'Payment processing rate limit',
@@ -175,13 +175,6 @@ export const paymentRateLimit = rateLimit({
 export const apiKeyRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 1000, // Higher limit for API keys
-  keyGenerator: (req) => {
-    // Use API key if available, otherwise fall back to IP
-    const apiKey = req.headers['x-api-key'] as string;
-    if (apiKey) return apiKey;
-    // Proper IPv6 handling for IP fallback
-    return req.ip || 'unknown';
-  },
   skip: (req) => !req.headers['x-api-key'],
   message: {
     error: 'API rate limit exceeded',
