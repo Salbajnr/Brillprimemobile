@@ -42,22 +42,11 @@ export default function SignUpPage() {
     }
 
     try {
-      const result = await signup(email, password, selectedRole, email.split('@')[0], phone);
-
-      // Check if email verification is required
-      if (result?.requiresEmailVerification) {
-        // Store email for OTP verification
-        localStorage.setItem('verification-email', email);
-        setLocation('/otp-verification');
-      } else if (result?.user) {
-        // Set user in context if registration is complete
-        setUser(result.user);
-        setLocation('/dashboard');
-      } else {
-        // Fallback - should not happen with proper backend response
-        console.warn('Unexpected signup response:', result);
-        setLocation('/signin');
-      }
+      await signup(email, password, selectedRole, email.split('@')[0], phone);
+      
+      // Store email for OTP verification flow
+      localStorage.setItem('verification-email', email);
+      setLocation('/otp-verification');
     } catch (error) {
       // Error is already handled by the auth context
       console.error('Registration error:', error);

@@ -58,9 +58,9 @@ interface User {
 interface AuthContextType {
   user: User | null
   setUser: (user: User | null) => void
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => Promise<User | null>
   logout: () => Promise<void>
-  signup: (email: string, password: string, role?: string, fullName?: string, phone?: string) => Promise<void>
+  signup: (email: string, password: string, role?: string, fullName?: string, phone?: string) => Promise<any>
   isLoading: boolean
   loading: boolean
   refreshUser: () => Promise<void>;
@@ -171,6 +171,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (result.data?.token) {
           localStorage.setItem('token', result.data.token);
         }
+        return result.user;
       } else {
         throw new Error(result.error || 'Login failed');
       }
@@ -199,22 +200,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: role || 'CONSUMER'
       });
 
-      // Only set user if email verification is not required
-      if (result.success && result.user) {
-        setUser(result.user);
-        setIsAuthenticated(true); // Assume signup implies authentication if user is returned
-        localStorage.setItem('user', JSON.stringify(result.user));
-        // Store token if provided
-        if (result.data?.token) {
-          localStorage.setItem('token', result.data.token);
+      if (result.success) {
+        // For Brill Prime, we typically require email verification
+        // Store user info temporarily if provided but don't authenticate yet
+        if (result.user) {
+          // Store for potential use but don't set as authenticated
+          localStorage.setItem('pending-user', JSON.stringify(result.user));
         }
-      } else if (result.success && result.data?.requiresEmailVerification) {
-        // Handle case where email verification is required, but registration was otherwise successful
-        // Typically you might redirect to an "email verification pending" page
-        console.log('Email verification required for', email);
-        // No user is set, and no authentication occurs until verification
-      }
-      else {
+        
+        return {
+          success: true,
+          requiresEmailVerification: true,
+          user: result.user,
+          data: result.data
+        };
+      } else {
         throw new Error(result.error || 'Registration failed');
       }
     } catch (error: any) {

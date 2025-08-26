@@ -1,17 +1,19 @@
 import { useState } from "react";
+import { useLocation } from "wouter";
 
 // Using direct path to avoid import issues during development
 const signUpLogo = "/src/assets/images/sign_up_option_logo.png";
 
 export default function RoleSelectionPage() {
   const [selectedRole, setSelectedRole] = useState<"CONSUMER" | "MERCHANT" | "DRIVER" | null>(null);
+  const [, setLocation] = useLocation();
 
   const handleContinue = () => {
     if (selectedRole) {
       // Store selected role in localStorage
       localStorage.setItem("selectedRole", selectedRole);
-      // Navigate to signup page
-      window.location.href = "/signup";
+      // Navigate to signup page using proper routing
+      setLocation("/signup");
     }
   };
 
