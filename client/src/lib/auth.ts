@@ -87,7 +87,7 @@ export class AuthAPI {
     phone?: string;
     role: string;
   }) {
-    const response = await fetch(`${this.baseURL}/signup`, {
+    const response = await fetch(`${this.baseURL}/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -95,7 +95,7 @@ export class AuthAPI {
       credentials: 'include', // Include cookies for session
       body: JSON.stringify({
         ...data,
-        fullName: data.fullName || data.email.split('@')[0] // Generate fullName if not provided
+        fullName: data.fullName || data.email.split('@')[0] // Generate fullName from email
       }),
     });
 
@@ -105,7 +105,7 @@ export class AuthAPI {
     }
 
     const result = await response.json();
-    
+
     // Store user data
     if (result.success && result.user) {
       localStorage.setItem('user', JSON.stringify(result.user));
@@ -183,7 +183,7 @@ export class AuthAPI {
         method: 'GET',
         credentials: 'include'
       });
-      
+
       if (response.ok) {
         const result = await response.json();
         if (result.success && result.user) {
@@ -191,7 +191,7 @@ export class AuthAPI {
           return result.user;
         }
       }
-      
+
       // Clear invalid session
       localStorage.removeItem('user');
       return null;

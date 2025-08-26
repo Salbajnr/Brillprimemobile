@@ -8,46 +8,40 @@ import { useState, useEffect, createContext, useContext } from 'react'
 //   validateSession: async () => ({ id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' })
 // };
 
-// Placeholder for authAPI if not provided externally
+// Real API implementation
 const authAPI = {
   signIn: async ({ email, password }) => {
-    // Simulate API call
-    console.log(`Attempting to sign in with: ${email}`);
-    if (email === 'test@example.com' && password === 'password') {
-      return { success: true, user: { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' }, token: 'fake_token' };
-    } else {
-      return { success: false, message: 'Invalid credentials' };
-    }
+    const response = await apiRequest('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    return response;
   },
-  signUp: async ({ email, password, fullName, role }) => {
-    // Simulate API call
-    console.log(`Attempting to sign up: ${email} as ${role}`);
-    if (email === 'existing@example.com') {
-      return { success: false, message: 'Email already exists' };
-    }
-    return { success: true, user: { id: '2', email: email, fullName: fullName, role: role }, token: 'fake_token' };
+  signUp: async ({ email, password, fullName, role, phone }) => {
+    const response = await apiRequest('/auth/signup', {
+      method: 'POST',
+      body: JSON.stringify({ email, password, fullName, role, phone })
+    });
+    return response;
   },
   validateSession: async () => {
-    // Simulate token validation
-    console.log('Validating session...');
-    const token = localStorage.getItem('token');
-    if (token === 'fake_token') {
-      return { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' };
-    }
-    return null;
+    const response = await apiRequest('/auth/validate-session');
+    return response.success ? response.user : null;
   },
   logout: async () => {
-    console.log('Logging out');
-    return { success: true };
+    const response = await apiRequest('/auth/logout', { method: 'POST' });
+    return response;
   },
-  // Add other authAPI methods as needed, e.g., fetchUser, updateUser
   fetchUser: async () => {
-    console.log('Fetching user');
-    return { success: true, user: { id: '1', email: 'test@example.com', fullName: 'Test User', role: 'CONSUMER' } };
+    const response = await apiRequest('/auth/me');
+    return response;
   },
   updateUser: async (userId: string, userData: Partial<User>) => {
-    console.log(`Updating user ${userId} with:`, userData);
-    return { success: true, user: { id: userId, email: 'test@example.com', fullName: userData.fullName || 'Test User', role: userData.role || 'CONSUMER' } };
+    const response = await apiRequest(`/auth/users/${userId}`, {
+      method: 'PUT',
+      body: JSON.stringify(userData)
+    });
+    return response;
   }
 };
 
@@ -188,7 +182,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, role: string = 'CONSUMER', fullName?: string, phone?: string) => {
+  const signup = async (email: string, password: string, role?: string, fullName?: string, phone?: string) => {
     setLoading(true);
     clearError();
 
@@ -204,15 +198,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role
       });
 
+      // Only set user if email verification is not required
       if (result.success && result.user) {
         setUser(result.user);
-        setIsAuthenticated(true);
+        setIsAuthenticated(true); // Assume signup implies authentication if user is returned
         localStorage.setItem('user', JSON.stringify(result.user));
         // Store token if provided
         if (result.token) {
           localStorage.setItem('token', result.token);
         }
-      } else {
+      } else if (result.success && result.requiresEmailVerification) {
+        // Handle case where email verification is required, but registration was otherwise successful
+        // Typically you might redirect to an "email verification pending" page
+        console.log('Email verification required for', email);
+        // No user is set, and no authentication occurs until verification
+      }
+      else {
         throw new Error(result.message || 'Registration failed');
       }
     } catch (error: any) {

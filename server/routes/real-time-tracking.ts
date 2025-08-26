@@ -500,18 +500,35 @@ router.post('/order/:orderId/join', requireAuth, async (req, res) => {
   }
 });
 
-// Helper function to calculate ETA
-function calculateETA(order: any, currentLocation: any): string | null {
+// Enhanced ETA calculation with traffic considerations
+async function calculateETA(order: any, currentLocation: any): Promise<string | null> {
   try {
-    // This is a simplified ETA calculation
-    // In production, integrate with mapping services like Google Maps or Mapbox
-    
     const deliveryLocation = JSON.parse(order.deliveryAddress);
     if (!deliveryLocation.latitude || !deliveryLocation.longitude) {
       return null;
     }
 
-    // Calculate distance using Haversine formula
+    // Check if Google Maps API is available for accurate routing
+    const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
+    
+    if (googleApiKey) {
+      try {
+        const routeData = await getRouteFromGoogleMaps(
+          currentLocation,
+          deliveryLocation,
+          googleApiKey
+        );
+        
+        if (routeData && routeData.duration) {
+          const etaMs = routeData.duration * 1000; // Convert seconds to ms
+          return new Date(Date.now() + etaMs).toISOString();
+        }
+      } catch (error) {
+        console.warn('Google Maps API failed, using fallback calculation:', error);
+      }
+    }
+
+    // Fallback: Enhanced calculation with traffic factors
     const distance = calculateDistance(
       currentLocation.latitude,
       currentLocation.longitude,
@@ -519,16 +536,96 @@ function calculateETA(order: any, currentLocation: any): string | null {
       deliveryLocation.longitude
     );
 
-    // Estimate time based on average speed (assuming 30 km/h in city)
-    const averageSpeed = currentLocation.speed || 30; // km/h
+    // Dynamic speed calculation based on time of day and location
+    let averageSpeed = currentLocation.speed || getEstimatedSpeed(currentLocation, new Date());
+    
+    // Apply traffic factor based on time of day
+    const trafficFactor = getTrafficFactor(new Date());
+    averageSpeed *= trafficFactor;
+    
+    // Add buffer time for stops, traffic lights, etc.
+    const bufferTimeMinutes = Math.min(distance * 2, 15); // 2 min per km, max 15 min
+    
     const estimatedTimeHours = distance / averageSpeed;
-    const estimatedTimeMs = estimatedTimeHours * 60 * 60 * 1000;
+    const estimatedTimeMs = (estimatedTimeHours * 60 * 60 * 1000) + (bufferTimeMinutes * 60 * 1000);
 
     return new Date(Date.now() + estimatedTimeMs).toISOString();
   } catch (error) {
     console.error('ETA calculation error:', error);
     return null;
   }
+}
+
+// Get route data from Google Maps API
+async function getRouteFromGoogleMaps(origin: any, destination: any, apiKey: string) {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/directions/json?` +
+      `origin=${origin.latitude},${origin.longitude}&` +
+      `destination=${destination.latitude},${destination.longitude}&` +
+      `departure_time=now&traffic_model=best_guess&key=${apiKey}`;
+    
+    const response = await fetch(url);
+    const data = await response.json();
+    
+    if (data.status === 'OK' && data.routes.length > 0) {
+      const route = data.routes[0];
+      const leg = route.legs[0];
+      
+      return {
+        duration: leg.duration_in_traffic?.value || leg.duration.value,
+        distance: leg.distance.value / 1000, // Convert to km
+        polyline: route.overview_polyline.points
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('Google Maps API error:', error);
+    return null;
+  }
+}
+
+// Estimate speed based on location and time
+function getEstimatedSpeed(location: any, currentTime: Date): number {
+  const hour = currentTime.getHours();
+  
+  // Base speeds for different areas (km/h)
+  let baseSpeed = 25; // Urban default
+  
+  // Lagos-specific speed adjustments
+  if (location.latitude >= 6.4 && location.latitude <= 6.5 && 
+      location.longitude >= 3.3 && location.longitude <= 3.5) {
+    // Lagos Island/Victoria Island - slower due to traffic
+    baseSpeed = 15;
+  } else if (location.latitude >= 6.45 && location.latitude <= 6.55 && 
+             location.longitude >= 3.4 && location.longitude <= 3.6) {
+    // Lekki area - faster roads
+    baseSpeed = 35;
+  }
+  
+  return baseSpeed;
+}
+
+// Traffic factor based on time of day
+function getTrafficFactor(currentTime: Date): number {
+  const hour = currentTime.getHours();
+  const day = currentTime.getDay(); // 0 = Sunday, 6 = Saturday
+  
+  // Weekend traffic is generally lighter
+  if (day === 0 || day === 6) {
+    return 1.2; // 20% faster
+  }
+  
+  // Weekday traffic patterns
+  if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
+    return 0.6; // Rush hour - 40% slower
+  } else if (hour >= 12 && hour <= 14) {
+    return 0.8; // Lunch hour - 20% slower
+  } else if (hour >= 22 || hour <= 6) {
+    return 1.3; // Night time - 30% faster
+  }
+  
+  return 1.0; // Normal traffic
 }
 
 // Helper function to calculate distance between two points

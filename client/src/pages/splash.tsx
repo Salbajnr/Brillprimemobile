@@ -15,8 +15,18 @@ export default function SplashPage() {
       }
 
       if (isAuthenticated() && user) {
-        console.log("Splash: User authenticated, redirecting to dashboard");
-        setLocation("/dashboard");
+        console.log("Splash: User authenticated, redirecting to role dashboard");
+        if (user.role === "CONSUMER") {
+          setLocation("/consumer-home");
+        } else if (user.role === "MERCHANT") {
+          setLocation("/merchant-dashboard");
+        } else if (user.role === "DRIVER") {
+          setLocation("/driver-dashboard");
+        } else if (user.role === "ADMIN") {
+          setLocation("/admin-dashboard");
+        } else {
+          setLocation("/consumer-home");
+        }
       } else {
         // Check if user has seen onboarding
         const hasSeenOnboarding = localStorage.getItem("hasSeenOnboarding");

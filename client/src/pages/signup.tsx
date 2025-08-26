@@ -19,12 +19,12 @@ export default function SignUpPage() {
 
   const handleSignUp = async () => {
     clearError(); // Clear any previous errors
-    
+
     if (email.length < 4) {
       alert('Please enter a valid email');
       return;
     }
-    
+
     if (password.trim().length < 8) {
       alert('Password must be at least 8 characters');
       return;
@@ -34,10 +34,24 @@ export default function SignUpPage() {
       alert('Passwords do not match');
       return;
     }
-    
+
     try {
-      await signup(email, password, selectedRole);
-      setLocation('/dashboard');
+      const result = await signup(email, password, selectedRole);
+
+      // Check if email verification is required
+      if (result?.requiresEmailVerification) {
+        // Store email for OTP verification
+        localStorage.setItem('verification-email', email);
+        setLocation('/otp-verification');
+      } else if (result?.user) {
+        // Set user in context if registration is complete
+        setUser(result.user);
+        setLocation('/dashboard');
+      } else {
+        // Fallback - should not happen with proper backend response
+        console.warn('Unexpected signup response:', result);
+        setLocation('/signin');
+      }
     } catch (error) {
       // Error is already handled by the auth context
       console.error('Registration error:', error);

@@ -429,20 +429,134 @@ function generateBackupCodes(): string {
 }
 
 async function sendSmsToken(phone: string, token: string): Promise<void> {
-  // Integration with SMS service (Twilio, etc.)
-  console.log(`SMS MFA token for ${phone}: ${token}`);
-  // In production, implement actual SMS sending
+  try {
+    // Check if Twilio is configured
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+
+    if (accountSid && authToken && twilioPhone) {
+      // Import Twilio client dynamically if available
+      try {
+        const twilio = await import('twilio');
+        const client = twilio.default(accountSid, authToken);
+        
+        await client.messages.create({
+          body: `Your BrillPrime verification code is: ${token}. Valid for 10 minutes.`,
+          from: twilioPhone,
+          to: phone
+        });
+        
+        console.log(`✅ SMS sent to ${phone}`);
+      } catch (error) {
+        console.error('Twilio SMS error:', error);
+        throw new Error('Failed to send SMS');
+      }
+    } else {
+      // Development fallback - log to console
+      console.log(`📱 SMS MFA token for ${phone}: ${token}`);
+      console.log('⚠️  Twilio not configured - using development mode');
+    }
+  } catch (error) {
+    console.error('SMS sending error:', error);
+    throw error;
+  }
 }
 
 async function sendEmailToken(email: string, token: string): Promise<void> {
-  // Integration with email service
-  console.log(`Email MFA token for ${email}: ${token}`);
-  // In production, implement actual email sending
+  try {
+    const sendGridApiKey = process.env.SENDGRID_API_KEY;
+    
+    if (sendGridApiKey) {
+      // Use SendGrid for email sending
+      const sgMail = await import('@sendgrid/mail');
+      sgMail.default.setApiKey(sendGridApiKey);
+      
+      const msg = {
+        to: email,
+        from: process.env.FROM_EMAIL || 'noreply@brillprime.com',
+        subject: 'BrillPrime - Your Verification Code',
+        text: `Your BrillPrime verification code is: ${token}. This code is valid for 10 minutes.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2 style="color: #2563eb;">BrillPrime Verification</h2>
+            <p>Your verification code is:</p>
+            <div style="background: #f3f4f6; padding: 20px; text-align: center; margin: 20px 0;">
+              <span style="font-size: 24px; font-weight: bold; letter-spacing: 3px;">${token}</span>
+            </div>
+            <p style="color: #666;">This code is valid for 10 minutes.</p>
+            <p style="color: #666;">If you didn't request this code, please ignore this email.</p>
+          </div>
+        `
+      };
+      
+      await sgMail.default.send(msg);
+      console.log(`✅ Email sent to ${email}`);
+    } else {
+      // Development fallback - log to console
+      console.log(`📧 Email MFA token for ${email}: ${token}`);
+      console.log('⚠️  SendGrid not configured - using development mode');
+    }
+  } catch (error) {
+    console.error('Email sending error:', error);
+    throw error;
+  }
 }
 
 async function verifyMfaToken(userId: number, token: string): Promise<{ success: boolean }> {
-  // Simplified verification - in production, implement proper verification
-  return { success: token.length >= 4 };
+  try {
+    // Get stored MFA data from database
+    const [mfaData] = await db
+      .select({
+        token: userMfaTokens.token,
+        expiresAt: userMfaTokens.expiresAt,
+        attempts: userMfaTokens.attempts
+      })
+      .from(userMfaTokens)
+      .where(and(
+        eq(userMfaTokens.userId, userId),
+        gte(userMfaTokens.expiresAt, new Date())
+      ))
+      .orderBy(desc(userMfaTokens.createdAt))
+      .limit(1);
+    
+    if (!mfaData) {
+      return { success: false };
+    }
+    
+    // Check if too many attempts
+    if (mfaData.attempts >= 5) {
+      return { success: false };
+    }
+    
+    // Verify token
+    const hashedInputToken = crypto.createHash('sha256').update(token).digest('hex');
+    const isValid = hashedInputToken === mfaData.token;
+    
+    // Update attempts
+    await db
+      .update(userMfaTokens)
+      .set({
+        attempts: mfaData.attempts + 1,
+        updatedAt: new Date()
+      })
+      .where(and(
+        eq(userMfaTokens.userId, userId),
+        eq(userMfaTokens.token, mfaData.token)
+      ));
+    
+    // If valid, remove the token
+    if (isValid) {
+      await db
+        .delete(userMfaTokens)
+        .where(eq(userMfaTokens.userId, userId));
+    }
+    
+    return { success: isValid };
+  } catch (error) {
+    console.error('MFA token verification error:', error);
+    return { success: false };
+  }
 }
 
 export default router;

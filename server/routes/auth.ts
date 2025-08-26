@@ -1,9 +1,10 @@
 
 import express from 'express';
 import bcrypt from 'bcrypt';
+import crypto from 'crypto';
 import { db } from '../db';
-import { users } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
+import { users, mfaTokens } from '../../shared/schema';
+import { eq, and, desc, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 // Extend the session interface to include userId and user properties
@@ -162,7 +163,7 @@ router.post('/register', async (req, res) => {
     const passwordHash = await bcrypt.hash(userData.password, 10);
 
     // Create user
-    const [newUser] = await db
+    const newUsers = await db
       .insert(users)
       .values({
         email: userData.email,
@@ -173,8 +174,38 @@ router.post('/register', async (req, res) => {
         createdAt: new Date()
       })
       .returning();
+    
+    const newUser = newUsers[0];
 
-    // Create session
+    // Generate OTP for email verification
+    const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    
+    // Store OTP in database
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: newUser.id,
+        token: hashedOtp,
+        method: 'EMAIL',
+        expiresAt,
+        isUsed: false
+      });
+    
+    // Send OTP email
+    try {
+      const { emailService } = await import('../services/email');
+      const emailSent = await emailService.sendOTP(userData.email, otpCode, userData.fullName);
+      
+      if (!emailSent) {
+        console.warn('Failed to send OTP email, but user was created');
+      }
+    } catch (emailError) {
+      console.error('Email service error:', emailError);
+    }
+
+    // Create session but mark as unverified
     req.session.userId = newUser.id;
     req.session.user = {
       id: newUser.id,
@@ -188,11 +219,13 @@ router.post('/register', async (req, res) => {
 
     res.json({
       success: true,
+      requiresEmailVerification: true,
       user: {
         id: newUser.id,
         email: newUser.email,
         fullName: newUser.fullName,
-        role: newUser.role
+        role: newUser.role,
+        isVerified: false
       }
     });
   } catch (error: any) {
@@ -302,8 +335,56 @@ router.post('/verify-otp', async (req, res) => {
       });
     }
 
-    // In production, implement proper OTP validation
-    // This would check against stored OTP and expiry time
+    // Enhanced OTP validation for production
+    const [storedOtp] = await db
+      .select()
+      .from(mfaTokens)
+      .where(and(
+        eq(mfaTokens.userId, user.id),
+        eq(mfaTokens.method, 'EMAIL'),
+        gte(mfaTokens.expiresAt, new Date()),
+        eq(mfaTokens.isUsed, false)
+      ))
+      .orderBy(desc(mfaTokens.createdAt))
+      .limit(1);
+    
+    if (storedOtp) {
+      const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+      
+      if (hashedOtp === storedOtp.token) {
+        // Valid OTP - mark user as verified
+        await db
+          .update(users)
+          .set({ isVerified: true })
+          .where(eq(users.id, user.id));
+        
+        // Mark OTP as used
+        await db
+          .update(mfaTokens)
+          .set({ isUsed: true, usedAt: new Date() })
+          .where(eq(mfaTokens.id, storedOtp.id));
+        
+        // Create session
+        req.session.userId = user.id;
+        req.session.user = {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role
+        };
+        
+        return res.json({
+          success: true,
+          message: 'Email verified successfully',
+          user: {
+            id: user.id,
+            email: user.email,
+            fullName: user.fullName,
+            role: user.role
+          }
+        });
+      }
+    }
     
     res.status(400).json({
       success: false,
@@ -342,6 +423,19 @@ router.post('/resend-otp', async (req, res) => {
 
     // Generate new OTP
     const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
+    const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
+    
+    // Store OTP in database
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: user.id,
+        token: hashedOtp,
+        method: 'EMAIL',
+        expiresAt,
+        isUsed: false
+      });
     
     // Send OTP email
     const { emailService } = await import('../services/email');
@@ -394,8 +488,18 @@ router.post('/forgot-password', async (req, res) => {
     const resetToken = Math.random().toString(36).substring(2, 15) + 
                       Math.random().toString(36).substring(2, 15);
     
-    // Store reset token temporarily (in production, store in database with expiry)
-    // For now, we'll use a simple in-memory store or Redis
+    // Store reset token in database with expiry
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
+    
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: user.id,
+        token: hashedToken,
+        method: 'EMAIL', // Using EMAIL method for password reset
+        expiresAt
+      });
     
     // Send reset email
     const { emailService } = await import('../services/email');
@@ -424,17 +528,56 @@ router.post('/reset-password', async (req, res) => {
       newPassword: z.string().min(8)
     }).parse(req.body);
 
-    // In production, validate token from database
-    // For development, accept any valid format token
-    if (!token || token.length < 10) {
+    // Validate token from database
+    const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
+    
+    const [resetData] = await db
+      .select({
+        id: mfaTokens.id,
+        userId: mfaTokens.userId,
+        expiresAt: mfaTokens.expiresAt,
+        isUsed: mfaTokens.isUsed
+      })
+      .from(mfaTokens)
+      .where(and(
+        eq(mfaTokens.token, hashedToken),
+        eq(mfaTokens.method, 'EMAIL'),
+        gte(mfaTokens.expiresAt, new Date()),
+        eq(mfaTokens.isUsed, false)
+      ))
+      .limit(1);
+    
+    if (!resetData) {
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired reset token'
       });
     }
-
-    // For development, we'll just accept any user for password reset
-    // In production, you'd look up the token and get the associated user
+    
+    if (resetData.isUsed) {
+      return res.status(400).json({
+        success: false,
+        message: 'Reset token has already been used'
+      });
+    }
+    
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
+    
+    // Update user password
+    await db
+      .update(users)
+      .set({
+        passwordHash: hashedPassword,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, resetData.userId));
+    
+    // Mark reset token as used
+    await db
+      .update(mfaTokens)
+      .set({ isUsed: true, usedAt: new Date() })
+      .where(eq(mfaTokens.id, resetData.id));
     
     res.json({
       success: true,
