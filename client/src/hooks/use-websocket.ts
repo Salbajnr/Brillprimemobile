@@ -363,3 +363,93 @@ export function useChat(conversationId?: string) {
 export const useWebSocketOrders = useOrderUpdates;
 export const useWebSocketNotifications = useNotifications;
 export const useWebSocketChat = useChat;
+
+// Additional driver tracking hook
+export const useWebSocketDriverTracking = () => {
+  const [driverLocations, setDriverLocations] = useState(new Map());
+  const { socket, connected } = useWebSocket();
+  
+  useEffect(() => {
+    if (!socket || !connected) return;
+    
+    const handleLocationUpdate = (data: any) => {
+      setDriverLocations(prev => new Map(prev.set(data.driverId, data.location)));
+    };
+    
+    socket.on('driver_location_update', handleLocationUpdate);
+    
+    return () => {
+      socket.off('driver_location_update', handleLocationUpdate);
+    };
+  }, [socket, connected]);
+  
+  return driverLocations;
+};
+
+// Additional delivery status tracking hook
+export const useWebSocketDeliveryStatus = () => {
+  const [deliveryStatus, setDeliveryStatus] = useState({});
+  const { socket, connected } = useWebSocket();
+  
+  useEffect(() => {
+    if (!socket || !connected) return;
+    
+    const handleDeliveryUpdate = (data: any) => {
+      setDeliveryStatus(prev => ({ ...prev, [data.orderId]: data.status }));
+    };
+    
+    socket.on('delivery_status_update', handleDeliveryUpdate);
+    
+    return () => {
+      socket.off('delivery_status_update', handleDeliveryUpdate);
+    };
+  }, [socket, connected]);
+  
+  return deliveryStatus;
+};
+
+// Additional fuel orders tracking hook
+export const useWebSocketFuelOrders = () => {
+  const [fuelOrders, setFuelOrders] = useState([]);
+  const { socket, connected } = useWebSocket();
+  
+  useEffect(() => {
+    if (!socket || !connected) return;
+    
+    const handleFuelOrderUpdate = (data: any) => {
+      setFuelOrders(prev => prev.map(order => 
+        order.id === data.id ? data : order
+      ));
+    };
+    
+    socket.on('fuel_order_update', handleFuelOrderUpdate);
+    
+    return () => {
+      socket.off('fuel_order_update', handleFuelOrderUpdate);
+    };
+  }, [socket, connected]);
+  
+  return fuelOrders;
+};
+
+// Additional payments tracking hook
+export const useWebSocketPayments = () => {
+  const [paymentStatus, setPaymentStatus] = useState({});
+  const { socket, connected } = useWebSocket();
+  
+  useEffect(() => {
+    if (!socket || !connected) return;
+    
+    const handlePaymentUpdate = (data: any) => {
+      setPaymentStatus(prev => ({ ...prev, [data.orderId]: data.status }));
+    };
+    
+    socket.on('payment_status_update', handlePaymentUpdate);
+    
+    return () => {
+      socket.off('payment_status_update', handlePaymentUpdate);
+    };
+  }, [socket, connected]);
+  
+  return paymentStatus;
+};

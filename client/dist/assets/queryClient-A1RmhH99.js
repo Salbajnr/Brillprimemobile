@@ -1,0 +1,2 @@
+import{aD as a}from"./index-CVqmz7v7.js";new a({defaultOptions:{queries:{retry:1,staleTime:5*60*1e3,refetchOnWindowFocus:!1}}});const o=async(r,t={})=>{const e=await fetch(`/api${r}`,{headers:{"Content-Type":"application/json",...t.headers},credentials:"include",...t});if(!e.ok){const s=new Error(`HTTP error! status: ${e.status}`);throw s.status=e.status,s}return e.json()};export{o as a};
+//# sourceMappingURL=queryClient-A1RmhH99.js.map

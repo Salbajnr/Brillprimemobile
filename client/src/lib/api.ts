@@ -200,6 +200,15 @@ export const authApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  resendOtp: (phone: string) =>
+    apiRequest('/auth/resend-otp', {
+      method: 'POST',
+      body: JSON.stringify({ phone }),
+    }),
+
+  // Real-time session validation
+  validateSession: () => apiRequest('/auth/validate-session'),
 }
 
 // Mobile-specific API methods
@@ -330,20 +339,6 @@ export const apiRequestWithRetry = async (
   }
   
   throw lastError;
-};
-
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
-
-  resendOtp: (phone: string) =>
-    apiRequest('/auth/resend-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-    }),
-
-  // Real-time session validation
-  validateSession: () => apiRequest('/auth/validate-session'),
 };
 
 // Enhanced Verification APIs with real-time updates
