@@ -1,5 +1,5 @@
 import React from 'react'
-import ReactDOM from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import './index.css'
 
 // Simple working component first
@@ -19,9 +19,9 @@ function BrillPrimeApp() {
   const screens = {
     splash: (
       <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center">
-        <img 
-          src="/src/assets/images/logo.png" 
-          alt="BrillPrime Logo" 
+        <img
+          src="/src/assets/images/logo.png"
+          alt="BrillPrime Logo"
           className="w-24 h-24 animate-bounce"
           onError={(e) => {
             e.currentTarget.outerHTML = '<div class="w-24 h-24 bg-blue-600 rounded-full flex items-center justify-center text-white text-2xl font-bold animate-bounce">BP</div>';
@@ -38,13 +38,13 @@ function BrillPrimeApp() {
       <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
         <h1 className="text-3xl font-bold text-gray-800 mb-4">Welcome to BrillPrime</h1>
         <p className="text-gray-600 mb-8 text-center">Your all-in-one delivery platform for commodities, fuel, and more.</p>
-        <button 
+        <button
           onClick={() => setCurrentScreen('roleSelection')}
           className="bg-blue-600 text-white px-8 py-3 rounded-full text-lg font-semibold hover:bg-blue-700"
         >
           Get Started
         </button>
-        <button 
+        <button
           onClick={() => setCurrentScreen('signin')}
           className="text-blue-600 mt-4 underline"
         >
@@ -57,7 +57,7 @@ function BrillPrimeApp() {
         <h2 className="text-2xl font-bold text-gray-800 mb-8">Choose Your Role</h2>
         <div className="space-y-4 w-full">
           {['Consumer', 'Merchant', 'Driver', 'Admin'].map(role => (
-            <button 
+            <button
               key={role}
               onClick={() => setCurrentScreen('signup')}
               className="w-full bg-gray-100 hover:bg-blue-100 p-4 rounded-lg text-left font-semibold"
@@ -76,7 +76,7 @@ function BrillPrimeApp() {
           <input type="email" placeholder="Email" className="w-full p-3 border rounded-lg" />
           <input type="tel" placeholder="Phone Number" className="w-full p-3 border rounded-lg" />
           <input type="password" placeholder="Password" className="w-full p-3 border rounded-lg" />
-          <button 
+          <button
             type="button"
             onClick={() => setCurrentScreen('otp')}
             className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold"
@@ -84,7 +84,7 @@ function BrillPrimeApp() {
             Sign Up
           </button>
         </form>
-        <button 
+        <button
           onClick={() => setCurrentScreen('signin')}
           className="text-blue-600 mt-4 underline"
         >
@@ -98,7 +98,7 @@ function BrillPrimeApp() {
         <form className="w-full space-y-4">
           <input type="email" placeholder="Email" className="w-full p-3 border rounded-lg" />
           <input type="password" placeholder="Password" className="w-full p-3 border rounded-lg" />
-          <button 
+          <button
             type="button"
             onClick={() => setCurrentScreen('dashboard')}
             className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold"
@@ -106,7 +106,7 @@ function BrillPrimeApp() {
             Sign In
           </button>
         </form>
-        <button 
+        <button
           onClick={() => setCurrentScreen('roleSelection')}
           className="text-blue-600 mt-4 underline"
         >
@@ -123,7 +123,7 @@ function BrillPrimeApp() {
             <input key={i} type="text" maxLength={1} className="w-12 h-12 border rounded-lg text-center text-xl" />
           ))}
         </div>
-        <button 
+        <button
           onClick={() => setCurrentScreen('dashboard')}
           className="w-full bg-blue-600 text-white p-3 rounded-lg font-semibold"
         >
@@ -135,7 +135,7 @@ function BrillPrimeApp() {
       <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center p-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-8">Welcome to BrillPrime!</h2>
         <p className="text-gray-600 mb-4 text-center">You're now signed in and ready to use the platform.</p>
-        <button 
+        <button
           onClick={() => setCurrentScreen('splash')}
           className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold"
         >
@@ -148,7 +148,10 @@ function BrillPrimeApp() {
   return screens[currentScreen] || screens.splash;
 }
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const container = document.getElementById('root')!
+const root = createRoot(container)
+
+root.render(
   <React.StrictMode>
     <BrillPrimeApp />
   </React.StrictMode>

@@ -538,10 +538,42 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 if (process.env.NODE_ENV === 'production') {
-  app.use(staticAssetsMiddleware());
+  // Serve static files from the client build
+  app.use(express.static(path.join(__dirname, '../client/dist'), {
+    maxAge: '1y',
+    setHeaders: (res, path) => {
+      if (path.endsWith('.html')) {
+        res.setHeader('Cache-Control', 'no-cache');
+      }
+    }
+  }));
 
+  // Health check for deployment
+  app.get('/health', (req, res) => {
+    res.status(200).json({
+      status: 'healthy',
+      timestamp: new Date().toISOString(),
+      environment: process.env.NODE_ENV || 'development'
+    });
+  });
+
+  // Serve the React app for all non-API routes
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'API endpoint not found' });
+    }
+
+    const indexPath = path.join(__dirname, '../client/dist/index.html');
+
+    // Check if built files exist
+    if (!require('fs').existsSync(indexPath)) {
+      return res.status(500).json({
+        error: 'Frontend build not found. Please run: cd client && npm run build'
+      });
+    }
+
+    res.sendFile(indexPath);
   });
 } else {
   // Development mode: serve the client assets if available
@@ -614,10 +646,10 @@ if (process.env.NODE_ENV === 'production') {
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
-        
+
         function BrillPrimeApp() {
             const [currentScreen, setCurrentScreen] = useState('splash');
-            
+
             useEffect(() => {
                 if (currentScreen === 'splash') {
                     const timer = setTimeout(() => {
@@ -626,7 +658,7 @@ if (process.env.NODE_ENV === 'production') {
                     return () => clearTimeout(timer);
                 }
             }, [currentScreen]);
-            
+
             const screens = {
                 splash: (
                     <div className="w-full max-w-md mx-auto min-h-screen bg-white flex flex-col items-center justify-center">
@@ -929,10 +961,10 @@ if (process.env.NODE_ENV === 'production') {
                     </div>
                 )
             };
-            
+
             return screens[currentScreen] || screens.splash;
         }
-        
+
         ReactDOM.render(<BrillPrimeApp />, document.getElementById('root'));
     </script>
 </body>
