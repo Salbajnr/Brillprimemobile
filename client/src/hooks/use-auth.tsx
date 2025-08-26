@@ -10,14 +10,14 @@ import { useState, useEffect, createContext, useContext } from 'react'
 
 // Real API implementation
 const authAPI = {
-  signIn: async ({ email, password }) => {
+  signIn: async ({ email, password }: { email: string; password: string }) => {
     const response = await apiRequest('/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password })
     });
     return response;
   },
-  signUp: async ({ email, password, fullName, role, phone }) => {
+  signUp: async ({ email, password, fullName, role, phone }: { email: string; password: string; fullName: string; role: string; phone: string }) => {
     const response = await apiRequest('/auth/signup', {
       method: 'POST',
       body: JSON.stringify({ email, password, fullName, role, phone })
@@ -115,6 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const storedUser = localStorage.getItem('user');
         if (storedUser) {
           const userData = JSON.parse(storedUser);
+          console.log('Stored user data:', userData);
 
           // Validate session with server
           const validUser = await authAPI.validateSession(); // Use authAPI.validateSession
@@ -167,11 +168,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true);
         localStorage.setItem('user', JSON.stringify(result.user));
         // Store token if provided
-        if (result.token) {
-          localStorage.setItem('token', result.token);
+        if (result.data?.token) {
+          localStorage.setItem('token', result.data.token);
         }
       } else {
-        throw new Error(result.message || 'Login failed');
+        throw new Error(result.error || 'Login failed');
       }
     } catch (error: any) {
       console.error('Login error:', error);
@@ -195,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
         fullName: effectiveFullName,
         phone: phone || '',
-        role
+        role: role || 'CONSUMER'
       });
 
       // Only set user if email verification is not required
@@ -204,17 +205,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsAuthenticated(true); // Assume signup implies authentication if user is returned
         localStorage.setItem('user', JSON.stringify(result.user));
         // Store token if provided
-        if (result.token) {
-          localStorage.setItem('token', result.token);
+        if (result.data?.token) {
+          localStorage.setItem('token', result.data.token);
         }
-      } else if (result.success && result.requiresEmailVerification) {
+      } else if (result.success && result.data?.requiresEmailVerification) {
         // Handle case where email verification is required, but registration was otherwise successful
         // Typically you might redirect to an "email verification pending" page
         console.log('Email verification required for', email);
         // No user is set, and no authentication occurs until verification
       }
       else {
-        throw new Error(result.message || 'Registration failed');
+        throw new Error(result.error || 'Registration failed');
       }
     } catch (error: any) {
       console.error('Registration error:', error);

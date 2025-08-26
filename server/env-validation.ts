@@ -132,8 +132,8 @@ function validateProductionRequirements(env: any) {
     { key: 'APP_URL', message: 'Production requires app URL configuration' }
   ];
   
-  const warnings = [];
-  const errors = [];
+  const warnings: string[] = [];
+  const errors: string[] = [];
   
   for (const requirement of requiredForProduction) {
     if (!env[requirement.key]) {

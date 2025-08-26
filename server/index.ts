@@ -221,7 +221,6 @@ app.use(requestId);
 app.use(securityHeaders);
 app.use(helmetConfig);
 app.use(cors(corsOptions));
-app.use(generalRateLimit);
 app.use(sanitizeInput);
 
 // Application middleware

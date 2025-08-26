@@ -117,7 +117,7 @@ export function useWebSocket(): WebSocketHookReturn {
 
 // Specialized hooks for specific real-time features
 export function useOrderUpdates() {
-  const { socket, connected, on, off } = useWebSocket();
+  const { connected, on, off } = useWebSocket();
   const [orders, setOrders] = useState<any[]>([]);
   const [orderUpdates, setOrderUpdates] = useState<Record<string, any>>({});
 
@@ -410,14 +410,14 @@ export const useWebSocketDeliveryStatus = () => {
 
 // Additional fuel orders tracking hook
 export const useWebSocketFuelOrders = () => {
-  const [fuelOrders, setFuelOrders] = useState([]);
+  const [fuelOrders, setFuelOrders] = useState<any[]>([]);
   const { socket, connected } = useWebSocket();
   
   useEffect(() => {
     if (!socket || !connected) return;
     
     const handleFuelOrderUpdate = (data: any) => {
-      setFuelOrders(prev => prev.map(order => 
+      setFuelOrders(prev => prev.map((order: any) => 
         order.id === data.id ? data : order
       ));
     };

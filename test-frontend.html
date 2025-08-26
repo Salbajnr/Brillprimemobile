@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BrillPrime Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+        .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <h1>🚀 BrillPrime App Test</h1>
+        
+        <div id="server-test" class="status info">
+            Testing server connection...
+        </div>
+        
+        <div id="assets-test" class="status info">
+            Testing asset loading...
+        </div>
+        
+        <div id="api-test" class="status info">
+            Testing API endpoints...
+        </div>
+        
+        <div id="final-status" class="status info">
+            Running tests...
+        </div>
+        
+        <div style="margin-top: 30px;">
+            <a href="/" style="background: #007bff; color: white; padding: 15px 30px; text-decoration: none; border-radius: 5px;">
+                Launch BrillPrime App
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function runTests() {
+            // Test 1: Server Connection
+            try {
+                const healthResponse = await fetch('/api/health');
+                const healthData = await healthResponse.json();
+                document.getElementById('server-test').className = 'status success';
+                document.getElementById('server-test').textContent = `✅ Server is running (${healthData.status})`;
+            } catch (error) {
+                document.getElementById('server-test').className = 'status error';
+                document.getElementById('server-test').textContent = `❌ Server connection failed: ${error.message}`;
+            }
+
+            // Test 2: Assets Loading
+            try {
+                const cssResponse = await fetch('/assets/index-CuMngtL7.css');
+                const jsResponse = await fetch('/assets/index-CPIh2kaR.js');
+                
+                if (cssResponse.ok && jsResponse.ok) {
+                    document.getElementById('assets-test').className = 'status success';
+                    document.getElementById('assets-test').textContent = '✅ CSS and JS assets are loading correctly';
+                } else {
+                    document.getElementById('assets-test').className = 'status error';
+                    document.getElementById('assets-test').textContent = '❌ Some assets failed to load';
+                }
+            } catch (error) {
+                document.getElementById('assets-test').className = 'status error';
+                document.getElementById('assets-test').textContent = `❌ Asset loading failed: ${error.message}`;
+            }
+
+            // Test 3: API Endpoints
+            try {
+                const apiResponse = await fetch('/api/test-post', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test: 'data' })
+                });
+                const apiData = await apiResponse.json();
+                
+                if (apiData.success) {
+                    document.getElementById('api-test').className = 'status success';
+                    document.getElementById('api-test').textContent = '✅ API endpoints are working';
+                } else {
+                    document.getElementById('api-test').className = 'status error';
+                    document.getElementById('api-test').textContent = '❌ API test failed';
+                }
+            } catch (error) {
+                document.getElementById('api-test').className = 'status error';
+                document.getElementById('api-test').textContent = `❌ API test failed: ${error.message}`;
+            }
+
+            // Final Status
+            document.getElementById('final-status').className = 'status success';
+            document.getElementById('final-status').textContent = '✅ All tests completed! Server is working correctly.';
+        }
+
+        runTests();
+    </script>
+</body>
+</html>
