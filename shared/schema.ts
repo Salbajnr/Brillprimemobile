@@ -174,6 +174,44 @@ export const transactions = pgTable("transactions", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
+// QR Payment Receipts table - QR codes for consumer receipts that merchants can scan
+export const qrPaymentReceipts = pgTable("qr_payment_receipts", {
+  id: serial("id").primaryKey(),
+  transactionId: integer("transaction_id").references(() => transactions.id).notNull(),
+  consumerId: integer("consumer_id").references(() => users.id).notNull(),
+  merchantId: integer("merchant_id").references(() => users.id).notNull(),
+  qrCode: text("qr_code").unique().notNull(), // Unique QR code for the receipt
+  receiptNumber: text("receipt_number").unique().notNull(), // Human-readable receipt number
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default('NGN'),
+  paymentMethod: text("payment_method").notNull(),
+  serviceType: text("service_type").notNull(), // 'DELIVERY', 'FUEL', 'TOLL', 'TRANSFER'
+  status: text("status").default('ACTIVE'), // 'ACTIVE', 'SCANNED', 'EXPIRED', 'VOIDED'
+  scannedAt: timestamp("scanned_at"),
+  scannedBy: integer("scanned_by").references(() => users.id), // Merchant who scanned
+  expiresAt: timestamp("expires_at"), // Optional expiry for time-sensitive receipts
+  metadata: jsonb("metadata"), // Additional receipt details, order info, etc.
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// QR Receipt Scans table - Track when and who scans QR receipts
+export const qrReceiptScans = pgTable("qr_receipt_scans", {
+  id: serial("id").primaryKey(),
+  receiptId: integer("receipt_id").references(() => qrPaymentReceipts.id).notNull(),
+  scannedBy: integer("scanned_by").references(() => users.id).notNull(), // Who scanned it
+  scanType: text("scan_type").default('VERIFICATION'), // 'VERIFICATION', 'TRACKING', 'AUDIT'
+  location: text("location"), // Where it was scanned
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  deviceInfo: text("device_info"), // Device/browser info
+  ipAddress: text("ip_address"),
+  scanResult: text("scan_result").default('SUCCESS'), // 'SUCCESS', 'INVALID', 'EXPIRED'
+  notes: text("notes"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
 // Fuel orders table (from original, unchanged)
 export const fuelOrders = pgTable("fuel_orders", {
   id: serial("id").primaryKey(),
@@ -840,8 +878,26 @@ export const insertFuelOrderSchema = createInsertSchema(fuelOrders).omit({
   deliveredAt: true
 });
 
+export const insertQrPaymentReceiptSchema = createInsertSchema(qrPaymentReceipts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true
+});
+
+export const insertQrReceiptScanSchema = createInsertSchema(qrReceiptScans).omit({
+  id: true,
+  createdAt: true
+});
+
 // Insert types
 export type InsertProduct = z.infer<typeof insertProductSchema>;
 export type InsertOrder = z.infer<typeof insertOrderSchema>;
 export type InsertTransaction = z.infer<typeof insertTransactionSchema>;
 export type InsertFuelOrder = z.infer<typeof insertFuelOrderSchema>;
+
+// QR Receipt type definitions
+export type QrPaymentReceipt = typeof qrPaymentReceipts.$inferSelect;
+export type InsertQrPaymentReceipt = z.infer<typeof insertQrPaymentReceiptSchema>;
+
+export type QrReceiptScan = typeof qrReceiptScans.$inferSelect;
+export type InsertQrReceiptScan = z.infer<typeof insertQrReceiptScanSchema>;

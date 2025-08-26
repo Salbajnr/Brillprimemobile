@@ -8,6 +8,7 @@ import { paystackService } from "../services/paystack";
 import { requireAuth } from "../middleware/auth";
 import { z } from "zod";
 import crypto from "crypto";
+import { qrReceiptService } from "../services/qr-receipt";
 
 const router = express.Router();
 
@@ -117,6 +118,57 @@ router.post("/verify", requireAuth, async (req, res) => {
           updatedAt: new Date()
         })
         .where(eq(orders.id, orderId));
+    }
+
+    // Generate QR receipt for successful payments
+    if (result.transaction && result.transaction.status === 'SUCCESS') {
+      try {
+        // Determine service type and merchant ID
+        let serviceType = 'PAYMENT';
+        let merchantId = null;
+
+        // If it's an order payment, get merchant ID from order
+        if (orderId) {
+          const [order] = await db
+            .select({ merchantId: orders.merchantId })
+            .from(orders)
+            .where(eq(orders.id, orderId))
+            .limit(1);
+          
+          if (order) {
+            merchantId = order.merchantId;
+            serviceType = 'DELIVERY';
+          }
+        }
+
+        // If no merchant ID found, use a default or skip QR generation
+        if (merchantId) {
+          const qrResult = await qrReceiptService.generateReceiptQR(
+            result.transaction.id.toString(),
+            result.transaction.userId,
+            merchantId,
+            serviceType
+          );
+
+          if (qrResult.success) {
+            console.log(`QR receipt generated: ${qrResult.receiptNumber}`);
+            
+            // Send QR receipt in real-time notification
+            if (global.io) {
+              global.io.to(`user_${result.transaction.userId}`).emit('qr_receipt_generated', {
+                receiptId: qrResult.receipt.id,
+                receiptNumber: qrResult.receiptNumber,
+                qrCodeImage: qrResult.qrCodeImage,
+                transactionId: result.transaction.id,
+                timestamp: Date.now()
+              });
+            }
+          }
+        }
+      } catch (qrError) {
+        console.error('QR receipt generation failed:', qrError);
+        // Don't fail the payment verification if QR generation fails
+      }
     }
 
     // Send real-time notification
