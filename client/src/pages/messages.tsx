@@ -157,7 +157,6 @@ export default function Messages() {
   };
 
   const { socket, isConnected } = useWebSocket(true);
-  const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');

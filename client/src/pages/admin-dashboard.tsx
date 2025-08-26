@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAdmin } from '../lib/admin-auth';
 import { AdminLayout } from '../components/admin-layout';
 import { AdminDashboardMain } from '../components/admin-dashboard-main';
@@ -7,14 +7,14 @@ import { AdminKYCVerification } from './admin-kyc-verification';
 import { AdminTransactions } from './admin-transactions';
 import { AdminMonitoring } from './admin-monitoring';
 import { AdminFraud } from './admin-fraud';
-import { AdminSupport } from './admin-support';
-import { AdminEscrowManagement } from './admin-escrow-management';
+import AdminSupport from './admin-support';
+import AdminEscrowManagement from './admin-escrow-management';
 import { AdminModeration } from './admin-moderation';
 
 type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation';
 
 function AdminDashboard() {
-  const { user, isAuthenticated, isLoading } = useAdmin();
+  const { isAuthenticated, isLoading } = useAdmin();
   const [currentPage, setCurrentPage] = useState<AdminPageType>('dashboard');
 
   if (isLoading) {

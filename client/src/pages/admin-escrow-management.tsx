@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Clock, AlertTriangle, CheckCircle, DollarSign, Users, FileText, Eye, Shield } from 'lucide-react';
 import { Button } from '../components/ui/button';
@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from '../components/ui/use-toast';
+import { useToast } from '../hooks/use-toast';
 
 interface EscrowTransaction {
   id: number;

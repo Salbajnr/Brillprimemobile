@@ -2,13 +2,13 @@
 import { lazy } from 'react'
 
 // Lazy load heavy components
-export const LazyDashboard = lazy(() => import('../pages/dashboard'))
-export const LazyMerchantDashboard = lazy(() => import('../pages/merchant-dashboard'))
-export const LazyDriverDashboard = lazy(() => import('../pages/driver-dashboard'))
-export const LazyAdminDashboard = lazy(() => import('../pages/admin-dashboard'))
-export const LazyChat = lazy(() => import('../pages/chat'))
-export const LazyMap = lazy(() => import('../pages/map-home'))
-export const LazyAnalytics = lazy(() => import('../pages/merchant-analytics'))
+export const LazyDashboard = lazy(() => import('../pages/dashboard.tsx'))
+export const LazyMerchantDashboard = lazy(() => import('../pages/merchant-dashboard.tsx'))
+export const LazyDriverDashboard = lazy(() => import('../pages/driver-dashboard.tsx'))
+export const LazyAdminDashboard = lazy(() => import('../pages/admin-dashboard.tsx'))
+export const LazyChat = lazy(() => import('../pages/chat.tsx'))
+export const LazyMap = lazy(() => import('../pages/map-home.tsx'))
+export const LazyAnalytics = lazy(() => import('../pages/merchant-analytics.tsx'))
 
 // Preload critical components with intelligent prefetching
 export const preloadCriticalComponents = () => {
@@ -19,24 +19,24 @@ export const preloadCriticalComponents = () => {
     // Role-specific critical paths
     const roleComponentMap = {
       merchant: [
-        () => import('../pages/merchant-dashboard'),
-        () => import('../pages/order-management'),
-        () => import('../pages/merchant-analytics')
+        () => import('../pages/merchant-dashboard.tsx'),
+        () => import('../pages/order-management.tsx'),
+        () => import('../pages/merchant-analytics.tsx')
       ],
       driver: [
-        () => import('../pages/driver-dashboard'),
-        () => import('../pages/real-time-tracking'),
-        () => import('../pages/driver-withdrawal')
+        () => import('../pages/driver-dashboard.tsx'),
+        () => import('../pages/real-time-tracking.tsx'),
+        () => import('../pages/driver-withdrawal.tsx')
       ],
       admin: [
-        () => import('../pages/admin-dashboard'),
-        () => import('../pages/admin-user-management'),
-        () => import('../pages/admin-monitoring')
+        () => import('../pages/admin-dashboard.tsx'),
+        () => import('../pages/admin-user-management.tsx'),
+        () => import('../pages/admin-monitoring.tsx')
       ],
       consumer: [
-        () => import('../pages/dashboard'),
-        () => import('../pages/commodities'),
-        () => import('../pages/cart')
+        () => import('../pages/dashboard.tsx'),
+        () => import('../pages/commodities.tsx'),
+        () => import('../pages/cart.tsx')
       ]
     }
     
@@ -55,16 +55,16 @@ export const preloadCriticalComponents = () => {
     // Preload common components
     requestIdleCallback(() => {
       setTimeout(() => {
-        import('../pages/chat')
-        import('../pages/notifications')
-        import('../pages/profile')
+        import('../pages/chat.tsx')
+        import('../pages/notifications.tsx')
+        import('../pages/profile.tsx')
       }, 2000)
       
       // Preload based on user activity patterns
       setTimeout(() => {
         const lastVisited = JSON.parse(localStorage.getItem('lastVisitedPages') || '[]')
         lastVisited.slice(0, 3).forEach((page: string) => {
-          import(`../pages/${page}`)
+          import(`../pages/${page}.tsx`)
         })
       }, 3000)
     })
@@ -94,7 +94,7 @@ export const prefetchLikelyPages = (currentRoute: string) => {
   requestIdleCallback(() => {
     pagesToPrefetch.forEach((page, index) => {
       setTimeout(() => {
-        import(`../pages/${page}`).catch(() => {
+        import(`../pages/${page}.tsx`).catch(() => {
           // Silently fail for non-existent pages
         })
       }, index * 200)

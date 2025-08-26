@@ -197,7 +197,10 @@ export const authApi = {
 
   verifyOtp: (data: { phone: string; code: string }) =>
     apiRequest('/auth/verify-otp', {
-
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+}
 
 // Mobile-specific API methods
 export const mobileApi = {
