@@ -29,17 +29,21 @@ export default defineConfig({
     rollupOptions: {
       input: {
         main: './index.html',
-        admin: './public/admin.html'
+        admin: './admin.html'
       },
       output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['wouter'],
-          ui: ['lucide-react'],
-          admin: ['./src/admin.tsx']
+          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
         }
       }
-    }
+    },
+    target: 'esnext',
+    minify: false // Disable minification to see actual errors
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter'],
