@@ -1,356 +1,343 @@
-import type { Express } from "express";
-import { storage } from "../storage";
-import { requireAuth } from "../middleware/auth";
-import { requireAdmin } from "../middleware/adminAuth";
-import { z } from "zod";
-import { transactionService } from "../services/transaction";
 
-// Validation schemas
-const escrowFilterSchema = z.object({
-  status: z.enum(['all', 'active', 'disputed', 'pending', 'released']).optional(),
-  limit: z.number().min(1).max(100).default(20),
-  offset: z.number().min(0).default(0)
+import express from "express";
+import { db } from "../db";
+import { transactions, orders, users } from "../../shared/schema";
+import { eq, desc, and, or } from "drizzle-orm";
+import { authenticateUser, requireAuth } from "../middleware/auth";
+
+const router = express.Router();
+
+// Create escrow transaction
+router.post("/create", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    const { orderId, amount, description } = req.body;
+
+    if (!orderId || !amount) {
+      return res.status(400).json({
+        success: false,
+        error: 'Order ID and amount are required'
+      });
+    }
+
+    // Verify the order exists and user is authorized
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.id, orderId))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        error: 'Order not found'
+      });
+    }
+
+    if (order.customerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized to create escrow for this order'
+      });
+    }
+
+    // Check if escrow already exists for this order
+    const [existingEscrow] = await db
+      .select()
+      .from(transactions)
+      .where(and(
+        eq(transactions.orderId, orderId),
+        eq(transactions.type, 'PAYMENT'),
+        eq(transactions.paymentMethod, 'escrow')
+      ))
+      .limit(1);
+
+    if (existingEscrow) {
+      return res.status(400).json({
+        success: false,
+        error: 'Escrow already exists for this order'
+      });
+    }
+
+    const [escrowTransaction] = await db.insert(transactions).values({
+      userId,
+      orderId,
+      amount: amount.toString(),
+      currency: 'NGN',
+      type: 'PAYMENT',
+      status: 'PENDING',
+      paymentMethod: 'escrow',
+      paymentStatus: 'PENDING',
+      transactionRef: `ESC_${Date.now()}`,
+      description: description || `Escrow payment for order ${order.orderNumber}`,
+      initiatedAt: new Date(),
+      createdAt: new Date()
+    }).returning();
+
+    res.status(201).json({
+      success: true,
+      data: escrowTransaction
+    });
+  } catch (error) {
+    console.error('Escrow creation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create escrow' });
+  }
 });
 
-const resolveDisputeSchema = z.object({
-  escrowId: z.number(),
-  action: z.enum(['refund', 'release', 'partial']),
-  notes: z.string().min(10),
-  partialAmount: z.number().optional()
+// Release escrow funds (admin or system)
+router.post("/release/:transactionId", requireAuth, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+    const { recipientId, releaseAmount } = req.body;
+
+    // Verify admin or authorized user
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can release escrow funds'
+      });
+    }
+
+    const [escrowTransaction] = await db
+      .select()
+      .from(transactions)
+      .where(and(
+        eq(transactions.id, parseInt(transactionId)),
+        eq(transactions.paymentMethod, 'escrow'),
+        eq(transactions.paymentStatus, 'PENDING')
+      ))
+      .limit(1);
+
+    if (!escrowTransaction) {
+      return res.status(404).json({
+        success: false,
+        error: 'Escrow transaction not found or already processed'
+      });
+    }
+
+    const amountToRelease = releaseAmount || escrowTransaction.amount;
+
+    // Update escrow transaction to completed
+    await db
+      .update(transactions)
+      .set({
+        paymentStatus: 'COMPLETED',
+        status: 'COMPLETED',
+        completedAt: new Date()
+      })
+      .where(eq(transactions.id, parseInt(transactionId)));
+
+    // Create transfer transaction to recipient
+    const [transferTransaction] = await db.insert(transactions).values({
+      userId: recipientId,
+      orderId: escrowTransaction.orderId,
+      amount: amountToRelease,
+      currency: 'NGN',
+      type: 'TRANSFER_IN',
+      status: 'COMPLETED',
+      paymentMethod: 'escrow_release',
+      paymentStatus: 'COMPLETED',
+      transactionRef: `REL_${Date.now()}`,
+      description: `Escrow release from transaction ${escrowTransaction.transactionRef}`,
+      initiatedAt: new Date(),
+      completedAt: new Date(),
+      createdAt: new Date()
+    }).returning();
+
+    res.json({
+      success: true,
+      data: {
+        escrowTransaction: escrowTransaction,
+        transferTransaction: transferTransaction
+      }
+    });
+  } catch (error) {
+    console.error('Escrow release error:', error);
+    res.status(500).json({ success: false, error: 'Failed to release escrow' });
+  }
 });
 
-const releaseEscrowSchema = z.object({
-  escrowId: z.number(),
-  reason: z.string().optional()
+// Refund escrow (admin only)
+router.post("/refund/:transactionId", requireAuth, async (req, res) => {
+  try {
+    const { transactionId } = req.params;
+    const userRole = req.session?.user?.role;
+    const { refundReason } = req.body;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can refund escrow'
+      });
+    }
+
+    const [escrowTransaction] = await db
+      .select()
+      .from(transactions)
+      .where(and(
+        eq(transactions.id, parseInt(transactionId)),
+        eq(transactions.paymentMethod, 'escrow'),
+        eq(transactions.paymentStatus, 'PENDING')
+      ))
+      .limit(1);
+
+    if (!escrowTransaction) {
+      return res.status(404).json({
+        success: false,
+        error: 'Escrow transaction not found or already processed'
+      });
+    }
+
+    // Update escrow transaction to refunded
+    await db
+      .update(transactions)
+      .set({
+        paymentStatus: 'REFUNDED',
+        status: 'REFUNDED',
+        completedAt: new Date()
+      })
+      .where(eq(transactions.id, parseInt(transactionId)));
+
+    // Create refund transaction
+    const [refundTransaction] = await db.insert(transactions).values({
+      userId: escrowTransaction.userId,
+      orderId: escrowTransaction.orderId,
+      amount: escrowTransaction.amount,
+      currency: 'NGN',
+      type: 'REFUND',
+      status: 'COMPLETED',
+      paymentMethod: 'escrow_refund',
+      paymentStatus: 'COMPLETED',
+      transactionRef: `REF_${Date.now()}`,
+      description: `Escrow refund: ${refundReason || 'No reason provided'}`,
+      initiatedAt: new Date(),
+      completedAt: new Date(),
+      createdAt: new Date()
+    }).returning();
+
+    res.json({
+      success: true,
+      data: {
+        escrowTransaction: escrowTransaction,
+        refundTransaction: refundTransaction
+      }
+    });
+  } catch (error) {
+    console.error('Escrow refund error:', error);
+    res.status(500).json({ success: false, error: 'Failed to refund escrow' });
+  }
 });
 
-export function registerEscrowManagementRoutes(app: Express) {
-  // Get escrow transactions with filtering
-  app.get("/api/admin/escrow", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { status, limit, offset } = escrowFilterSchema.parse(req.query);
+// Get escrow transactions
+router.get("/transactions", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+    const { status, orderId } = req.query;
 
-      const escrowTransactions = await storage.getEscrowTransactions({
-        status,
-        limit,
-        offset
-      });
+    let whereConditions = [eq(transactions.paymentMethod, 'escrow')];
 
-      const totalCount = await storage.getEscrowTransactionsCount(status);
-      const escrowBalance = await storage.getTotalEscrowBalance();
-      const disputedCount = await storage.getDisputedEscrowCount();
+    // Non-admin users can only see their own escrow transactions
+    if (userRole !== 'ADMIN') {
+      whereConditions.push(eq(transactions.userId, userId));
+    }
 
-      res.json({
-        success: true,
-        data: {
-          transactions: escrowTransactions,
-          totalCount,
-          escrowBalance,
-          disputedCount,
-          pagination: {
-            limit,
-            offset,
-            hasMore: offset + limit < totalCount
-          }
-        }
-      });
+    if (status) {
+      whereConditions.push(eq(transactions.paymentStatus, status as string));
+    }
 
-    } catch (error: any) {
-      console.error("Get escrow transactions error:", error);
-      res.status(500).json({
+    if (orderId) {
+      whereConditions.push(eq(transactions.orderId, parseInt(orderId as string)));
+    }
+
+    const escrowTransactions = await db
+      .select({
+        id: transactions.id,
+        orderId: transactions.orderId,
+        amount: transactions.amount,
+        currency: transactions.currency,
+        status: transactions.status,
+        paymentStatus: transactions.paymentStatus,
+        transactionRef: transactions.transactionRef,
+        description: transactions.description,
+        initiatedAt: transactions.initiatedAt,
+        completedAt: transactions.completedAt,
+        userName: users.fullName,
+        userEmail: users.email
+      })
+      .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .where(and(...whereConditions))
+      .orderBy(desc(transactions.createdAt));
+
+    res.json({
+      success: true,
+      data: escrowTransactions
+    });
+  } catch (error) {
+    console.error('Escrow transactions fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch escrow transactions' });
+  }
+});
+
+// Get escrow transaction by ID
+router.get("/transactions/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+
+    let whereConditions = [
+      eq(transactions.id, parseInt(id)),
+      eq(transactions.paymentMethod, 'escrow')
+    ];
+
+    // Non-admin users can only see their own escrow transactions
+    if (userRole !== 'ADMIN') {
+      whereConditions.push(eq(transactions.userId, userId));
+    }
+
+    const [escrowTransaction] = await db
+      .select({
+        id: transactions.id,
+        orderId: transactions.orderId,
+        amount: transactions.amount,
+        currency: transactions.currency,
+        status: transactions.status,
+        paymentStatus: transactions.paymentStatus,
+        transactionRef: transactions.transactionRef,
+        description: transactions.description,
+        metadata: transactions.metadata,
+        initiatedAt: transactions.initiatedAt,
+        completedAt: transactions.completedAt,
+        createdAt: transactions.createdAt,
+        userName: users.fullName,
+        userEmail: users.email,
+        orderNumber: orders.orderNumber
+      })
+      .from(transactions)
+      .leftJoin(users, eq(transactions.userId, users.id))
+      .leftJoin(orders, eq(transactions.orderId, orders.id))
+      .where(and(...whereConditions))
+      .limit(1);
+
+    if (!escrowTransaction) {
+      return res.status(404).json({
         success: false,
-        message: error.message || "Failed to fetch escrow transactions"
+        error: 'Escrow transaction not found'
       });
     }
-  });
 
-  // Get escrow transaction details
-  app.get("/api/admin/escrow/:escrowId", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { escrowId } = req.params;
+    res.json({
+      success: true,
+      data: escrowTransaction
+    });
+  } catch (error) {
+    console.error('Escrow transaction fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch escrow transaction' });
+  }
+});
 
-      const escrowTransaction = await storage.getEscrowTransactionDetails(parseInt(escrowId));
-
-      if (!escrowTransaction) {
-        return res.status(404).json({
-          success: false,
-          message: "Escrow transaction not found"
-        });
-      }
-
-      // Get dispute timeline if disputed
-      let disputeTimeline = null;
-      if (escrowTransaction.status === 'DISPUTED') {
-        disputeTimeline = await storage.getDisputeTimeline(parseInt(escrowId));
-      }
-
-      res.json({
-        success: true,
-        data: {
-          ...escrowTransaction,
-          disputeTimeline
-        }
-      });
-
-    } catch (error: any) {
-      console.error("Get escrow details error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch escrow details"
-      });
-    }
-  });
-
-  // Resolve dispute
-  app.post("/api/admin/escrow/resolve-dispute", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { escrowId, action, notes, partialAmount } = resolveDisputeSchema.parse(req.body);
-      const adminId = req.session!.userId!;
-
-      const escrowTransaction = await storage.getEscrowTransactionDetails(escrowId);
-      if (!escrowTransaction) {
-        return res.status(404).json({
-          success: false,
-          message: "Escrow transaction not found"
-        });
-      }
-
-      if (escrowTransaction.status !== 'DISPUTED') {
-        return res.status(400).json({
-          success: false,
-          message: "Escrow transaction is not in disputed state"
-        });
-      }
-
-      let resolutionResult;
-
-      switch (action) {
-        case 'refund':
-          resolutionResult = await storage.processEscrowRefund(
-            escrowId,
-            parseFloat(escrowTransaction.totalAmount),
-            notes,
-            adminId
-          );
-          break;
-
-        case 'release':
-          resolutionResult = await storage.releaseEscrowToSeller(
-            escrowId,
-            notes,
-            adminId
-          );
-          break;
-
-        case 'partial':
-          if (!partialAmount) {
-            return res.status(400).json({
-              success: false,
-              message: "Partial amount is required for partial refund"
-            });
-          }
-          resolutionResult = await storage.processPartialEscrowRefund(
-            escrowId,
-            partialAmount,
-            notes,
-            adminId
-          );
-          break;
-      }
-
-      // Real-time notifications
-      if (global.io) {
-        const io = global.io;
-
-        // Notify buyer
-        io.to(`user_${escrowTransaction.buyerId}`).emit('escrow_dispute_resolved', {
-          escrowId,
-          action,
-          amount: action === 'partial' ? partialAmount : escrowTransaction.totalAmount,
-          notes,
-          timestamp: Date.now()
-        });
-
-        // Notify seller
-        io.to(`user_${escrowTransaction.sellerId}`).emit('escrow_dispute_resolved', {
-          escrowId,
-          action,
-          amount: action === 'release' ? escrowTransaction.sellerAmount : 
-                  action === 'partial' ? parseFloat(escrowTransaction.totalAmount) - partialAmount : 0,
-          notes,
-          timestamp: Date.now()
-        });
-
-        // Notify admin dashboard
-        io.to('admin_dashboard').emit('escrow_dispute_resolved', {
-          escrowId,
-          action,
-          resolvedBy: adminId,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Dispute resolved successfully",
-        data: resolutionResult
-      });
-
-    } catch (error: any) {
-      console.error("Resolve dispute error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to resolve dispute"
-      });
-    }
-  });
-
-  // Release escrow early
-  app.post("/api/admin/escrow/release", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { escrowId, reason } = releaseEscrowSchema.parse(req.body);
-      const adminId = req.session!.userId!;
-
-      const escrowTransaction = await storage.getEscrowTransactionDetails(escrowId);
-      if (!escrowTransaction) {
-        return res.status(404).json({
-          success: false,
-          message: "Escrow transaction not found"
-        });
-      }
-
-      if (!['HELD', 'ACTIVE'].includes(escrowTransaction.status)) {
-        return res.status(400).json({
-          success: false,
-          message: "Escrow cannot be released in current state"
-        });
-      }
-
-      const releaseResult = await storage.releaseEscrowToSeller(
-        escrowId,
-        reason || 'Admin early release',
-        adminId
-      );
-
-      // Real-time notifications
-      if (global.io) {
-        const io = global.io;
-
-        // Notify seller
-        io.to(`user_${escrowTransaction.sellerId}`).emit('escrow_released', {
-          escrowId,
-          amount: escrowTransaction.sellerAmount,
-          reason: reason || 'Admin early release',
-          timestamp: Date.now()
-        });
-
-        // Notify buyer
-        io.to(`user_${escrowTransaction.buyerId}`).emit('escrow_released', {
-          escrowId,
-          orderId: escrowTransaction.orderId,
-          timestamp: Date.now()
-        });
-
-        // Update admin dashboard
-        io.to('admin_dashboard').emit('escrow_status_update', {
-          escrowId,
-          status: 'RELEASED_TO_SELLER',
-          releasedBy: adminId,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Escrow released successfully",
-        data: releaseResult
-      });
-
-    } catch (error: any) {
-      console.error("Release escrow error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to release escrow"
-      });
-    }
-  });
-
-  // Get escrow analytics
-  app.get("/api/admin/escrow/analytics", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const analytics = await storage.getEscrowAnalytics();
-
-      res.json({
-        success: true,
-        data: analytics
-      });
-
-    } catch (error: any) {
-      console.error("Get escrow analytics error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch escrow analytics"
-      });
-    }
-  });
-
-  // Get dispute evidence
-  app.get("/api/admin/escrow/:escrowId/evidence", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { escrowId } = req.params;
-
-      const evidence = await storage.getDisputeEvidence(parseInt(escrowId));
-
-      res.json({
-        success: true,
-        data: evidence
-      });
-
-    } catch (error: any) {
-      console.error("Get dispute evidence error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to fetch dispute evidence"
-      });
-    }
-  });
-
-  // Escalate dispute
-  app.post("/api/admin/escrow/:escrowId/escalate", requireAuth, requireAdmin, async (req, res) => {
-    try {
-      const { escrowId } = req.params;
-      const { priority, notes } = req.body;
-      const adminId = req.session!.userId!;
-
-      const escalationResult = await storage.escalateDispute(
-        parseInt(escrowId),
-        priority,
-        notes,
-        adminId
-      );
-
-      // Real-time notification
-      if (global.io) {
-        global.io.to('admin_dashboard').emit('dispute_escalated', {
-          escrowId: parseInt(escrowId),
-          priority,
-          escalatedBy: adminId,
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({
-        success: true,
-        message: "Dispute escalated successfully",
-        data: escalationResult
-      });
-
-    } catch (error: any) {
-      console.error("Escalate dispute error:", error);
-      res.status(500).json({
-        success: false,
-        message: error.message || "Failed to escalate dispute"
-      });
-    }
-  });
-}
+export default router;

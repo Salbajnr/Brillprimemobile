@@ -1,216 +1,312 @@
-import { Request, Response, Router } from "express";
+
+import express from "express";
+import { db } from "../db";
+import { identityVerifications, verificationDocuments, users } from "../../shared/schema";
+import { eq, desc, and } from "drizzle-orm";
+import { authenticateUser, requireAuth } from "../middleware/auth";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { storage } from "../storage.js";
-import { validateSchema, validateFileUpload, sanitizeInput } from '../middleware/validation.js';
-import { z } from 'zod';
 
-const router = Router();
+const router = express.Router();
 
 // Configure multer for file uploads
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (req, file, cb) => {
-      const uploadDir = path.join(process.cwd(), 'uploads');
-      if (!fs.existsSync(uploadDir)) {
-        fs.mkdirSync(uploadDir, { recursive: true });
-      }
-      cb(null, uploadDir);
-    },
-    filename: (req, file, cb) => {
-      const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${path.extname(file.originalname)}`;
-      cb(null, uniqueName);
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/verification';
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
     }
-  }),
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
   limits: {
-    fileSize: 5 * 1024 * 1024, // 5MB limit
+    fileSize: 5 * 1024 * 1024 // 5MB limit
   },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = /jpeg|jpg|png/;
+    const allowedTypes = /jpeg|jpg|png|pdf/;
     const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
     const mimetype = allowedTypes.test(file.mimetype);
 
     if (mimetype && extname) {
       return cb(null, true);
     } else {
-      cb(new Error('Only JPEG, JPG and PNG files are allowed'));
+      cb(new Error('Only images (JPEG, JPG, PNG) and PDF files are allowed'));
     }
   }
 });
 
-const verificationDataSchema = z.object({
-  licenseNumber: z.string().min(3).max(50).optional(),
-  licenseExpiry: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
-  vehicleType: z.enum(['MOTORCYCLE', 'CAR', 'VAN', 'TRUCK']).optional(),
-  vehiclePlate: z.string().min(3).max(20).optional(),
-  vehicleModel: z.string().min(1).max(50).optional(),
-  vehicleYear: z.coerce.number().min(1900).max(new Date().getFullYear() + 1).optional(),
-  phoneVerification: z.boolean().optional()
-});
+// Get user's verification status
+router.get("/status", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session?.userId;
 
-const submitVerificationSchema = z.object({
-  userId: z.coerce.number().positive(),
-  role: z.enum(['CONSUMER', 'MERCHANT', 'DRIVER']),
-  verificationData: z.string().transform((data, ctx) => {
-    try {
-      const parsed = JSON.parse(data);
-      return verificationDataSchema.parse(parsed);
-    } catch (error) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: 'Invalid verification data format'
-      });
-      return z.NEVER;
-    }
-  })
-});
+    const [verification] = await db
+      .select()
+      .from(identityVerifications)
+      .where(eq(identityVerifications.userId, userId))
+      .orderBy(desc(identityVerifications.submittedAt))
+      .limit(1);
 
-const verifyOTPSchema = z.object({
-  userId: z.coerce.number().positive(),
-  otpCode: z.string().regex(/^\d{6}$/, 'OTP must be exactly 6 digits')
+    const documents = await db
+      .select()
+      .from(verificationDocuments)
+      .where(eq(verificationDocuments.userId, userId))
+      .orderBy(desc(verificationDocuments.uploadedAt));
+
+    res.json({
+      success: true,
+      data: {
+        verification: verification || null,
+        documents: documents || []
+      }
+    });
+  } catch (error) {
+    console.error('Verification status error:', error);
+    res.status(500).json({ success: false, error: 'Failed to get verification status' });
+  }
 });
 
 // Submit identity verification
-router.post('/identity-verification',
-  sanitizeInput(),
-  upload.fields([
-    { name: 'faceImage', maxCount: 1 },
-    { name: 'licenseImage', maxCount: 1 }
-  ]),
-  validateFileUpload({
-    maxSize: 5 * 1024 * 1024,
-    allowedTypes: ['image/jpeg', 'image/jpg', 'image/png'],
-    maxFiles: 2
-  }),
-  validateSchema(submitVerificationSchema),
-  async (req: Request, res: Response) => {
-    try {
-      const { userId, role, verificationData } = req.body;
-      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+router.post("/identity", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    const { documentType, documentNumber } = req.body;
 
-      const parsedData = verificationData;
-
-      // Handle face image upload
-      let faceImageUrl = null;
-      if (files.faceImage && files.faceImage[0]) {
-        faceImageUrl = `/uploads/${files.faceImage[0].filename}`;
-      }
-
-      // Create identity verification record
-      const identityVerification = await storage.createIdentityVerification({
-        userId: parseInt(userId),
-        faceImageUrl,
-        verificationStatus: 'PENDING'
-      });
-
-      // Handle driver-specific verification
-      if (role === 'DRIVER') {
-        let licenseImageUrl = null;
-        if (files.licenseImage && files.licenseImage[0]) {
-          licenseImageUrl = `/uploads/${files.licenseImage[0].filename}`;
-        }
-
-        await storage.createDriverVerification({
-          userId: parseInt(userId),
-          licenseNumber: parsedData.licenseNumber,
-          licenseExpiryDate: parsedData.licenseExpiry,
-          licenseImageUrl,
-          vehicleType: parsedData.vehicleType,
-          vehiclePlate: parsedData.vehiclePlate,
-          vehicleModel: parsedData.vehicleModel,
-          vehicleYear: parsedData.vehicleYear,
-          verificationStatus: 'PENDING'
-        });
-      }
-
-      // Handle phone verification for consumers
-      if (role === 'CONSUMER' && parsedData.phoneVerification) {
-        const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        await storage.createPhoneVerification({
-          userId: parseInt(userId),
-          phoneNumber: req.user?.phone || '',
-          otpCode,
-          expiresAt: new Date(Date.now() + 10 * 60 * 1000),
-          isVerified: false
-        });
-
-        console.log(`Phone verification OTP for ${req.user?.phone}: ${otpCode}`);
-      }
-
-      res.json({
-        status: 'Success',
-        message: 'Identity verification submitted successfully',
-        data: { verificationId: identityVerification.id }
-      });
-
-    } catch (error) {
-      console.error('Identity verification error:', error);
-      res.status(500).json({
-        status: 'Error',
-        message: 'Failed to submit identity verification'
+    if (!documentType || !documentNumber) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document type and number are required'
       });
     }
-  }
-);
 
-// Get verification status
-router.get('/status/:userId', async (req: Request, res: Response) => {
-  try {
-    const { userId } = req.params;
+    // Check if user already has a pending or approved verification
+    const [existingVerification] = await db
+      .select()
+      .from(identityVerifications)
+      .where(and(
+        eq(identityVerifications.userId, userId),
+        eq(identityVerifications.verificationStatus, 'PENDING')
+      ))
+      .limit(1);
 
-    const identityVerification = await storage.getIdentityVerificationByUserId(parseInt(userId));
-    const driverVerification = await storage.getDriverVerificationByUserId(parseInt(userId));
+    if (existingVerification) {
+      return res.status(400).json({
+        success: false,
+        error: 'You already have a pending verification request'
+      });
+    }
 
-    res.json({
-      status: 'Success',
-      data: {
-        identity: identityVerification,
-        driver: driverVerification
-      }
+    const [newVerification] = await db.insert(identityVerifications).values({
+      userId,
+      documentType,
+      documentNumber,
+      verificationStatus: 'PENDING',
+      submittedAt: new Date()
+    }).returning();
+
+    res.status(201).json({
+      success: true,
+      data: newVerification
     });
-
   } catch (error) {
-    console.error('Get verification status error:', error);
-    res.status(500).json({
-      status: 'Error',
-      message: 'Failed to get verification status'
-    });
+    console.error('Identity verification error:', error);
+    res.status(500).json({ success: false, error: 'Failed to submit verification' });
   }
 });
 
-// Verify phone OTP
-router.post('/verify-phone-otp',
-  sanitizeInput(),
-  validateSchema(verifyOTPSchema),
-  async (req: Request, res: Response) => {
-    try {
-      const { userId, otpCode } = req.body;
+// Upload verification document
+router.post("/documents", requireAuth, upload.single('document'), async (req, res) => {
+  try {
+    const userId = req.session?.userId;
+    const { documentType } = req.body;
 
-      const phoneVerification = await storage.verifyPhoneOTP(parseInt(userId), otpCode);
-
-      if (phoneVerification) {
-        await storage.updateUser(parseInt(userId), { isPhoneVerified: true });
-
-        res.json({
-          status: 'Success',
-          message: 'Phone number verified successfully'
-        });
-      } else {
-        res.status(400).json({
-          status: 'Error',
-          message: 'Invalid or expired OTP code'
-        });
-      }
-
-    } catch (error) {
-      console.error('Phone OTP verification error:', error);
-      res.status(500).json({
-        status: 'Error',
-        message: 'Failed to verify phone number'
+    if (!req.file) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document file is required'
       });
     }
+
+    if (!documentType) {
+      return res.status(400).json({
+        success: false,
+        error: 'Document type is required'
+      });
+    }
+
+    const [newDocument] = await db.insert(verificationDocuments).values({
+      userId,
+      documentType,
+      fileName: req.file.filename,
+      fileSize: req.file.size,
+      mimeType: req.file.mimetype,
+      status: 'PENDING',
+      uploadedAt: new Date()
+    }).returning();
+
+    res.status(201).json({
+      success: true,
+      data: newDocument
+    });
+  } catch (error) {
+    console.error('Document upload error:', error);
+    res.status(500).json({ success: false, error: 'Failed to upload document' });
   }
-);
+});
+
+// Get verification document (for admins)
+router.get("/documents/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.session?.user?.role;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Access denied'
+      });
+    }
+
+    const [document] = await db
+      .select()
+      .from(verificationDocuments)
+      .where(eq(verificationDocuments.id, parseInt(id)))
+      .limit(1);
+
+    if (!document) {
+      return res.status(404).json({
+        success: false,
+        error: 'Document not found'
+      });
+    }
+
+    const filePath = path.join('uploads/verification', document.fileName);
+    
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({
+        success: false,
+        error: 'File not found'
+      });
+    }
+
+    res.sendFile(path.resolve(filePath));
+  } catch (error) {
+    console.error('Document fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch document' });
+  }
+});
+
+// Review verification (admin only)
+router.put("/review/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+    const { status, rejectionReason } = req.body;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can review verifications'
+      });
+    }
+
+    if (!['APPROVED', 'REJECTED'].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Status must be APPROVED or REJECTED'
+      });
+    }
+
+    if (status === 'REJECTED' && !rejectionReason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Rejection reason is required when rejecting'
+      });
+    }
+
+    const [updatedVerification] = await db
+      .update(identityVerifications)
+      .set({
+        verificationStatus: status as any,
+        reviewedAt: new Date(),
+        reviewedBy: userId,
+        rejectionReason: status === 'REJECTED' ? rejectionReason : null
+      })
+      .where(eq(identityVerifications.id, parseInt(id)))
+      .returning();
+
+    if (!updatedVerification) {
+      return res.status(404).json({
+        success: false,
+        error: 'Verification not found'
+      });
+    }
+
+    // Update user verification status
+    if (status === 'APPROVED') {
+      await db
+        .update(users)
+        .set({
+          isVerified: true,
+          updatedAt: new Date()
+        })
+        .where(eq(users.id, updatedVerification.userId));
+    }
+
+    res.json({
+      success: true,
+      data: updatedVerification
+    });
+  } catch (error) {
+    console.error('Verification review error:', error);
+    res.status(500).json({ success: false, error: 'Failed to review verification' });
+  }
+});
+
+// Get all pending verifications (admin only)
+router.get("/pending", requireAuth, async (req, res) => {
+  try {
+    const userRole = req.session?.user?.role;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can view pending verifications'
+      });
+    }
+
+    const pendingVerifications = await db
+      .select({
+        id: identityVerifications.id,
+        documentType: identityVerifications.documentType,
+        documentNumber: identityVerifications.documentNumber,
+        submittedAt: identityVerifications.submittedAt,
+        userName: users.fullName,
+        userEmail: users.email,
+        userRole: users.role
+      })
+      .from(identityVerifications)
+      .leftJoin(users, eq(identityVerifications.userId, users.id))
+      .where(eq(identityVerifications.verificationStatus, 'PENDING'))
+      .orderBy(desc(identityVerifications.submittedAt));
+
+    res.json({
+      success: true,
+      data: pendingVerifications
+    });
+  } catch (error) {
+    console.error('Pending verifications error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch pending verifications' });
+  }
+});
 
 export default router;

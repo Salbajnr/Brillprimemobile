@@ -1,270 +1,367 @@
 
-import express from 'express';
-import { db } from '../db';
-import { supportTickets, users } from '../../shared/schema';
-// Note: supportResponses, adminUsers are not yet implemented in schema
-import { eq, desc, and, count, isNull } from 'drizzle-orm';
-import { storage } from '../storage';
+import express from "express";
+import { db } from "../db";
+import { supportTickets, chatMessages, users } from "../../shared/schema";
+import { eq, desc, and, or } from "drizzle-orm";
+import { authenticateUser, requireAuth } from "../middleware/auth";
 
 const router = express.Router();
 
-// Get all support tickets for a user
-router.get('/tickets', async (req, res) => {
+// Get user's support tickets
+router.get("/tickets", requireAuth, async (req, res) => {
   try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+
+    let whereCondition;
+    if (userRole === 'ADMIN') {
+      // Admins can see all tickets
+      whereCondition = undefined;
+    } else {
+      // Users can only see their own tickets
+      whereCondition = eq(supportTickets.userId, userId);
     }
 
-    const tickets = await db.select({
-      id: supportTickets.id,
-      ticketNumber: supportTickets.ticketNumber,
-      subject: supportTickets.subject,
-      status: supportTickets.status,
-      priority: supportTickets.priority,
-      createdAt: supportTickets.createdAt,
-      updatedAt: supportTickets.updatedAt,
-      resolvedAt: supportTickets.resolvedAt
-    }).from(supportTickets)
-      .where(eq(supportTickets.userId, req.session.userId))
+    const tickets = await db
+      .select({
+        id: supportTickets.id,
+        title: supportTickets.title,
+        description: supportTickets.description,
+        category: supportTickets.category,
+        priority: supportTickets.priority,
+        status: supportTickets.status,
+        createdAt: supportTickets.createdAt,
+        updatedAt: supportTickets.updatedAt,
+        userName: users.fullName,
+        userEmail: users.email
+      })
+      .from(supportTickets)
+      .leftJoin(users, eq(supportTickets.userId, users.id))
+      .where(whereCondition)
       .orderBy(desc(supportTickets.createdAt));
 
     res.json({
       success: true,
-      tickets: tickets.map(ticket => ({
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        status: ticket.status,
-        priority: ticket.priority,
-        createdAt: ticket.createdAt,
-        updatedAt: ticket.updatedAt,
-        resolvedAt: ticket.resolvedAt
-      }))
+      data: tickets
     });
   } catch (error) {
-    console.error('Error fetching tickets:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch tickets' });
+    console.error('Support tickets fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch support tickets' });
   }
 });
 
-// Create a new support ticket
-router.post('/tickets', async (req, res) => {
+// Get specific support ticket
+router.get("/tickets/:id", requireAuth, async (req, res) => {
   try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    const { id } = req.params;
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+
+    let whereConditions = [eq(supportTickets.id, parseInt(id))];
+    
+    // Non-admin users can only view their own tickets
+    if (userRole !== 'ADMIN') {
+      whereConditions.push(eq(supportTickets.userId, userId));
     }
 
-    const { subject, message, priority = 'NORMAL' } = req.body;
+    const [ticket] = await db
+      .select({
+        id: supportTickets.id,
+        title: supportTickets.title,
+        description: supportTickets.description,
+        category: supportTickets.category,
+        priority: supportTickets.priority,
+        status: supportTickets.status,
+        attachments: supportTickets.attachments,
+        metadata: supportTickets.metadata,
+        createdAt: supportTickets.createdAt,
+        updatedAt: supportTickets.updatedAt,
+        userName: users.fullName,
+        userEmail: users.email,
+        assignedTo: supportTickets.assignedTo
+      })
+      .from(supportTickets)
+      .leftJoin(users, eq(supportTickets.userId, users.id))
+      .where(and(...whereConditions))
+      .limit(1);
 
-    if (!subject || !message) {
-      return res.status(400).json({ success: false, message: 'Subject and message are required' });
-    }
-
-    // Get user details
-    const user = await storage.getUser(req.session.userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    // Generate ticket number
-    const ticketCount = await db.select({ count: count() }).from(supportTickets);
-    const ticketNumber = `BP-${Date.now()}-${(ticketCount[0]?.count || 0) + 1}`;
-
-    // Create ticket
-    const [ticket] = await db.insert(supportTickets).values({
-      ticketNumber,
-      userId: req.session.userId,
-      userRole: req.session.userRole || 'CONSUMER',
-      name: user.fullName,
-      email: user.email,
-      subject,
-      message,
-      priority,
-      status: 'OPEN'
-    }).returning();
-
-    // Broadcast to admin dashboard if WebSocket is available
-    if (global.io) {
-      global.io.to('admin_dashboard').emit('new_support_ticket', {
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        priority: ticket.priority,
-        userRole: ticket.userRole,
-        createdAt: ticket.createdAt
+    if (!ticket) {
+      return res.status(404).json({
+        success: false,
+        error: 'Support ticket not found'
       });
     }
 
-    res.status(201).json({
-      success: true,
-      ticket: {
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        status: ticket.status,
-        priority: ticket.priority,
-        createdAt: ticket.createdAt
-      }
-    });
-  } catch (error) {
-    console.error('Error creating ticket:', error);
-    res.status(500).json({ success: false, message: 'Failed to create ticket' });
-  }
-});
-
-// Get ticket details with responses
-router.get('/tickets/:id', async (req, res) => {
-  try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Not authenticated' });
-    }
-
-    const ticketId = parseInt(req.params.id);
-
-    // Get ticket details
-    const [ticket] = await db.select()
-      .from(supportTickets)
-      .where(and(
-        eq(supportTickets.id, ticketId),
-        eq(supportTickets.userId, req.session.userId)
-      ));
-
-    if (!ticket) {
-      return res.status(404).json({ success: false, message: 'Ticket not found' });
-    }
-
-    // Get responses
-    const responses = await db.select({
-      id: supportResponses.id,
-      message: supportResponses.message,
-      responderType: supportResponses.responderType,
-      createdAt: supportResponses.createdAt,
-      attachments: supportResponses.attachments
-    }).from(supportResponses)
-      .where(eq(supportResponses.ticketId, ticketId))
-      .orderBy(supportResponses.createdAt);
+    // Get chat messages for this ticket
+    const messages = await db
+      .select({
+        id: chatMessages.id,
+        message: chatMessages.message,
+        messageType: chatMessages.messageType,
+        attachments: chatMessages.attachments,
+        createdAt: chatMessages.createdAt,
+        senderName: users.fullName,
+        senderId: chatMessages.senderId
+      })
+      .from(chatMessages)
+      .leftJoin(users, eq(chatMessages.senderId, users.id))
+      .where(eq(chatMessages.supportTicketId, parseInt(id)))
+      .orderBy(chatMessages.createdAt);
 
     res.json({
       success: true,
-      ticket: {
-        id: ticket.id,
-        ticketNumber: ticket.ticketNumber,
-        subject: ticket.subject,
-        message: ticket.message,
-        status: ticket.status,
-        priority: ticket.priority,
-        adminNotes: ticket.adminNotes,
-        resolution: ticket.resolution,
-        createdAt: ticket.createdAt,
-        updatedAt: ticket.updatedAt,
-        resolvedAt: ticket.resolvedAt
-      },
-      responses: responses.map(response => ({
-        id: response.id,
-        message: response.message,
-        responderType: response.responderType,
-        createdAt: response.createdAt,
-        attachments: response.attachments ? JSON.parse(response.attachments) : []
-      }))
+      data: {
+        ticket,
+        messages
+      }
     });
   } catch (error) {
-    console.error('Error fetching ticket details:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch ticket details' });
+    console.error('Support ticket fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch support ticket' });
   }
 });
 
-// Add response to ticket
-router.post('/tickets/:id/responses', async (req, res) => {
+// Create new support ticket
+router.post("/tickets", requireAuth, async (req, res) => {
   try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    const userId = req.session?.userId;
+    const {
+      title,
+      description,
+      category,
+      priority = 'MEDIUM',
+      attachments = []
+    } = req.body;
+
+    if (!title || !description || !category) {
+      return res.status(400).json({
+        success: false,
+        error: 'Title, description, and category are required'
+      });
     }
 
-    const ticketId = parseInt(req.params.id);
-    const { message } = req.body;
+    const validCategories = ['TECHNICAL', 'BILLING', 'GENERAL', 'COMPLAINT', 'FEATURE_REQUEST'];
+    const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+
+    if (!validCategories.includes(category)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid category'
+      });
+    }
+
+    if (!validPriorities.includes(priority)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid priority'
+      });
+    }
+
+    const [newTicket] = await db.insert(supportTickets).values({
+      userId,
+      title,
+      description,
+      category,
+      priority,
+      status: 'OPEN',
+      attachments: JSON.stringify(attachments),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }).returning();
+
+    res.status(201).json({
+      success: true,
+      data: newTicket
+    });
+  } catch (error) {
+    console.error('Support ticket creation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to create support ticket' });
+  }
+});
+
+// Update support ticket (admin only)
+router.put("/tickets/:id", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userRole = req.session?.user?.role;
+    const {
+      status,
+      priority,
+      assignedTo
+    } = req.body;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can update support tickets'
+      });
+    }
+
+    const updateData: any = {
+      updatedAt: new Date()
+    };
+
+    if (status) {
+      const validStatuses = ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED'];
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid status'
+        });
+      }
+      updateData.status = status;
+    }
+
+    if (priority) {
+      const validPriorities = ['LOW', 'MEDIUM', 'HIGH', 'URGENT'];
+      if (!validPriorities.includes(priority)) {
+        return res.status(400).json({
+          success: false,
+          error: 'Invalid priority'
+        });
+      }
+      updateData.priority = priority;
+    }
+
+    if (assignedTo !== undefined) {
+      updateData.assignedTo = assignedTo;
+    }
+
+    const [updatedTicket] = await db
+      .update(supportTickets)
+      .set(updateData)
+      .where(eq(supportTickets.id, parseInt(id)))
+      .returning();
+
+    if (!updatedTicket) {
+      return res.status(404).json({
+        success: false,
+        error: 'Support ticket not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: updatedTicket
+    });
+  } catch (error) {
+    console.error('Support ticket update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update support ticket' });
+  }
+});
+
+// Add message to support ticket
+router.post("/tickets/:id/messages", requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.session?.userId;
+    const userRole = req.session?.user?.role;
+    const {
+      message,
+      messageType = 'TEXT',
+      attachments = []
+    } = req.body;
 
     if (!message) {
-      return res.status(400).json({ success: false, message: 'Message is required' });
+      return res.status(400).json({
+        success: false,
+        error: 'Message is required'
+      });
     }
 
-    // Verify ticket ownership
-    const [ticket] = await db.select()
+    // Verify user can access this ticket
+    let whereConditions = [eq(supportTickets.id, parseInt(id))];
+    if (userRole !== 'ADMIN') {
+      whereConditions.push(eq(supportTickets.userId, userId));
+    }
+
+    const [ticket] = await db
+      .select()
       .from(supportTickets)
-      .where(and(
-        eq(supportTickets.id, ticketId),
-        eq(supportTickets.userId, req.session.userId)
-      ));
+      .where(and(...whereConditions))
+      .limit(1);
 
     if (!ticket) {
-      return res.status(404).json({ success: false, message: 'Ticket not found' });
+      return res.status(404).json({
+        success: false,
+        error: 'Support ticket not found or access denied'
+      });
     }
 
-    // Create response
-    const [response] = await db.insert(supportResponses).values({
-      ticketId,
-      responderId: req.session.userId,
-      responderType: 'USER',
-      message
+    const [newMessage] = await db.insert(chatMessages).values({
+      senderId: userId,
+      recipientId: ticket.userId, // Will be null for customer messages
+      supportTicketId: parseInt(id),
+      message,
+      messageType,
+      attachments: JSON.stringify(attachments),
+      createdAt: new Date()
     }).returning();
 
-    // Update ticket status if it was resolved
-    if (ticket.status === 'RESOLVED') {
-      await db.update(supportTickets)
-        .set({ status: 'OPEN', updatedAt: new Date() })
-        .where(eq(supportTickets.id, ticketId));
-    }
-
-    // Broadcast to admin dashboard
-    if (global.io) {
-      global.io.to('admin_dashboard').emit('ticket_response', {
-        ticketId,
-        ticketNumber: ticket.ticketNumber,
-        responseType: 'USER',
-        message,
-        createdAt: response.createdAt
-      });
+    // Update ticket status if it was resolved/closed and customer is responding
+    if (userRole !== 'ADMIN' && ['RESOLVED', 'CLOSED'].includes(ticket.status)) {
+      await db
+        .update(supportTickets)
+        .set({
+          status: 'OPEN',
+          updatedAt: new Date()
+        })
+        .where(eq(supportTickets.id, parseInt(id)));
     }
 
     res.status(201).json({
       success: true,
-      response: {
-        id: response.id,
-        message: response.message,
-        responderType: response.responderType,
-        createdAt: response.createdAt
-      }
+      data: newMessage
     });
   } catch (error) {
-    console.error('Error adding response:', error);
-    res.status(500).json({ success: false, message: 'Failed to add response' });
+    console.error('Support message creation error:', error);
+    res.status(500).json({ success: false, error: 'Failed to add message' });
   }
 });
 
-// Get support statistics for user dashboard
-router.get('/stats', async (req, res) => {
+// Get support statistics (admin only)
+router.get("/statistics", requireAuth, async (req, res) => {
   try {
-    if (!req.session?.userId) {
-      return res.status(401).json({ success: false, message: 'Not authenticated' });
+    const userRole = req.session?.user?.role;
+
+    if (userRole !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        error: 'Only admins can view support statistics'
+      });
     }
 
-    const [stats] = await db.select({
-      totalTickets: count(),
-      openTickets: count(supportTickets.id).filter(eq(supportTickets.status, 'OPEN')),
-      resolvedTickets: count(supportTickets.id).filter(eq(supportTickets.status, 'RESOLVED'))
-    }).from(supportTickets)
-      .where(eq(supportTickets.userId, req.session.userId));
+    const [totalTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets);
+
+    const [openTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(eq(supportTickets.status, 'OPEN'));
+
+    const [inProgressTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(eq(supportTickets.status, 'IN_PROGRESS'));
+
+    const [resolvedTickets] = await db
+      .select({ count: count() })
+      .from(supportTickets)
+      .where(eq(supportTickets.status, 'RESOLVED'));
 
     res.json({
       success: true,
-      stats: {
-        totalTickets: stats.totalTickets || 0,
-        openTickets: stats.openTickets || 0,
-        resolvedTickets: stats.resolvedTickets || 0
+      data: {
+        totalTickets: totalTickets.count,
+        openTickets: openTickets.count,
+        inProgressTickets: inProgressTickets.count,
+        resolvedTickets: resolvedTickets.count
       }
     });
   } catch (error) {
-    console.error('Error fetching stats:', error);
-    res.status(500).json({ success: false, message: 'Failed to fetch stats' });
+    console.error('Support statistics error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch support statistics' });
   }
 });
 

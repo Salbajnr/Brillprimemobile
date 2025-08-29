@@ -35,8 +35,8 @@ import driverEarningsRoutes from './routes/driver-earnings';
 import merchantInventoryRoutes from './routes/merchant-inventory';
 import adminSystemMetricsRoutes from './routes/admin-system-metrics';
 import driverPerformanceRoutes from './routes/driver-performance';
-// import { registerProductRoutes } from './routes/products'; // Temporarily disabled
-// import { registerRatingsReviewsRoutes } from './routes/ratings-reviews'; // Temporarily disabled
+import { registerProductRoutes } from './routes/products';
+import { registerRatingsReviewsRoutes } from './routes/ratings-reviews';
 import verificationRoutes from './routes/verification';
 import supportRoutes from './routes/support';
 // Live chat routes to be imported if available
@@ -49,7 +49,7 @@ import enhancedVerificationRoutes from './routes/enhanced-verification';
 import socialAuthRoutes from './routes/social-auth';
 import legalComplianceRoutes from './routes/legal-compliance';
 import nigerianComplianceRoutes from './routes/nigerian-compliance';
-// Escrow management routes to be imported if available
+import escrowManagementRoutes from './routes/escrow-management';
 import realTimeTrackingRoutes from './routes/real-time-tracking';
 import driverLocationRoutes from './routes/driver-location';
 // Location recommendations routes to be imported if available
@@ -202,33 +202,31 @@ app.use('/api/categories', categoriesRoutes);
 
 // Additional API routes
 app.use('/api/missing', missingApisRoutes);
-// registerProductRoutes(app); // Temporarily disabled due to schema issues
-// registerRatingsReviewsRoutes(app); // Temporarily disabled due to missing reviews table
-// Temporarily disable routes with schema issues to get basic server running
-// app.use('/api/verification', verificationRoutes);
-// app.use('/api/support', supportRoutes);
+registerProductRoutes(app);
+registerRatingsReviewsRoutes(app);
+app.use('/api/verification', verificationRoutes);
+app.use('/api/support', supportRoutes);
 // app.use('/api/chat', liveChatRoutes); // To be implemented
-// app.use('/api/qr-receipts', qrReceiptsRoutes);
-// app.use('/api/qr-processing', qrProcessingRoutes);
-// app.use('/api/toll-payments', tollPaymentsRoutes);
-// app.use('/api/system-health', systemHealthRoutes);
-// app.use('/api/mfa', mfaAuthenticationRoutes);
-// app.use('/api/enhanced-verification', enhancedVerificationRoutes);
-// app.use('/api/social-auth', socialAuthRoutes);
-// app.use('/api/legal-compliance', legalComplianceRoutes);
-// app.use('/api/nigerian-compliance', nigerianComplianceRoutes);
-// app.use('/api/escrow', escrowManagementRoutes); // To be implemented
-// Temporarily disable more routes with schema issues
-// app.use('/api/real-time-tracking', realTimeTrackingRoutes);
-// app.use('/api/driver-location', driverLocationRoutes);
+app.use('/api/qr-receipts', qrReceiptsRoutes);
+app.use('/api/qr-processing', qrProcessingRoutes);
+app.use('/api/toll-payments', tollPaymentsRoutes);
+app.use('/api/system-health', systemHealthRoutes);
+app.use('/api/mfa', mfaAuthenticationRoutes);
+app.use('/api/enhanced-verification', enhancedVerificationRoutes);
+app.use('/api/social-auth', socialAuthRoutes);
+app.use('/api/legal-compliance', legalComplianceRoutes);
+app.use('/api/nigerian-compliance', nigerianComplianceRoutes);
+app.use('/api/escrow', escrowManagementRoutes);
+app.use('/api/real-time-tracking', realTimeTrackingRoutes);
+app.use('/api/driver-location', driverLocationRoutes);
 // app.use('/api/location-recommendations', locationRecommendationsRoutes); // To be implemented
-// app.use('/api/withdrawal', withdrawalSystemRoutes);
-// app.use('/api/order-status', orderStatusRoutes);
-// app.use('/api/active-orders', activeOrdersRoutes);
+app.use('/api/withdrawal', withdrawalSystemRoutes);
+app.use('/api/order-status', orderStatusRoutes);
+app.use('/api/active-orders', activeOrdersRoutes);
 // app.use('/api/vendor-feed', vendorFeedRoutes); // To be implemented
 // app.use('/api/merchant-kyc', merchantKycRoutes); // To be implemented
-// app.use('/api/driver-tier', driverTierRoutes);
-// app.use('/api/role-management', roleManagementRoutes);
+app.use('/api/driver-tier', driverTierRoutes);
+app.use('/api/role-management', roleManagementRoutes);
 
 // Admin routes - Temporarily disabled
 // app.use('/api/admin/reports', adminReportsRoutes);
@@ -389,13 +387,20 @@ process.on('SIGTERM', async () => {
   });
 });
 
-// Database connection test
+// Database connection and initialization
 (async () => {
   try {
     await db.execute("SELECT 1");
     console.log('📊 Database: Connected successfully');
+    
+    // Initialize complete database schema
+    const { initializeDatabase, seedInitialData } = await import('./complete-db-schema');
+    await initializeDatabase();
+    await seedInitialData();
+    
+    console.log('🚀 Database: Fully initialized with all tables and seed data');
   } catch (error) {
-    console.error('❌ Database connection failed:', error);
+    console.error('❌ Database initialization failed:', error);
   }
 })();
 
