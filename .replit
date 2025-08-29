@@ -338,6 +338,10 @@ args = "npm install"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "node test-complete-api-coverage.js"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "REDIS_DISABLED=true NODE_ENV=development npm run dev"
 
 [agent]

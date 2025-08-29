@@ -2,197 +2,347 @@
 import { Router } from "express";
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { storage } from '../storage';
+import { db } from '../db';
+import { users, orders, driverProfiles, transactions, wallets, ratings } from '../../shared/schema';
+import { eq, desc, and, gte, count, sum, sql, isNull } from 'drizzle-orm';
 
 const router = Router();
 
 // Validation schemas
 const updateDriverStatusSchema = z.object({
   isOnline: z.boolean(),
-  location: z.object({
-    lat: z.number(),
-    lng: z.number()
+  isAvailable: z.boolean().optional(),
+  currentLocation: z.object({
+    latitude: z.number(),
+    longitude: z.number()
   }).optional()
 });
 
 const acceptDeliverySchema = z.object({
-  deliveryId: z.string()
+  orderId: z.string(),
+  estimatedDeliveryTime: z.number().optional()
 });
 
 const updateDeliveryStatusSchema = z.object({
-  status: z.enum(['ACCEPTED', 'HEADING_TO_PICKUP', 'AT_PICKUP', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED']),
-  proof: z.object({
-    type: z.enum(['photo', 'signature']),
-    data: z.string()
+  status: z.enum(['ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED']),
+  location: z.object({
+    latitude: z.number(),
+    longitude: z.number()
   }).optional(),
   notes: z.string().optional()
+});
+
+// Get driver dashboard
+router.get("/dashboard", requireAuth, async (req, res) => {
+  try {
+    const driverId = req.user?.id;
+
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
+    }
+
+    // Get today's metrics
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Today's deliveries and earnings
+    const todayStats = await db
+      .select({
+        deliveries: count(),
+        earnings: sum(sql`cast(${orders.driverEarnings} as decimal)`)
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, today)
+      ));
+
+    // Total deliveries and earnings
+    const totalStats = await db
+      .select({
+        totalDeliveries: count(),
+        totalEarnings: sum(sql`cast(${orders.driverEarnings} as decimal)`),
+        completedDeliveries: count(sql`case when ${orders.status} = 'DELIVERED' then 1 end`),
+        allDeliveries: count()
+      })
+      .from(orders)
+      .where(eq(orders.driverId, driverId));
+
+    // Active orders
+    const activeOrders = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        deliveryAddress: orders.deliveryAddress,
+        customerName: users.fullName,
+        customerPhone: users.phone,
+        createdAt: orders.createdAt
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.customerId, users.id))
+      .where(and(
+        eq(orders.driverId, driverId),
+        sql`${orders.status} NOT IN ('DELIVERED', 'CANCELLED')`
+      ))
+      .orderBy(desc(orders.createdAt))
+      .limit(5);
+
+    // Calculate completion rate
+    const completionRate = totalStats[0]?.allDeliveries > 0 
+      ? (Number(totalStats[0]?.completedDeliveries) / Number(totalStats[0]?.allDeliveries)) * 100 
+      : 0;
+
+    // Get driver profile
+    const [driverProfile] = await db
+      .select()
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+
+    const metrics = {
+      todayDeliveries: Number(todayStats[0]?.deliveries || 0),
+      todayEarnings: Number(todayStats[0]?.earnings || 0),
+      totalDeliveries: Number(totalStats[0]?.totalDeliveries || 0),
+      totalEarnings: Number(totalStats[0]?.totalEarnings || 0),
+      completionRate: Math.round(completionRate),
+      activeOrders,
+      driverStatus: {
+        isOnline: driverProfile?.isOnline || false,
+        isAvailable: driverProfile?.isAvailable || false,
+        currentLocation: driverProfile?.currentLocation || null
+      }
+    };
+
+    res.json({
+      success: true,
+      data: metrics
+    });
+  } catch (error) {
+    console.error("Get driver dashboard error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard metrics" });
+  }
 });
 
 // Get driver profile
 router.get("/profile", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
-    const driverProfile = await storage.getDriverProfile(driverId);
+    const driverId = req.user?.id;
 
-    if (!driverProfile) {
-      return res.status(404).json({ message: "Driver profile not found" });
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
     }
 
-    // Transform to match frontend interface
-    const transformedProfile = {
-      id: driverProfile.id,
-      userId: driverProfile.userId,
-      vehicleType: driverProfile.vehicleType,
-      vehiclePlate: driverProfile.vehiclePlate,
-      vehicleModel: driverProfile.vehicleModel,
-      isAvailable: driverProfile.isAvailable,
-      isOnline: driverProfile.isOnline || false,
-      currentLocation: driverProfile.currentLocation,
-      totalDeliveries: driverProfile.totalDeliveries || 0,
-      totalEarnings: driverProfile.totalEarnings || 0,
-      rating: driverProfile.rating || 0,
-      reviewCount: driverProfile.reviewCount || 0,
-      tier: driverProfile.tier || 'STANDARD',
-      verificationStatus: driverProfile.verificationStatus || 'PENDING'
-    };
+    const [driverProfile] = await db
+      .select({
+        id: driverProfiles.id,
+        userId: driverProfiles.userId,
+        vehicleType: driverProfiles.vehicleType,
+        vehiclePlate: driverProfiles.vehiclePlate,
+        vehicleModel: driverProfiles.vehicleModel,
+        isAvailable: driverProfiles.isAvailable,
+        isOnline: driverProfiles.isOnline,
+        currentLocation: driverProfiles.currentLocation,
+        rating: driverProfiles.rating,
+        totalDeliveries: driverProfiles.totalDeliveries,
+        totalEarnings: driverProfiles.totalEarnings,
+        verificationStatus: driverProfiles.verificationStatus,
+        createdAt: driverProfiles.createdAt,
+        // User details
+        fullName: users.fullName,
+        email: users.email,
+        phone: users.phone
+      })
+      .from(driverProfiles)
+      .leftJoin(users, eq(driverProfiles.userId, users.id))
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
 
-    res.json(transformedProfile);
+    if (!driverProfile) {
+      return res.status(404).json({ error: "Driver profile not found" });
+    }
+
+    res.json({
+      success: true,
+      data: driverProfile
+    });
   } catch (error) {
     console.error("Get driver profile error:", error);
-    res.status(500).json({ message: "Failed to fetch driver profile" });
+    res.status(500).json({ error: "Failed to fetch driver profile" });
   }
 });
 
-// Update driver online/offline status
+// Update driver status
 router.put("/status", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
+    const driverId = req.user?.id;
+
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
+    }
+
     const validatedData = updateDriverStatusSchema.parse(req.body);
 
-    await storage.updateDriverStatus(driverId, validatedData.isOnline, validatedData.location);
+    const updateData: any = {
+      isOnline: validatedData.isOnline,
+      updatedAt: new Date()
+    };
 
-    // If going online, join driver room for real-time updates
-    if (global.io && validatedData.isOnline) {
-      // This would typically be handled in the WebSocket connection
+    if (validatedData.isAvailable !== undefined) {
+      updateData.isAvailable = validatedData.isAvailable;
+    }
+
+    if (validatedData.currentLocation) {
+      updateData.currentLocation = JSON.stringify(validatedData.currentLocation);
+    }
+
+    const [updatedProfile] = await db
+      .update(driverProfiles)
+      .set(updateData)
+      .where(eq(driverProfiles.userId, driverId))
+      .returning();
+
+    // Real-time status update
+    if (global.io) {
       global.io.to(`user_${driverId}`).emit('status_updated', {
         isOnline: validatedData.isOnline,
+        isAvailable: validatedData.isAvailable,
         timestamp: Date.now()
       });
     }
 
     res.json({ 
       success: true, 
-      isOnline: validatedData.isOnline 
+      data: updatedProfile
     });
   } catch (error: any) {
     console.error("Update driver status error:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
     }
-    res.status(500).json({ message: "Failed to update status" });
+    res.status(500).json({ error: "Failed to update status" });
   }
 });
 
 // Get available delivery requests
 router.get("/delivery-requests", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
+    const driverId = req.user?.id;
 
-    // Get driver's current location to find nearby requests
-    const driverProfile = await storage.getDriverProfile(driverId);
-    if (!driverProfile || !driverProfile.isOnline) {
-      return res.json([]);
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
     }
 
-    // Get nearby delivery requests
-    const deliveryRequests = await storage.getAvailableDeliveryRequests(driverId);
+    // Get available orders (no driver assigned yet)
+    const availableOrders = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        orderType: orders.orderType,
+        totalAmount: orders.totalAmount,
+        deliveryAddress: orders.deliveryAddress,
+        customerName: users.fullName,
+        customerPhone: users.phone,
+        merchantName: sql`merchant.full_name`,
+        createdAt: orders.createdAt,
+        estimatedDistance: sql`'2.5 km'`, // Mock distance - should be calculated
+        estimatedTime: sql`'25 minutes'` // Mock time - should be calculated
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.customerId, users.id))
+      .leftJoin(sql`users as merchant`, sql`orders.merchant_id = merchant.id`)
+      .where(and(
+        isNull(orders.driverId),
+        sql`${orders.status} IN ('PENDING', 'CONFIRMED')`
+      ))
+      .orderBy(desc(orders.createdAt))
+      .limit(20);
 
-    // Transform to match frontend interface
-    const transformedRequests = deliveryRequests.map((request: any) => ({
-      id: request.id,
-      orderId: request.orderId,
-      deliveryType: request.deliveryType || 'PACKAGE',
-      pickupAddress: request.pickupAddress,
-      deliveryAddress: request.deliveryAddress,
-      pickupCoords: request.pickupCoords || { lat: 0, lng: 0 },
-      deliveryCoords: request.deliveryCoords || { lat: 0, lng: 0 },
-      customerName: request.customerName,
-      customerPhone: request.customerPhone,
-      merchantName: request.merchantName || 'Merchant',
-      merchantPhone: request.merchantPhone,
-      deliveryFee: request.deliveryFee,
-      distance: request.distance || 5.0,
-      estimatedTime: request.estimatedTime || 30,
-      orderValue: request.orderValue,
-      paymentMethod: request.paymentMethod || 'Card',
-      specialInstructions: request.specialInstructions,
-      urgentDelivery: request.urgentDelivery || false,
-      temperatureSensitive: request.temperatureSensitive || false,
-      fragile: request.fragile || false,
-      requiresVerification: request.requiresVerification || false,
-      expiresAt: request.expiresAt,
-      createdAt: request.createdAt
-    }));
-
-    res.json(transformedRequests);
+    res.json({
+      success: true,
+      data: availableOrders
+    });
   } catch (error) {
     console.error("Get delivery requests error:", error);
-    res.status(500).json({ message: "Failed to fetch delivery requests" });
+    res.status(500).json({ error: "Failed to fetch delivery requests" });
   }
 });
 
 // Accept delivery request
-router.post("/accept-delivery/:requestId", requireAuth, async (req, res) => {
+router.post("/accept-delivery", requireAuth, async (req, res) => {
   try {
-    const { requestId } = req.params;
-    const driverId = req.session!.userId!;
+    const driverId = req.user?.id;
 
-    // Check if driver is available
-    const driverProfile = await storage.getDriverProfile(driverId);
-    if (!driverProfile || !driverProfile.isAvailable || !driverProfile.isOnline) {
-      return res.status(400).json({ message: "Driver not available" });
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
     }
 
-    // Accept the delivery
-    const acceptedDelivery = await storage.acceptDeliveryRequest(requestId, driverId);
+    const validatedData = acceptDeliverySchema.parse(req.body);
+
+    // Check if driver is available
+    const [driverProfile] = await db
+      .select()
+      .from(driverProfiles)
+      .where(eq(driverProfiles.userId, driverId))
+      .limit(1);
+
+    if (!driverProfile || !driverProfile.isAvailable || !driverProfile.isOnline) {
+      return res.status(400).json({ error: "Driver not available" });
+    }
+
+    // Check if order is still available
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, validatedData.orderId),
+        isNull(orders.driverId),
+        sql`${orders.status} IN ('PENDING', 'CONFIRMED')`
+      ))
+      .limit(1);
+
+    if (!order) {
+      return res.status(400).json({ error: "Order not available" });
+    }
+
+    // Accept the order
+    const [acceptedOrder] = await db
+      .update(orders)
+      .set({
+        driverId,
+        status: 'ACCEPTED',
+        driverEarnings: (parseFloat(order.totalAmount) * 0.15).toString(), // 15% commission
+        updatedAt: new Date()
+      })
+      .where(eq(orders.id, validatedData.orderId))
+      .returning();
 
     // Update driver availability
-    await storage.updateDriverAvailability(driverId, false);
+    await db
+      .update(driverProfiles)
+      .set({
+        isAvailable: false,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, driverId));
 
-    // Create active delivery object
-    const activeDelivery = {
-      id: acceptedDelivery.id,
-      orderId: acceptedDelivery.orderId,
-      status: 'ACCEPTED',
-      customerName: acceptedDelivery.customerName,
-      customerPhone: acceptedDelivery.customerPhone,
-      pickupAddress: acceptedDelivery.pickupAddress,
-      deliveryAddress: acceptedDelivery.deliveryAddress,
-      deliveryFee: acceptedDelivery.deliveryFee,
-      estimatedDeliveryTime: new Date(Date.now() + acceptedDelivery.estimatedTime * 60 * 1000),
-      orderItems: acceptedDelivery.orderItems || [],
-      specialHandling: [],
-      deliveryInstructions: acceptedDelivery.specialInstructions
-    };
-
-    // Emit real-time updates
+    // Real-time notifications
     if (global.io) {
-      // Notify merchant
-      if (acceptedDelivery.merchantId) {
-        global.io.to(`user_${acceptedDelivery.merchantId}`).emit('delivery_accepted', {
-          deliveryId: requestId,
-          driverId,
-          driverName: 'Driver', // Get actual driver name
-          timestamp: Date.now()
-        });
-      }
-
       // Notify customer
-      if (acceptedDelivery.customerId) {
-        global.io.to(`user_${acceptedDelivery.customerId}`).emit('delivery_assigned', {
-          deliveryId: requestId,
+      global.io.to(`user_${order.customerId}`).emit('delivery_assigned', {
+        orderId: validatedData.orderId,
+        driverId,
+        status: 'ACCEPTED',
+        timestamp: Date.now()
+      });
+
+      // Notify merchant
+      if (order.merchantId) {
+        global.io.to(`user_${order.merchantId}`).emit('delivery_accepted', {
+          orderId: validatedData.orderId,
           driverId,
-          status: 'ACCEPTED',
           timestamp: Date.now()
         });
       }
@@ -200,425 +350,317 @@ router.post("/accept-delivery/:requestId", requireAuth, async (req, res) => {
 
     res.json({ 
       success: true, 
-      delivery: activeDelivery
+      data: acceptedOrder 
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Accept delivery error:", error);
-    res.status(500).json({ message: "Failed to accept delivery" });
+    if (error.name === 'ZodError') {
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
+    }
+    res.status(500).json({ error: "Failed to accept delivery" });
   }
 });
 
 // Update delivery status
-router.put("/delivery/:deliveryId/status", requireAuth, async (req, res) => {
+router.put("/delivery/:orderId/status", requireAuth, async (req, res) => {
   try {
-    const { deliveryId } = req.params;
-    const driverId = req.session!.userId!;
+    const { orderId } = req.params;
+    const driverId = req.user?.id;
+
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
+    }
+
     const validatedData = updateDeliveryStatusSchema.parse(req.body);
 
-    // Verify driver ownership of delivery
-    const delivery = await storage.getDeliveryById(deliveryId);
-    if (!delivery || delivery.driverId !== driverId) {
-      return res.status(403).json({ message: "Access denied" });
+    // Verify order ownership
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, orderId),
+        eq(orders.driverId, driverId)
+      ))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // Update delivery status
-    const updatedDelivery = await storage.updateDeliveryStatus(
-      deliveryId, 
-      validatedData.status,
-      {
-        proof: validatedData.proof,
-        notes: validatedData.notes,
-        location: req.body.location
-      }
-    );
+    const updateData: any = {
+      status: validatedData.status,
+      updatedAt: new Date()
+    };
 
-    // If delivery is completed, update driver availability and earnings
+    // Handle status-specific updates
     if (validatedData.status === 'DELIVERED') {
-      await storage.updateDriverAvailability(driverId, true);
-      await storage.updateDriverEarnings(driverId, delivery.deliveryFee);
+      updateData.deliveredAt = new Date();
+      
+      // Update driver availability and earnings
+      await Promise.all([
+        db.update(driverProfiles)
+          .set({
+            isAvailable: true,
+            totalDeliveries: sql`${driverProfiles.totalDeliveries} + 1`,
+            totalEarnings: sql`${driverProfiles.totalEarnings} + ${order.driverEarnings}`,
+            updatedAt: new Date()
+          })
+          .where(eq(driverProfiles.userId, driverId)),
+        
+        // Record earnings transaction
+        db.insert(transactions).values({
+          userId: driverId,
+          orderId: order.id,
+          amount: order.driverEarnings,
+          type: 'DELIVERY_EARNINGS',
+          status: 'COMPLETED',
+          paymentMethod: 'wallet',
+          paymentStatus: 'COMPLETED',
+          transactionRef: `earn_${Date.now()}_${driverId}`,
+          description: `Delivery earnings for order ${order.orderNumber}`,
+          createdAt: new Date()
+        })
+      ]);
     }
 
-    // Emit real-time updates
+    const [updatedOrder] = await db
+      .update(orders)
+      .set(updateData)
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    // Real-time updates
     if (global.io) {
       const statusUpdate = {
-        deliveryId,
+        orderId,
         status: validatedData.status,
-        proof: validatedData.proof,
+        location: validatedData.location,
         notes: validatedData.notes,
         timestamp: Date.now()
       };
 
-      // Notify merchant
-      if (delivery.merchantId) {
-        global.io.to(`user_${delivery.merchantId}`).emit('delivery_status_update', statusUpdate);
-      }
-
       // Notify customer
-      if (delivery.customerId) {
-        global.io.to(`user_${delivery.customerId}`).emit('delivery_status_update', statusUpdate);
+      global.io.to(`user_${order.customerId}`).emit('delivery_status_update', statusUpdate);
+
+      // Notify merchant
+      if (order.merchantId) {
+        global.io.to(`user_${order.merchantId}`).emit('delivery_status_update', statusUpdate);
       }
     }
 
     res.json({ 
       success: true, 
-      delivery: updatedDelivery
+      data: updatedOrder 
     });
   } catch (error: any) {
     console.error("Update delivery status error:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
     }
-    res.status(500).json({ message: "Failed to update delivery status" });
+    res.status(500).json({ error: "Failed to update delivery status" });
   }
 });
 
 // Get driver earnings
 router.get("/earnings", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
+    const driverId = req.user?.id;
 
-    // Get delivery history for different periods
-    const now = new Date();
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const weekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
+    }
 
-    const todayDeliveries = await storage.getDriverDeliveriesForDate(driverId, today);
-    const weekDeliveries = await storage.getDriverDeliveriesForPeriod(driverId, weekStart, now);
-    const monthDeliveries = await storage.getDriverDeliveriesForPeriod(driverId, monthStart, now);
-    const allDeliveries = await storage.getDriverDeliveries(driverId);
-
-    // Calculate earnings
-    const todayEarnings = todayDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
-    const weeklyEarnings = weekDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
-    const monthlyEarnings = monthDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
-    const totalEarnings = allDeliveries.reduce((sum: number, d: any) => sum + (d.deliveryFee || 0), 0);
-
-    // Calculate performance metrics
-    const completedDeliveries = allDeliveries.filter((d: any) => d.status === 'delivered').length;
-    const todayCompletedDeliveries = todayDeliveries.filter((d: any) => d.status === 'delivered').length;
+    const { period = '7d' } = req.query;
     
-    // Calculate on-time delivery rate from recent deliveries
-    const recentDeliveries = weekDeliveries.filter((d: any) => d.status === 'delivered');
-    const onTimeDeliveries = recentDeliveries.filter((d: any) => d.onTime === true);
-    const onTimeDeliveryRate = recentDeliveries.length > 0 
-      ? Math.round((onTimeDeliveries.length / recentDeliveries.length) * 100) 
-      : 0;
+    // Calculate date range
+    const now = new Date();
+    let startDate: Date;
+    
+    switch (period) {
+      case '1d':
+        startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+        break;
+      case '7d':
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        break;
+      case '30d':
+        startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        break;
+      default:
+        startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    }
 
-    // Calculate average delivery time (mock for now)
-    const averageDeliveryTime = 25 + Math.floor(Math.random() * 10);
+    // Get earnings for the period
+    const [periodEarnings] = await db
+      .select({
+        totalEarnings: sum(sql`cast(${orders.driverEarnings} as decimal)`),
+        totalDeliveries: count()
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, startDate)
+      ));
 
-    // Calculate bonuses based on tier and performance
-    const driverProfile = await storage.getDriverProfile(driverId);
-    const tierMultiplier = driverProfile?.tier === 'PREMIUM' ? 1.15 : driverProfile?.tier === 'ELITE' ? 1.25 : 1.0;
-    const bonusEarnings = monthlyEarnings * (tierMultiplier - 1);
+    // Get all-time earnings
+    const [totalEarnings] = await db
+      .select({
+        totalEarnings: sum(sql`cast(${orders.driverEarnings} as decimal)`),
+        totalDeliveries: count()
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED')
+      ));
 
-    // Calculate pending earnings (typically held for 24-48 hours)
-    const pendingEarnings = todayEarnings * 0.3; // 30% pending for processing
+    // Get today's earnings
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const [todayEarnings] = await db
+      .select({
+        earnings: sum(sql`cast(${orders.driverEarnings} as decimal)`),
+        deliveries: count()
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.driverId, driverId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, today)
+      ));
+
+    // Get wallet balance
+    const [wallet] = await db
+      .select({ balance: wallets.balance })
+      .from(wallets)
+      .where(eq(wallets.userId, driverId))
+      .limit(1);
 
     const earnings = {
-      todayEarnings,
-      weeklyEarnings,
-      monthlyEarnings,
-      totalEarnings,
-      completedDeliveries: todayCompletedDeliveries,
-      bonusEarnings,
-      pendingEarnings,
-      averageDeliveryTime,
-      onTimeDeliveryRate
+      todayEarnings: Number(todayEarnings?.earnings || 0),
+      todayDeliveries: Number(todayEarnings?.deliveries || 0),
+      periodEarnings: Number(periodEarnings?.totalEarnings || 0),
+      periodDeliveries: Number(periodEarnings?.totalDeliveries || 0),
+      totalEarnings: Number(totalEarnings?.totalEarnings || 0),
+      totalDeliveries: Number(totalEarnings?.totalDeliveries || 0),
+      availableBalance: Number(wallet?.balance || 0),
+      averagePerDelivery: Number(totalEarnings?.totalDeliveries) > 0 
+        ? Number(totalEarnings?.totalEarnings) / Number(totalEarnings?.totalDeliveries) 
+        : 0
     };
 
-    res.json(earnings);
+    res.json({
+      success: true,
+      data: earnings
+    });
   } catch (error) {
     console.error("Get driver earnings error:", error);
-    res.status(500).json({ message: "Failed to fetch earnings" });
+    res.status(500).json({ error: "Failed to fetch earnings" });
   }
 });
 
-// Get driver tier progress
-router.get("/tier-progress", requireAuth, async (req, res) => {
+// Get driver orders/deliveries
+router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
-    const driverProfile = await storage.getDriverProfile(driverId);
-    
-    if (!driverProfile) {
-      return res.status(404).json({ message: "Driver profile not found" });
+    const driverId = req.user?.id;
+
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
     }
 
-    const currentTier = driverProfile.tier || 'STANDARD';
-    const totalDeliveries = driverProfile.totalDeliveries || 0;
-    const totalEarnings = driverProfile.totalEarnings || 0;
-    const rating = driverProfile.rating || 0;
+    const { status, page = 1, limit = 20 } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
 
-    // Get recent deliveries to calculate on-time rate
-    const recentDeliveries = await storage.getDriverDeliveriesForPeriod(
-      driverId, 
-      new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), 
-      new Date()
-    );
-    
-    const onTimeDeliveries = recentDeliveries.filter((d: any) => d.onTime === true).length;
-    const onTimeRate = recentDeliveries.length > 0 ? (onTimeDeliveries / recentDeliveries.length) * 100 : 0;
-
-    // Define tier requirements and benefits
-    const tierData = {
-      STANDARD: {
-        nextTier: 'PREMIUM',
-        requirements: { deliveries: 50, rating: 4.5, earnings: 100000, onTimeRate: 85 },
-        benefits: ["Standard delivery access", "Basic earnings structure", "Regular support"],
-        nextTierBenefits: ["Premium delivery access", "15% higher rates", "Priority support", "Bonus eligibility"]
-      },
-      PREMIUM: {
-        nextTier: 'ELITE',
-        requirements: { deliveries: 150, rating: 4.7, earnings: 300000, onTimeRate: 90 },
-        benefits: ["Premium delivery access", "15% higher rates", "Priority support", "Bonus eligibility"],
-        nextTierBenefits: ["Elite delivery access", "25% higher rates", "24/7 priority support", "Exclusive bonuses", "VIP status"]
-      },
-      ELITE: {
-        nextTier: null,
-        requirements: {},
-        benefits: ["Elite delivery access", "25% higher rates", "24/7 priority support", "Exclusive bonuses", "VIP status"],
-        nextTierBenefits: []
-      }
-    };
-
-    const currentTierData = tierData[currentTier as keyof typeof tierData];
-    const nextTier = currentTierData.nextTier;
-    
-    let progress = 100; // Default for ELITE tier
-    let requirementsNeeded = {};
-
-    if (nextTier && currentTierData.requirements) {
-      const req = currentTierData.requirements;
-      const progressFactors = [];
-
-      if (req.deliveries) {
-        progressFactors.push(Math.min(totalDeliveries / req.deliveries, 1));
-      }
-      if (req.rating) {
-        progressFactors.push(Math.min(rating / req.rating, 1));
-      }
-      if (req.earnings) {
-        progressFactors.push(Math.min(totalEarnings / req.earnings, 1));
-      }
-      if (req.onTimeRate) {
-        progressFactors.push(Math.min(onTimeRate / req.onTimeRate, 1));
-      }
-
-      progress = progressFactors.length > 0 
-        ? Math.round(progressFactors.reduce((sum, factor) => sum + factor, 0) / progressFactors.length * 100)
-        : 0;
-
-      // Calculate remaining requirements
-      requirementsNeeded = {
-        ...(req.deliveries && totalDeliveries < req.deliveries && { 
-          deliveries: req.deliveries - totalDeliveries 
-        }),
-        ...(req.rating && rating < req.rating && { 
-          rating: req.rating 
-        }),
-        ...(req.earnings && totalEarnings < req.earnings && { 
-          earnings: req.earnings - totalEliveries 
-        }),
-        ...(req.onTimeRate && onTimeRate < req.onTimeRate && { 
-          onTimeRate: req.onTimeRate 
-        })
-      };
-    }
-
-    const tierProgress = {
-      currentTier,
-      nextTier,
-      progress,
-      requirementsNeeded,
-      benefits: currentTierData.benefits,
-      nextTierBenefits: currentTierData.nextTierBenefits
-    };
-
-    res.json(tierProgress);
-  } catch (error) {
-    console.error("Get tier progress error:", error);
-    res.status(500).json({ message: "Failed to fetch tier progress" });
-  }
-});
-
-// Get driver delivery history
-router.get("/deliveries", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { status, limit = 50 } = req.query;
-
-    let deliveries = await storage.getDriverDeliveries(driverId);
+    let conditions = [eq(orders.driverId, driverId)];
 
     if (status && status !== 'all') {
-      deliveries = deliveries.filter((delivery: any) => delivery.status === status);
+      conditions.push(eq(orders.status, status as string));
     }
 
-    // Limit results
-    deliveries = deliveries.slice(0, parseInt(limit as string));
-
-    res.json(deliveries);
-  } catch (error) {
-    console.error("Get driver deliveries error:", error);
-    res.status(500).json({ message: "Failed to fetch deliveries" });
-  }
-});
-
-// Get driver delivery analytics
-router.get("/analytics/deliveries", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { period = '30d' } = req.query;
-
-    const analytics = await storage.getDriverDeliveryAnalytics(driverId, period as string);
+    const driverOrders = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        driverEarnings: orders.driverEarnings,
+        deliveryAddress: orders.deliveryAddress,
+        orderType: orders.orderType,
+        createdAt: orders.createdAt,
+        deliveredAt: orders.deliveredAt,
+        customerName: users.fullName,
+        customerPhone: users.phone,
+        merchantName: sql`merchant.full_name`
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.customerId, users.id))
+      .leftJoin(sql`users as merchant`, sql`orders.merchant_id = merchant.id`)
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
 
     res.json({
       success: true,
-      analytics
+      data: driverOrders
     });
   } catch (error) {
-    console.error("Get delivery analytics error:", error);
-    res.status(500).json({ message: "Failed to fetch delivery analytics" });
+    console.error("Get driver orders error:", error);
+    res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
 
-// Get driver performance ratings
-router.get("/performance/ratings", requireAuth, async (req, res) => {
+// Get driver performance metrics
+router.get("/performance", requireAuth, async (req, res) => {
   try {
-    const driverId = req.session!.userId!;
-    const { limit = 50 } = req.query;
+    const driverId = req.user?.id;
 
-    const ratings = await storage.getDriverRatings(driverId, parseInt(limit as string));
+    if (!driverId || req.user?.role !== 'DRIVER') {
+      return res.status(403).json({ error: 'Driver access required' });
+    }
 
-    const avgRating = ratings.length > 0 
-      ? ratings.reduce((sum: number, r: any) => sum + r.rating, 0) / ratings.length 
+    // Get driver ratings
+    const [avgRating] = await db
+      .select({ average: sql`avg(${ratings.rating})` })
+      .from(ratings)
+      .where(eq(ratings.driverId, driverId));
+
+    // Get completion rate
+    const [completionStats] = await db
+      .select({
+        total: count(),
+        completed: count(sql`case when ${orders.status} = 'DELIVERED' then 1 end`),
+        cancelled: count(sql`case when ${orders.status} = 'CANCELLED' then 1 end`)
+      })
+      .from(orders)
+      .where(eq(orders.driverId, driverId));
+
+    const completionRate = Number(completionStats?.total) > 0 
+      ? (Number(completionStats?.completed) / Number(completionStats?.total)) * 100 
       : 0;
 
-    res.json({
-      success: true,
-      ratings,
-      averageRating: Math.round(avgRating * 10) / 10,
-      totalRatings: ratings.length
-    });
-  } catch (error) {
-    console.error("Get performance ratings error:", error);
-    res.status(500).json({ message: "Failed to fetch performance ratings" });
-  }
-});
-
-// Update driver vehicle information
-router.put("/vehicle", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { vehicleType, vehiclePlate, vehicleModel, vehicleColor } = req.body;
-
-    const updatedProfile = await storage.updateDriverVehicle(driverId, {
-      vehicleType,
-      vehiclePlate,
-      vehicleModel,
-      vehicleColor
-    });
+    // Mock additional metrics (would need more complex queries/tables)
+    const performance = {
+      averageRating: Number(avgRating?.average || 0),
+      totalRatings: 0, // Would need count of ratings
+      completionRate: Math.round(completionRate),
+      totalDeliveries: Number(completionStats?.total || 0),
+      completedDeliveries: Number(completionStats?.completed || 0),
+      cancelledDeliveries: Number(completionStats?.cancelled || 0),
+      onTimeDeliveryRate: 92, // Mock - would need delivery time tracking
+      averageDeliveryTime: 28, // Mock - would need time tracking
+      customerSatisfactionScore: 4.6 // Mock - would need detailed feedback system
+    };
 
     res.json({
       success: true,
-      message: "Vehicle information updated successfully",
-      profile: updatedProfile
+      data: performance
     });
   } catch (error) {
-    console.error("Update vehicle error:", error);
-    res.status(500).json({ message: "Failed to update vehicle information" });
-  }
-});
-
-// Get nearby delivery opportunities
-router.get("/opportunities", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { radius = 10 } = req.query;
-
-    const driverProfile = await storage.getDriverProfile(driverId);
-    if (!driverProfile || !driverProfile.currentLocation) {
-      return res.status(400).json({ 
-        message: "Driver location not available" 
-      });
-    }
-
-    const opportunities = await storage.getNearbyDeliveryOpportunities(
-      driverId,
-      driverProfile.currentLocation,
-      parseInt(radius as string)
-    );
-
-    res.json({
-      success: true,
-      opportunities
-    });
-  } catch (error) {
-    console.error("Get opportunities error:", error);
-    res.status(500).json({ message: "Failed to fetch delivery opportunities" });
-  }
-});
-
-// Submit driver feedback
-router.post("/feedback", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { orderId, rating, comment, category } = req.body;
-
-    const feedback = await storage.createDriverFeedback({
-      driverId,
-      orderId,
-      rating,
-      comment,
-      category,
-      timestamp: new Date()
-    });
-
-    res.json({
-      success: true,
-      message: "Feedback submitted successfully",
-      feedback
-    });
-  } catch (error) {
-    console.error("Submit feedback error:", error);
-    res.status(500).json({ message: "Failed to submit feedback" });
-  }
-});
-
-// Get driver schedule/availability
-router.get("/schedule", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { date } = req.query;
-
-    const schedule = await storage.getDriverSchedule(driverId, date as string);
-
-    res.json({
-      success: true,
-      schedule
-    });
-  } catch (error) {
-    console.error("Get schedule error:", error);
-    res.status(500).json({ message: "Failed to fetch schedule" });
-  }
-});
-
-// Update driver schedule
-router.put("/schedule", requireAuth, async (req, res) => {
-  try {
-    const driverId = req.session!.userId!;
-    const { scheduleData } = req.body;
-
-    const updatedSchedule = await storage.updateDriverSchedule(driverId, scheduleData);
-
-    res.json({
-      success: true,
-      message: "Schedule updated successfully",
-      schedule: updatedSchedule
-    });
-  } catch (error) {
-    console.error("Update schedule error:", error);
-    res.status(500).json({ message: "Failed to update schedule" });
+    console.error("Get driver performance error:", error);
+    res.status(500).json({ error: "Failed to fetch performance metrics" });
   }
 });
 

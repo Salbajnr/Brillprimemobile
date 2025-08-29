@@ -2,13 +2,15 @@
 import { Router } from "express";
 import { z } from 'zod';
 import { requireAuth } from '../middleware/auth';
-import { storage } from '../storage';
+import { db } from '../db';
+import { users, orders, products, transactions, wallets, ratings } from '../../shared/schema';
+import { eq, desc, and, gte, count, sum, sql } from 'drizzle-orm';
 
 const router = Router();
 
 // Validation schemas
 const updateOrderStatusSchema = z.object({
-  status: z.enum(['NEW', 'ACCEPTED', 'PREPARING', 'READY', 'PICKED_UP', 'DELIVERED', 'CANCELLED']),
+  status: z.enum(['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'DELIVERED', 'CANCELLED']),
   estimatedTime: z.number().optional(),
   notes: z.string().optional()
 });
@@ -18,11 +20,9 @@ const updateProductSchema = z.object({
   description: z.string().optional(),
   price: z.number().min(0).optional(),
   unit: z.string().optional(),
-  stockLevel: z.number().min(0).optional(),
-  lowStockThreshold: z.number().min(0).optional(),
+  stockQuantity: z.number().min(0).optional(),
   category: z.string().optional(),
-  inStock: z.boolean().optional(),
-  isActive: z.boolean().optional()
+  isAvailable: z.boolean().optional()
 });
 
 const createProductSchema = z.object({
@@ -30,108 +30,142 @@ const createProductSchema = z.object({
   description: z.string(),
   price: z.number().min(0),
   unit: z.string().min(1),
-  stockLevel: z.number().min(0),
-  lowStockThreshold: z.number().min(0).default(10),
+  stockQuantity: z.number().min(0),
   category: z.string().min(1),
-  images: z.array(z.string()).default([]),
-  inStock: z.boolean().default(true),
-  isActive: z.boolean().default(true)
+  imageUrl: z.string().url().optional(),
+  isAvailable: z.boolean().default(true)
 });
 
 // Get merchant dashboard metrics
-router.get("/metrics", requireAuth, async (req, res) => {
+router.get("/dashboard", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
+    const merchantId = req.user?.id;
 
-    // Get business metrics
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
+
+    // Get today's metrics
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    // Today's orders and revenue
+    const todayStats = await db
+      .select({
+        orders: count(),
+        revenue: sum(sql`cast(${orders.totalAmount} as decimal)`)
+      })
+      .from(orders)
+      .where(and(
+        eq(orders.merchantId, merchantId),
+        gte(orders.createdAt, today)
+      ));
+
+    // Total orders and revenue
+    const totalStats = await db
+      .select({
+        totalOrders: count(),
+        totalRevenue: sum(sql`cast(${orders.totalAmount} as decimal)`)
+      })
+      .from(orders)
+      .where(eq(orders.merchantId, merchantId));
+
+    // Product statistics
+    const productStats = await db
+      .select({
+        totalProducts: count(),
+        activeProducts: count(sql`case when ${products.isAvailable} = true then 1 end`),
+        lowStockProducts: count(sql`case when ${products.stockQuantity} <= 10 then 1 end`)
+      })
+      .from(products)
+      .where(eq(products.merchantId, merchantId));
+
+    // Recent orders
+    const recentOrders = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        customerName: users.fullName,
+        createdAt: orders.createdAt
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.customerId, users.id))
+      .where(eq(orders.merchantId, merchantId))
+      .orderBy(desc(orders.createdAt))
+      .limit(5);
+
     const metrics = {
-      todayRevenue: 0,
-      todaySales: 0,
-      activeOrders: 0,
-      customerCount: 0,
-      lowStockAlerts: 0,
-      pendingOrdersCount: 0,
-      averageOrderValue: 0,
-      conversionRate: 0,
-      inventoryValue: 0
+      todayOrders: Number(todayStats[0]?.orders || 0),
+      todayRevenue: Number(todayStats[0]?.revenue || 0),
+      totalOrders: Number(totalStats[0]?.totalOrders || 0),
+      totalRevenue: Number(totalStats[0]?.totalRevenue || 0),
+      productStats: {
+        totalProducts: Number(productStats[0]?.totalProducts || 0),
+        activeProducts: Number(productStats[0]?.activeProducts || 0),
+        lowStockProducts: Number(productStats[0]?.lowStockProducts || 0)
+      },
+      recentOrders
     };
 
-    // Calculate today's revenue and sales
-    const todayOrders = await storage.getMerchantOrdersForDate(merchantId, today);
-    metrics.todayRevenue = todayOrders.reduce((sum: number, order: any) => sum + order.totalPrice, 0);
-    metrics.todaySales = todayOrders.length;
-
-    // Get active orders count
-    const activeOrders = await storage.getMerchantActiveOrders(merchantId);
-    metrics.activeOrders = activeOrders.length;
-
-    // Get customer count (unique customers who have ordered)
-    const customers = await storage.getMerchantCustomers(merchantId);
-    metrics.customerCount = customers.length;
-
-    // Get products with low stock
-    const products = await storage.getMerchantProducts(merchantId);
-    metrics.lowStockAlerts = products.filter((p: any) => p.stockLevel <= p.lowStockThreshold).length;
-    metrics.inventoryValue = products.reduce((sum: number, p: any) => sum + (p.price * p.stockLevel), 0);
-
-    // Calculate pending orders
-    metrics.pendingOrdersCount = activeOrders.filter((o: any) => o.status === 'NEW').length;
-
-    // Calculate average order value
-    if (todayOrders.length > 0) {
-      metrics.averageOrderValue = metrics.todayRevenue / todayOrders.length;
-    }
-
-    res.json(metrics);
+    res.json({
+      success: true,
+      data: metrics
+    });
   } catch (error) {
-    console.error("Get merchant metrics error:", error);
-    res.status(500).json({ message: "Failed to fetch metrics" });
+    console.error("Get merchant dashboard error:", error);
+    res.status(500).json({ error: "Failed to fetch dashboard metrics" });
   }
 });
 
 // Get merchant orders
 router.get("/orders", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
-    const { status, limit = 50 } = req.query;
+    const merchantId = req.user?.id;
 
-    let orders = await storage.getMerchantOrders(merchantId);
-
-    if (status && status !== 'all') {
-      orders = orders.filter((order: any) => order.status === status);
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
     }
 
-    // Limit results
-    orders = orders.slice(0, parseInt(limit as string));
+    const { status, limit = 50, page = 1 } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
 
-    // Transform orders to match frontend interface
-    const transformedOrders = orders.map((order: any) => ({
-      id: order.id,
-      orderNumber: order.orderNumber || `ORD-${order.id.slice(-6)}`,
-      customerName: order.buyer?.fullName || 'Unknown Customer',
-      customerPhone: order.buyer?.phone || '',
-      customerEmail: order.buyer?.email || '',
-      items: order.orderItems || [],
-      totalAmount: order.totalPrice,
-      status: order.status,
-      deliveryAddress: order.deliveryAddress,
-      orderDate: order.createdAt,
-      estimatedPreparationTime: order.estimatedPreparationTime,
-      driverId: order.driverId,
-      driverName: order.driver?.fullName,
-      orderType: order.orderType || 'DELIVERY',
-      paymentStatus: order.paymentStatus || 'PENDING',
-      urgentOrder: order.urgentOrder || false,
-      notes: order.notes
-    }));
+    let conditions = [eq(orders.merchantId, merchantId)];
 
-    res.json(transformedOrders);
+    if (status && status !== 'all') {
+      conditions.push(eq(orders.status, status as string));
+    }
+
+    const merchantOrders = await db
+      .select({
+        id: orders.id,
+        orderNumber: orders.orderNumber,
+        status: orders.status,
+        totalAmount: orders.totalAmount,
+        deliveryAddress: orders.deliveryAddress,
+        orderType: orders.orderType,
+        orderData: orders.orderData,
+        createdAt: orders.createdAt,
+        updatedAt: orders.updatedAt,
+        customerName: users.fullName,
+        customerPhone: users.phone,
+        customerEmail: users.email
+      })
+      .from(orders)
+      .leftJoin(users, eq(orders.customerId, users.id))
+      .where(and(...conditions))
+      .orderBy(desc(orders.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
+
+    res.json({
+      success: true,
+      data: merchantOrders
+    });
   } catch (error) {
     console.error("Get merchant orders error:", error);
-    res.status(500).json({ message: "Failed to fetch orders" });
+    res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
 
@@ -139,166 +173,136 @@ router.get("/orders", requireAuth, async (req, res) => {
 router.put("/orders/:orderId/status", requireAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const merchantId = req.session!.userId!;
+    const merchantId = req.user?.id;
+
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
+
     const validatedData = updateOrderStatusSchema.parse(req.body);
 
     // Verify order ownership
-    const order = await storage.getOrderById(orderId);
-    if (!order || order.sellerId !== merchantId) {
-      return res.status(403).json({ message: "Access denied" });
+    const [order] = await db
+      .select()
+      .from(orders)
+      .where(and(
+        eq(orders.id, orderId),
+        eq(orders.merchantId, merchantId)
+      ))
+      .limit(1);
+
+    if (!order) {
+      return res.status(404).json({ error: "Order not found" });
     }
 
-    // Update order status
-    const updatedOrder = await storage.updateOrderStatus(orderId, validatedData.status, {
-      estimatedPreparationTime: validatedData.estimatedTime,
-      notes: validatedData.notes
-    });
+    const updateData: any = {
+      status: validatedData.status,
+      updatedAt: new Date()
+    };
 
-    // Emit real-time update
+    if (validatedData.notes) {
+      updateData.orderData = {
+        ...order.orderData,
+        merchantNotes: validatedData.notes,
+        estimatedTime: validatedData.estimatedTime
+      };
+    }
+
+    const [updatedOrder] = await db
+      .update(orders)
+      .set(updateData)
+      .where(eq(orders.id, orderId))
+      .returning();
+
+    // Real-time notification (if WebSocket is available)
     if (global.io) {
-      // Notify customer
-      global.io.to(`user_${order.buyerId}`).emit('order_status_update', {
+      global.io.to(`user_${order.customerId}`).emit('order_status_update', {
         orderId,
         status: validatedData.status,
         estimatedTime: validatedData.estimatedTime,
         notes: validatedData.notes,
         timestamp: Date.now()
       });
-
-      // Notify driver if assigned
-      if (order.driverId) {
-        global.io.to(`user_${order.driverId}`).emit('order_status_update', {
-          orderId,
-          status: validatedData.status,
-          timestamp: Date.now()
-        });
-      }
     }
 
-    res.json({ success: true, order: updatedOrder });
+    res.json({ 
+      success: true, 
+      data: updatedOrder 
+    });
   } catch (error: any) {
     console.error("Update order status error:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
     }
-    res.status(500).json({ message: "Failed to update order status" });
-  }
-});
-
-// Assign driver to order
-router.post("/orders/:orderId/assign-driver", requireAuth, async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const merchantId = req.session!.userId!;
-
-    // Verify order ownership
-    const order = await storage.getOrderById(orderId);
-    if (!order || order.sellerId !== merchantId) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-
-    // Find available driver nearby
-    const availableDrivers = await storage.getNearbyUsers(
-      order.deliveryLatitude || 0,
-      order.deliveryLongitude || 0,
-      10000, // 10km radius
-      'DRIVER'
-    );
-
-    if (availableDrivers.length === 0) {
-      return res.status(404).json({ message: "No available drivers found" });
-    }
-
-    // Create delivery request and broadcast to drivers
-    const deliveryRequest = {
-      id: `DEL_${Date.now()}_${orderId}`,
-      orderId,
-      merchantId,
-      customerId: order.buyerId,
-      deliveryType: order.orderType || 'PACKAGE',
-      pickupAddress: order.pickupAddress || 'Store Location',
-      deliveryAddress: order.deliveryAddress,
-      deliveryFee: order.deliveryFee || 1000,
-      distance: 5.0, // Calculate actual distance
-      estimatedTime: 30,
-      orderValue: order.totalPrice,
-      urgentDelivery: order.urgentOrder || false,
-      customerName: order.buyer?.fullName || 'Customer',
-      customerPhone: order.buyer?.phone || '',
-      merchantName: 'Merchant', // Get from merchant profile
-      expiresAt: new Date(Date.now() + 15 * 60 * 1000) // 15 minutes
-    };
-
-    // Broadcast to available drivers
-    if (global.io) {
-      availableDrivers.forEach(driver => {
-        global.io.to(`user_${driver.userId}`).emit('delivery_request', deliveryRequest);
-      });
-    }
-
-    res.json({
-      success: true,
-      message: "Driver assignment requested",
-      deliveryRequestId: deliveryRequest.id
-    });
-  } catch (error) {
-    console.error("Assign driver error:", error);
-    res.status(500).json({ message: "Failed to assign driver" });
+    res.status(500).json({ error: "Failed to update order status" });
   }
 });
 
 // Get merchant products
 router.get("/products", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
-    const products = await storage.getMerchantProducts(merchantId);
+    const merchantId = req.user?.id;
 
-    // Transform products to match frontend interface
-    const transformedProducts = products.map((product: any) => ({
-      id: product.id,
-      name: product.name,
-      description: product.description,
-      price: product.price,
-      unit: product.unit,
-      stockLevel: product.stockLevel || 0,
-      lowStockThreshold: product.lowStockThreshold || 10,
-      category: product.categoryName || 'General',
-      images: product.images || [],
-      isActive: product.isActive !== false,
-      inStock: product.inStock !== false,
-      totalSold: product.totalSold || 0,
-      totalViews: product.totalViews || 0,
-      rating: product.rating || 0,
-      reviewCount: product.reviewCount || 0
-    }));
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
 
-    res.json(transformedProducts);
+    const { category, page = 1, limit = 20 } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    let conditions = [eq(products.merchantId, merchantId)];
+
+    if (category) {
+      conditions.push(eq(products.category, category as string));
+    }
+
+    const merchantProducts = await db
+      .select()
+      .from(products)
+      .where(and(...conditions))
+      .orderBy(desc(products.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
+
+    res.json({
+      success: true,
+      data: merchantProducts
+    });
   } catch (error) {
     console.error("Get merchant products error:", error);
-    res.status(500).json({ message: "Failed to fetch products" });
+    res.status(500).json({ error: "Failed to fetch products" });
   }
 });
 
 // Create new product
 router.post("/products", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
+    const merchantId = req.user?.id;
+
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
+
     const validatedData = createProductSchema.parse(req.body);
 
-    const newProduct = await storage.createProduct({
+    const [newProduct] = await db.insert(products).values({
       ...validatedData,
-      sellerId: merchantId,
+      merchantId,
+      price: validatedData.price.toString(),
       createdAt: new Date(),
       updatedAt: new Date()
-    });
+    }).returning();
 
-    res.json({ success: true, product: newProduct });
+    res.json({ 
+      success: true, 
+      data: newProduct 
+    });
   } catch (error: any) {
     console.error("Create product error:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
     }
-    res.status(500).json({ message: "Failed to create product" });
+    res.status(500).json({ error: "Failed to create product" });
   }
 });
 
@@ -306,44 +310,103 @@ router.post("/products", requireAuth, async (req, res) => {
 router.put("/products/:productId", requireAuth, async (req, res) => {
   try {
     const { productId } = req.params;
-    const merchantId = req.session!.userId!;
+    const merchantId = req.user?.id;
+
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
+
     const validatedData = updateProductSchema.parse(req.body);
 
     // Verify product ownership
-    const product = await storage.getProductById(productId);
-    if (!product || product.sellerId !== merchantId) {
-      return res.status(403).json({ message: "Access denied" });
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(
+        eq(products.id, productId),
+        eq(products.merchantId, merchantId)
+      ))
+      .limit(1);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
     }
 
-    const updatedProduct = await storage.updateProduct(productId, validatedData);
+    const updateData: any = {
+      ...validatedData,
+      updatedAt: new Date()
+    };
 
-    res.json({ success: true, product: updatedProduct });
+    if (validatedData.price) {
+      updateData.price = validatedData.price.toString();
+    }
+
+    const [updatedProduct] = await db
+      .update(products)
+      .set(updateData)
+      .where(eq(products.id, productId))
+      .returning();
+
+    res.json({ 
+      success: true, 
+      data: updatedProduct 
+    });
   } catch (error: any) {
     console.error("Update product error:", error);
     if (error.name === 'ZodError') {
-      return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      return res.status(400).json({ error: "Invalid data", details: error.errors });
     }
-    res.status(500).json({ message: "Failed to update product" });
+    res.status(500).json({ error: "Failed to update product" });
+  }
+});
+
+// Delete product
+router.delete("/products/:productId", requireAuth, async (req, res) => {
+  try {
+    const { productId } = req.params;
+    const merchantId = req.user?.id;
+
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
+
+    // Verify product ownership
+    const [product] = await db
+      .select()
+      .from(products)
+      .where(and(
+        eq(products.id, productId),
+        eq(products.merchantId, merchantId)
+      ))
+      .limit(1);
+
+    if (!product) {
+      return res.status(404).json({ error: "Product not found" });
+    }
+
+    await db
+      .delete(products)
+      .where(eq(products.id, productId));
+
+    res.json({
+      success: true,
+      message: "Product deleted successfully"
+    });
+  } catch (error) {
+    console.error("Delete product error:", error);
+    res.status(500).json({ error: "Failed to delete product" });
   }
 });
 
 // Get revenue analytics
-router.get("/revenue", requireAuth, async (req, res) => {
+router.get("/analytics/revenue", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
+    const merchantId = req.user?.id;
 
-    const revenue = {
-      totalRevenue: 0,
-      monthlyRevenue: 0,
-      weeklyRevenue: 0,
-      dailyRevenue: 0,
-      escrowBalance: 0,
-      pendingWithdrawals: 0,
-      revenueGrowth: 0,
-      topSellingProducts: []
-    };
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
+    }
 
-    // Get orders for different time periods
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const weekStart = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
@@ -351,506 +414,127 @@ router.get("/revenue", requireAuth, async (req, res) => {
     const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
     const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
-    const todayOrders = await storage.getMerchantOrdersForDate(merchantId, today);
-    const weekOrders = await storage.getMerchantOrdersForPeriod(merchantId, weekStart, now);
-    const monthOrders = await storage.getMerchantOrdersForPeriod(merchantId, monthStart, now);
-    const lastMonthOrders = await storage.getMerchantOrdersForPeriod(merchantId, lastMonthStart, lastMonthEnd);
-    const allOrders = await storage.getMerchantOrders(merchantId);
+    // Current period revenue
+    const [dailyRevenue] = await db
+      .select({ revenue: sum(sql`cast(${orders.totalAmount} as decimal)`) })
+      .from(orders)
+      .where(and(
+        eq(orders.merchantId, merchantId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, today)
+      ));
 
-    revenue.dailyRevenue = todayOrders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
-    revenue.weeklyRevenue = weekOrders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
-    revenue.monthlyRevenue = monthOrders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
-    revenue.totalRevenue = allOrders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
+    const [weeklyRevenue] = await db
+      .select({ revenue: sum(sql`cast(${orders.totalAmount} as decimal)`) })
+      .from(orders)
+      .where(and(
+        eq(orders.merchantId, merchantId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, weekStart)
+      ));
 
-    // Calculate real growth from last month
-    const lastMonthRevenue = lastMonthOrders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
-    if (lastMonthRevenue > 0) {
-      revenue.revenueGrowth = ((revenue.monthlyRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-    }
+    const [monthlyRevenue] = await db
+      .select({ revenue: sum(sql`cast(${orders.totalAmount} as decimal)`) })
+      .from(orders)
+      .where(and(
+        eq(orders.merchantId, merchantId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, monthStart)
+      ));
 
-    // Get actual escrow balance from wallet/transactions
-    const escrowBalance = await storage.getMerchantEscrowBalance(merchantId);
-    revenue.escrowBalance = escrowBalance.availableBalance || 0;
-    revenue.pendingWithdrawals = escrowBalance.pendingWithdrawals || 0;
+    const [lastMonthRevenue] = await db
+      .select({ revenue: sum(sql`cast(${orders.totalAmount} as decimal)`) })
+      .from(orders)
+      .where(and(
+        eq(orders.merchantId, merchantId),
+        eq(orders.status, 'DELIVERED'),
+        gte(orders.createdAt, lastMonthStart),
+        gte(orders.createdAt, lastMonthEnd)
+      ));
 
-    // Get top selling products
-    const topProducts = await storage.getTopSellingProducts(merchantId, 5);
-    revenue.topSellingProducts = topProducts;
+    // Calculate growth
+    const currentMonth = Number(monthlyRevenue?.revenue || 0);
+    const previousMonth = Number(lastMonthRevenue?.revenue || 0);
+    const revenueGrowth = previousMonth > 0 ? 
+      ((currentMonth - previousMonth) / previousMonth) * 100 : 0;
 
-    res.json(revenue);
-  } catch (error) {
-    console.error("Get revenue error:", error);
-    res.status(500).json({ message: "Failed to fetch revenue data" });
-  }
-});
-
-// Toggle business hours
-router.put("/business-hours", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { isOpen } = req.body;
-
-    await storage.updateMerchantBusinessHours(merchantId, isOpen);
-
-    res.json({ success: true, isOpen });
-  } catch (error) {
-    console.error("Update business hours error:", error);
-    res.status(500).json({ message: "Failed to update business hours" });
-  }
-
-
-// Get detailed sales analytics
-router.get("/analytics/sales", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { period = 'month', startDate, endDate } = req.query;
-
-    let start: Date, end: Date;
-    const now = new Date();
-
-    switch (period) {
-      case 'today':
-        start = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-        end = now;
-        break;
-      case 'week':
-        start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        end = now;
-        break;
-      case 'month':
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = now;
-        break;
-      case 'year':
-        start = new Date(now.getFullYear(), 0, 1);
-        end = now;
-        break;
-      case 'custom':
-        start = startDate ? new Date(startDate as string) : new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-        end = endDate ? new Date(endDate as string) : now;
-        break;
-      default:
-        start = new Date(now.getFullYear(), now.getMonth(), 1);
-        end = now;
-    }
+    // Get wallet balance
+    const [wallet] = await db
+      .select({ balance: wallets.balance })
+      .from(wallets)
+      .where(eq(wallets.userId, merchantId))
+      .limit(1);
 
     const analytics = {
-      period,
-      dateRange: { start, end },
-      summary: {
-        totalOrders: 0,
-        totalRevenue: 0,
-        averageOrderValue: 0,
-        totalCustomers: 0,
-        repeatCustomerRate: 0,
-        cancellationRate: 0,
-        fulfillmentRate: 0
-      },
-      trends: {
-        dailyRevenue: [],
-        dailyOrders: [],
-        hourlyDistribution: []
-      },
-      productPerformance: [],
-      customerSegments: {
-        newCustomers: 0,
-        returningCustomers: 0,
-        highValueCustomers: 0
-      },
-      paymentMethods: [],
-      deliveryMetrics: {
-        averageDeliveryTime: 0,
-        onTimeDeliveryRate: 0,
-        deliverySuccessRate: 0
-      }
+      dailyRevenue: Number(dailyRevenue?.revenue || 0),
+      weeklyRevenue: Number(weeklyRevenue?.revenue || 0),
+      monthlyRevenue: currentMonth,
+      revenueGrowth,
+      escrowBalance: Number(wallet?.balance || 0),
+      pendingWithdrawals: 0 // This would need a separate withdrawals table
     };
-
-    // Get orders for the period
-    const orders = await storage.getMerchantOrdersForPeriod(merchantId, start, end);
-    
-    // Calculate summary metrics
-    analytics.summary.totalOrders = orders.length;
-    analytics.summary.totalRevenue = orders.reduce((sum: number, order: any) => sum + parseFloat(order.totalPrice || 0), 0);
-    analytics.summary.averageOrderValue = analytics.summary.totalOrders > 0 ? 
-      analytics.summary.totalRevenue / analytics.summary.totalOrders : 0;
-
-    // Calculate unique customers
-    const uniqueCustomers = new Set(orders.map((order: any) => order.buyerId));
-    analytics.summary.totalCustomers = uniqueCustomers.size;
-
-    // Calculate rates
-    const cancelledOrders = orders.filter((order: any) => order.status === 'CANCELLED');
-    const completedOrders = orders.filter((order: any) => order.status === 'DELIVERED');
-    
-    analytics.summary.cancellationRate = orders.length > 0 ? 
-      (cancelledOrders.length / orders.length) * 100 : 0;
-    analytics.summary.fulfillmentRate = orders.length > 0 ? 
-      (completedOrders.length / orders.length) * 100 : 0;
-
-    // Get product performance
-    const productStats = await storage.getProductSalesStats(merchantId, start, end);
-    analytics.productPerformance = productStats;
-
-    // Calculate daily trends
-    const dailyStats = await storage.getDailySalesStats(merchantId, start, end);
-    analytics.trends.dailyRevenue = dailyStats.revenue;
-    analytics.trends.dailyOrders = dailyStats.orders;
-
-    // Get payment method distribution
-    const paymentStats = await storage.getPaymentMethodStats(merchantId, start, end);
-    analytics.paymentMethods = paymentStats;
-
-    res.json(analytics);
-  } catch (error) {
-    console.error("Get sales analytics error:", error);
-    res.status(500).json({ message: "Failed to fetch sales analytics" });
-  }
-});
-
-// Get customer analytics
-router.get("/analytics/customers", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    
-    const customerAnalytics = {
-      totalCustomers: 0,
-      newCustomersThisMonth: 0,
-      returningCustomersThisMonth: 0,
-      averageOrdersPerCustomer: 0,
-      customerLifetimeValue: 0,
-      topCustomers: [],
-      customerSegments: {
-        highValue: 0,
-        regular: 0,
-        occasional: 0
-      },
-      geographicDistribution: [],
-      orderFrequency: {
-        daily: 0,
-        weekly: 0,
-        monthly: 0,
-        quarterly: 0
-      }
-    };
-
-    // Get all customers who have ordered from this merchant
-    const customers = await storage.getMerchantCustomers(merchantId);
-    customerAnalytics.totalCustomers = customers.length;
-
-    // Get new customers this month
-    const now = new Date();
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-    const newCustomers = await storage.getNewMerchantCustomers(merchantId, monthStart);
-    customerAnalytics.newCustomersThisMonth = newCustomers.length;
-
-    // Calculate customer segments and metrics
-    const customerStats = await storage.getCustomerStats(merchantId);
-    customerAnalytics.averageOrdersPerCustomer = customerStats.averageOrders;
-    customerAnalytics.customerLifetimeValue = customerStats.averageLifetimeValue;
-    customerAnalytics.topCustomers = customerStats.topCustomers;
-    customerAnalytics.customerSegments = customerStats.segments;
-
-    res.json(customerAnalytics);
-  } catch (error) {
-    console.error("Get customer analytics error:", error);
-    res.status(500).json({ message: "Failed to fetch customer analytics" });
-  }
-});
-
-// Get inventory analytics
-router.get("/analytics/inventory", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    
-    const inventoryAnalytics = {
-      totalProducts: 0,
-      activeProducts: 0,
-      outOfStockProducts: 0,
-      lowStockProducts: 0,
-      totalInventoryValue: 0,
-      fastMovingProducts: [],
-      slowMovingProducts: [],
-      stockTurnoverRate: 0,
-      stockAlerts: [],
-      categoryPerformance: []
-    };
-
-    const products = await storage.getMerchantProducts(merchantId);
-    
-    inventoryAnalytics.totalProducts = products.length;
-    inventoryAnalytics.activeProducts = products.filter((p: any) => p.isActive && p.inStock).length;
-    inventoryAnalytics.outOfStockProducts = products.filter((p: any) => !p.inStock).length;
-    inventoryAnalytics.lowStockProducts = products.filter((p: any) => 
-      p.stockLevel <= p.lowStockThreshold).length;
-    
-    inventoryAnalytics.totalInventoryValue = products.reduce((sum: number, p: any) => 
-      sum + (parseFloat(p.price) * (p.stockLevel || 0)), 0);
-
-    // Get product performance data
-    const productPerformance = await storage.getProductPerformanceStats(merchantId);
-    inventoryAnalytics.fastMovingProducts = productPerformance.fast;
-    inventoryAnalytics.slowMovingProducts = productPerformance.slow;
-
-    // Get stock alerts
-    const stockAlerts = products
-      .filter((p: any) => p.stockLevel <= p.lowStockThreshold || !p.inStock)
-      .map((p: any) => ({
-        productId: p.id,
-        productName: p.name,
-
-
-// Send message to customer
-router.post("/customers/:customerId/message", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { customerId } = req.params;
-    const { message, messageType = 'TEXT', orderId } = req.body;
-
-    // Verify customer relationship
-    const customerOrders = await storage.getCustomerOrdersWithMerchant(customerId, merchantId);
-    if (customerOrders.length === 0) {
-      return res.status(403).json({ message: "No business relationship with this customer" });
-    }
-
-    const messageData = {
-      senderId: merchantId,
-      receiverId: customerId,
-      content: message,
-      messageType,
-      orderId,
-      conversationType: 'MERCHANT_CUSTOMER',
-      timestamp: new Date()
-    };
-
-    const savedMessage = await storage.saveMessage(messageData);
-
-    // Send real-time notification
-    if (global.io) {
-      global.io.to(`user_${customerId}`).emit('new_message', {
-        ...savedMessage,
-        senderType: 'MERCHANT',
-        senderName: 'Merchant' // Get merchant business name
-      });
-    }
-
-    res.json({ success: true, message: savedMessage });
-  } catch (error) {
-    console.error("Send customer message error:", error);
-    res.status(500).json({ message: "Failed to send message" });
-  }
-});
-
-// Get customer conversations
-router.get("/conversations", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    
-    const conversations = await storage.getMerchantConversations(merchantId);
-    
-    res.json(conversations);
-  } catch (error) {
-    console.error("Get conversations error:", error);
-    res.status(500).json({ message: "Failed to fetch conversations" });
-  }
-});
-
-// Send promotional broadcast
-router.post("/broadcast", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { 
-      title, 
-      message, 
-      targetAudience = 'ALL_CUSTOMERS', 
-      scheduledTime,
-      includePromotions = false,
-      promotionDetails 
-    } = req.body;
-
-    let targetCustomers = [];
-
-    switch (targetAudience) {
-      case 'ALL_CUSTOMERS':
-        targetCustomers = await storage.getMerchantCustomers(merchantId);
-        break;
-      case 'RECENT_CUSTOMERS':
-        const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-        targetCustomers = await storage.getRecentMerchantCustomers(merchantId, thirtyDaysAgo);
-        break;
-      case 'HIGH_VALUE_CUSTOMERS':
-        targetCustomers = await storage.getHighValueCustomers(merchantId);
-        break;
-      case 'REPEAT_CUSTOMERS':
-        targetCustomers = await storage.getRepeatCustomers(merchantId);
-        break;
-    }
-
-    const broadcast = {
-      id: `BC_${Date.now()}_${merchantId}`,
-      merchantId,
-      title,
-      message,
-      targetAudience,
-      targetCount: targetCustomers.length,
-      scheduledTime: scheduledTime ? new Date(scheduledTime) : new Date(),
-      includePromotions,
-      promotionDetails,
-      status: scheduledTime ? 'SCHEDULED' : 'SENT',
-      createdAt: new Date()
-    };
-
-    await storage.saveBroadcast(broadcast);
-
-    // Send immediately if not scheduled
-    if (!scheduledTime) {
-      // Send to all target customers
-      for (const customer of targetCustomers) {
-        const notification = {
-          userId: customer.userId,
-          title,
-          message,
-          type: 'MERCHANT_BROADCAST',
-          isRead: false,
-          merchantId,
-          broadcastId: broadcast.id,
-          promotionDetails: includePromotions ? promotionDetails : null
-        };
-
-        await storage.createNotification(notification);
-
-        // Real-time notification
-        if (global.io) {
-          global.io.to(`user_${customer.userId}`).emit('notification', notification);
-        }
-      }
-    }
-
-    res.json({ 
-      success: true, 
-      broadcast, 
-      message: `Broadcast ${scheduledTime ? 'scheduled' : 'sent'} to ${targetCustomers.length} customers` 
-    });
-  } catch (error) {
-    console.error("Send broadcast error:", error);
-    res.status(500).json({ message: "Failed to send broadcast" });
-  }
-});
-
-// Get customer feedback and reviews
-router.get("/feedback", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { page = 1, limit = 20, rating, productId } = req.query;
-
-    const feedback = await storage.getMerchantFeedback(merchantId, {
-      page: parseInt(page as string),
-      limit: parseInt(limit as string),
-      rating: rating ? parseInt(rating as string) : undefined,
-      productId: productId as string
-    });
-
-    const summary = await storage.getMerchantFeedbackSummary(merchantId);
 
     res.json({
-      feedback: feedback.reviews,
-      pagination: feedback.pagination,
-      summary
+      success: true,
+      data: analytics
     });
   } catch (error) {
-    console.error("Get feedback error:", error);
-    res.status(500).json({ message: "Failed to fetch feedback" });
+    console.error("Get revenue analytics error:", error);
+    res.status(500).json({ error: "Failed to fetch revenue analytics" });
   }
 });
 
-// Respond to customer review
-router.post("/feedback/:reviewId/respond", requireAuth, async (req, res) => {
+// Get merchant ratings and reviews
+router.get("/reviews", requireAuth, async (req, res) => {
   try {
-    const merchantId = req.session!.userId!;
-    const { reviewId } = req.params;
-    const { response } = req.body;
+    const merchantId = req.user?.id;
 
-    // Verify review belongs to merchant's product
-    const review = await storage.getReviewById(reviewId);
-    if (!review || review.merchantId !== merchantId) {
-      return res.status(403).json({ message: "Access denied" });
+    if (!merchantId || req.user?.role !== 'MERCHANT') {
+      return res.status(403).json({ error: 'Merchant access required' });
     }
 
-    const merchantResponse = await storage.addMerchantResponse(reviewId, {
-      merchantId,
-      response,
-      responseDate: new Date()
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (Number(page) - 1) * Number(limit);
+
+    // Get reviews for merchant's orders
+    const reviews = await db
+      .select({
+        id: ratings.id,
+        rating: ratings.rating,
+        comment: ratings.comment,
+        createdAt: ratings.createdAt,
+        customerName: users.fullName,
+        orderNumber: orders.orderNumber,
+        productName: products.name
+      })
+      .from(ratings)
+      .leftJoin(orders, eq(ratings.orderId, orders.id))
+      .leftJoin(users, eq(ratings.customerId, users.id))
+      .leftJoin(products, eq(ratings.productId, products.id))
+      .where(eq(orders.merchantId, merchantId))
+      .orderBy(desc(ratings.createdAt))
+      .limit(Number(limit))
+      .offset(offset);
+
+    // Calculate average rating
+    const [avgRating] = await db
+      .select({ average: sql`avg(${ratings.rating})` })
+      .from(ratings)
+      .leftJoin(orders, eq(ratings.orderId, orders.id))
+      .where(eq(orders.merchantId, merchantId));
+
+    res.json({
+      success: true,
+      data: {
+        reviews,
+        averageRating: Number(avgRating?.average || 0),
+        totalReviews: reviews.length
+      }
     });
-
-    // Notify customer of response
-    if (global.io) {
-      global.io.to(`user_${review.customerId}`).emit('merchant_response', {
-        reviewId,
-        merchantResponse,
-        productName: review.productName
-      });
-    }
-
-    res.json({ success: true, response: merchantResponse });
   } catch (error) {
-    console.error("Respond to review error:", error);
-    res.status(500).json({ message: "Failed to respond to review" });
+    console.error("Get merchant reviews error:", error);
+    res.status(500).json({ error: "Failed to fetch reviews" });
   }
-});
-
-        currentStock: p.stockLevel,
-        threshold: p.lowStockThreshold,
-        alertType: !p.inStock ? 'OUT_OF_STOCK' : 'LOW_STOCK'
-      }));
-    
-    inventoryAnalytics.stockAlerts = stockAlerts;
-
-    res.json(inventoryAnalytics);
-  } catch (error) {
-    console.error("Get inventory analytics error:", error);
-    res.status(500).json({ message: "Failed to fetch inventory analytics" });
-  }
-});
-
-// Generate sales report
-router.get("/reports/sales", requireAuth, async (req, res) => {
-  try {
-    const merchantId = req.session!.userId!;
-    const { startDate, endDate, format = 'json' } = req.query;
-
-    const start = new Date(startDate as string);
-    const end = new Date(endDate as string);
-
-    const report = await storage.generateSalesReport(merchantId, start, end);
-
-    if (format === 'csv') {
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', `attachment; filename=sales-report-${start.toISOString().split('T')[0]}-${end.toISOString().split('T')[0]}.csv`);
-      
-      // Convert to CSV format
-      const csvData = [
-        ['Date', 'Order Number', 'Customer', 'Products', 'Amount', 'Status', 'Payment Method'],
-        ...report.orders.map((order: any) => [
-          new Date(order.createdAt).toLocaleDateString(),
-          order.orderNumber,
-          order.customerName,
-          order.items.map((i: any) => `${i.productName} x${i.quantity}`).join('; '),
-          order.totalAmount,
-          order.status,
-          order.paymentMethod
-        ])
-      ];
-      
-      const csvString = csvData.map(row => row.join(',')).join('\n');
-      return res.send(csvString);
-    }
-
-    res.json(report);
-  } catch (error) {
-    console.error("Generate sales report error:", error);
-    res.status(500).json({ message: "Failed to generate sales report" });
-  }
-});
-
 });
 
 export default router;
