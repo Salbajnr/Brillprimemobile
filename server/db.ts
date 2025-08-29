@@ -1,4 +1,9 @@
 
+import dotenv from 'dotenv';
+
+// Force load .env file with override to prioritize local .env
+dotenv.config({ path: '.env', override: true });
+
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";

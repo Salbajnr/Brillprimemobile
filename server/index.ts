@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// Force load .env file first with override to prioritize local .env
+dotenv.config({ path: '.env', override: true });
+
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import morgan from 'morgan';
