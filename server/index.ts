@@ -1028,8 +1028,9 @@ server.listen(availablePort, HOST, async () => {
 
 // Function to find available port
 async function findAvailablePort(preferredPort: number): Promise<number> {
+  const { createServer } = await import('net');
   return new Promise((resolve) => {
-    const testServer = require('net').createServer();
+    const testServer = createServer();
     testServer.listen(preferredPort, '0.0.0.0', () => {
       testServer.close(() => {
         resolve(preferredPort);
