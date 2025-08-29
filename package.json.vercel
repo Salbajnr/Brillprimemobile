@@ -1,0 +1,13 @@
+
+{
+  "name": "brillprime-frontend",
+  "version": "1.0.0",
+  "scripts": {
+    "build": "cd client && npm install --legacy-peer-deps && npm run build",
+    "dev": "cd client && npm run dev",
+    "preview": "cd client && npm run preview"
+  },
+  "devDependencies": {
+    "@vercel/node": "^2.0.0"
+  }
+}

@@ -1,0 +1,25 @@
+
+services:
+  - type: web
+    name: brillprime-backend
+    env: node
+    plan: starter
+    buildCommand: npm install --legacy-peer-deps
+    startCommand: NODE_ENV=production npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: HOST
+        value: 0.0.0.0
+      - key: DATABASE_URL
+        value: postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com:5432/brillprimemobiledb
+      - key: REDIS_DISABLED
+        value: true
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        generateValue: true
