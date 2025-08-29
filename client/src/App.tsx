@@ -1,8 +1,11 @@
-
 import React, { Suspense, lazy } from 'react';
 import { Router, Route, Switch } from 'wouter';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from './hooks/use-auth';
+import { Routes } from './components/Routes';
+import { AdminAuthProvider } from './lib/admin-auth';
+import { AdminRoutes } from './components/AdminRoutes';
 
 // Create a stable query client
 const queryClient = new QueryClient({
@@ -28,20 +31,35 @@ const LoadingSpinner = () => (
 );
 
 function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
+  const isAdmin = window.location.hostname.startsWith('admin.');
+
+  if (isAdmin) {
+    // Load admin app instead
+    return (
       <Router>
-        <Suspense fallback={<LoadingSpinner />}>
-          <Switch>
-            <Route path="/" component={Dashboard} />
-            <Route path="/signin" component={SignIn} />
-            <Route path="/signup" component={SignUp} />
-            <Route component={NotFound} />
-          </Switch>
-        </Suspense>
+        <QueryClientProvider client={queryClient}>
+          <AdminAuthProvider>
+            <div className="min-h-screen bg-gray-50">
+              <Toaster />
+              <AdminRoutes />
+            </div>
+          </AdminAuthProvider>
+        </QueryClientProvider>
       </Router>
-      <Toaster />
-    </QueryClientProvider>
+    );
+  }
+
+  return (
+    <Router>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <div className="min-h-screen bg-gray-50">
+            <Toaster />
+            <Routes />
+          </div>
+        </AuthProvider>
+      </QueryClientProvider>
+    </Router>
   );
 }
 

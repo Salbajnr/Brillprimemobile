@@ -2918,3 +2918,176 @@ router.post('/fraud/users/:userId/unflag', adminAuth, async (req, res) => {
 });
 
 export default router;
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import { db } from '../db';
+import { users } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+const router = express.Router();
+
+// Admin authentication middleware
+const adminAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Access token required'
+      });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
+
+    if (decoded.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Admin access required'
+      });
+    }
+
+    // Verify user still exists and is admin
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, decoded.id))
+      .limit(1);
+
+    if (!user || user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Invalid admin credentials'
+      });
+    }
+
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: 'Invalid token'
+    });
+  }
+};
+
+// Admin authentication routes (no middleware needed)
+router.post('/auth/login', async (req, res) => {
+  // This is handled in the main auth routes
+  res.status(404).json({ error: 'Use /api/auth/admin/login instead' });
+});
+
+// Admin profile route
+router.get('/auth/profile', adminAuth, async (req, res) => {
+  try {
+    const [user] = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        role: users.role
+      })
+      .from(users)
+      .where(eq(users.id, req.user.id))
+      .limit(1);
+
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      data: user
+    });
+  } catch (error) {
+    console.error('Admin profile fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch profile'
+    });
+  }
+});
+
+// Admin dashboard stats
+router.get('/dashboard/stats', adminAuth, async (req, res) => {
+  try {
+    // Get basic stats
+    const [userStats] = await db.execute(`
+      SELECT 
+        COUNT(*) as total_users,
+        COUNT(CASE WHEN role = 'CONSUMER' THEN 1 END) as consumers,
+        COUNT(CASE WHEN role = 'MERCHANT' THEN 1 END) as merchants,
+        COUNT(CASE WHEN role = 'DRIVER' THEN 1 END) as drivers,
+        COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as new_today
+      FROM users
+    `);
+
+    res.json({
+      success: true,
+      data: {
+        users: userStats.rows[0] || {
+          total_users: 0,
+          consumers: 0,
+          merchants: 0,
+          drivers: 0,
+          new_today: 0
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Admin stats error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch stats'
+    });
+  }
+});
+
+// Admin users management
+router.get('/users', adminAuth, async (req, res) => {
+  try {
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = parseInt(req.query.limit as string) || 20;
+    const offset = (page - 1) * limit;
+
+    const users_list = await db
+      .select({
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        role: users.role,
+        isVerified: users.isVerified,
+        createdAt: users.createdAt
+      })
+      .from(users)
+      .limit(limit)
+      .offset(offset);
+
+    const [total] = await db.execute('SELECT COUNT(*) as count FROM users');
+
+    res.json({
+      success: true,
+      data: {
+        users: users_list,
+        pagination: {
+          page,
+          limit,
+          total: total.rows[0]?.count || 0,
+          pages: Math.ceil((total.rows[0]?.count || 0) / limit)
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Admin users fetch error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch users'
+    });
+  }
+});
+
+export default router;

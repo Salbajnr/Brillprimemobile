@@ -16,27 +16,34 @@ export default defineConfig({
     strictPort: false,
     hmr: {
       port: 5173
+    },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
     }
   },
   build: {
-    outDir: 'dist',
-    sourcemap: false,
-    target: 'es2015',
+    sourcemap: true,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
-        admin: path.resolve(__dirname, 'public/admin.html')
+        main: './index.html',
+        admin: './public/admin.html'
       },
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          router: ['wouter']
+          router: ['wouter'],
+          ui: ['lucide-react'],
+          admin: ['./src/admin.tsx']
         }
       }
     }
   },
   optimizeDeps: {
-    include: ['react', 'react-dom', 'wouter']
+    include: ['react', 'react-dom', 'wouter'],
+    exclude: ['lucide-react'],
   },
   define: {
     global: 'globalThis'

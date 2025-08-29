@@ -27,7 +27,7 @@ import dashboardRoutes from './routes/dashboard';
 import categoriesRoutes from './routes/categories';
 import healthCheckRoutes from './routes/health-check';
 import { registerHealthRoutes } from './routes/health-check';
-// import adminRoutes from './admin/routes'; // Temporarily disabled due to schema issues
+import adminRoutes from './admin/routes'; // Temporarily disabled due to schema issues
 import missingApisRoutes from './routes/missing-apis';
 // import adminReportsRoutes from './routes/admin-reports'; // Temporarily disabled
 // import adminSettingsRoutes from './routes/admin-settings'; // Temporarily disabled
@@ -87,7 +87,7 @@ import { authenticateUser } from './middleware/auth';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Extend Express Request type for subdomain
+// Extend Request interface to include subdomain
 declare global {
   namespace Express {
     interface Request {
@@ -158,16 +158,25 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Subdomain routing middleware
 app.use((req, res, next) => {
-  const host = req.get('host');
-  const subdomain = host ? host.split('.')[0] : '';
-  
-  // Set subdomain in request for easy access
+  const host = req.get('host') || '';
+  const subdomain = host.split('.')[0];
+
+  // Store subdomain info for later use
   req.subdomain = subdomain;
-  
-  // Add subdomain info to response headers for debugging
-  res.setHeader('X-Subdomain', subdomain);
-  
   next();
+});
+
+// Serve static files with subdomain awareness
+app.use((req, res, next) => {
+  const isAdmin = req.subdomain === 'admin';
+
+  if (isAdmin) {
+    // Serve admin-specific static files
+    express.static(path.join(__dirname, '../client/dist'))(req, res, next);
+  } else {
+    // Serve regular app static files
+    express.static(path.join(__dirname, '../client/dist'))(req, res, next);
+  }
 });
 
 // Logging
@@ -194,21 +203,13 @@ app.use(session({
 // Health check route (must be first)
 app.use('/api/health', healthCheckRoutes);
 
-// Admin subdomain routing
-app.use((req, res, next) => {
-  if (req.subdomain === 'admin') {
-    // Serve admin panel for admin subdomain
-    if (req.path.startsWith('/api/')) {
-      // Admin API routes
-      next();
-    } else {
-      // Serve admin HTML file
-      res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
-      return;
-    }
+// Admin API routes (only accessible on admin subdomain)
+app.use('/api/admin', (req, res, next) => {
+  if (req.subdomain !== 'admin') {
+    return res.status(404).json({ error: 'Not found' });
   }
   next();
-});
+}, adminRoutes);
 
 // Core API routes
 app.use('/api/auth', authRoutes);
@@ -381,13 +382,10 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve static files (both development and production)
-app.use(express.static(path.join(__dirname, '../client/dist')));
-
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
   console.error('Server Error:', err.stack);
-  
+
   // Handle specific error types
   if (err.name === 'ValidationError') {
     return res.status(400).json({
@@ -396,7 +394,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
       message: err.message
     });
   }
-  
+
   if (err.name === 'UnauthorizedError') {
     return res.status(401).json({
       success: false,
@@ -404,7 +402,7 @@ app.use((err: any, req: Request, res: Response, next: any) => {
       message: 'Authentication required'
     });
   }
-  
+
   // Generic error response
   res.status(500).json({
     success: false,
@@ -419,12 +417,14 @@ app.get('*', (req: Request, res: Response) => {
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API route not found' });
   }
-  
-  // Serve admin panel for admin subdomain
-  if (req.subdomain === 'admin') {
+
+  const isAdmin = req.subdomain === 'admin';
+
+  if (isAdmin) {
+    // Serve admin.html for admin subdomain
     res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
   } else {
-    // Serve regular app for main domain and other subdomains
+    // Serve regular index.html for main domain
     res.sendFile(path.join(__dirname, '../client/dist/index.html'));
   }
 });
@@ -442,12 +442,12 @@ process.on('SIGTERM', async () => {
   try {
     await db.execute("SELECT 1");
     console.log('📊 Database: Connected successfully');
-    
+
     // Initialize complete database schema
     const { initializeDatabase, seedInitialData } = await import('./complete-db-schema');
     await initializeDatabase();
     await seedInitialData();
-    
+
     console.log('🚀 Database: Fully initialized with all tables and seed data');
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
