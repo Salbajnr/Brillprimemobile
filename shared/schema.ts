@@ -9,7 +9,7 @@ export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', '
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
 
 // Users table (Enhanced)
-export const users: any = pgTable("users", {
+export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   email: varchar("email", { length: 255 }).unique().notNull(),
   fullName: varchar("full_name", { length: 255 }).notNull(),
@@ -43,7 +43,20 @@ export const users: any = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   loginAttempts: integer("login_attempts").default(0),
   accountLockedUntil: timestamp("account_locked_until"),
-});
+  
+  // Additional missing fields
+  userId: varchar("user_id", { length: 50 }).unique(),
+  password: text("password").notNull(),
+  isIdentityVerified: boolean("is_identity_verified").default(false),
+  accountStatus: varchar("account_status", { length: 20 }).default("ACTIVE"),
+  lastActivity: timestamp("last_activity"),
+  twoFactorEnabled: boolean("two_factor_enabled").default(false),
+  twoFactorSecret: text("two_factor_secret"),
+}, (table) => ({
+  emailIdx: index("users_email_idx").on(table.email),
+  phoneIdx: index("users_phone_idx").on(table.phone),
+  userIdIdx: index("users_user_id_idx").on(table.userId),
+}));
 
 // MFA tokens table
 export const mfaTokens = pgTable("mfa_tokens", {
@@ -155,9 +168,23 @@ export const orders = pgTable("orders", {
   estimatedPreparationTime: integer("estimated_preparation_time"),
   notes: text("notes"),
   paymentStatus: text("payment_status").default('PENDING'),
+  
+  // Additional missing fields
+  buyerId: integer("buyer_id").references(() => users.id),
+  sellerId: integer("seller_id").references(() => users.id),
+  productId: integer("product_id").references(() => products.id),
+  totalPrice: decimal("total_price", { precision: 10, scale: 2 }),
+  quantity: integer("quantity").default(1),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  customerIdIdx: index("orders_customer_id_idx").on(table.customerId),
+  merchantIdIdx: index("orders_merchant_id_idx").on(table.merchantId),
+  driverIdIdx: index("orders_driver_id_idx").on(table.driverId),
+  statusIdx: index("orders_status_idx").on(table.status),
+  createdAtIdx: index("orders_created_at_idx").on(table.createdAt),
+}));
 
 // Transactions table (from original, unchanged)
 export const transactions = pgTable("transactions", {
@@ -171,8 +198,34 @@ export const transactions = pgTable("transactions", {
   transactionRef: text("transaction_ref").unique(),
   paymentGatewayRef: text("payment_gateway_ref"),
   metadata: jsonb("metadata"),
+  
+  // Additional missing fields
+  recipientId: integer("recipient_id").references(() => users.id),
+  walletId: integer("wallet_id").references(() => wallets.id),
+  paymentMethodId: integer("payment_method_id").references(() => paymentMethods.id),
+  type: varchar("type", { length: 50 }).default("PAYMENT"),
+  status: varchar("status", { length: 20 }).default("PENDING"),
+  fee: decimal("fee", { precision: 10, scale: 2 }).default('0'),
+  netAmount: decimal("net_amount", { precision: 10, scale: 2 }),
+  paystackReference: text("paystack_reference"),
+  paystackTransactionId: text("paystack_transaction_id"),
+  gatewayResponse: jsonb("gateway_response"),
+  description: text("description"),
+  channel: varchar("channel", { length: 50 }),
+  ipAddress: varchar("ip_address", { length: 45 }),
+  userAgent: text("user_agent"),
+  initiatedAt: timestamp("initiated_at").defaultNow(),
+  completedAt: timestamp("completed_at"),
+  failedAt: timestamp("failed_at"),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  
   createdAt: timestamp("created_at").defaultNow()
-});
+}, (table) => ({
+  userIdIdx: index("transactions_user_id_idx").on(table.userId),
+  statusIdx: index("transactions_status_idx").on(table.status),
+  transactionRefIdx: index("transactions_ref_idx").on(table.transactionRef),
+  createdAtIdx: index("transactions_created_at_idx").on(table.createdAt),
+}));
 
 // QR Payment Receipts table - QR codes for consumer receipts that merchants can scan
 export const qrPaymentReceipts = pgTable("qr_payment_receipts", {
@@ -260,10 +313,19 @@ export const driverProfiles = pgTable("driver_profiles", {
   kycApprovedBy: integer("kyc_approved_by").references(() => users.id),
   verificationLevel: varchar("verification_level", { length: 20 }).default("BASIC"), // BASIC, STANDARD, PREMIUM
   backgroundCheckStatus: varchar("background_check_status", { length: 20 }).default("PENDING"),
+  
+  // Additional missing fields
+  vehiclePlate: text("vehicle_plate"),
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  currentLocation: text("current_location"),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  userIdIdx: index("driver_profiles_user_id_idx").on(table.userId),
+  availableIdx: index("driver_profiles_available_idx").on(table.isAvailable),
+}));
 
 // Merchant profiles table (from original, unchanged)
 export const merchantProfiles = pgTable("merchant_profiles", {
@@ -278,9 +340,18 @@ export const merchantProfiles = pgTable("merchant_profiles", {
   rating: decimal("rating", { precision: 3, scale: 2 }).default('5.0'),
   totalOrders: integer("total_orders").default(0),
   revenue: decimal("revenue", { precision: 10, scale: 2 }).default('0'),
+  
+  // Additional missing fields
+  isVerified: boolean("is_verified").default(false),
+  isActive: boolean("is_active").default(true),
+  businessRegistrationNumber: varchar("business_registration_number", { length: 100 }),
+  
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
-});
+}, (table) => ({
+  userIdIdx: index("merchant_profiles_user_id_idx").on(table.userId),
+  businessNameIdx: index("merchant_profiles_business_name_idx").on(table.businessName),
+}));
 
 // Notifications table (from original, unchanged) - This is a duplicate, will be replaced by the new one below.
 // export const notifications = pgTable("notifications", {

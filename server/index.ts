@@ -92,6 +92,8 @@ import nigerianComplianceRoutes from "./routes/nigerian-compliance";
 import dashboardRoutes from "./routes/dashboard";
 // Import system status routes
 import systemStatusRoutes from './routes/system-status';
+// Import missing API routes
+import missingAPIsRoutes from './routes/missing-apis';
 
 // Validate environment variables (after dotenv is loaded)
 const env = validateEnvironment();
@@ -401,6 +403,17 @@ apiRouter.use('/qr-receipts', qrReceiptsRoutes);
 apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
+
+// Register API routes
+apiRouter.use('/auth', authRoutes);
+apiRouter.use('/categories', categoriesRoutes);
+apiRouter.use('/orders', ordersRoutes);
+apiRouter.use('/products', productsRoutes);
+apiRouter.use('/payments', paymentsRoutes);
+apiRouter.use('/wallet', walletRoutes);
+apiRouter.use('/support', supportRoutes);
+apiRouter.use('/admin', adminRoutes);
+apiRouter.use('/', missingAPIsRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
@@ -1072,7 +1085,7 @@ process.on('SIGINT', () => {
 process.on('unhandledRejection', (reason, promise) => {
   console.error('Unhandled Rejection at:', promise, 'reason:', reason);
   // Don't exit the process - Redis connection issues are handled gracefully
-  // This prevents server crashes due to Redis connection attempts
+  // This prevents server crashes due to Redis connection issues
 });
 
 // Register compliance and legal routes
