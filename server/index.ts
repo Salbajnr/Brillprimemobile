@@ -67,6 +67,10 @@ import paymentsRoutes from './routes/payments';
 import walletRoutes from './routes/wallet';
 import { registerProductRoutes } from './routes/products';
 import analyticsRoutes from './routes/analytics';
+import categoriesRoutes from './routes/categories';
+import ordersRoutes from './routes/orders';
+import { registerFuelOrderRoutes } from './routes/fuel-orders';
+import tollPaymentsRoutes from './routes/toll-payments';
 import driverRoutes from './routes/driver';
 import supportRoutes from './routes/support';
 import adminSupportRoutes from './routes/admin-support';
@@ -381,6 +385,9 @@ apiRouter.use('/auth', socialAuthRoutes);
 apiRouter.use('/payments', paymentsRoutes);
 apiRouter.use('/wallet', walletRoutes);
 apiRouter.use('/analytics', analyticsRoutes);
+apiRouter.use('/categories', categoriesRoutes);
+apiRouter.use('/orders', ordersRoutes);
+apiRouter.use('/toll-payments', tollPaymentsRoutes);
 apiRouter.use('/drivers', driverRoutes);
 apiRouter.use('/support', supportRoutes);
 apiRouter.use('/admin-support', adminSupportRoutes);
@@ -397,6 +404,7 @@ apiRouter.use('/dashboard', dashboardRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
+registerFuelOrderRoutes(app);
 registerEscrowManagementRoutes(app);
 registerAdminUserManagementRoutes(app);
 
