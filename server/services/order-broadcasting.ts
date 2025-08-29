@@ -69,7 +69,7 @@ class OrderBroadcastingService {
 
       // Broadcast to all parties
       const recipients = [buyerId, sellerId, driverId].filter(Boolean);
-      
+
       recipients.forEach(userId => {
         this.io!.to(`user_${userId}`).emit('order_status_update', broadcastData);
       });
@@ -229,7 +229,7 @@ class OrderBroadcastingService {
 
       // Notify all parties
       const recipients = [orderDetails.buyerId, orderDetails.sellerId, orderDetails.driverId].filter(Boolean);
-      
+
       recipients.forEach(userId => {
         this.io!.to(`user_${userId}`).emit('order_delivered', broadcastData);
       });
@@ -249,7 +249,7 @@ class OrderBroadcastingService {
    * Send role-specific notifications
    */
   private async sendRoleSpecificNotifications(
-    update: OrderStatusUpdate, 
+    update: OrderStatusUpdate,
     parties: { buyerId?: number; sellerId?: number; driverId?: number }
   ) {
     if (!this.io) return;
@@ -395,14 +395,86 @@ class OrderBroadcastingService {
   }
 }
 
-const orderBroadcastingService = new OrderBroadcastingService();
+interface OrderUpdateData {
+  orderId: string;
+  buyerId: number;
+  sellerId?: number | null;
+  driverId?: number | null;
+  status: string;
+  location?: {
+    address: string;
+    latitude: number;
+    longitude: number;
+  };
+  estimatedDeliveryTime?: string;
+  message?: string;
+}
+
+const orderBroadcastingService = {
+  broadcastOrderUpdate: (orderData: OrderUpdateData) => {
+    if (global.io) {
+      const updatePayload = {
+        type: 'ORDER_UPDATE',
+        orderId: orderData.orderId,
+        status: orderData.status,
+        location: orderData.location,
+        estimatedDeliveryTime: orderData.estimatedDeliveryTime,
+        message: orderData.message || `Order status updated to ${orderData.status}`,
+        timestamp: Date.now()
+      };
+
+      // Broadcast to customer
+      global.io.to(`user_${orderData.buyerId}`).emit('order_update', updatePayload);
+
+      // Broadcast to merchant if exists
+      if (orderData.sellerId) {
+        global.io.to(`user_${orderData.sellerId}`).emit('order_update', updatePayload);
+      }
+
+      // Broadcast to driver if assigned
+      if (orderData.driverId) {
+        global.io.to(`user_${orderData.driverId}`).emit('order_update', updatePayload);
+      }
+
+      // Broadcast to order-specific room
+      global.io.to(`order_${orderData.orderId}`).emit('order_update', updatePayload);
+
+      // Broadcast to admin monitoring
+      global.io.to('admin_orders').emit('order_update', {
+        ...updatePayload,
+        buyerId: orderData.buyerId,
+        sellerId: orderData.sellerId,
+        driverId: orderData.driverId
+      });
+    }
+  },
+
+  broadcastLocationUpdate: (orderData: { orderId: string; driverId: number; location: any; eta?: string }) => {
+    if (global.io) {
+      const locationPayload = {
+        type: 'LOCATION_UPDATE',
+        orderId: orderData.orderId,
+        driverId: orderData.driverId,
+        location: orderData.location,
+        eta: orderData.eta,
+        timestamp: Date.now()
+      };
+
+      // Broadcast to order tracking room
+      global.io.to(`order_${orderData.orderId}`).emit('driver_location_update', locationPayload);
+
+      // Broadcast to driver room
+      global.io.to(`driver_${orderData.driverId}`).emit('location_update_ack', locationPayload);
+    }
+  }
+};
 
 // Export the service instance and convenience functions
 export { orderBroadcastingService };
 
 // Export convenience function for backward compatibility
 export const broadcastOrderUpdate = (orderId: string, update: Partial<OrderStatusUpdate>) => {
-  return orderBroadcastingService.broadcastOrderStatus({
+  return orderBroadcastingService.broadcastOrderUpdate({
     orderId,
     status: update.status || 'PENDING',
     previousStatus: update.previousStatus,

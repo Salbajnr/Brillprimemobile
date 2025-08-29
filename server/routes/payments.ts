@@ -2,13 +2,18 @@ import express from "express";
 import { db } from "../db";
 import { transactions, orders, users } from "../../shared/schema";
 import { eq, desc } from "drizzle-orm";
+import { requireAuth } from "../middleware/auth";
 
 const router = express.Router();
 
 // Get payment history
-router.get("/", async (req, res) => {
+router.get("/", requireAuth, async (req, res) => {
   try {
-    const userId = req.session?.userId || 1; // Fallback for testing
+    const userId = req.user?.id;
+    
+    if (!userId) {
+      return res.status(401).json({ error: 'User not authenticated' });
+    }
     
     const paymentHistory = await db
       .select()

@@ -2,7 +2,7 @@ import express from 'express';
 import { db } from '../db';
 import { users, transactions, wallets } from '../../shared/schema';
 import { eq, sum, and, sql } from 'drizzle-orm';
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, authenticateUser } from "../middleware/auth";
 
 const router = express.Router();
 

@@ -63,7 +63,7 @@ export function setupAuth() {
         req.session.destroy((err) => {
           if (err) console.error('Session destruction error:', err);
         });
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
           message: "Session expired",
           code: "SESSION_EXPIRED"
@@ -133,7 +133,7 @@ export function verifyToken(token: string): Promise<any> {
 
 // Generate secure JWT token
 export function generateToken(payload: object, expiresIn: string = '1h'): string {
-  return jwt.sign(payload, JWT_SECRET as string, { 
+  return jwt.sign(payload, JWT_SECRET as string, {
     expiresIn: expiresIn,
     issuer: 'brillprime-api',
     audience: 'brillprime-app'
@@ -170,14 +170,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
           .limit(1);
 
         if (!user.length || !user[0].isVerified) {
-          return res.status(401).json({ 
+          return res.status(401).json({
             success: false,
             message: "User not found or not verified",
             code: "USER_INVALID"
           });
         }
 
-        // Set user in request  
+        // Set user in request
         req.user = {
           id: user[0].id,
           userId: user[0].id.toString(), // Convert id to string for compatibility
@@ -191,14 +191,14 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
         next();
       })
       .catch((error) => {
-        return res.status(401).json({ 
+        return res.status(401).json({
           success: false,
           message: "Invalid or expired token",
           code: error.message
         });
       });
   } else {
-    return res.status(401).json({ 
+    return res.status(401).json({
       success: false,
       message: "Authentication required",
       code: "AUTH_REQUIRED"
@@ -212,7 +212,7 @@ export function requireRole(allowedRoles: string | string[]) {
 
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.isAuthenticated() && !req.user) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
         message: "Authentication required",
         code: "AUTH_REQUIRED"
@@ -221,7 +221,7 @@ export function requireRole(allowedRoles: string | string[]) {
 
     const userRole = req.user?.role;
     if (!userRole || !roles.includes(userRole)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         success: false,
         message: `Access denied. Required role(s): ${roles.join(', ')}`,
         code: "INSUFFICIENT_PERMISSIONS"
@@ -256,4 +256,7 @@ export function requireVerified(req: Request, res: Response, next: NextFunction)
 
 // Aliases for consistency
 export const auth = requireAuth;
-export const authenticateToken = requireAuth;
+export { requireAuth };
+
+// Export alias for backward compatibility
+export const authenticateUser = requireAuth;

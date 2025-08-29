@@ -3,12 +3,12 @@ import express from "express";
 import { db } from "../db";
 import { users, orders, products, categories, transactions, driverProfiles, merchantProfiles } from "../../shared/schema";
 import { eq, desc, and, or, like, gte, lte, count, sql } from "drizzle-orm";
-import { authenticateUser } from "../middleware/auth";
+import { authenticateUser, requireAuth } from "../middleware/auth";
 
 const router = express.Router();
 
 // Missing Analytics Endpoints
-router.get("/analytics/dashboard", authenticateUser, async (req, res) => {
+router.get("/analytics/dashboard", requireAuth, async (req, res) => {
   try {
     const userId = req.session?.userId;
     const userRole = req.session?.user?.role;

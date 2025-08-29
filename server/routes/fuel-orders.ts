@@ -512,12 +512,15 @@ export function registerFuelOrderRoutes(app: Express) {
       }
 
       // Broadcast update to customer
-      broadcastOrderUpdate(orderId, {
-        type: 'ORDER_ACCEPTED',
-        order: updatedOrder,
-        status: 'ACCEPTED',
-        driverId
-      });
+      if (global.io) {
+        global.io.to(`user_${updatedOrder.customerId}`).emit('order_update', {
+          type: 'ORDER_ACCEPTED',
+          order: updatedOrder,
+          status: 'ACCEPTED',
+          driverId,
+          timestamp: Date.now()
+        });
+      }
 
       res.json({ success: true, order: updatedOrder });
     } catch (error) {
