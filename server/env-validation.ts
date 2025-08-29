@@ -113,12 +113,12 @@ export function validateEnvironment() {
       // In development, provide helpful message but don't exit
       if (process.env.NODE_ENV !== 'production') {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
-        // Return defaults for development
+        // Return defaults for development but always use Render database
         return {
           NODE_ENV: 'development',
           PORT: 5000,
           HOST: '0.0.0.0',
-          DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/brillprime',
+          DATABASE_URL: 'postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com:5432/brillprimemobiledb',
           JWT_SECRET: process.env.JWT_SECRET || 'dev-fallback-jwt-secret-32-chars-minimum-length-required',
           SESSION_SECRET: process.env.SESSION_SECRET || 'dev-fallback-session-secret-32-chars-minimum-length',
           FRONTEND_URL: 'http://localhost:5173',

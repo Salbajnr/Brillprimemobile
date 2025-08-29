@@ -1,9 +1,18 @@
 
 import { Pool } from 'pg';
 import { verifyAndCreateMissingTables } from './verify-database-tables';
+import { PRODUCTION_DATABASE_CONFIG, validateDatabaseConnection } from './database-config-override';
+
+// Always use Render database configuration
+const DATABASE_CONNECTION_STRING = PRODUCTION_DATABASE_CONFIG.connectionString;
+
+// Validate connection before proceeding
+if (!validateDatabaseConnection(DATABASE_CONNECTION_STRING)) {
+  throw new Error('Invalid database configuration - only Render database allowed');
+}
 
 const pool = new Pool({ 
-  connectionString: process.env.DATABASE_URL,
+  connectionString: DATABASE_CONNECTION_STRING,
   ssl: {
     rejectUnauthorized: false
   }
