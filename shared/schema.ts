@@ -7,6 +7,9 @@ export const verificationStatusEnum = pgEnum('verification_status', ['PENDING', 
 export const orderStatusEnum = pgEnum('order_status', ['PENDING', 'CONFIRMED', 'ACCEPTED', 'PICKED_UP', 'IN_TRANSIT', 'DELIVERED', 'CANCELLED']);
 export const paymentStatusEnum = pgEnum('payment_status', ['PENDING', 'COMPLETED', 'FAILED', 'REFUNDED']);
 export const transactionTypeEnum = pgEnum('transaction_type', ['WALLET_FUNDING', 'PAYMENT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT', 'DELIVERY_EARNINGS', 'REFUND']);
+export const kycStatusEnum = pgEnum('kyc_status', ['PENDING', 'UNDER_REVIEW', 'APPROVED', 'REJECTED', 'REQUIRES_RESUBMISSION']);
+export const driverTierEnum = pgEnum('driver_tier', ['STANDARD', 'PREMIUM', 'ELITE']);
+export const supportStatusEnum = pgEnum('support_status', ['OPEN', 'IN_PROGRESS', 'RESOLVED', 'CLOSED']);
 
 // Users table
 export const users = pgTable("users", {
@@ -19,6 +22,15 @@ export const users = pgTable("users", {
   role: roleEnum("role").default('CONSUMER'),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
+  mfaEnabled: boolean("mfa_enabled").default(false),
+  mfaMethod: text("mfa_method"),
+  mfaSecret: text("mfa_secret"),
+  mfaBackupCodes: jsonb("mfa_backup_codes"),
+  biometricHash: text("biometric_hash"),
+  biometricType: text("biometric_type"),
+  lastLoginAt: timestamp("last_login_at"),
+  loginAttempts: integer("login_attempts").default(0),
+  accountLockedUntil: timestamp("account_locked_until"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -37,14 +49,21 @@ export const categories = pgTable("categories", {
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
   merchantId: integer("merchant_id").references(() => users.id).notNull(),
+  sellerId: integer("seller_id").references(() => users.id).notNull(),
   name: text("name").notNull(),
   description: text("description"),
-  price: text("price").notNull(), // Stored as string to avoid precision issues
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
   category: text("category").notNull(),
+  categoryName: text("category_name"),
   unit: text("unit").notNull(),
   stockQuantity: integer("stock_quantity").default(0),
+  stockLevel: integer("stock_level").default(0),
   imageUrl: text("image_url"),
+  images: jsonb("images").default('[]'),
   isAvailable: boolean("is_available").default(true),
+  isActive: boolean("is_active").default(true),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('0.00'),
+  totalReviews: integer("total_reviews").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -56,14 +75,14 @@ export const orders = pgTable("orders", {
   customerId: integer("customer_id").references(() => users.id).notNull(),
   merchantId: integer("merchant_id").references(() => users.id),
   driverId: integer("driver_id").references(() => users.id),
-  orderType: text("order_type").notNull(), // 'PRODUCT', 'FUEL', 'TOLL'
+  orderType: text("order_type").notNull(),
   status: orderStatusEnum("status").default('PENDING'),
-  totalAmount: text("total_amount").notNull(), // Stored as string
-  driverEarnings: text("driver_earnings"), // Driver's share
+  totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
+  driverEarnings: decimal("driver_earnings", { precision: 10, scale: 2 }),
   deliveryAddress: text("delivery_address"),
-  deliveryLatitude: text("delivery_latitude"),
-  deliveryLongitude: text("delivery_longitude"),
-  orderData: jsonb("order_data"), // Store order-specific data
+  deliveryLatitude: decimal("delivery_latitude", { precision: 10, scale: 8 }),
+  deliveryLongitude: decimal("delivery_longitude", { precision: 11, scale: 8 }),
+  orderData: jsonb("order_data"),
   acceptedAt: timestamp("accepted_at"),
   pickedUpAt: timestamp("picked_up_at"),
   deliveredAt: timestamp("delivered_at"),
@@ -75,7 +94,7 @@ export const orders = pgTable("orders", {
 export const wallets = pgTable("wallets", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull().unique(),
-  balance: text("balance").default('0'), // Stored as string
+  balance: decimal("balance", { precision: 15, scale: 2 }).default('0.00'),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
@@ -87,8 +106,8 @@ export const transactions = pgTable("transactions", {
   userId: integer("user_id").references(() => users.id).notNull(),
   orderId: integer("order_id").references(() => orders.id),
   recipientId: integer("recipient_id").references(() => users.id),
-  amount: text("amount").notNull(), // Stored as string
-  netAmount: text("net_amount"), // Amount after fees
+  amount: decimal("amount", { precision: 15, scale: 2 }).notNull(),
+  netAmount: decimal("net_amount", { precision: 15, scale: 2 }),
   currency: text("currency").default('NGN'),
   type: transactionTypeEnum("type").notNull(),
   status: text("status").default('PENDING'),
@@ -108,18 +127,29 @@ export const transactions = pgTable("transactions", {
 export const driverProfiles = pgTable("driver_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull().unique(),
-  vehicleType: text("vehicle_type"), // 'motorcycle', 'car', 'van', 'truck'
+  vehicleType: text("vehicle_type"),
   vehiclePlate: text("vehicle_plate"),
   vehicleModel: text("vehicle_model"),
   vehicleColor: text("vehicle_color"),
+  licenseNumber: text("license_number"),
+  vehicleRegistration: text("vehicle_registration"),
+  currentLatitude: decimal("current_latitude", { precision: 10, scale: 8 }),
+  currentLongitude: decimal("current_longitude", { precision: 11, scale: 8 }),
   isOnline: boolean("is_online").default(false),
   isAvailable: boolean("is_available").default(true),
-  currentLocation: text("current_location"), // JSON string of coordinates
-  rating: text("rating").default('0'),
+  currentLocation: text("current_location"),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('0.00'),
   totalDeliveries: integer("total_deliveries").default(0),
-  totalEarnings: text("total_earnings").default('0'),
+  totalEarnings: decimal("total_earnings", { precision: 15, scale: 2 }).default('0.00'),
   verificationStatus: verificationStatusEnum("verification_status").default('PENDING'),
-  tier: text("tier").default('STANDARD'), // 'STANDARD', 'PREMIUM', 'ELITE'
+  tier: driverTierEnum("tier").default('STANDARD'),
+  kycData: jsonb("kyc_data"),
+  kycStatus: kycStatusEnum("kyc_status").default('PENDING'),
+  kycSubmittedAt: timestamp("kyc_submitted_at"),
+  kycApprovedAt: timestamp("kyc_approved_at"),
+  kycApprovedBy: integer("kyc_approved_by").references(() => users.id),
+  verificationLevel: text("verification_level").default('BASIC'),
+  backgroundCheckStatus: text("background_check_status").default('PENDING'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -133,11 +163,17 @@ export const merchantProfiles = pgTable("merchant_profiles", {
   businessType: text("business_type"),
   businessPhone: text("business_phone"),
   businessEmail: text("business_email"),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }),
+  phone: text("phone"),
+  description: text("description"),
+  operatingHours: jsonb("operating_hours"),
   isOpen: boolean("is_open").default(true),
   isVerified: boolean("is_verified").default(false),
-  rating: text("rating").default('0'),
+  isActive: boolean("is_active").default(true),
+  rating: decimal("rating", { precision: 3, scale: 2 }).default('0.00'),
   totalOrders: integer("total_orders").default(0),
-  revenue: text("revenue").default('0'),
+  revenue: decimal("revenue", { precision: 15, scale: 2 }).default('0.00'),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -148,13 +184,13 @@ export const fuelOrders = pgTable("fuel_orders", {
   customerId: integer("customer_id").references(() => users.id).notNull(),
   driverId: integer("driver_id").references(() => users.id),
   stationId: text("station_id").notNull(),
-  fuelType: text("fuel_type").notNull(), // 'PMS', 'AGO', 'DPK'
-  quantity: text("quantity").notNull(),
-  unitPrice: text("unit_price").notNull(),
-  totalAmount: text("total_amount").notNull(),
+  fuelType: text("fuel_type").notNull(),
+  quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+  unitPrice: decimal("unit_price", { precision: 10, scale: 2 }).notNull(),
+  totalAmount: decimal("total_amount", { precision: 15, scale: 2 }).notNull(),
   deliveryAddress: text("delivery_address").notNull(),
-  deliveryLatitude: text("delivery_latitude"),
-  deliveryLongitude: text("delivery_longitude"),
+  deliveryLatitude: decimal("delivery_latitude", { precision: 10, scale: 8 }),
+  deliveryLongitude: decimal("delivery_longitude", { precision: 11, scale: 8 }),
   status: orderStatusEnum("status").default('PENDING'),
   scheduledDeliveryTime: text("scheduled_delivery_time"),
   acceptedAt: timestamp("accepted_at"),
@@ -174,7 +210,7 @@ export const ratings = pgTable("ratings", {
   driverId: integer("driver_id").references(() => users.id),
   merchantId: integer("merchant_id").references(() => users.id),
   productId: text("product_id"),
-  rating: integer("rating").notNull(), // 1-5 stars
+  rating: integer("rating").notNull(),
   comment: text("comment"),
   createdAt: timestamp("created_at").defaultNow()
 });
@@ -185,7 +221,7 @@ export const notifications = pgTable("notifications", {
   userId: integer("user_id").references(() => users.id).notNull(),
   title: text("title").notNull(),
   message: text("message").notNull(),
-  type: text("type").notNull(), // 'ORDER', 'PAYMENT', 'SYSTEM', etc.
+  type: text("type").notNull(),
   isRead: boolean("is_read").default(false),
   metadata: jsonb("metadata"),
   createdAt: timestamp("created_at").defaultNow()
@@ -217,6 +253,136 @@ export const errorLogs = pgTable("error_logs", {
   source: text("source").default("backend"),
   timestamp: timestamp("timestamp").defaultNow(),
   metadata: jsonb("metadata")
+});
+
+// MFA Tokens table
+export const mfaTokens = pgTable("mfa_tokens", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  token: text("token").notNull(),
+  method: text("method").notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  isUsed: boolean("is_used").default(false),
+  usedAt: timestamp("used_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Verification Documents table
+export const verificationDocuments = pgTable("verification_documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  documentType: text("document_type").notNull(),
+  documentNumber: text("document_number"),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  mimeType: text("mime_type"),
+  expiryDate: timestamp("expiry_date"),
+  status: text("status").default('PENDING'),
+  validationScore: decimal("validation_score", { precision: 3, scale: 2 }),
+  extractedData: jsonb("extracted_data"),
+  rejectionReason: text("rejection_reason"),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  uploadedAt: timestamp("uploaded_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Security Logs table
+export const securityLogs = pgTable("security_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  details: jsonb("details"),
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  severity: text("severity").default('INFO'),
+  timestamp: timestamp("timestamp").defaultNow()
+});
+
+// Trusted Devices table
+export const trustedDevices = pgTable("trusted_devices", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  deviceToken: text("device_token").unique().notNull(),
+  deviceName: text("device_name"),
+  deviceType: text("device_type"),
+  browserInfo: text("browser_info"),
+  lastUsedAt: timestamp("last_used_at"),
+  expiresAt: timestamp("expires_at").notNull(),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Support Tickets table
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  title: text("title").notNull(),
+  description: text("description").notNull(),
+  category: text("category").notNull(),
+  priority: text("priority").default('MEDIUM'),
+  status: supportStatusEnum("status").default('OPEN'),
+  assignedTo: integer("assigned_to").references(() => users.id),
+  attachments: jsonb("attachments"),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Chat Messages table
+export const chatMessages = pgTable("chat_messages", {
+  id: serial("id").primaryKey(),
+  senderId: integer("sender_id").references(() => users.id).notNull(),
+  recipientId: integer("recipient_id").references(() => users.id).notNull(),
+  orderId: integer("order_id").references(() => orders.id),
+  supportTicketId: integer("support_ticket_id").references(() => supportTickets.id),
+  message: text("message").notNull(),
+  messageType: text("message_type").default('TEXT'),
+  attachments: jsonb("attachments"),
+  isRead: boolean("is_read").default(false),
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Toll Gates table
+export const tollGates = pgTable("toll_gates", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  location: text("location").notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  price: decimal("price", { precision: 10, scale: 2 }).notNull(),
+  operatingHours: jsonb("operating_hours"),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Suspicious Activities table
+export const suspiciousActivities = pgTable("suspicious_activities", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  activityType: text("activity_type").notNull(),
+  description: text("description").notNull(),
+  riskIndicators: jsonb("risk_indicators"),
+  timestamp: timestamp("timestamp").defaultNow(),
+  ipAddress: text("ip_address"),
+  deviceFingerprint: text("device_fingerprint"),
+  severity: text("severity").default('MEDIUM')
+});
+
+// Fraud Alerts table
+export const fraudAlerts = pgTable("fraud_alerts", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  alertType: text("alert_type").notNull(),
+  description: text("description").notNull(),
+  riskScore: decimal("risk_score", { precision: 5, scale: 2 }),
+  status: text("status").default('ACTIVE'),
+  resolvedAt: timestamp("resolved_at"),
+  resolvedBy: integer("resolved_by").references(() => users.id),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // Validation schemas for API requests
@@ -287,3 +453,7 @@ export type FuelOrder = typeof fuelOrders.$inferSelect;
 export type NewFuelOrder = typeof fuelOrders.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type NewSupportTicket = typeof supportTickets.$inferInsert;
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
