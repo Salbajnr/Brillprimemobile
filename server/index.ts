@@ -110,6 +110,7 @@ declare global {
 const app: Express = express();
 const server = createServer(app);
 const port = process.env.PORT || 5000;
+const host = process.env.HOST || '0.0.0.0';
 
 // Initialize Socket.IO
 const io = new Server(server, {
@@ -484,7 +485,7 @@ process.on('SIGTERM', async () => {
   try {
     console.log('🔄 Connecting to database...');
     console.log('🔍 DATABASE_URL in server index:', process.env.DATABASE_URL);
-    
+
     // Test database connection with direct pool access for compatibility
     const { pool } = await import('./db');
     console.log('🔍 Testing connection to database...');
@@ -495,7 +496,7 @@ process.on('SIGTERM', async () => {
     console.log('🔄 Initializing database schema...');
     const { initializeDatabase, seedInitialData } = await import('./complete-db-schema');
     await initializeDatabase();
-    
+
     // Only seed if not in production or if explicitly requested
     if (process.env.NODE_ENV !== 'production' && !process.env.SKIP_SEEDING) {
       console.log('🌱 Seeding initial data...');
@@ -515,12 +516,12 @@ process.on('SIGTERM', async () => {
   }
 })();
 
-server.listen(parseInt(port.toString()), "0.0.0.0", (err?: Error) => {
+server.listen(parseInt(port.toString()), host, (err?: Error) => {
   if (err) {
     console.error('❌ Server failed to start:', err);
     process.exit(1);
   }
-  
+
   console.log(`🚀 Server running on port ${port}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`);
@@ -529,7 +530,7 @@ server.listen(parseInt(port.toString()), "0.0.0.0", (err?: Error) => {
   console.log(`🛡️  Security: Enabled (Helmet, Rate Limiting, CORS)`);
   console.log(`📝 Logging: ${process.env.NODE_ENV !== 'test' ? 'Enabled' : 'Disabled'}`);
   console.log('✅ All API routes registered and functional');
-  console.log(`🌐 Server accessible at: http://0.0.0.0:${port}`);
+  console.log(`🌐 Server accessible at: http://${host}:${port}`);
 });
 
 export { app, io };

@@ -8,8 +8,8 @@ packages = ["postgresql", "dotenv-cli"]
 
 [deployment]
 deploymentTarget = "autoscale"
-run = ["npm", "run", "start"]
-build = ["npm", "run", "build"]
+run = ["sh", "-c", "npm run start"]
+build = ["sh", "-c", "npm run build"]
 
 [[ports]]
 localPort = 3000
@@ -31,7 +31,7 @@ externalPort = 5173
 PORT = "5000"
 
 [workflows]
-runButton = "Project"
+runButton = "Production Server"
 
 [[workflows.workflow]]
 name = "Project"
@@ -461,6 +461,27 @@ args = "cd client && npm run build"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "REDIS_DISABLED=true SKIP_SEEDING=false npm run dev"
+
+[[workflows.workflow]]
+name = "Production Server"
+author = 47036857
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=production npm run start"
 
 [agent]
 integrations = ["javascript_database==1.0.0", "javascript_sendgrid==1.0.0"]

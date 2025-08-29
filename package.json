@@ -4,20 +4,15 @@
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "dev": "NODE_ENV=development tsx server/index.ts",
-    "build": "npm run build:web && npm run build:server",
-    "build:web": "cd client && npm run build",
-    "build:server": "esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist --external:pg-native",
+    "dev": "tsx watch server/index.ts",
+    "build": "cd client && npm run build",
     "start": "NODE_ENV=production tsx server/index.ts",
-    "start:prod": "NODE_ENV=production node dist/index.js",
-    "check": "tsc",
+    "start:prod": "NODE_ENV=production tsx server/index.ts",
     "db:push": "drizzle-kit push",
-    "test-api": "node validate-endpoints.js",
-    "test:comprehensive": "cd server && npx tsx test-endpoints.ts",
-    "test:health": "curl -f http://0.0.0.0:5000/api/health/detailed || echo 'Server not running'",
-    "validate": "npm run test:health && npm run test-api",
-    "validate-endpoints": "node validate-endpoints.js",
-    "test-integrations": "node test-integrations.js"
+    "db:studio": "drizzle-kit studio",
+    "validate-env": "node scripts/validate-env.js",
+    "check:db": "node -e \"require('./server/db.ts')\"",
+    "deploy": "chmod +x scripts/deploy.sh && ./scripts/deploy.sh"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.1",
