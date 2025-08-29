@@ -949,27 +949,25 @@ if (process.env.NODE_ENV === 'production') {
 
 // Enhanced server startup with port conflict resolution
 const PORT = process.env.PORT || 5000;
+const HOST = process.env.HOST || '0.0.0.0';
 
-// Function to find available port
-async function findAvailablePort(preferredPort: number): Promise<number> {
-  return new Promise((resolve) => {
-    const testServer = require('net').createServer();
-    testServer.listen(preferredPort, '0.0.0.0', () => {
-      testServer.close(() => {
-        resolve(preferredPort);
-      });
-    });
-    testServer.on('error', () => {
-      // Try next port
-      resolve(preferredPort + 1);
-    });
+// Graceful shutdown handler
+const gracefulShutdown = () => {
+  console.log('🛑 Received shutdown signal, gracefully closing server...');
+  server.close(() => {
+    console.log('✅ Server closed successfully');
+    process.exit(0);
   });
-}
+};
 
+process.on('SIGTERM', gracefulShutdown);
+process.on('SIGINT', gracefulShutdown);
+
+// Start server with error handling
 const availablePort = await findAvailablePort(Number(PORT));
 
-server.listen(availablePort, '0.0.0.0', async () => {
-  console.log(`🚀 Brill Prime server running on http://0.0.0.0:${availablePort}`);
+server.listen(availablePort, HOST, async () => {
+  console.log(`🚀 BrillPrime API Server running on http://${HOST}:${availablePort}`);
   console.log(`📊 Environment: ${env.NODE_ENV}`);
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
@@ -1001,7 +999,7 @@ server.listen(availablePort, '0.0.0.0', async () => {
   }
 
   console.log('✅ Server startup completed successfully');
-  console.log(`🌐 API available at: http://0.0.0.0:${availablePort}/api/health`);
+  console.log(`🌐 API available at: http://${HOST}:${availablePort}/api/health`);
 
   // Real-time system health monitoring
   setInterval(() => {
@@ -1027,6 +1025,22 @@ server.listen(availablePort, '0.0.0.0', async () => {
     });
   }, 30000); // Every 30 seconds
 });
+
+// Function to find available port
+async function findAvailablePort(preferredPort: number): Promise<number> {
+  return new Promise((resolve) => {
+    const testServer = require('net').createServer();
+    testServer.listen(preferredPort, '0.0.0.0', () => {
+      testServer.close(() => {
+        resolve(preferredPort);
+      });
+    });
+    testServer.on('error', () => {
+      // Try next port
+      resolve(preferredPort + 1);
+    });
+  });
+}
 
 // Graceful shutdown handling
 process.on('SIGTERM', () => {
