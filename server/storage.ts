@@ -1379,5 +1379,99 @@ export const storage = {
           eq(orders.status, 'DELIVERED')
         ))
     };
+  },
+
+  // Fuel station and fuel order methods
+  async getNearbyFuelStations(lat: number, lng: number, radius: number = 10000) {
+    // Mock implementation for now - in production this would use PostGIS or similar
+    const mockStations = [
+      {
+        id: 1,
+        name: "Mobil Station",
+        address: "123 Main Street",
+        latitude: lat + 0.001,
+        longitude: lng + 0.001,
+        distance: 250,
+        fuelTypes: ["Petrol", "Diesel"],
+        pricePerLitre: 617.50,
+        isOpen: true,
+        rating: 4.5
+      },
+      {
+        id: 2,
+        name: "Total Station",
+        address: "456 Market Road",
+        latitude: lat - 0.002,
+        longitude: lng + 0.002,
+        distance: 450,
+        fuelTypes: ["Petrol", "Diesel", "Gas"],
+        pricePerLitre: 620.00,
+        isOpen: true,
+        rating: 4.2
+      }
+    ];
+
+    return mockStations.filter(station => station.distance <= radius);
+  },
+
+  async getFuelStationById(id: number) {
+    // Mock implementation - would fetch from fuel_stations table
+    return {
+      id,
+      name: "Mobil Station",
+      address: "123 Main Street",
+      latitude: "6.5244",
+      longitude: "3.3792",
+      fuelTypes: ["Petrol", "Diesel"],
+      pricePerLitre: 617.50,
+      isOpen: true,
+      rating: 4.5,
+      amenities: ["Restroom", "Convenience Store", "ATM"]
+    };
+  },
+
+  async getAvailableFuelOrders(driverId?: number) {
+    const conditions = [eq(fuelOrders.status, 'PENDING')];
+    
+    return await db.select()
+      .from(fuelOrders)
+      .where(and(...conditions))
+      .orderBy(desc(fuelOrders.createdAt))
+      .limit(20);
+  },
+
+  async getFuelOrderById(id: number) {
+    const [fuelOrder] = await db.select()
+      .from(fuelOrders)
+      .where(eq(fuelOrders.id, id))
+      .limit(1);
+    return fuelOrder;
+  },
+
+  async getMerchantFuelOrders(merchantId: number, filters: any = {}) {
+    const conditions = [eq(fuelOrders.merchantId, merchantId)];
+    
+    if (filters.status) {
+      conditions.push(eq(fuelOrders.status, filters.status));
+    }
+
+    return await db.select()
+      .from(fuelOrders)
+      .where(and(...conditions))
+      .orderBy(desc(fuelOrders.createdAt))
+      .limit(filters.limit || 50);
+  },
+
+  async updateFuelOrderStatus(id: number, status: string, updates: any = {}) {
+    const [updatedOrder] = await db.update(fuelOrders)
+      .set({
+        status,
+        ...updates,
+        updatedAt: new Date()
+      })
+      .where(eq(fuelOrders.id, id))
+      .returning();
+    
+    return updatedOrder;
   }
 };

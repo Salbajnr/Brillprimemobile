@@ -256,8 +256,8 @@ export function registerFuelOrderRoutes(app: Express) {
         status: validatedData.status,
         location: {
           address: currentOrder.deliveryAddress,
-          latitude: parseFloat(currentOrder.deliveryLatitude),
-          longitude: parseFloat(currentOrder.deliveryLongitude)
+          latitude: parseFloat(currentOrder.deliveryLatitude || '0'),
+          longitude: parseFloat(currentOrder.deliveryLongitude || '0')
         }
       });
 
@@ -669,7 +669,7 @@ export async function acceptFuelOrder(req: Request, res: Response) {
         updatedAt: new Date()
       })
       .where(and(
-        eq(fuelOrders.id, orderId),
+        eq(fuelOrders.id, parseInt(orderId)),
         eq(fuelOrders.status, 'PENDING'),
         isNull(fuelOrders.driverId)
       ))
