@@ -125,7 +125,7 @@ declare global {
 
 const app: Express = express();
 const server = createServer(app);
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 10000;
 const host = process.env.HOST || '0.0.0.0';
 
 // Initialize Socket.IO

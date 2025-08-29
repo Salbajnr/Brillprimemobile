@@ -2,7 +2,7 @@
 services:
   - type: web
     name: brillprime-backend
-    env: node
+    runtime: node
     plan: starter
     buildCommand: |
       npm install --legacy-peer-deps
