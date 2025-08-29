@@ -178,19 +178,18 @@ export const validateFileUpload = (options: {
 };
 
 // Rate limiting middleware factory
-export const createRateLimit = (windowMs: number, max: number, message?: string) => {
+export const createRateLimit = (options: { windowMs: number, max: number, message?: string }) => {
   return rateLimit({
-    windowMs,
-    max,
+    windowMs: options.windowMs,
+    max: options.max,
     message: {
       success: false,
-      message: message || 'Too many requests, please try again later'
+      message: options.message || 'Too many requests, please try again later'
     },
     standardHeaders: true,
     legacyHeaders: false,
-    keyGenerator: (req: Request) => {
-      return req.ip + (req.user?.id || '');
-    }
+    // Remove custom keyGenerator to use default IP-based rate limiting
+    // which properly handles IPv6 addresses
   });
 };
 
