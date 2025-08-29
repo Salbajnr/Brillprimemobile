@@ -135,19 +135,33 @@ async function checkAPIEndpointsHealth() {
 }
 
 
-export function registerHealthRoutes(app: Express) {
-  // Basic health check
-  app.get("/api/health", (req, res) => {
-    res.json({
-      status: "healthy",
+// Remove duplicate function - using router instead
+const router = express.Router();
+
+// Basic health check - simplified
+router.get('/', async (req, res) => {
+  try {
+    const healthCheck = {
+      status: 'OK',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
+      environment: process.env.NODE_ENV || 'development',
       version: "1.0.0"
-    });
-  });
+    };
 
-  // Comprehensive system health check
-  app.get("/api/health/detailed", async (req, res) => {
+    res.json(healthCheck);
+  } catch (error) {
+    console.error('Health check error:', error);
+    res.status(500).json({
+      status: 'ERROR',
+      timestamp: new Date().toISOString(),
+      error: 'Health check failed'
+    });
+  }
+});
+
+// Comprehensive system health check
+router.get('/detailed', async (req, res) => {
     const healthStatus = {
       status: "healthy",
       timestamp: new Date().toISOString(),
@@ -222,71 +236,30 @@ export function registerHealthRoutes(app: Express) {
   });
 }
 
-const router = Router();
-
-router.get('/health', async (req, res) => {
-  try {
-    const healthCheck = {
-      status: 'OK',
+const healthStatus = {
+      status: "healthy",
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      services: {
-        database: 'OK',
-        session: 'OK',
-        redis: 'OK'
+      version: "1.0.0",
+      components: {
+        database: await checkDatabaseHealth(),
+        storage: checkStorageHealth(),
+        memory: checkMemoryHealth(),
+        websocket: checkWebSocketHealth(),
+        apis: await checkAPIEndpointsHealth()
       }
     };
 
-    // Test database connection
-    try {
-      await db.select().from(users).limit(1);
-    } catch (dbError) {
-      healthCheck.services.database = 'ERROR';
-      healthCheck.status = 'DEGRADED';
+    // Determine overall status
+    const componentStatuses = Object.values(healthStatus.components).map(c => c.status);
+    if (componentStatuses.includes('unhealthy')) {
+      healthStatus.status = 'unhealthy';
+    } else if (componentStatuses.includes('degraded')) {
+      healthStatus.status = 'degraded';
     }
 
-    // Test session store
-    if (!req.session) {
-      healthCheck.services.session = 'ERROR';
-      healthCheck.status = 'DEGRADED';
-    }
-
-    res.json(healthCheck);
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      error: 'Health check failed'
-    });
-  }
-});
-
-router.get('/health/detailed', async (req, res) => {
-  try {
-    const detailed = {
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      system: {
-        nodeVersion: process.version,
-        platform: process.platform,
-        arch: process.arch,
-        uptime: process.uptime(),
-        memory: process.memoryUsage(),
-        cpuUsage: process.cpuUsage()
-      },
-      database: {
-        status: 'OK',
-        connected: true
-      },
-      session: {
-        status: req.session ? 'OK' : 'ERROR',
-        sessionId: req.session?.id || null
-      }
-    };
-
-    res.json(detailed);
+    const statusCode = healthStatus.status === 'healthy' ? 200 : 503;
+    res.status(statusCode).json(healthStatus);
   } catch (error) {
     console.error('Detailed health check error:', error);
     res.status(500).json({

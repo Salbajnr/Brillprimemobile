@@ -26,6 +26,7 @@ import analyticsRoutes from './routes/analytics';
 import dashboardRoutes from './routes/dashboard';
 import categoriesRoutes from './routes/categories';
 import healthCheckRoutes from './routes/health-check';
+import { registerHealthRoutes } from './routes/health-check';
 // import adminRoutes from './admin/routes'; // Temporarily disabled due to schema issues
 import missingApisRoutes from './routes/missing-apis';
 // import adminReportsRoutes from './routes/admin-reports'; // Temporarily disabled
