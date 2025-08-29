@@ -29,16 +29,25 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+console.log('Main.tsx loading...');
+
 const container = document.getElementById('root');
 if (!container) {
   throw new Error('Root element not found');
 }
 
+console.log('Root element found, creating React root...');
+
 const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <ErrorBoundary>
-      <App />
+      <div>
+        <h1>BrillPrime Loading...</h1>
+        <App />
+      </div>
     </ErrorBoundary>
   </React.StrictMode>
 );
+
+console.log('React app rendered');

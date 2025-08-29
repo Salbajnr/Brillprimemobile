@@ -2,120 +2,49 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { users, supportTickets, transactions, driverProfiles, merchantProfiles, wallets, orders, products, categories, chatMessages } from '../../shared/schema';
-// Note: adminUsers, complianceDocuments, contentReports, moderationResponses, vendorViolations, 
-// userLocations, paymentMethods, escrowTransactions, deliveryRequests, vendorPosts, conversations, 
-// adminPaymentActions, fraudAlerts, suspiciousActivities, accountFlags are not yet implemented in schema
+import { users, supportTickets, transactions, driverProfiles, merchantProfiles, wallets, orders, products, categories, chatMessages, identityVerifications, driverVerifications } from '../../shared/schema';
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
 import { requireAdminAuth } from '../middleware/adminAuth';
 import { Request, Response, Router } from "express";
 import { storage } from "../storage";
-import { identityVerifications, driverVerifications } from "../../shared/schema";
 
 const router = express.Router();
 
-// Admin Authentication
+// Admin authentication is handled in /api/auth/admin/login - redirect users there
 router.post('/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-
-    // Find admin user
-    const admin = await db
-      .select({
-        id: adminUsers.id,
-        userId: adminUsers.userId,
-        role: adminUsers.role,
-        permissions: adminUsers.permissions,
-        user: {
-          email: users.email,
-          fullName: users.fullName,
-          password: users.password
-        }
-      })
-      .from(adminUsers)
-      .innerJoin(users, eq(adminUsers.userId, users.userId))
-      .where(eq(users.email, email))
-      .limit(1);
-
-    if (admin.length === 0) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const adminUser = admin[0];
-    const isValidPassword = await bcrypt.compare(password, adminUser.user.password);
-
-    if (!isValidPassword) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    // Generate JWT token
-    const token = jwt.sign(
-      { 
-        adminId: adminUser.id,
-        userId: adminUser.userId,
-        role: adminUser.role,
-        permissions: adminUser.permissions
-      },
-      process.env.JWT_SECRET || 'admin-secret-key',
-      { expiresIn: '24h' }
-    );
-
-    res.json({
-      success: true,
-      data: {
-        token,
-        user: {
-          id: adminUser.id,
-          userId: adminUser.userId,
-          role: adminUser.role,
-          permissions: adminUser.permissions,
-          email: adminUser.user.email,
-          fullName: adminUser.user.fullName
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Admin login error:', error);
-    res.status(500).json({ success: false, message: 'Login failed' });
-  }
+  res.status(301).json({ 
+    success: false, 
+    message: 'Admin login moved to /api/auth/admin/login',
+    redirect: '/api/auth/admin/login'
+  });
 });
 
-router.post('/auth/logout', adminAuth, async (req, res) => {
+router.post('/auth/logout', requireAdminAuth, async (req, res) => {
   res.json({ success: true, message: 'Logged out successfully' });
 });
 
-router.get('/auth/profile', adminAuth, async (req, res) => {
+router.get('/auth/profile', requireAdminAuth, async (req, res) => {
   try {
-    const adminUser = await db
+    const [user] = await db
       .select({
-        id: adminUsers.id,
-        userId: adminUsers.userId,
-        role: adminUsers.role,
-        permissions: adminUsers.permissions,
-        user: {
-          email: users.email,
-          fullName: users.fullName
-        }
+        id: users.id,
+        email: users.email,
+        fullName: users.fullName,
+        role: users.role,
+        isVerified: users.isVerified,
+        isActive: users.isActive
       })
-      .from(adminUsers)
-      .innerJoin(users, eq(adminUsers.userId, users.userId))
-      .where(eq(adminUsers.id, req.adminUser.adminId))
+      .from(users)
+      .where(eq(users.id, (req as any).user.id))
       .limit(1);
 
-    if (adminUser.length === 0) {
+    if (!user) {
       return res.status(404).json({ success: false, message: 'Admin not found' });
     }
 
     res.json({
       success: true,
-      data: {
-        id: adminUser[0].id,
-        userId: adminUser[0].userId,
-        role: adminUser[0].role,
-        permissions: adminUser[0].permissions,
-        email: adminUser[0].user.email,
-        fullName: adminUser[0].user.fullName
-      }
+      data: user
     });
   } catch (error) {
     console.error('Get admin profile error:', error);
@@ -124,7 +53,7 @@ router.get('/auth/profile', adminAuth, async (req, res) => {
 });
 
 // Dashboard Metrics
-router.get('/dashboard/metrics', adminAuth, async (req, res) => {
+router.get('/dashboard/metrics', requireAdminAuth, async (req, res) => {
   try {
     const [
       totalUsersResult,
@@ -168,7 +97,7 @@ router.get('/dashboard/metrics', adminAuth, async (req, res) => {
 });
 
 // User Management
-router.get('/users', adminAuth, async (req, res) => {
+router.get('/users', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -222,7 +151,7 @@ router.get('/users', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/users/:id', adminAuth, async (req, res) => {
+router.get('/users/:id', requireAdminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
@@ -248,7 +177,7 @@ router.get('/users/:id', adminAuth, async (req, res) => {
   }
 });
 
-router.patch('/users/:id/status', adminAuth, async (req, res) => {
+router.patch('/users/:id/status', requireAdminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     const { status, reason } = req.body;
@@ -264,7 +193,7 @@ router.patch('/users/:id/status', adminAuth, async (req, res) => {
   }
 });
 
-router.delete('/users/:id', adminAuth, requirePermission('DELETE_USERS'), async (req, res) => {
+router.delete('/users/:id', requireAdminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id);
     
@@ -281,7 +210,7 @@ router.delete('/users/:id', adminAuth, requirePermission('DELETE_USERS'), async 
 });
 
 // Merchant/Driver Application Management
-router.get('/applications/merchants', adminAuth, async (req, res) => {
+router.get('/applications/merchants', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -329,7 +258,7 @@ router.get('/applications/merchants', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/applications/merchants/:id/review', adminAuth, async (req, res) => {
+router.post('/applications/merchants/:id/review', requireAdminAuth, async (req, res) => {
   try {
     const merchantId = parseInt(req.params.id);
     const { action, reason } = req.body;
@@ -347,7 +276,7 @@ router.post('/applications/merchants/:id/review', adminAuth, async (req, res) =>
   }
 });
 
-router.get('/applications/drivers', adminAuth, async (req, res) => {
+router.get('/applications/drivers', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -396,7 +325,7 @@ router.get('/applications/drivers', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/applications/drivers/:id/review', adminAuth, async (req, res) => {
+router.post('/applications/drivers/:id/review', requireAdminAuth, async (req, res) => {
   try {
     const driverId = parseInt(req.params.id);
     const { action, reason } = req.body;
@@ -416,7 +345,7 @@ router.post('/applications/drivers/:id/review', adminAuth, async (req, res) => {
 });
 
 // KYC Management
-router.get('/kyc/pending', adminAuth, async (req, res) => {
+router.get('/kyc/pending', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -465,7 +394,7 @@ router.get('/kyc/pending', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/kyc/:documentId/review', adminAuth, async (req, res) => {
+router.post('/kyc/:documentId/review', requireAdminAuth, async (req, res) => {
   try {
     const documentId = parseInt(req.params.documentId);
     const { action, reason } = req.body;
@@ -496,7 +425,7 @@ router.post('/kyc/:documentId/review', adminAuth, async (req, res) => {
 });
 
 // Batch KYC operations
-router.post('/kyc/batch-review', adminAuth, async (req, res) => {
+router.post('/kyc/batch-review', requireAdminAuth, async (req, res) => {
   try {
     const { documentIds, action, reason } = req.body;
 
@@ -534,7 +463,7 @@ router.post('/kyc/batch-review', adminAuth, async (req, res) => {
 });
 
 // Support Tickets
-router.get('/support/tickets', adminAuth, async (req, res) => {
+router.get('/support/tickets', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -613,7 +542,7 @@ router.get('/support/tickets', adminAuth, async (req, res) => {
   }
 });
 
-router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
+router.patch('/support/tickets/:id', requireAdminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const updates = req.body;
@@ -664,7 +593,7 @@ router.patch('/support/tickets/:id', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
+router.post('/support/tickets/:id/respond', requireAdminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const { response, status } = req.body;
@@ -715,7 +644,7 @@ router.post('/support/tickets/:id/respond', adminAuth, async (req, res) => {
 });
 
 // Bulk ticket assignment
-router.post('/support/tickets/bulk-assign', adminAuth, async (req, res) => {
+router.post('/support/tickets/bulk-assign', requireAdminAuth, async (req, res) => {
   try {
     const { ticketIds, adminId, priority } = req.body;
 
@@ -761,7 +690,7 @@ router.post('/support/tickets/bulk-assign', adminAuth, async (req, res) => {
 });
 
 // Escalate ticket
-router.post('/support/tickets/:id/escalate', adminAuth, async (req, res) => {
+router.post('/support/tickets/:id/escalate', requireAdminAuth, async (req, res) => {
   try {
     const ticketId = req.params.id;
     const { priority, reason } = req.body;
@@ -801,7 +730,7 @@ router.post('/support/tickets/:id/escalate', adminAuth, async (req, res) => {
 });
 
 // Get ticket statistics for dashboard
-router.get('/support/statistics', adminAuth, async (req, res) => {
+router.get('/support/statistics', requireAdminAuth, async (req, res) => {
   try {
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -848,7 +777,7 @@ router.get('/support/statistics', adminAuth, async (req, res) => {
 });
 
 // Enhanced Transaction Management with Advanced Filtering
-router.get('/transactions', adminAuth, async (req, res) => {
+router.get('/transactions', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -980,7 +909,7 @@ router.get('/transactions', adminAuth, async (req, res) => {
 });
 
 // Enhanced transaction refund with real-time updates
-router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+router.post('/transactions/:id/refund', requireAdminAuth, async (req, res) => {
   try {
     const transactionId = req.params.id;
     const { reason, amount, refundType = 'FULL' } = req.body;
@@ -1056,7 +985,7 @@ router.post('/transactions/:id/refund', adminAuth, requirePermission('MANAGE_PAY
 });
 
 // Enhanced transaction hold with real-time updates
-router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+router.post('/transactions/:id/hold', requireAdminAuth, async (req, res) => {
   try {
     const transactionId = req.params.id;
     const { reason, holdType = 'MANUAL' } = req.body;
@@ -1111,7 +1040,7 @@ router.post('/transactions/:id/hold', adminAuth, requirePermission('MANAGE_PAYME
 });
 
 // Enhanced transaction release with real-time updates
-router.post('/transactions/:id/release', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+router.post('/transactions/:id/release', requireAdminAuth, async (req, res) => {
   try {
     const transactionId = req.params.id;
     const { notes } = req.body;
@@ -1164,7 +1093,7 @@ router.post('/transactions/:id/release', adminAuth, requirePermission('MANAGE_PA
 });
 
 // Get detailed transaction information
-router.get('/transactions/:id', adminAuth, async (req, res) => {
+router.get('/transactions/:id', requireAdminAuth, async (req, res) => {
   try {
     const transactionId = req.params.id;
 
@@ -1249,7 +1178,7 @@ router.get('/transactions/:id', adminAuth, async (req, res) => {
 });
 
 // Bulk transaction operations
-router.post('/transactions/bulk-action', adminAuth, requirePermission('MANAGE_PAYMENTS'), async (req, res) => {
+router.post('/transactions/bulk-action', requireAdminAuth, async (req, res) => {
   try {
     const { transactionIds, action, reason } = req.body;
 
@@ -1322,7 +1251,7 @@ router.post('/transactions/bulk-action', adminAuth, requirePermission('MANAGE_PA
 });
 
 // Fraud Detection & Security
-router.get('/fraud/alerts', adminAuth, async (req, res) => {
+router.get('/fraud/alerts', requireAdminAuth, async (req, res) => {
   try {
     const page = parseInt(req.query.page as string) || 1;
     const limit = parseInt(req.query.limit as string) || 20;
@@ -1383,7 +1312,7 @@ router.get('/fraud/alerts', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/fraud/alerts/:id/update', adminAuth, async (req, res) => {
+router.post('/fraud/alerts/:id/update', requireAdminAuth, async (req, res) => {
   try {
     const alertId = parseInt(req.params.id);
     const { status, notes } = req.body;
@@ -1396,7 +1325,7 @@ router.post('/fraud/alerts/:id/update', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/security/flag-account/:userId', adminAuth, requirePermission('FLAG_ACCOUNTS'), async (req, res) => {
+router.post('/security/flag-account/:userId', requireAdminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
     const { reason, severity } = req.body;
@@ -1414,7 +1343,7 @@ router.post('/security/flag-account/:userId', adminAuth, requirePermission('FLAG
 });
 
 // Real-time Driver Monitoring
-router.get('/monitoring/drivers/locations', adminAuth, async (req, res) => {
+router.get('/monitoring/drivers/locations', requireAdminAuth, async (req, res) => {
   try {
     const driverLocations = await db
       .select({
@@ -1447,7 +1376,7 @@ router.get('/monitoring/drivers/locations', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/monitoring/orders/active', adminAuth, async (req, res) => {
+router.get('/monitoring/orders/active', requireAdminAuth, async (req, res) => {
   try {
     const activeOrders = await db
       .select({
@@ -1481,7 +1410,7 @@ router.get('/monitoring/orders/active', adminAuth, async (req, res) => {
 });
 
 // Content Moderation
-router.get('/moderation/reports', adminAuth, async (req, res) => {
+router.get('/moderation/reports', requireAdminAuth, async (req, res) => {
   try {
     const { 
       page = '1', 
@@ -1591,7 +1520,7 @@ router.get('/moderation/reports', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/moderation/reports/:id', adminAuth, async (req, res) => {
+router.get('/moderation/reports/:id', requireAdminAuth, async (req, res) => {
   try {
     const reportId = parseInt(req.params.id);
 
@@ -1689,7 +1618,7 @@ router.get('/moderation/reports/:id', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/moderation/reports/:id/action', adminAuth, async (req, res) => {
+router.post('/moderation/reports/:id/action', requireAdminAuth, async (req, res) => {
   try {
     const reportId = parseInt(req.params.id);
     const { action, reason, notifyUser = true } = req.body;
@@ -1753,7 +1682,7 @@ router.post('/moderation/reports/:id/action', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/moderation/reports/bulk-action', adminAuth, async (req, res) => {
+router.post('/moderation/reports/bulk-action', requireAdminAuth, async (req, res) => {
   try {
     const { reportIds, action, reason } = req.body;
     const adminId = req.adminUser.adminId;
@@ -1810,7 +1739,7 @@ router.post('/moderation/reports/bulk-action', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/moderation/reports/:id/escalate', adminAuth, async (req, res) => {
+router.post('/moderation/reports/:id/escalate', requireAdminAuth, async (req, res) => {
   try {
     const reportId = parseInt(req.params.id);
     const { reason, priority = 'HIGH' } = req.body;
@@ -1850,7 +1779,7 @@ router.post('/moderation/reports/:id/escalate', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/moderation/stats', adminAuth, async (req, res) => {
+router.get('/moderation/stats', requireAdminAuth, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1922,7 +1851,7 @@ router.get('/moderation/stats', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/moderation/content/:contentType/:contentId', adminAuth, async (req, res) => {
+router.get('/moderation/content/:contentType/:contentId', requireAdminAuth, async (req, res) => {
   try {
     const { contentType, contentId } = req.params;
 
@@ -1998,7 +1927,7 @@ router.get('/moderation/content/:contentType/:contentId', adminAuth, async (req,
 });
 
 // System Monitoring
-router.get('/monitoring/system/health', adminAuth, async (req, res) => {
+router.get('/monitoring/system/health', requireAdminAuth, async (req, res) => {
   try {
     // Check database connectivity
     const dbCheck = await db.select({ count: count() }).from(users);
@@ -2027,7 +1956,7 @@ router.get('/monitoring/system/health', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/monitoring/metrics/realtime', adminAuth, async (req, res) => {
+router.get('/monitoring/metrics/realtime', requireAdminAuth, async (req, res) => {
   try {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -2058,7 +1987,7 @@ router.get('/monitoring/metrics/realtime', adminAuth, async (req, res) => {
 });
 
 // Database Maintenance
-router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENANCE'), async (req, res) => {
+router.post('/maintenance/backup', requireAdminAuth, async (req, res) => {
   try {
     // In a real implementation, this would trigger a database backup
     const backupId = `backup_${Date.now()}`;
@@ -2074,7 +2003,7 @@ router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENA
   }
 });
 
-router.post('/maintenance/cleanup', adminAuth, requirePermission('SYSTEM_MAINTENANCE'), async (req, res) => {
+router.post('/maintenance/cleanup', requireAdminAuth, async (req, res) => {
   try {
     // Clean up old sessions, logs, etc.
     const cutoffDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000); // 30 days ago
@@ -2095,7 +2024,7 @@ router.post('/maintenance/cleanup', adminAuth, requirePermission('SYSTEM_MAINTEN
 });
 
 // Live Chat & Support System
-router.get('/support/live-chat/sessions', adminAuth, async (req, res) => {
+router.get('/support/live-chat/sessions', requireAdminAuth, async (req, res) => {
   try {
     const activeSessions = await db
       .select({
@@ -2124,7 +2053,7 @@ router.get('/support/live-chat/sessions', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/support/live-chat/messages/:conversationId', adminAuth, async (req, res) => {
+router.get('/support/live-chat/messages/:conversationId', requireAdminAuth, async (req, res) => {
   try {
     const conversationId = req.params.conversationId;
 
@@ -2155,7 +2084,7 @@ router.get('/support/live-chat/messages/:conversationId', adminAuth, async (req,
 });
 
 // Real-time user management endpoints
-router.get('/users', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+router.get('/users', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const { 
       page = '1', 
@@ -2255,7 +2184,7 @@ router.get('/users', adminAuth, requirePermission('USER_MANAGEMENT'), async (req
   }
 });
 
-router.post('/users/:userId/action', adminAuth, requirePermission('USER_MANAGEMENT'), async (req: Request, res: Response) => {
+router.post('/users/:userId/action', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     const { action } = req.body;
@@ -2298,7 +2227,7 @@ router.post('/users/:userId/action', adminAuth, requirePermission('USER_MANAGEME
 });
 
 // KYC document management endpoints
-router.get('/kyc-documents', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+router.get('/kyc-documents', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const { 
       page = '1', 
@@ -2408,7 +2337,7 @@ router.get('/kyc-documents', adminAuth, requirePermission('KYC_VERIFICATION'), a
   }
 });
 
-router.post('/kyc-documents/:documentId/review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+router.post('/kyc-documents/:documentId/review', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const { documentId } = req.params;
     const { action, reason } = req.body;
@@ -2451,7 +2380,7 @@ router.post('/kyc-documents/:documentId/review', adminAuth, requirePermission('K
   }
 });
 
-router.post('/kyc-documents/batch-review', adminAuth, requirePermission('KYC_VERIFICATION'), async (req: Request, res: Response) => {
+router.post('/kyc-documents/batch-review', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const { documentIds, action, reason } = req.body;
 
@@ -2495,7 +2424,7 @@ router.post('/kyc-documents/batch-review', adminAuth, requirePermission('KYC_VER
 });
 
 // Real-time metrics for dashboard
-router.get('/realtime-metrics', adminAuth, async (req: Request, res: Response) => {
+router.get('/realtime-metrics', requireAdminAuth, async (req: Request, res: Response) => {
   try {
     const now = new Date();
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
@@ -2526,7 +2455,7 @@ router.get('/realtime-metrics', adminAuth, async (req: Request, res: Response) =
 });
 
 // Database Maintenance
-router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENANCE'), async (req, res) => {
+router.post('/maintenance/backup', requireAdminAuth, async (req, res) => {
   try {
     // In a real implementation, this would trigger a database backup
     const backupId = `backup_${Date.now()}`;
@@ -2543,7 +2472,7 @@ router.post('/maintenance/backup', adminAuth, requirePermission('SYSTEM_MAINTENA
 });
 
 // Real-time Monitoring Endpoints
-router.get('/monitoring/drivers', adminAuth, async (req, res) => {
+router.get('/monitoring/drivers', requireAdminAuth, async (req, res) => {
   try {
     // Mock driver data - in production this would come from a driver tracking system
     const drivers = [
@@ -2587,7 +2516,7 @@ router.get('/monitoring/drivers', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/monitoring/system-metrics', adminAuth, async (req, res) => {
+router.get('/monitoring/system-metrics', requireAdminAuth, async (req, res) => {
   try {
     // Mock system metrics - in production this would come from system monitoring
     const metrics = {
@@ -2608,7 +2537,7 @@ router.get('/monitoring/system-metrics', adminAuth, async (req, res) => {
   }
 });
 
-router.get('/monitoring/live-metrics', adminAuth, async (req, res) => {
+router.get('/monitoring/live-metrics', requireAdminAuth, async (req, res) => {
   try {
     // Mock live metrics - in production this would aggregate real data
     const liveMetrics = {
@@ -2630,7 +2559,7 @@ router.get('/monitoring/live-metrics', adminAuth, async (req, res) => {
 // Fraud Detection Endpoints
 
 // Get fraud alerts with filtering
-router.get('/fraud/alerts', adminAuth, async (req, res) => {
+router.get('/fraud/alerts', requireAdminAuth, async (req, res) => {
   try {
     const { severity, status, type, search, startDate, endDate, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
@@ -2682,7 +2611,7 @@ router.get('/fraud/alerts', adminAuth, async (req, res) => {
 });
 
 // Get fraud statistics
-router.get('/fraud/stats', adminAuth, async (req, res) => {
+router.get('/fraud/stats', requireAdminAuth, async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -2732,7 +2661,7 @@ router.get('/fraud/stats', adminAuth, async (req, res) => {
 });
 
 // Get suspicious activities
-router.get('/fraud/activities', adminAuth, async (req, res) => {
+router.get('/fraud/activities', requireAdminAuth, async (req, res) => {
   try {
     const activities = await db
       .select({
@@ -2763,7 +2692,7 @@ router.get('/fraud/activities', adminAuth, async (req, res) => {
 });
 
 // Alert actions
-router.post('/fraud/alerts/:alertId/investigate', adminAuth, async (req, res) => {
+router.post('/fraud/alerts/:alertId/investigate', requireAdminAuth, async (req, res) => {
   try {
     const { alertId } = req.params;
     const { reason } = req.body;
@@ -2783,7 +2712,7 @@ router.post('/fraud/alerts/:alertId/investigate', adminAuth, async (req, res) =>
   }
 });
 
-router.post('/fraud/alerts/:alertId/resolve', adminAuth, async (req, res) => {
+router.post('/fraud/alerts/:alertId/resolve', requireAdminAuth, async (req, res) => {
   try {
     const { alertId } = req.params;
     const { reason } = req.body;
@@ -2806,7 +2735,7 @@ router.post('/fraud/alerts/:alertId/resolve', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/fraud/alerts/:alertId/false_positive', adminAuth, async (req, res) => {
+router.post('/fraud/alerts/:alertId/false_positive', requireAdminAuth, async (req, res) => {
   try {
     const { alertId } = req.params;
     const { reason } = req.body;
@@ -2830,7 +2759,7 @@ router.post('/fraud/alerts/:alertId/false_positive', adminAuth, async (req, res)
 });
 
 // Bulk actions
-router.post('/fraud/alerts/bulk-action', adminAuth, async (req, res) => {
+router.post('/fraud/alerts/bulk-action', requireAdminAuth, async (req, res) => {
   try {
     const { alertIds, action, reason } = req.body;
     const adminId = (req as any).adminId;
@@ -2870,7 +2799,7 @@ router.post('/fraud/alerts/bulk-action', adminAuth, async (req, res) => {
 });
 
 // Account flagging
-router.post('/fraud/users/:userId/flag', adminAuth, async (req, res) => {
+router.post('/fraud/users/:userId/flag', requireAdminAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
@@ -2892,7 +2821,7 @@ router.post('/fraud/users/:userId/flag', adminAuth, async (req, res) => {
   }
 });
 
-router.post('/fraud/users/:userId/unflag', adminAuth, async (req, res) => {
+router.post('/fraud/users/:userId/unflag', requireAdminAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const { reason } = req.body;
@@ -2914,179 +2843,6 @@ router.post('/fraud/users/:userId/unflag', adminAuth, async (req, res) => {
   } catch (error) {
     console.error('Error unflagging user:', error);
     res.status(500).json({ success: false, message: 'Failed to unflag user account' });
-  }
-});
-
-export default router;
-import express from 'express';
-import jwt from 'jsonwebtoken';
-import { db } from '../db';
-import { users } from '../../shared/schema';
-import { eq } from 'drizzle-orm';
-
-const router = express.Router();
-
-// Admin authentication middleware
-const adminAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
-  try {
-    const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-      return res.status(401).json({
-        success: false,
-        message: 'Access token required'
-      });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret') as any;
-
-    if (decoded.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Admin access required'
-      });
-    }
-
-    // Verify user still exists and is admin
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, decoded.id))
-      .limit(1);
-
-    if (!user || user.role !== 'ADMIN') {
-      return res.status(403).json({
-        success: false,
-        message: 'Invalid admin credentials'
-      });
-    }
-
-    req.user = decoded;
-    next();
-  } catch (error) {
-    return res.status(401).json({
-      success: false,
-      message: 'Invalid token'
-    });
-  }
-};
-
-// Admin authentication routes (no middleware needed)
-router.post('/auth/login', async (req, res) => {
-  // This is handled in the main auth routes
-  res.status(404).json({ error: 'Use /api/auth/admin/login instead' });
-});
-
-// Admin profile route
-router.get('/auth/profile', adminAuth, async (req, res) => {
-  try {
-    const [user] = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        fullName: users.fullName,
-        role: users.role
-      })
-      .from(users)
-      .where(eq(users.id, req.user.id))
-      .limit(1);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: 'User not found'
-      });
-    }
-
-    res.json({
-      success: true,
-      data: user
-    });
-  } catch (error) {
-    console.error('Admin profile fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch profile'
-    });
-  }
-});
-
-// Admin dashboard stats
-router.get('/dashboard/stats', adminAuth, async (req, res) => {
-  try {
-    // Get basic stats
-    const [userStats] = await db.execute(`
-      SELECT 
-        COUNT(*) as total_users,
-        COUNT(CASE WHEN role = 'CONSUMER' THEN 1 END) as consumers,
-        COUNT(CASE WHEN role = 'MERCHANT' THEN 1 END) as merchants,
-        COUNT(CASE WHEN role = 'DRIVER' THEN 1 END) as drivers,
-        COUNT(CASE WHEN created_at > NOW() - INTERVAL '24 hours' THEN 1 END) as new_today
-      FROM users
-    `);
-
-    res.json({
-      success: true,
-      data: {
-        users: userStats.rows[0] || {
-          total_users: 0,
-          consumers: 0,
-          merchants: 0,
-          drivers: 0,
-          new_today: 0
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Admin stats error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch stats'
-    });
-  }
-});
-
-// Admin users management
-router.get('/users', adminAuth, async (req, res) => {
-  try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = parseInt(req.query.limit as string) || 20;
-    const offset = (page - 1) * limit;
-
-    const users_list = await db
-      .select({
-        id: users.id,
-        email: users.email,
-        fullName: users.fullName,
-        role: users.role,
-        isVerified: users.isVerified,
-        createdAt: users.createdAt
-      })
-      .from(users)
-      .limit(limit)
-      .offset(offset);
-
-    const [total] = await db.execute('SELECT COUNT(*) as count FROM users');
-
-    res.json({
-      success: true,
-      data: {
-        users: users_list,
-        pagination: {
-          page,
-          limit,
-          total: total.rows[0]?.count || 0,
-          pages: Math.ceil((total.rows[0]?.count || 0) / limit)
-        }
-      }
-    });
-  } catch (error) {
-    console.error('Admin users fetch error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch users'
-    });
   }
 });
 

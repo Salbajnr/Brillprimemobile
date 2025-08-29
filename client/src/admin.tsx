@@ -4,7 +4,7 @@ import ReactDOM from 'react-dom/client'
 import { Route, Router } from 'wouter'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { Toaster } from './components/ui/toaster'
-import { AdminProvider } from './lib/admin-auth'
+import { AdminAuthProvider } from './lib/admin-auth'
 import AdminDashboard from './pages/admin-dashboard'
 import { AdminLogin } from './pages/admin-login'
 import './index.css'
@@ -29,14 +29,14 @@ function AdminApp() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <AdminProvider>
+      <AdminAuthProvider>
         <Router base="/admin">
           <Route path="/login" component={AdminLogin} />
           <Route path="/*" component={AdminDashboard} />
           <Route path="/" component={AdminDashboard} />
         </Router>
         <Toaster />
-      </AdminProvider>
+      </AdminAuthProvider>
     </QueryClientProvider>
   )
 }

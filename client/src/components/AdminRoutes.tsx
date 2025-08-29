@@ -1,7 +1,7 @@
 
 import { Route, Switch, Redirect } from 'wouter';
 import { AdminLogin } from '../pages/admin-login';
-import { AdminDashboard } from '../pages/admin-dashboard';
+import AdminDashboard from '../pages/admin-dashboard';
 import { AdminLayout } from './admin-layout';
 import { useAdmin } from '../lib/admin-auth';
 

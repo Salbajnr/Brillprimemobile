@@ -1,13 +1,13 @@
 
 import { Route, Switch, Redirect } from 'wouter';
-import { Splash } from '../pages/splash';
-import { Onboarding } from '../pages/onboarding';
-import { RoleSelection } from '../pages/role-selection';
-import { Signin } from '../pages/signin';
-import { Signup } from '../pages/signup';
-import { Dashboard } from '../pages/dashboard';
-import { Profile } from '../pages/profile';
-import { NotFound } from '../pages/not-found';
+import Splash from '../pages/splash';
+import Onboarding from '../pages/onboarding';
+import RoleSelection from '../pages/role-selection';
+import Signin from '../pages/signin';
+import Signup from '../pages/signup';
+import Dashboard from '../pages/dashboard';
+import Profile from '../pages/profile';
+import NotFound from '../pages/not-found';
 import { useAuth } from '../hooks/use-auth';
 
 export function Routes() {
