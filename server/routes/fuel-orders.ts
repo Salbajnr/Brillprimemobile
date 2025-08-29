@@ -90,38 +90,7 @@ export function registerFuelOrderRoutes(app: Express) {
     }
   });
 
-  // Create fuel order (duplicate endpoint fix)
-  app.post("/api/fuel/orders", async (req: any, res: any) => {
-    try {
-      const userId = req.session?.userId;
-      if (!userId) {
-        return res.status(401).json({ success: false, error: 'User not authenticated' });
-      }
-
-      const validatedData = createFuelOrderSchema.parse(req.body);
-
-      const [newOrder] = await db.insert(fuelOrders).values({
-        ...validatedData,
-        customerId: userId,
-        status: 'PENDING'
-      }).returning();
-
-      // Broadcast to available drivers
-      if (global.io) {
-        global.io.to('drivers').emit('new_fuel_order', {
-          type: 'NEW_FUEL_ORDER',
-          order: newOrder,
-          status: 'PENDING',
-          timestamp: Date.now()
-        });
-      }
-
-      res.json({ success: true, order: newOrder });
-    } catch (error) {
-      console.error('Error creating fuel order:', error);
-      res.status(500).json({ success: false, error: 'Failed to create fuel order' });
-    }
-  });
+  
 
   // Get fuel orders for user
   app.get("/api/fuel/orders", async (req: any, res: any) => {
