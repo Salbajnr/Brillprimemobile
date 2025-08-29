@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Package } from "lucide-react";
-import { useNavigate } from 'react-router-dom';
+import { useLocation } from 'wouter';
 
 export default function MerchantDashboard() {
   const [selectedTab, setSelectedTab] = useState("overview");
@@ -14,7 +14,7 @@ export default function MerchantDashboard() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [newOrderTimer, setNewOrderTimer] = useState<number | null>(null);
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-gray-50 p-6">
@@ -41,7 +41,7 @@ export default function MerchantDashboard() {
             <CardContent>
               <Button 
                 className="w-full bg-orange-600 hover:bg-orange-700"
-                onClick={() => navigate('/merchant-inventory')}
+                onClick={() => setLocation('/merchant-inventory')}
               >
                 Manage Inventory
               </Button>

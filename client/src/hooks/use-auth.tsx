@@ -1,4 +1,5 @@
 import { useState, useEffect, createContext, useContext } from 'react'
+import { apiRequest } from '../lib/queryClient'
 
 // Assuming authAPI is defined elsewhere and provides methods like signIn, signUp, validateSession
 // For example:

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 
 export default function DriverDashboard() {
-  const navigate = useNavigate();
+  const [, setLocation] = useLocation();
   const [selectedTab, setSelectedTab] = useState("active");
   const [isOnline, setIsOnline] = useState(false);
   const [showEarningsFilter, setShowEarningsFilter] = useState(false);
