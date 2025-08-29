@@ -149,9 +149,15 @@ export function requireAuth(req: Request, res: Response, next: NextFunction) {
     sessionId: req.session?.userId
   });
 
-  // Check for session-based auth first
-  if (req.isAuthenticated()) {
-    console.log('Auth: Session authenticated');
+  // Check for session-based auth first (without Passport)
+  if (req.session?.userId) {
+    console.log('Auth: Session authenticated via session');
+    // Set user info from session
+    req.user = {
+      id: req.session.userId,
+      userId: req.session.userId.toString(),
+      isAuthenticated: true
+    };
     return next();
   }
 
@@ -256,7 +262,6 @@ export function requireVerified(req: Request, res: Response, next: NextFunction)
 
 // Aliases for consistency
 export const auth = requireAuth;
-export { requireAuth };
 
 // Export alias for backward compatibility
 export const authenticateUser = requireAuth;

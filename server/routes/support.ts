@@ -1,7 +1,8 @@
 
 import express from 'express';
 import { db } from '../db';
-import { supportTickets, supportResponses, users, adminUsers } from '../../shared/schema';
+import { supportTickets, users } from '../../shared/schema';
+// Note: supportResponses, adminUsers are not yet implemented in schema
 import { eq, desc, and, count, isNull } from 'drizzle-orm';
 import { storage } from '../storage';
 

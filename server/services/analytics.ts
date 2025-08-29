@@ -2,18 +2,14 @@ import { db } from "../db";
 import { 
   users,
   orders,
-  products,
-  userBehaviorTracking,
-  personalizationProfiles,
-  crossRoleInteractions,
-  systemMetrics
+  products
+  // Note: userBehaviorTracking, personalizationProfiles, crossRoleInteractions, systemMetrics 
+  // are not yet implemented in schema
 } from "../../shared/schema";
 import { eq, and, desc, gte, lte, sql, count, avg, sum } from "drizzle-orm";
 
-// Define missing types for better type safety
-type InsertUserBehaviorTracking = typeof userBehaviorTracking.$inferInsert;
-type InsertCrossRoleInteraction = typeof crossRoleInteractions.$inferInsert;
-type InsertSystemMetric = typeof systemMetrics.$inferInsert;
+// Note: Types for userBehaviorTracking, crossRoleInteractions, systemMetrics 
+// will be defined when schema tables are implemented
 
 export class AnalyticsService {
   // Dashboard Analytics Methods

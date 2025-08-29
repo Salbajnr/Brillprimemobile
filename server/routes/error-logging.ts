@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import { db } from "../db.js";
 import { eq } from "drizzle-orm";
@@ -21,9 +20,6 @@ router.post("/log-error", async (req, res) => {
     const errorData: ErrorLogData = req.body;
     const { loggingService } = await import('../services/logging');
     
-    // Enhanced frontend error logging
-    const loggingService = await import('../services/logging.js');
-    
     loggingService.default.error('Frontend Error', new Error(errorData.message), {
       userId: errorData.userId,
       userAgent: errorData.userAgent,
@@ -38,22 +34,6 @@ router.post("/log-error", async (req, res) => {
         ip: req.ip || req.connection.remoteAddress
       }
     });
-
-    res.json({
-      success: true,
-      message: 'Error logged successfully'
-    });
-
-  } catch (error) {
-    console.error('Error logging failed:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to log error'
-    });
-  }
-});
-
-export default router;
 
     // Store critical errors in database for tracking
     if (errorData.message.toLowerCase().includes('critical') || 

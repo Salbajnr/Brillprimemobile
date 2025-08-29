@@ -2,9 +2,12 @@ import express from 'express';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import { db } from '../db';
-import { adminUsers, users, complianceDocuments, supportTickets, transactions, contentReports, moderationResponses, vendorViolations, driverProfiles, merchantProfiles, userLocations, wallets, paymentMethods, escrowTransactions, orders, products, categories, deliveryRequests, vendorPosts, chatMessages, conversations, adminPaymentActions, fraudAlerts, suspiciousActivities, accountFlags } from '../../shared/schema';
+import { users, supportTickets, transactions, driverProfiles, merchantProfiles, wallets, orders, products, categories, chatMessages } from '../../shared/schema';
+// Note: adminUsers, complianceDocuments, contentReports, moderationResponses, vendorViolations, 
+// userLocations, paymentMethods, escrowTransactions, deliveryRequests, vendorPosts, conversations, 
+// adminPaymentActions, fraudAlerts, suspiciousActivities, accountFlags are not yet implemented in schema
 import { eq, desc, and, or, like, gte, lte, count, sql, inArray } from 'drizzle-orm';
-import { adminAuth, requirePermission } from '../middleware/adminAuth';
+import { requireAdminAuth } from '../middleware/adminAuth';
 import { Request, Response, Router } from "express";
 import { storage } from "../storage";
 import { identityVerifications, driverVerifications } from "../../shared/schema";

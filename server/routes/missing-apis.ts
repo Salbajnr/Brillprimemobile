@@ -454,14 +454,7 @@ router.post("/payments/escrow", authenticateUser, async (req, res) => {
   }
 });
 
-export default router;
-import express from 'express';
-import { db } from '../db';
-import { users, products, categories, orders, fuelOrders, tollGates, transactions } from '../../shared/schema';
-import { eq, like, and, desc, count } from 'drizzle-orm';
-import { authenticateUser } from '../middleware/auth';
-
-const router = express.Router();
+// Continue with additional routes below
 
 // Categories API
 router.get('/categories', async (req, res) => {

@@ -1,5 +1,6 @@
 import { db } from '../db';
-import { qrPaymentReceipts, qrReceiptScans, transactions, users, orders } from '../../shared/schema';
+import { transactions, users, orders } from '../../shared/schema';
+// Note: qrPaymentReceipts, qrReceiptScans are not yet implemented in schema
 import { eq, and, desc } from 'drizzle-orm';
 import QRCode from 'qrcode';
 
