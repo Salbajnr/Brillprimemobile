@@ -157,7 +157,7 @@ router.get('/order/:orderId', requireAuth, async (req, res) => {
     }
 
     // Verify user has access to this order
-    if (order.userId !== userId && order.driverId !== userId) {
+    if (order.customerId !== userId && order.driverId !== userId) {
       // Check if user is admin or merchant
       const [user] = await db.select().from(users)
         .where(eq(users.id, userId))
@@ -296,7 +296,7 @@ router.post('/order/:orderId/status', requireAuth, async (req, res) => {
     // Real-time notifications
     if (global.io) {
       // Notify customer
-      global.io.to(`user_${order.userId}`).emit('order_update', {
+      global.io.to(`user_${order.customerId}`).emit('order_update', {
         orderId: order.id,
         status: data.status,
         location: data.location,
@@ -408,7 +408,7 @@ router.post('/orders/batch', requireAuth, async (req, res) => {
         if (!order) return null;
 
         // Verify access
-        if (order.userId !== userId && order.driverId !== userId) {
+        if (order.customerId !== userId && order.driverId !== userId) {
           const [user] = await db.select().from(users)
             .where(eq(users.id, userId))
             .limit(1);
@@ -472,7 +472,7 @@ router.post('/order/:orderId/join', requireAuth, async (req, res) => {
       });
     }
 
-    if (order.userId !== userId && order.driverId !== userId) {
+    if (order.customerId !== userId && order.driverId !== userId) {
       const [user] = await db.select().from(users)
         .where(eq(users.id, userId))
         .limit(1);

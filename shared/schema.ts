@@ -80,6 +80,7 @@ export const orders = pgTable("orders", {
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
   driverEarnings: decimal("driver_earnings", { precision: 10, scale: 2 }),
   deliveryAddress: text("delivery_address"),
+  pickupAddress: text("pickup_address"),
   deliveryLatitude: decimal("delivery_latitude", { precision: 10, scale: 8 }),
   deliveryLongitude: decimal("delivery_longitude", { precision: 11, scale: 8 }),
   orderData: jsonb("order_data"),
@@ -436,6 +437,11 @@ export const userLocations = pgTable("user_locations", {
   userId: integer("user_id").references(() => users.id).notNull(),
   latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
   longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  heading: decimal("heading", { precision: 5, scale: 2 }),
+  speed: decimal("speed", { precision: 8, scale: 2 }),
+  accuracy: decimal("accuracy", { precision: 8, scale: 2 }),
+  locationType: text("location_type"),
+  timestamp: timestamp("timestamp").defaultNow(),
   isActive: boolean("is_active").default(true),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -495,6 +501,36 @@ export const driverVerifications = pgTable("driver_verifications", {
   reviewedBy: integer("reviewed_by").references(() => users.id),
   reviewedAt: timestamp("reviewed_at"),
   createdAt: timestamp("created_at").defaultNow()
+});
+
+// Audit Logs table
+export const auditLogs = pgTable("audit_logs", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  resource: text("resource").notNull(),
+  resourceId: text("resource_id"),
+  oldValues: text("old_values"),
+  newValues: text("new_values"),
+  ipAddress: text("ip_address").notNull(),
+  userAgent: text("user_agent").notNull(),
+  sessionId: text("session_id"),
+  success: boolean("success").notNull(),
+  errorMessage: text("error_message"),
+  metadata: text("metadata"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Order Tracking table
+export const orderTracking = pgTable("order_tracking", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  driverId: integer("driver_id").references(() => users.id),
+  status: text("status").notNull(),
+  location: text("location"),
+  notes: text("notes"),
+  estimatedArrival: timestamp("estimated_arrival"),
+  timestamp: timestamp("timestamp").defaultNow()
 });
 
 // Validation schemas for API requests

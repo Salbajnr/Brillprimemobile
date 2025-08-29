@@ -3,7 +3,7 @@ import express from 'express';
 import { db } from '../db';
 import { wallets, transactions, users } from '../../shared/schema';
 import { eq, and, gte } from 'drizzle-orm';
-import { authenticateToken } from '../middleware/auth';
+import { requireAuth as authenticateToken } from '../middleware/auth';
 import { paystack } from '../services/paystack';
 
 const router = express.Router();

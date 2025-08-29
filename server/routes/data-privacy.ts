@@ -186,7 +186,7 @@ router.get('/consent-status', requireAuth, async (req, res) => {
     
     const consentStatus = {
       dataProcessing: true, // Required for service
-      marketing: user?.emailVerified || false,
+      marketing: user?.isVerified || false,
       analytics: true,
       thirdPartySharing: false,
       lastUpdated: user?.updatedAt,
