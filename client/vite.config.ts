@@ -43,7 +43,8 @@ export default defineConfig({
       }
     },
     target: 'esnext',
-    minify: false // Disable minification to see actual errors
+    minify: false, // Disable minification to see actual errors
+    sourcemap: true
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter'],
