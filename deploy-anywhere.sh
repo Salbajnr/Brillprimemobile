@@ -137,5 +137,10 @@ echo "8. 🔍 Configure automated backups"
 
 echo -e "\n${BLUE}🔧 Quick Commands:${NC}"
 echo "Test API: curl http://localhost:5000/api/health"
-echo "View logs: tail -f logs/app.log"
+echo "View App: http://localhost:5000"
+echo "Admin Panel: http://localhost:5000/admin"
+echo "API Documentation: http://localhost:5000/api"
+
+echo -e "\n${GREEN}🎉 Deployment completed successfully!${NC}"
+echo "Your BrillPrime application is now running and ready for use."w logs: tail -f logs/app.log"
 echo "Stop server: kill \$(cat server.pid) # if not using PM2"

@@ -128,7 +128,7 @@ router.post('/documents/upload', requireAuth, upload.single('document'), async (
         global.io.to('admin_verification').emit('verification_review_needed', {
           userId,
           documentId: document.id,
-          documentType: data. hi documentType,
+          documentType: data.documentType,
           validationScore: validationResult.confidence,
           timestamp: Date.now()
         });

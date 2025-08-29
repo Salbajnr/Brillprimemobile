@@ -93,4 +93,6 @@ if (hasErrors) {
   process.exit(1);
 } else {
   console.log('\n✅ Environment validation passed!');
+  console.log('All required variables are properly configured.');
+}.log('\n✅ Environment validation passed!');
 }

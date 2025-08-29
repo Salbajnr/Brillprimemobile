@@ -77,6 +77,30 @@ async function runVerification() {
     
     const result = await testEndpoint(endpoint);
     totalTests++;
+    
+    if (result.success) {
+      console.log('✅'.green);
+      successfulTests++;
+    } else {
+      console.log('❌'.red);
+      if (result.error === 'Server not running') {
+        serverRunning = false;
+      }
+    }
+  }
+  
+  const successRate = (successfulTests / totalTests) * 100;
+  
+  console.log('\n📊 API Status Summary:'.cyan.bold);
+  console.log(`Server Running: ${serverRunning ? '✅' : '❌'}`);
+  console.log(`Successful Tests: ${successfulTests}/${totalTests}`);
+  console.log(`Success Rate: ${successRate.toFixed(1)}%`);
+  
+  if (successRate >= 80) {
+    console.log('\n🎉 API is healthy and ready!'.green.bold);
+  } else {
+    console.log('\n⚠️  API needs attention.'.yellow.bold);
+  }++;
 
     if (result.success) {
       successfulTests++;
