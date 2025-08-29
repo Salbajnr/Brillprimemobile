@@ -83,6 +83,11 @@ import debugRoutes from './routes/debug';
 
 // Import middleware
 import { authenticateUser } from './middleware/auth';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app: Express = express();
 const server = createServer(app);
@@ -358,15 +363,8 @@ io.on('connection', (socket) => {
   });
 });
 
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  
-  // Handle React routing
-  app.get('*', (req: Request, res: Response) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-}
+// Serve static files (both development and production)
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
@@ -377,9 +375,13 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   });
 });
 
-// 404 handler
-app.use('*', (req: Request, res: Response) => {
-  res.status(404).json({ error: 'Route not found' });
+// Handle React routing - serve index.html for all non-API routes
+app.get('*', (req: Request, res: Response) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
 });
 
 // Graceful shutdown
