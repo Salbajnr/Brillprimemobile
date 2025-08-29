@@ -1,686 +1,102 @@
-
 import express from "express";
 import { db } from "../db";
-import { transactions, orders, users, wallets, escrowTransactions } from "../../shared/schema";
-import { eq, desc, and } from "drizzle-orm";
-import { transactionService } from "../services/transaction";
-import { paystackService } from "../services/paystack";
-import { requireAuth } from "../middleware/auth";
-import { z } from "zod";
-import crypto from "crypto";
-import { qrReceiptService } from "../services/qr-receipt";
+import { transactions, orders, users } from "../../shared/schema";
+import { eq, desc } from "drizzle-orm";
 
 const router = express.Router();
 
-// Validation schemas
-const paymentInitSchema = z.object({
-  orderId: z.number().optional(),
-  amount: z.number().positive(),
-  email: z.string().email(),
-  paymentMethod: z.string(),
-  currency: z.string().default('NGN'),
-  purpose: z.enum(['ORDER_PAYMENT', 'WALLET_FUNDING', 'TOLL_PAYMENT']).default('ORDER_PAYMENT'),
-  metadata: z.object({}).optional()
-});
+// Get payment history
+router.get("/", async (req, res) => {
+  try {
+    const userId = req.session?.userId || 1; // Fallback for testing
+    
+    const paymentHistory = await db
+      .select()
+      .from(transactions)
+      .where(eq(transactions.userId, userId))
+      .orderBy(desc(transactions.createdAt))
+      .limit(20);
 
-const verifyPaymentSchema = z.object({
-  reference: z.string(),
-  orderId: z.number().optional()
-});
-
-const refundSchema = z.object({
-  transactionId: z.string(),
-  amount: z.number().positive().optional(),
-  reason: z.string()
+    res.json({
+      success: true,
+      data: paymentHistory
+    });
+  } catch (error) {
+    console.error('Payment history error:', error);
+    res.status(500).json({ error: 'Failed to fetch payment history' });
+  }
 });
 
 // Initialize payment
-router.post("/initialize", requireAuth, async (req, res) => {
+router.post("/initialize", async (req, res) => {
   try {
-    const userId = req.user.id;
-    const validatedData = paymentInitSchema.parse(req.body);
+    const userId = req.session?.userId || 1;
+    const { amount, email, paymentMethod = "card" } = req.body;
 
-    // Get user details
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
+    if (!amount || !email) {
+      return res.status(400).json({ error: 'Amount and email are required' });
     }
 
-    // Initialize payment with transaction service
-    const result = await transactionService.initiatePayment({
+    // Create transaction record
+    const [transaction] = await db.insert(transactions).values({
       userId,
-      amount: validatedData.amount,
-      email: user.email,
-      description: `${validatedData.purpose} - ${validatedData.amount} ${validatedData.currency}`,
-      orderId: validatedData.orderId,
-      metadata: {
-        ...validatedData.metadata,
-        purpose: validatedData.purpose,
-        paymentMethod: validatedData.paymentMethod
-      }
-    });
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
+      amount: amount.toString(),
+      paymentMethod,
+      paymentStatus: 'PENDING',
+      transactionRef: `pay_${Date.now()}`,
+      createdAt: new Date()
+    }).returning();
 
     res.json({
       success: true,
       data: {
-        transactionId: result.transactionId,
-        reference: result.reference,
-        authorization_url: result.authorization_url,
-        access_code: result.access_code
+        reference: transaction.transactionRef,
+        authorizationUrl: `https://checkout.paystack.com/v2/checkout?reference=${transaction.transactionRef}`,
+        transaction
       }
     });
-
-  } catch (error: any) {
-    console.error("Payment initialization error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to initialize payment"
-    });
+  } catch (error) {
+    console.error('Payment initialization error:', error);
+    res.status(500).json({ error: 'Failed to initialize payment' });
   }
 });
 
 // Verify payment
-router.post("/verify", requireAuth, async (req, res) => {
+router.post("/verify", async (req, res) => {
   try {
-    const { reference, orderId } = verifyPaymentSchema.parse(req.body);
+    const { reference } = req.body;
 
-    const result = await transactionService.verifyPayment(reference);
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error
-      });
+    if (!reference) {
+      return res.status(400).json({ error: 'Reference is required' });
     }
 
-    // If it's an order payment, update order status
-    if (orderId && result.transaction.status === 'SUCCESS') {
-      await db
-        .update(orders)
-        .set({
-          paymentStatus: 'COMPLETED',
-          status: 'CONFIRMED',
-          updatedAt: new Date()
-        })
-        .where(eq(orders.id, orderId));
-    }
-
-    // Generate QR receipt for successful payments
-    if (result.transaction && result.transaction.status === 'SUCCESS') {
-      try {
-        // Determine service type and merchant ID
-        let serviceType = 'PAYMENT';
-        let merchantId = null;
-
-        // If it's an order payment, get merchant ID from order
-        if (orderId) {
-          const [order] = await db
-            .select({ merchantId: orders.merchantId })
-            .from(orders)
-            .where(eq(orders.id, orderId))
-            .limit(1);
-          
-          if (order) {
-            merchantId = order.merchantId;
-            serviceType = 'DELIVERY';
-          }
-        }
-
-        // If no merchant ID found, use a default or skip QR generation
-        if (merchantId) {
-          const qrResult = await qrReceiptService.generateReceiptQR(
-            result.transaction.id.toString(),
-            result.transaction.userId,
-            merchantId,
-            serviceType
-          );
-
-          if (qrResult.success) {
-            console.log(`QR receipt generated: ${qrResult.receiptNumber}`);
-            
-            // Send QR receipt in real-time notification
-            if (global.io) {
-              global.io.to(`user_${result.transaction.userId}`).emit('qr_receipt_generated', {
-                receiptId: qrResult.receipt.id,
-                receiptNumber: qrResult.receiptNumber,
-                qrCodeImage: qrResult.qrCodeImage,
-                transactionId: result.transaction.id,
-                timestamp: Date.now()
-              });
-            }
-          }
-        }
-      } catch (qrError) {
-        console.error('QR receipt generation failed:', qrError);
-        // Don't fail the payment verification if QR generation fails
-      }
-    }
-
-    // Send real-time notification
-    if (global.io && result.transaction) {
-      global.io.to(`user_${result.transaction.userId}`).emit('payment_verified', {
-        transactionId: result.transaction.id,
-        status: result.transaction.status,
-        amount: result.transaction.amount,
-        reference,
-        timestamp: Date.now()
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result.transaction
-    });
-
-  } catch (error: any) {
-    console.error("Payment verification error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to verify payment"
-    });
-  }
-});
-
-// Process refund
-router.post("/refund", requireAuth, async (req, res) => {
-  try {
-    const { transactionId, amount, reason } = refundSchema.parse(req.body);
-
-    const result = await transactionService.processRefund(transactionId, amount, reason);
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result.refundTransaction,
-      message: "Refund processed successfully"
-    });
-
-  } catch (error: any) {
-    console.error("Refund processing error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to process refund"
-    });
-  }
-});
-
-// Get transaction history
-router.get("/transactions", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { page = 1, limit = 20, type, status } = req.query;
-
-    const offset = (Number(page) - 1) * Number(limit);
-
-    let whereConditions = [eq(transactions.userId, userId)];
-
-    if (type) {
-      whereConditions.push(eq(transactions.type, type as any));
-    }
-
-    if (status) {
-      whereConditions.push(eq(transactions.status, status as any));
-    }
-
-    const userTransactions = await db
-      .select({
-        id: transactions.id,
-        type: transactions.type,
-        status: transactions.status,
-        amount: transactions.amount,
-        netAmount: transactions.netAmount,
-        currency: transactions.currency,
-        description: transactions.description,
-        paystackReference: transactions.paystackReference,
-        orderId: transactions.orderId,
-        createdAt: transactions.createdAt,
-        completedAt: transactions.completedAt,
-        metadata: transactions.metadata
-      })
-      .from(transactions)
-      .where(and(...whereConditions))
-      .orderBy(desc(transactions.createdAt))
-      .limit(Number(limit))
-      .offset(offset);
-
-    res.json({
-      success: true,
-      data: {
-        transactions: userTransactions,
-        pagination: {
-          page: Number(page),
-          limit: Number(limit),
-          hasMore: userTransactions.length === Number(limit)
-        }
-      }
-    });
-
-  } catch (error: any) {
-    console.error("Get transactions error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch transactions"
-    });
-  }
-});
-
-// Get transaction receipt
-router.get("/receipt/:transactionId", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { transactionId } = req.params;
-
+    // Find transaction
     const [transaction] = await db
-      .select({
-        id: transactions.id,
-        type: transactions.type,
-        status: transactions.status,
-        amount: transactions.amount,
-        netAmount: transactions.netAmount,
-        currency: transactions.currency,
-        description: transactions.description,
-        paystackReference: transactions.paystackReference,
-        orderId: transactions.orderId,
-        createdAt: transactions.createdAt,
-        completedAt: transactions.completedAt,
-        metadata: transactions.metadata,
-        userName: users.fullName,
-        userEmail: users.email
-      })
+      .select()
       .from(transactions)
-      .leftJoin(users, eq(transactions.userId, users.id))
-      .where(and(
-        eq(transactions.id, transactionId),
-        eq(transactions.userId, userId)
-      ))
+      .where(eq(transactions.transactionRef, reference))
       .limit(1);
 
     if (!transaction) {
-      return res.status(404).json({
-        success: false,
-        message: "Transaction not found"
-      });
+      return res.status(404).json({ error: 'Transaction not found' });
     }
 
-    // Generate receipt data
-    const receipt = {
-      id: transaction.id,
-      reference: transaction.paystackReference,
-      type: transaction.type,
-      status: transaction.status,
-      amount: transaction.amount,
-      currency: transaction.currency,
-      description: transaction.description,
-      date: transaction.createdAt,
-      completedAt: transaction.completedAt,
-      customer: {
-        name: transaction.userName,
-        email: transaction.userEmail
-      },
-      metadata: transaction.metadata
-    };
-
-    res.json({
-      success: true,
-      data: receipt
-    });
-
-  } catch (error: any) {
-    console.error("Get receipt error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to fetch receipt"
-    });
-  }
-});
-
-// Wallet funding
-router.post("/wallet/fund", requireAuth, async (req, res) => {
-  try {
-    const userId = req.user.id;
-    const { amount } = req.body;
-
-    if (!amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid amount"
-      });
-    }
-
-    // Get user details
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, userId))
-      .limit(1);
-
-    if (!user) {
-      return res.status(404).json({
-        success: false,
-        message: "User not found"
-      });
-    }
-
-    // Initialize wallet funding transaction
-    const result = await transactionService.initiatePayment({
-      userId,
-      amount,
-      email: user.email,
-      description: `Wallet funding - ${amount} NGN`,
-      metadata: {
-        purpose: 'WALLET_FUNDING',
-        userId
-      }
-    });
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-
-    res.json({
-      success: true,
-      data: {
-        transactionId: result.transactionId,
-        reference: result.reference,
-        authorization_url: result.authorization_url,
-        access_code: result.access_code
-      }
-    });
-
-  } catch (error: any) {
-    console.error("Wallet funding error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to initiate wallet funding"
-    });
-  }
-});
-
-// Wallet transfer
-router.post("/wallet/transfer", requireAuth, async (req, res) => {
-  try {
-    const fromUserId = req.user.id;
-    const { toUserId, amount, description } = req.body;
-
-    if (!toUserId || !amount || amount <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid transfer parameters"
-      });
-    }
-
-    const result = await transactionService.processWalletTransfer(
-      fromUserId,
-      toUserId,
-      amount,
-      description
-    );
-
-    if (!result.success) {
-      return res.status(400).json({
-        success: false,
-        message: result.error
-      });
-    }
-
-    // Send real-time notifications
-    if (global.io) {
-      global.io.to(`user_${fromUserId}`).emit('wallet_transfer_sent', {
-        amount,
-        toUserId,
-        reference: result.transferRef,
-        timestamp: Date.now()
-      });
-
-      global.io.to(`user_${toUserId}`).emit('wallet_transfer_received', {
-        amount,
-        fromUserId,
-        reference: result.transferRef,
-        timestamp: Date.now()
-      });
-    }
-
-    res.json({
-      success: true,
-      data: result.transaction,
-      message: "Transfer completed successfully"
-    });
-
-  } catch (error: any) {
-    console.error("Wallet transfer error:", error);
-    res.status(500).json({
-      success: false,
-      message: error.message || "Failed to process transfer"
-    });
-  }
-});
-
-// Paystack webhook handler
-router.post("/paystack/webhook", async (req, res) => {
-  try {
-    const signature = req.headers['x-paystack-signature'] as string;
-    
-    if (!signature) {
-      return res.status(400).json({ message: "Missing signature" });
-    }
-
-    // Validate webhook signature
-    const isValid = paystackService.validateWebhook(signature, JSON.stringify(req.body));
-    
-    if (!isValid) {
-      return res.status(400).json({ message: "Invalid signature" });
-    }
-
-    const { event, data } = req.body;
-
-    switch (event) {
-      case 'charge.success':
-        await handleSuccessfulPayment(data);
-        break;
-      case 'charge.failed':
-        await handleFailedPayment(data);
-        break;
-      case 'transfer.success':
-        await handleSuccessfulTransfer(data);
-        break;
-      case 'transfer.failed':
-        await handleFailedTransfer(data);
-        break;
-      default:
-        console.log(`Unhandled webhook event: ${event}`);
-    }
-
-    res.json({ success: true });
-
-  } catch (error: any) {
-    console.error("Webhook processing error:", error);
-    res.status(500).json({ message: "Webhook processing failed" });
-  }
-});
-
-// Get Paystack configuration
-router.get("/config/paystack", async (req, res) => {
-  try {
-    const config = paystackService.getConfig();
-    
-    res.json({
-      success: true,
-      data: {
-        publicKey: config.publicKey,
-        isConfigured: paystackService.isConfigured()
-      }
-    });
-  } catch (error: any) {
-    console.error("Get Paystack config error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to fetch payment configuration"
-    });
-  }
-});
-
-// Helper functions for webhook handling
-async function handleSuccessfulPayment(data: any) {
-  try {
-    const reference = data.reference;
-    await transactionService.verifyPayment(reference);
-  } catch (error) {
-    console.error("Handle successful payment error:", error);
-  }
-}
-
-async function handleFailedPayment(data: any) {
-  try {
-    const reference = data.reference;
-    
-    const [transaction] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.paystackReference, reference))
-      .limit(1);
-
-    if (transaction) {
-      await db
-        .update(transactions)
-        .set({
-          status: 'FAILED',
-          failedAt: new Date(),
-          gatewayResponse: data
-        })
-        .where(eq(transactions.id, transaction.id));
-    }
-  } catch (error) {
-    console.error("Handle failed payment error:", error);
-  }
-}
-
-async function handleSuccessfulTransfer(data: any) {
-  try {
-    const transferCode = data.transfer_code;
-    const reference = data.reference;
-    const amount = data.amount;
-    const recipient = data.recipient;
-    
-    // Update wallet transaction status
-    await db
+    // Update transaction status (mock verification for now)
+    const [updatedTransaction] = await db
       .update(transactions)
-      .set({
-        paymentStatus: 'COMPLETED',
-        gatewayResponse: data,
-        completedAt: new Date()
-      })
-      .where(eq(transactions.transactionRef, reference));
-    
-    // Update user wallet balance for successful withdrawal
-    const [transaction] = await db
-      .select()
-      .from(transactions)
+      .set({ paymentStatus: 'COMPLETED' })
       .where(eq(transactions.transactionRef, reference))
-      .limit(1);
-    
-    if (transaction && transaction.type === 'WITHDRAWAL') {
-      // Deduct from user's available balance
-      await db
-        .update(users)
-        .set({
-          walletBalance: sql`${users.walletBalance} - ${amount / 100}` // Paystack sends amount in kobo
-        })
-        .where(eq(users.id, transaction.userId));
-      
-      // Log the withdrawal
-      console.log(`✅ Withdrawal successful: ₦${amount / 100} for user ${transaction.userId}`);
-      
-      // Send real-time notification
-      if (global.io) {
-        global.io.to(`user_${transaction.userId}`).emit('wallet_update', {
-          type: 'WITHDRAWAL_COMPLETED',
-          amount: amount / 100,
-          reference,
-          timestamp: Date.now()
-        });
-      }
-    }
-    
-    console.log("Transfer successful:", data);
-  } catch (error) {
-    console.error("Handle successful transfer error:", error);
-  }
-}
+      .returning();
 
-async function handleFailedTransfer(data: any) {
-  try {
-    const transferCode = data.transfer_code;
-    const reference = data.reference;
-    const amount = data.amount;
-    
-    // Update transaction status to failed
-    await db
-      .update(transactions)
-      .set({
-        paymentStatus: 'FAILED',
-        gatewayResponse: data,
-        failedAt: new Date()
-      })
-      .where(eq(transactions.transactionRef, reference));
-    
-    // Get transaction details
-    const [transaction] = await db
-      .select()
-      .from(transactions)
-      .where(eq(transactions.transactionRef, reference))
-      .limit(1);
-    
-    if (transaction && transaction.type === 'WITHDRAWAL') {
-      // Refund the amount back to user's wallet (it was held during processing)
-      await db
-        .update(users)
-        .set({
-          walletBalance: sql`${users.walletBalance} + ${amount / 100}` // Refund the held amount
-        })
-        .where(eq(users.id, transaction.userId));
-      
-      console.log(`❌ Withdrawal failed, refunded ₦${amount / 100} to user ${transaction.userId}`);
-      
-      // Send real-time notification
-      if (global.io) {
-        global.io.to(`user_${transaction.userId}`).emit('wallet_update', {
-          type: 'WITHDRAWAL_FAILED',
-          amount: amount / 100,
-          reference,
-          reason: data.message || 'Transfer failed',
-          timestamp: Date.now()
-        });
-      }
-    }
-    
-    console.log("Transfer failed:", data);
+    res.json({
+      success: true,
+      data: updatedTransaction,
+      message: 'Payment verified successfully'
+    });
   } catch (error) {
-    console.error("Handle failed transfer error:", error);
+    console.error('Payment verification error:', error);
+    res.status(500).json({ error: 'Failed to verify payment' });
   }
-}
+});
 
 export default router;

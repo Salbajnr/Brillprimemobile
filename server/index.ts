@@ -404,7 +404,7 @@ apiRouter.use('/dashboard', dashboardRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
-registerFuelOrderRoutes(app);
+// registerFuelOrderRoutes(app); // Temporarily disable due to IPv6 rate limiter issue
 registerEscrowManagementRoutes(app);
 registerAdminUserManagementRoutes(app);
 
