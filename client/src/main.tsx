@@ -40,14 +40,9 @@ console.log('Root element found, creating React root...');
 
 const root = createRoot(container);
 root.render(
-  <React.StrictMode>
-    <ErrorBoundary>
-      <div>
-        <h1>BrillPrime Loading...</h1>
-        <App />
-      </div>
-    </ErrorBoundary>
-  </React.StrictMode>
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
 );
 
 console.log('React app rendered');
