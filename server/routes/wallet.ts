@@ -2,12 +2,12 @@ import express from 'express';
 import { db } from '../db';
 import { users, transactions, wallets } from '../../shared/schema';
 import { eq, sum, and, sql } from 'drizzle-orm';
-import { authenticateUser } from "../middleware/auth";
+import { requireAuth } from "../middleware/auth";
 
 const router = express.Router();
 
 // Get wallet balance
-router.get('/balance', authenticateUser, async (req, res) => {
+router.get('/balance', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id; // Use authenticated user ID
 
@@ -44,7 +44,7 @@ router.get('/balance', authenticateUser, async (req, res) => {
 });
 
 // Fund wallet - Initialize payment (using dummy implementation for now)
-router.post('/fund', authenticateUser, async (req, res) => {
+router.post('/fund', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     const { amount, email, paymentMethod = 'card' } = req.body;
@@ -81,7 +81,7 @@ router.post('/fund', authenticateUser, async (req, res) => {
     const [transaction] = await db.insert(transactions).values({
       userId,
       amount: amount.toString(),
-      type: 'WALLET_FUNDING',
+      type: 'Wallet_FUNDING',
       status: 'PENDING',
       paymentMethod,
       paymentStatus: 'PENDING',
@@ -128,7 +128,7 @@ router.post('/fund', authenticateUser, async (req, res) => {
 });
 
 // Verify wallet funding payment (This endpoint might need adjustment if Paystack integration is implemented)
-router.post('/fund/verify', authenticateUser, async (req, res) => {
+router.post('/fund/verify', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     const { reference } = req.body;
@@ -178,7 +178,7 @@ router.post('/fund/verify', authenticateUser, async (req, res) => {
 
 
 // Withdraw from wallet
-router.post('/withdraw', authenticateUser, async (req, res) => {
+router.post('/withdraw', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     const { amount, bankDetails } = req.body;
@@ -243,6 +243,7 @@ router.post('/withdraw', authenticateUser, async (req, res) => {
     // Record transaction
     const [transaction] = await db.insert(transactions).values({
       userId,
+      amount: amount.toString(),
       type: 'WITHDRAWAL',
       status: 'PENDING', // Status could be PENDING, PROCESSING, COMPLETED, FAILED
       amount: amount.toString(),
@@ -301,7 +302,7 @@ router.post('/withdraw', authenticateUser, async (req, res) => {
 });
 
 // Get available banks (Placeholder, real implementation would fetch from payment gateway)
-router.get('/banks', authenticateUser, async (req, res) => {
+router.get('/banks', requireAuth, async (req, res) => {
   try {
     // In a real application, you would fetch this from Paystack or another provider
     const simulatedBanks = [
@@ -323,7 +324,7 @@ router.get('/banks', authenticateUser, async (req, res) => {
 });
 
 // Validate bank account (Placeholder, real implementation would use payment gateway)
-router.post('/validate-account', authenticateUser, async (req, res) => {
+router.post('/validate-account', requireAuth, async (req, res) => {
   try {
     const { accountNumber, bankCode } = req.body;
 
@@ -358,7 +359,7 @@ router.post('/validate-account', authenticateUser, async (req, res) => {
 });
 
 // Get transaction history
-router.get('/transactions', authenticateUser, async (req, res) => {
+router.get('/transactions', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
 
@@ -383,7 +384,7 @@ router.get('/transactions', authenticateUser, async (req, res) => {
 });
 
 // Transfer between wallets
-router.post('/transfer', authenticateUser, async (req, res) => {
+router.post('/transfer', requireAuth, async (req, res) => {
   try {
     const userId = req.user?.id;
     const { recipientId, amount, description } = req.body;

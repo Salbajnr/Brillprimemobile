@@ -27,6 +27,8 @@ import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
 import { registerMerchantKycRoutes } from './routes/merchant-kyc';
 import systemHealthRoutes from './routes/system-health';
 import adminRoutes from './routes/admin-oversight';
+import adminReportsRoutes from "./routes/admin-reports"; // Added new admin route
+import adminSettingsRoutes from "./routes/admin-settings"; // Added new admin route
 
 
 // Extend express-session types
@@ -74,9 +76,9 @@ import { registerFuelOrderRoutes } from './routes/fuel-orders';
 import tollPaymentsRoutes from './routes/toll-payments';
 import driverRoutes from './routes/driver';
 import supportRoutes from './routes/support';
-import adminSupportRoutes from './routes/admin-support';
-import enhancedVerificationRoutes from './routes/enhanced-verification';
-import mfaAuthenticationRoutes from './routes/mfa-authentication';
+import adminSupportRoutes from "./routes/admin-support";
+import enhancedVerificationRoutes from "./routes/enhanced-verification";
+import mfaAuthenticationRoutes from "./routes/mfa-authentication";
 import realTimeTrackingRoutes from './routes/real-time-tracking';
 import driverLocationRoutes from './routes/driver-location';
 import activeOrdersRoutes from './routes/active-orders';
@@ -417,6 +419,8 @@ apiRouter.use('/toll-payments', tollPaymentsRoutes);
 apiRouter.use('/drivers', driverRoutes);
 apiRouter.use('/support', supportRoutes);
 apiRouter.use('/admin-support', adminSupportRoutes);
+apiRouter.use('/admin-reports', adminReportsRoutes); // Registered new admin reports route
+apiRouter.use('/admin-settings', adminSettingsRoutes); // Registered new admin settings route
 apiRouter.use('/verification-enhanced', enhancedVerificationRoutes);
 apiRouter.use('/mfa', mfaAuthenticationRoutes);
 apiRouter.use('/tracking', realTimeTrackingRoutes);
