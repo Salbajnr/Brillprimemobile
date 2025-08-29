@@ -166,23 +166,6 @@ app.use(session({
 // Authentication middleware - temporarily disabled for basic functionality
 // app.use(authenticateUser); // Will re-enable after fixing auth issues
 
-// Root route - serve the frontend or redirect
-app.get('/', (req, res) => {
-  res.json({
-    success: true,
-    message: 'BrillPrime API Server',
-    version: '1.0.0',
-    environment: process.env.NODE_ENV || 'development',
-    endpoints: {
-      health: '/api/health',
-      auth: '/api/auth',
-      dashboard: '/api/dashboard',
-      orders: '/api/orders',
-      wallet: '/api/wallet',
-      missing: '/api/missing'
-    }
-  });
-});
 
 // Health check route (must be first)
 app.use('/api/health', healthCheckRoutes);
