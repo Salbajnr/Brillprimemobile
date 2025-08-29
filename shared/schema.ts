@@ -1,4 +1,3 @@
-postgresql://brillprimemobiledb_user:***@dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com:5432/brillprimemobiledb
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
 
 // Define enums

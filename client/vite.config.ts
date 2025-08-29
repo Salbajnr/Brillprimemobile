@@ -28,8 +28,7 @@ export default defineConfig({
     sourcemap: true,
     rollupOptions: {
       input: {
-        main: './index.html',
-        admin: './admin.html'
+        main: './index.html'
       },
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
@@ -37,14 +36,12 @@ export default defineConfig({
         assetFileNames: 'assets/[name]-[hash].[ext]',
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          router: ['wouter'],
-          ui: ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu']
+          router: ['wouter']
         }
       }
     },
     target: 'esnext',
-    minify: false, // Disable minification to see actual errors
-    sourcemap: true
+    minify: false // Disable minification to see actual errors
   },
   optimizeDeps: {
     include: ['react', 'react-dom', 'wouter'],
