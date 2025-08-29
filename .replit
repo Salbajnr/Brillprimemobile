@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "java-graalvm22.3", "bash", "web", "postgresql-16", "nodejs-24", "postgresql-17"]
+modules = ["nodejs-20", "web", "java-graalvm22.3", "bash"]
 run = "npm run dev"
 hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
 
@@ -7,9 +7,9 @@ channel = "stable-25_05"
 packages = ["postgresql", "dotenv-cli"]
 
 [deployment]
-deploymentTarget = "gce"
-run = ["sh", "-c", "npm start"]
-build = ["sh", "-c", "cd client && npm run build"]
+deploymentTarget = "autoscale"
+run = ["npm", "run", "start"]
+build = ["npm", "run", "build"]
 
 [[ports]]
 localPort = 3000
