@@ -26,6 +26,7 @@ import { registerAdminUserManagementRoutes } from './routes/admin-user-managemen
 import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
 import { registerMerchantKycRoutes } from './routes/merchant-kyc';
 import systemHealthRoutes from './routes/system-health';
+import adminRoutes from './routes/admin-oversight';
 
 
 // Extend express-session types
@@ -404,20 +405,34 @@ apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
 apiRouter.use('/withdrawal', withdrawalSystemRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
 
-// Register API routes
+// Register API routes with proper order
 apiRouter.use('/auth', authRoutes);
-apiRouter.use('/categories', categoriesRoutes);
-apiRouter.use('/orders', ordersRoutes);
-apiRouter.use('/products', productsRoutes);
+apiRouter.use('/auth', socialAuthRoutes);
 apiRouter.use('/payments', paymentsRoutes);
 apiRouter.use('/wallet', walletRoutes);
+apiRouter.use('/analytics', analyticsRoutes);
+apiRouter.use('/categories', categoriesRoutes);
+apiRouter.use('/orders', ordersRoutes);
+apiRouter.use('/toll-payments', tollPaymentsRoutes);
+apiRouter.use('/drivers', driverRoutes);
 apiRouter.use('/support', supportRoutes);
+apiRouter.use('/admin-support', adminSupportRoutes);
+apiRouter.use('/verification-enhanced', enhancedVerificationRoutes);
+apiRouter.use('/mfa', mfaAuthenticationRoutes);
+apiRouter.use('/tracking', realTimeTrackingRoutes);
+apiRouter.use('/driver-location', driverLocationRoutes);
+apiRouter.use('/active-orders', activeOrdersRoutes);
+apiRouter.use('/qr-processing', qrProcessingRoutes);
+apiRouter.use('/qr-receipts', qrReceiptsRoutes);
+apiRouter.use('/paystack-webhooks', paystackWebhooksRoutes);
+apiRouter.use('/withdrawal', withdrawalSystemRoutes);
+apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/admin', adminRoutes);
 apiRouter.use('/', missingAPIsRoutes);
 
 // Register function-based routes directly on app
 registerProductRoutes(app);
-// registerFuelOrderRoutes(app); // Temporarily disable due to IPv6 rate limiter issue
+registerFuelOrderRoutes(app);
 registerEscrowManagementRoutes(app);
 registerAdminUserManagementRoutes(app);
 

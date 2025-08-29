@@ -455,3 +455,267 @@ router.post("/payments/escrow", authenticateUser, async (req, res) => {
 });
 
 export default router;
+import express from 'express';
+import { db } from '../db';
+import { users, products, categories, orders, fuelOrders, tollGates, transactions } from '../../shared/schema';
+import { eq, like, and, desc, count } from 'drizzle-orm';
+import { authenticateUser } from '../middleware/auth';
+
+const router = express.Router();
+
+// Categories API
+router.get('/categories', async (req, res) => {
+  try {
+    const allCategories = await db.select().from(categories);
+    res.json({
+      success: true,
+      categories: allCategories
+    });
+  } catch (error) {
+    console.error('Categories fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch categories' });
+  }
+});
+
+// Products API
+router.get('/products', async (req, res) => {
+  try {
+    const { category, search, limit = 20, offset = 0 } = req.query;
+    
+    let query = db.select({
+      id: products.id,
+      name: products.name,
+      description: products.description,
+      price: products.price,
+      category: categories.name,
+      inStock: products.inStock,
+      images: products.images
+    })
+    .from(products)
+    .leftJoin(categories, eq(products.categoryId, categories.id));
+
+    if (category) {
+      query = query.where(eq(categories.name, category as string));
+    }
+    
+    if (search) {
+      query = query.where(like(products.name, `%${search}%`));
+    }
+
+    const productsList = await query
+      .limit(parseInt(limit as string))
+      .offset(parseInt(offset as string));
+
+    res.json({
+      success: true,
+      products: productsList
+    });
+  } catch (error) {
+    console.error('Products fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch products' });
+  }
+});
+
+// Orders API - Get user orders
+router.get('/user/orders', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    
+    const userOrders = await db
+      .select()
+      .from(orders)
+      .where(eq(orders.customerId, userId))
+      .orderBy(desc(orders.createdAt));
+
+    res.json({
+      success: true,
+      orders: userOrders
+    });
+  } catch (error) {
+    console.error('User orders fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch orders' });
+  }
+});
+
+// Search API
+router.get('/search', async (req, res) => {
+  try {
+    const { query: searchQuery, type = 'products' } = req.query;
+    
+    if (!searchQuery) {
+      return res.status(400).json({ error: 'Search query required' });
+    }
+
+    let results = [];
+
+    if (type === 'products' || type === 'all') {
+      const productResults = await db
+        .select({
+          id: products.id,
+          name: products.name,
+          description: products.description,
+          price: products.price,
+          type: 'product'
+        })
+        .from(products)
+        .where(like(products.name, `%${searchQuery}%`))
+        .limit(10);
+      
+      results = [...results, ...productResults];
+    }
+
+    if (type === 'merchants' || type === 'all') {
+      const merchantResults = await db
+        .select({
+          id: users.id,
+          name: users.fullName,
+          email: users.email,
+          type: 'merchant'
+        })
+        .from(users)
+        .where(and(
+          eq(users.role, 'MERCHANT'),
+          like(users.fullName, `%${searchQuery}%`)
+        ))
+        .limit(10);
+      
+      results = [...results, ...merchantResults];
+    }
+
+    res.json({
+      success: true,
+      results,
+      total: results.length
+    });
+  } catch (error) {
+    console.error('Search error:', error);
+    res.status(500).json({ success: false, error: 'Search failed' });
+  }
+});
+
+// Analytics API for dashboard
+router.get('/dashboard/stats', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const userRole = req.user?.role;
+
+    let stats = {};
+
+    if (userRole === 'ADMIN') {
+      const [usersCount] = await db.select({ count: count() }).from(users);
+      const [ordersCount] = await db.select({ count: count() }).from(orders);
+      const [transactionsCount] = await db.select({ count: count() }).from(transactions);
+
+      stats = {
+        totalUsers: usersCount.count,
+        totalOrders: ordersCount.count,
+        totalTransactions: transactionsCount.count
+      };
+    } else if (userRole === 'CONSUMER') {
+      const [userOrders] = await db
+        .select({ count: count() })
+        .from(orders)
+        .where(eq(orders.customerId, userId));
+
+      const [userTransactions] = await db
+        .select({ count: count() })
+        .from(transactions)
+        .where(eq(transactions.userId, userId));
+
+      stats = {
+        myOrders: userOrders.count,
+        myTransactions: userTransactions.count
+      };
+    } else if (userRole === 'DRIVER') {
+      const [driverDeliveries] = await db
+        .select({ count: count() })
+        .from(fuelOrders)
+        .where(eq(fuelOrders.driverId, userId));
+
+      stats = {
+        totalDeliveries: driverDeliveries.count
+      };
+    }
+
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Dashboard stats error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch dashboard stats' });
+  }
+});
+
+// Toll Gates API
+router.get('/toll-gates', async (req, res) => {
+  try {
+    const gates = await db.select().from(tollGates);
+    res.json({
+      success: true,
+      tollGates: gates
+    });
+  } catch (error) {
+    console.error('Toll gates fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch toll gates' });
+  }
+});
+
+// User Profile API
+router.get('/user/profile', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    
+    const [userProfile] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+
+    if (!userProfile) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    // Don't return sensitive information
+    const { password, ...safeProfile } = userProfile;
+
+    res.json({
+      success: true,
+      user: safeProfile
+    });
+  } catch (error) {
+    console.error('Profile fetch error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch profile' });
+  }
+});
+
+// Update user profile
+router.put('/user/profile', authenticateUser, async (req, res) => {
+  try {
+    const userId = req.user?.id;
+    const { fullName, phone } = req.body;
+
+    const [updatedUser] = await db
+      .update(users)
+      .set({
+        fullName,
+        phone,
+        updatedAt: new Date()
+      })
+      .where(eq(users.id, userId))
+      .returning();
+
+    const { password, ...safeProfile } = updatedUser;
+
+    res.json({
+      success: true,
+      user: safeProfile,
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('Profile update error:', error);
+    res.status(500).json({ success: false, error: 'Failed to update profile' });
+  }
+});
+
+export default router;

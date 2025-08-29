@@ -107,11 +107,14 @@ export function registerFuelOrderRoutes(app: Express) {
       }).returning();
 
       // Broadcast to available drivers
-      broadcastOrderUpdate(newOrder.id, {
-        type: 'NEW_FUEL_ORDER',
-        order: newOrder,
-        status: 'PENDING'
-      });
+      if (global.io) {
+        global.io.to('drivers').emit('new_fuel_order', {
+          type: 'NEW_FUEL_ORDER',
+          order: newOrder,
+          status: 'PENDING',
+          timestamp: Date.now()
+        });
+      }
 
       res.json({ success: true, order: newOrder });
     } catch (error) {
@@ -705,12 +708,15 @@ export async function acceptFuelOrder(req: Request, res: Response) {
     }
 
     // Broadcast update to customer
-    broadcastOrderUpdate(orderId, {
-      type: 'ORDER_ACCEPTED',
-      order: updatedOrder,
-      status: 'ACCEPTED',
-      driverId
-    });
+    if (global.io) {
+      global.io.to(`user_${updatedOrder.customerId}`).emit('order_update', {
+        type: 'ORDER_ACCEPTED',
+        order: updatedOrder,
+        status: 'ACCEPTED',
+        driverId,
+        timestamp: Date.now()
+      });
+    }
 
     res.json({ success: true, order: updatedOrder });
   } catch (error) {
