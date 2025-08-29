@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 
-// Force load .env file first with override to prioritize local .env
-dotenv.config({ path: '.env', override: true });
+// Load .env file but preserve system environment variables (Replit compatibility)
+dotenv.config({ path: '.env', override: false });
 
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
@@ -16,8 +16,16 @@ import { fileURLToPath } from 'url';
 
 // Import environment validation
 import './env-validation';
+
+// Ensure system environment variables take precedence for Replit compatibility
+if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('helium')) {
+  console.log('🔧 Using Replit database configuration');
+} else {
+  console.log('⚠️  Warning: Not using Replit database - this may cause connection issues');
+}
+
 import { db } from './db';
-import { databaseIntegration } from './services/database-integration';
+// import { databaseIntegration } from './services/database-integration'; // Temporarily disabled due to connection issues
 
 // Import all routes
 import authRoutes from './routes/auth';
@@ -32,7 +40,7 @@ import analyticsRoutes from './routes/analytics';
 import dashboardRoutes from './routes/dashboard';
 import categoriesRoutes from './routes/categories';
 import healthCheckRoutes from './routes/health-check';
-import { registerHealthRoutes } from './routes/health-check';
+// import { registerHealthRoutes } from './routes/health-check'; // Temporarily disabled
 import adminRoutes from './admin/routes'; // Temporarily disabled due to schema issues
 import missingApisRoutes from './routes/missing-apis';
 // import adminReportsRoutes from './routes/admin-reports'; // Temporarily disabled
@@ -407,7 +415,8 @@ io.on('connection', (socket) => {
 
   socket.on('request_database_metrics', async () => {
     try {
-      const metrics = await databaseIntegration.getDashboardMetrics();
+      // Database metrics temporarily unavailable due to migration
+      const metrics = { success: true, data: { message: 'Database metrics temporarily unavailable' }, source: 'fallback' };
       socket.emit('database_metrics_response', metrics);
     } catch (error) {
       socket.emit('database_metrics_error', { error: error.message });
@@ -478,7 +487,12 @@ process.on('SIGTERM', async () => {
 (async () => {
   try {
     console.log('🔄 Connecting to database...');
-    await db.execute("SELECT 1");
+    console.log('🔍 DATABASE_URL in server index:', process.env.DATABASE_URL);
+    
+    // Test database connection with direct pool access for compatibility
+    const { pool } = await import('./db');
+    console.log('🔍 Testing connection to database...');
+    await pool.query("SELECT 1");
     console.log('📊 Database: Connected successfully');
 
     // Initialize complete database schema
@@ -505,7 +519,7 @@ process.on('SIGTERM', async () => {
   }
 })();
 
-server.listen(port, "0.0.0.0", (err?: Error) => {
+server.listen(parseInt(port.toString()), "0.0.0.0", (err?: Error) => {
   if (err) {
     console.error('❌ Server failed to start:', err);
     process.exit(1);

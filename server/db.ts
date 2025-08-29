@@ -1,8 +1,8 @@
 
 import dotenv from 'dotenv';
 
-// Force load .env file with override to prioritize local .env
-dotenv.config({ path: '.env', override: true });
+// Load .env file but don't override system environment variables (Replit compatibility)
+dotenv.config({ path: '.env', override: false });
 
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';

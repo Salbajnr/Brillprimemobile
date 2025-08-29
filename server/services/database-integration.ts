@@ -23,7 +23,8 @@ export class DatabaseIntegrationService {
     enableRealTimeSync: true
   }) {
     this.config = config;
-    this.startContinuousSync();
+    // Auto-start disabled during migration to Replit
+    // this.startContinuousSync();
   }
 
   // Start continuous data synchronization
@@ -290,7 +291,12 @@ export class DatabaseIntegrationService {
       
       // Exponential backoff
       setTimeout(() => {
-        this.startSyncProcess(processName, this[`sync${processName.charAt(0).toUpperCase() + processName.slice(1)}Data`].bind(this));
+        const methodName = `sync${processName.charAt(0).toUpperCase() + processName.slice(1)}Data`;
+        if (typeof this[methodName as keyof this] === 'function') {
+          this.startSyncProcess(processName, (this[methodName as keyof this] as any).bind(this));
+        } else {
+          console.error(`❌ Method ${methodName} not found for ${processName} sync retry`);
+        }
       }, Math.pow(2, currentRetries) * 1000);
     } else {
       console.error(`❌ ${processName} sync failed after ${this.config.retryAttempts} attempts`);
@@ -360,5 +366,5 @@ export class DatabaseIntegrationService {
   }
 }
 
-// Export singleton instance
-export const databaseIntegration = new DatabaseIntegrationService();
+// Export singleton instance - temporarily disabled during migration
+export const databaseIntegration = null; // new DatabaseIntegrationService();

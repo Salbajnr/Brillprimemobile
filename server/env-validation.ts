@@ -1,8 +1,8 @@
 import { z } from 'zod';
 import dotenv from 'dotenv';
 
-// Force load .env file with override to prioritize local .env over Replit env
-dotenv.config({ path: '.env', override: true });
+// Load .env file but preserve system environment variables (Replit compatibility)
+dotenv.config({ path: '.env', override: false });
 
 const envSchema = z.object({
   // Core Server Configuration
