@@ -23,6 +23,10 @@ export default defineConfig({
     sourcemap: false,
     target: 'es2015',
     rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        admin: path.resolve(__dirname, 'public/admin.html')
+      },
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],

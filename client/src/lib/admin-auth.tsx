@@ -24,7 +24,29 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    checkAuthStatus();
+    // Only initialize admin auth on admin subdomain
+    const isAdminSubdomain = window.location.hostname.startsWith('admin.');
+
+    if (!isAdminSubdomain) {
+      setIsLoading(false);
+      return;
+    }
+
+    const token = localStorage.getItem('adminToken');
+    const userData = localStorage.getItem('adminUser');
+
+    if (token && userData) {
+      try {
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
+      } catch (error) {
+        console.error('Failed to parse admin user data:', error);
+        localStorage.removeItem('adminToken');
+        localStorage.removeItem('adminUser');
+      }
+    }
+
+    setIsLoading(false);
   }, []);
 
   const checkAuthStatus = async () => {
@@ -70,6 +92,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       if (response.ok) {
         const data = await response.json();
         localStorage.setItem('adminToken', data.data.token);
+        // Also store user data locally for faster initial load on subsequent visits
+        localStorage.setItem('adminUser', JSON.stringify(data.data.user));
         setUser(data.data.user);
         return true;
       } else {
@@ -83,8 +107,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = () => {
     localStorage.removeItem('adminToken');
+    localStorage.removeItem('adminUser'); // Also clear user data from local storage
     setUser(null);
-    window.location.href = '/admin';
+    // Redirect to admin login page or a public page
+    window.location.href = '/admin/login'; // Assuming you have an admin login route
   };
 
   const value = {

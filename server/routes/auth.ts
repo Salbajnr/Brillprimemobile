@@ -1,4 +1,3 @@
-
 import express from 'express';
 import bcrypt from 'bcrypt';
 import crypto from 'crypto';
@@ -6,6 +5,7 @@ import { db } from '../db';
 import { users, mfaTokens } from '../../shared/schema';
 import { eq, and, desc, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
+import jwt from 'jsonwebtoken'; // Import JWT for admin authentication
 
 // Extend the session interface to include userId and user properties
 declare module 'express-session' {
@@ -40,7 +40,7 @@ const registerSchema = z.object({
   password: z.string().min(6),
   fullName: z.string().min(2),
   phone: z.string().optional(),
-  role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT']).default('CONSUMER')
+  role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT', 'ADMIN']).default('CONSUMER') // Added ADMIN role
 });
 
 // Session validation endpoint
@@ -144,7 +144,7 @@ router.post('/login', async (req, res) => {
 router.post('/register', async (req, res) => {
   try {
     const userData = registerSchema.parse(req.body);
-    
+
     // Check if user exists
     const [existingUser] = await db
       .select()
@@ -174,14 +174,14 @@ router.post('/register', async (req, res) => {
         createdAt: new Date()
       })
       .returning();
-    
+
     const newUser = newUsers[0];
 
     // Generate OTP for email verification
     const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
-    
+
     // Store OTP in database
     await db
       .insert(mfaTokens)
@@ -192,12 +192,12 @@ router.post('/register', async (req, res) => {
         expiresAt,
         isUsed: false
       });
-    
+
     // Send OTP email
     try {
       const { emailService } = await import('../services/email');
       const emailSent = await emailService.sendOTP(userData.email, otpCode, userData.fullName);
-      
+
       if (!emailSent) {
         console.warn('Failed to send OTP email, but user was created');
       }
@@ -347,23 +347,23 @@ router.post('/verify-otp', async (req, res) => {
       ))
       .orderBy(desc(mfaTokens.createdAt))
       .limit(1);
-    
+
     if (storedOtp) {
       const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
-      
+
       if (hashedOtp === storedOtp.token) {
         // Valid OTP - mark user as verified
         await db
           .update(users)
           .set({ isVerified: true })
           .where(eq(users.id, user.id));
-        
+
         // Mark OTP as used
         await db
           .update(mfaTokens)
           .set({ isUsed: true, usedAt: new Date() })
           .where(eq(mfaTokens.id, storedOtp.id));
-        
+
         // Create session
         req.session.userId = user.id;
         req.session.user = {
@@ -372,7 +372,7 @@ router.post('/verify-otp', async (req, res) => {
           fullName: user.fullName,
           role: user.role
         };
-        
+
         return res.json({
           success: true,
           message: 'Email verified successfully',
@@ -385,7 +385,7 @@ router.post('/verify-otp', async (req, res) => {
         });
       }
     }
-    
+
     res.status(400).json({
       success: false,
       message: 'Invalid or expired verification code'
@@ -425,7 +425,7 @@ router.post('/resend-otp', async (req, res) => {
     const otpCode = Math.floor(10000 + Math.random() * 90000).toString();
     const hashedOtp = crypto.createHash('sha256').update(otpCode).digest('hex');
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes expiry
-    
+
     // Store OTP in database
     await db
       .insert(mfaTokens)
@@ -436,7 +436,7 @@ router.post('/resend-otp', async (req, res) => {
         expiresAt,
         isUsed: false
       });
-    
+
     // Send OTP email
     const { emailService } = await import('../services/email');
     const emailSent = await emailService.sendOTP(email, otpCode, user.fullName);
@@ -487,11 +487,11 @@ router.post('/forgot-password', async (req, res) => {
     // Generate reset token (in production, use proper JWT or similar)
     const resetToken = Math.random().toString(36).substring(2, 15) + 
                       Math.random().toString(36).substring(2, 15);
-    
+
     // Store reset token in database with expiry
     const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour expiry
-    
+
     await db
       .insert(mfaTokens)
       .values({
@@ -500,7 +500,7 @@ router.post('/forgot-password', async (req, res) => {
         method: 'EMAIL', // Using EMAIL method for password reset
         expiresAt
       });
-    
+
     // Send reset email
     const { emailService } = await import('../services/email');
     const resetLink = `${process.env.FRONTEND_URL}/reset-password/${resetToken}`;
@@ -530,7 +530,7 @@ router.post('/reset-password', async (req, res) => {
 
     // Validate token from database
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
-    
+
     const [resetData] = await db
       .select({
         id: mfaTokens.id,
@@ -546,24 +546,24 @@ router.post('/reset-password', async (req, res) => {
         eq(mfaTokens.isUsed, false)
       ))
       .limit(1);
-    
+
     if (!resetData) {
       return res.status(400).json({
         success: false,
         message: 'Invalid or expired reset token'
       });
     }
-    
+
     if (resetData.isUsed) {
       return res.status(400).json({
         success: false,
         message: 'Reset token has already been used'
       });
     }
-    
+
     // Hash new password
     const hashedPassword = await bcrypt.hash(newPassword, 12);
-    
+
     // Update user password
     await db
       .update(users)
@@ -572,13 +572,13 @@ router.post('/reset-password', async (req, res) => {
         updatedAt: new Date()
       })
       .where(eq(users.id, resetData.userId));
-    
+
     // Mark reset token as used
     await db
       .update(mfaTokens)
       .set({ isUsed: true, usedAt: new Date() })
       .where(eq(mfaTokens.id, resetData.id));
-    
+
     res.json({
       success: true,
       message: 'Password reset successfully. You can now sign in with your new password.'
@@ -593,6 +593,73 @@ router.post('/reset-password', async (req, res) => {
   }
 });
 
+// Admin Login endpoint
+router.post('/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find admin user
+    const [adminUser] = await db
+      .select() // Changed to select() to match original usage pattern
+      .from(users)
+      .where(and(
+        eq(users.email, email),
+        eq(users.role, 'ADMIN')
+      ))
+      .limit(1);
+
+    if (!adminUser) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin credentials'
+      });
+    }
+
+    const isValidPassword = await bcrypt.compare(password, adminUser.passwordHash); // Corrected to use passwordHash
+
+    if (!isValidPassword) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid admin credentials'
+      });
+    }
+
+    // Generate admin JWT token
+    const token = jwt.sign(
+      {
+        id: adminUser.id,
+        userId: adminUser.id.toString(), // Assuming userId is string in JWT payload
+        email: adminUser.email,
+        role: adminUser.role,
+        type: 'admin'
+      },
+      process.env.JWT_SECRET || 'fallback-secret', // Use JWT_SECRET from environment variables
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      success: true,
+      data: {
+        token,
+        user: {
+          id: adminUser.id,
+          userId: adminUser.id.toString(),
+          email: adminUser.email,
+          fullName: adminUser.fullName,
+          role: adminUser.role
+        }
+      }
+    });
+  } catch (error) {
+    console.error('Admin login error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Login failed'
+    });
+  }
+});
+
+
 // Logout endpoint
 router.post('/logout', async (req, res) => {
   try {
@@ -604,7 +671,7 @@ router.post('/logout', async (req, res) => {
           message: 'Logout failed' 
         });
       }
-      
+
       res.clearCookie('connect.sid'); // Clear session cookie
       res.json({
         success: true,
@@ -624,19 +691,19 @@ router.post('/logout', async (req, res) => {
 router.post('/signup', async (req, res) => {
   try {
     const { email, password, role = 'CONSUMER' } = req.body;
-    
+
     // Generate a fullName from email if not provided
     const fullName = req.body.fullName || email.split('@')[0];
-    
+
     const userData = {
       email,
       password,
       fullName,
       role
     };
-    
+
     const validatedData = registerSchema.parse(userData);
-    
+
     // Check if user exists
     const [existingUser] = await db
       .select()

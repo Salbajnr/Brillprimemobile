@@ -87,6 +87,15 @@ import { authenticateUser } from './middleware/auth';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Extend Express Request type for subdomain
+declare global {
+  namespace Express {
+    interface Request {
+      subdomain?: string;
+    }
+  }
+}
+
 const app: Express = express();
 const server = createServer(app);
 const port = process.env.PORT || 5000;
@@ -147,6 +156,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// Subdomain routing middleware
+app.use((req, res, next) => {
+  const host = req.get('host');
+  const subdomain = host ? host.split('.')[0] : '';
+  
+  // Set subdomain in request for easy access
+  req.subdomain = subdomain;
+  
+  // Add subdomain info to response headers for debugging
+  res.setHeader('X-Subdomain', subdomain);
+  
+  next();
+});
+
 // Logging
 if (process.env.NODE_ENV !== 'test') {
   app.use(morgan('combined'));
@@ -170,6 +193,22 @@ app.use(session({
 
 // Health check route (must be first)
 app.use('/api/health', healthCheckRoutes);
+
+// Admin subdomain routing
+app.use((req, res, next) => {
+  if (req.subdomain === 'admin') {
+    // Serve admin panel for admin subdomain
+    if (req.path.startsWith('/api/')) {
+      // Admin API routes
+      next();
+    } else {
+      // Serve admin HTML file
+      res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
+      return;
+    }
+  }
+  next();
+});
 
 // Core API routes
 app.use('/api/auth', authRoutes);
@@ -374,13 +413,20 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   });
 });
 
-// Handle React routing - serve index.html for all non-API routes
+// Handle React routing - serve appropriate HTML based on subdomain
 app.get('*', (req: Request, res: Response) => {
   // Skip API routes
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API route not found' });
   }
-  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  
+  // Serve admin panel for admin subdomain
+  if (req.subdomain === 'admin') {
+    res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
+  } else {
+    // Serve regular app for main domain and other subdomains
+    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+  }
 });
 
 // Graceful shutdown
