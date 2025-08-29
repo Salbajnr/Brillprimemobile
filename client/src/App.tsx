@@ -1,56 +1,47 @@
-import { Router, Route } from 'wouter';
-import { Toaster } from './components/ui/toaster';
-import { AuthProvider } from './hooks/use-auth';
-import React, { Suspense } from 'react';
 
-// Lazy load pages for better performance
-const Splash = React.lazy(() => import('./pages/splash'));
-const Onboarding = React.lazy(() => import('./pages/onboarding'));
-const RoleSelection = React.lazy(() => import('./pages/role-selection'));
-const SignUp = React.lazy(() => import('./pages/signup'));
-const SignIn = React.lazy(() => import('./pages/signin'));
-const ConsumerHome = React.lazy(() => import('./pages/consumer-home'));
-const MerchantDashboard = React.lazy(() => import('./pages/merchant-dashboard'));
-const DriverDashboard = React.lazy(() => import('./pages/driver-dashboard'));
-const AdminDashboard = React.lazy(() => import('./pages/admin-dashboard'));
-const OtpVerification = React.lazy(() => import('./pages/otp-verification'));
-const NotFound = React.lazy(() => import('./pages/not-found'));
-const AdminSupport = React.lazy(() => import('./pages/admin-support'));
-const Support = React.lazy(() => import('./pages/support'));
-const SystemHealthDashboard = React.lazy(() => import('./pages/system-health-dashboard'));
+import React, { Suspense, lazy } from 'react';
+import { Router, Route, Switch } from 'wouter';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from '@/components/ui/toaster';
+
+// Create a stable query client
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      staleTime: 5 * 60 * 1000, // 5 minutes
+    },
+  },
+});
+
+// Lazy load components with error boundaries
+const Dashboard = lazy(() => import('@/pages/dashboard').catch(() => ({ default: () => <div>Error loading Dashboard</div> })));
+const SignIn = lazy(() => import('@/pages/signin').catch(() => ({ default: () => <div>Error loading SignIn</div> })));
+const SignUp = lazy(() => import('@/pages/signup').catch(() => ({ default: () => <div>Error loading SignUp</div> })));
+const NotFound = lazy(() => import('@/pages/not-found').catch(() => ({ default: () => <div>Page not found</div> })));
 
 // Loading component
-const PageLoader = () => (
-  <div className="min-h-screen flex items-center justify-center bg-white">
-    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-screen">
+    <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
   </div>
 );
 
 function App() {
   return (
-    <AuthProvider>
+    <QueryClientProvider client={queryClient}>
       <Router>
-        <div className="min-h-screen bg-white">
-          <Suspense fallback={<PageLoader />}>
-            <Route path="/" component={Splash} />
-            <Route path="/onboarding" component={Onboarding} />
-            <Route path="/role-selection" component={RoleSelection} />
-            <Route path="/signup" component={SignUp} />
+        <Suspense fallback={<LoadingSpinner />}>
+          <Switch>
+            <Route path="/" component={Dashboard} />
             <Route path="/signin" component={SignIn} />
-            <Route path="/otp-verification" component={OtpVerification} />
-            <Route path="/consumer-home" component={ConsumerHome} />
-            <Route path="/merchant-dashboard" component={MerchantDashboard} />
-            <Route path="/driver-dashboard" component={DriverDashboard} />
-            <Route path="/admin-dashboard" component={AdminDashboard} />
-            <Route path="/admin-support" component={AdminSupport} />
-            <Route path="/support" component={Support} />
-            <Route path="/system-health-dashboard" component={SystemHealthDashboard} />
+            <Route path="/signup" component={SignUp} />
             <Route component={NotFound} />
-          </Suspense>
-        </div>
-        <Toaster />
+          </Switch>
+        </Suspense>
       </Router>
-    </AuthProvider>
+      <Toaster />
+    </QueryClientProvider>
   );
 }
 

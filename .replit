@@ -374,5 +374,30 @@ args = "cd client && npm run build"
 task = "shell.exec"
 args = "REDIS_DISABLED=true npm run dev"
 
+[[workflows.workflow]]
+name = "Debug Build Fix"
+author = 47014043
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && rm -rf node_modules dist .vite"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "REDIS_DISABLED=true npm run dev"
+
 [agent]
 integrations = ["javascript_database==1.0.0", "javascript_sendgrid==1.0.0"]
