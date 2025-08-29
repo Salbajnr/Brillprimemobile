@@ -113,32 +113,11 @@ export function validateEnvironment() {
       // In development, provide helpful message but don't exit
       if (process.env.NODE_ENV !== 'production') {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
-        // Return defaults for development but always use Render database
-        return {
-          NODE_ENV: 'development',
-          PORT: 5000,
-          HOST: '0.0.0.0',
-          DATABASE_URL: 'postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com:5432/brillprimemobiledb',
-          JWT_SECRET: process.env.JWT_SECRET || 'dev-fallback-jwt-secret-32-chars-minimum-length-required',
-          SESSION_SECRET: process.env.SESSION_SECRET || 'dev-fallback-session-secret-32-chars-minimum-length',
-          FRONTEND_URL: 'http://localhost:5173',
-          REDIS_DISABLED: true,
-          RATE_LIMIT_WINDOW_MS: 900000,
-          RATE_LIMIT_MAX_REQUESTS: 100,
-          AUTH_RATE_LIMIT_MAX: 5,
-          PAYMENT_RATE_LIMIT_MAX: 10,
-          HELMET_CSP_ENABLED: true,
-          ENABLE_ANALYTICS: true,
-          ENABLE_PUSH_NOTIFICATIONS: false,
-          ENABLE_SMS_VERIFICATION: false,
-          ENABLE_EMAIL_VERIFICATION: false,
-          ENABLE_BIOMETRIC_AUTH: false,
-          LOG_LEVEL: 'info',
-          METRICS_ENABLED: true,
-          APP_NAME: 'Brill Prime',
-          AWS_REGION: 'us-east-1',
-          ...process.env
-        };
+        // Force production cloud configuration - no local fallbacks
+        console.error('❌ Missing required environment variables for production deployment');
+        console.error('🚀 This app is configured for cloud/production deployment only');
+        console.error('💡 Please configure all required environment variables');
+        process.exit(1);
       } else {
         console.error('❌ Production environment validation failed. Exiting...');
         process.exit(1);

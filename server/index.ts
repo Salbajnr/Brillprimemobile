@@ -17,6 +17,22 @@ import { fileURLToPath } from 'url';
 // Import environment validation
 import './env-validation';
 
+// Import cloud configuration enforcers
+import { preventLocalDatabaseCreation } from './database-config-override';
+import { enforceCloudConfiguration, validateProductionEnvironment } from './cloud-config-enforcer';
+
+// Enforce cloud-only configuration
+enforceCloudConfiguration();
+
+// Prevent local database usage - Always use cloud database
+preventLocalDatabaseCreation();
+
+// Validate production environment
+if (!validateProductionEnvironment()) {
+  console.error('❌ Production environment validation failed. Exiting...');
+  process.exit(1);
+}
+
 // Ensure system environment variables take precedence for Replit compatibility
 console.log('🔧 Using Render PostgreSQL database configuration');
 

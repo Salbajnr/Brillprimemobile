@@ -43,9 +43,9 @@ export function validateDatabaseConnection(connectionString: string): boolean {
   return true;
 }
 
-// Prevent local database creation
+// Prevent local database creation and force cloud usage
 export function preventLocalDatabaseCreation(): void {
-  // Override common local database environment variables
+  // Override ALL database environment variables to force cloud usage
   process.env.DATABASE_URL = PRODUCTION_DATABASE_CONFIG.connectionString;
   process.env.PGHOST = PRODUCTION_DATABASE_CONFIG.host;
   process.env.PGPORT = PRODUCTION_DATABASE_CONFIG.port.toString();
@@ -53,9 +53,18 @@ export function preventLocalDatabaseCreation(): void {
   process.env.PGPASSWORD = PRODUCTION_DATABASE_CONFIG.password;
   process.env.PGDATABASE = PRODUCTION_DATABASE_CONFIG.database;
   
-  // Disable local PostgreSQL if it exists
+  // Disable ALL local database services
   process.env.DISABLE_LOCAL_POSTGRES = 'true';
+  process.env.DISABLE_LOCAL_MYSQL = 'true';
+  process.env.DISABLE_LOCAL_SQLITE = 'true';
   process.env.FORCE_RENDER_DATABASE = 'true';
+  process.env.FORCE_CLOUD_SERVICES = 'true';
   
-  console.log('🔒 Local database creation prevented - Using Render database only');
+  // Remove any localhost references
+  delete process.env.LOCALHOST;
+  delete process.env.LOCAL_DB_URL;
+  delete process.env.DEV_DATABASE_URL;
+  
+  console.log('🔒 ALL local database services disabled - Using cloud services only');
+  console.log('☁️  Production cloud environment enforced');
 }
