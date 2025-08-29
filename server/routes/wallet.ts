@@ -1,10 +1,14 @@
 import express from 'express';
 import { db } from '../db';
-import { users, transactions, wallets } from '../../shared/schema';
-import { eq, sum, and, sql } from 'drizzle-orm';
+import { transactions, orders, users, wallets } from '../../shared/schema';
+import { eq, desc, and, sql } from 'drizzle-orm';
 import { requireAuth, authenticateUser } from "../middleware/auth";
 
 const router = express.Router();
+
+// Define authenticateToken middleware for compatibility
+const authenticateToken = requireAuth;
+
 
 // Get wallet balance
 router.get('/balance', requireAuth, async (req, res) => {

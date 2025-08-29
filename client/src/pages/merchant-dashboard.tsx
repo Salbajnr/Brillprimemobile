@@ -1,3 +1,9 @@
+import React, { useState, useEffect } from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Package } from "lucide-react";
+import { useNavigate } from 'react-router-dom';
+
 export default function MerchantDashboard() {
   const [selectedTab, setSelectedTab] = useState("overview");
   const [notifications, setNotifications] = useState([]);
@@ -8,6 +14,7 @@ export default function MerchantDashboard() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<any>(null);
   const [newOrderTimer, setNewOrderTimer] = useState<number | null>(null);
+  const navigate = useNavigate();
 
   return (
     <div className="w-full max-w-md mx-auto min-h-screen bg-gray-50 p-6">
@@ -22,9 +29,24 @@ export default function MerchantDashboard() {
           <button className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-700 transition-colors">
             Accept Payment
           </button>
-          <button className="w-full bg-purple-600 text-white py-3 px-4 rounded-lg hover:bg-purple-700 transition-colors">
-            Manage Inventory
-          </button>
+          
+          <Card className="cursor-pointer hover:shadow-lg transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Package className="h-5 w-5 mr-2 text-orange-600" />
+                Manage Inventory
+              </CardTitle>
+              <CardDescription>Update product stock and pricing</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Button 
+                className="w-full bg-orange-600 hover:bg-orange-700"
+                onClick={() => navigate('/merchant-inventory')}
+              >
+                Manage Inventory
+              </Button>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

@@ -10,8 +10,9 @@ import { AdminFraud } from './admin-fraud';
 import AdminSupport from './admin-support';
 import AdminEscrowManagement from './admin-escrow-management';
 import { AdminModeration } from './admin-moderation';
+import AdminSystemMonitoring from './admin-system-monitoring';
 
-type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation';
+type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation' | 'system';
 
 function AdminDashboard() {
   const { isAuthenticated, isLoading } = useAdmin();
@@ -54,6 +55,8 @@ function AdminDashboard() {
         return <AdminEscrowManagement />;
       case 'moderation':
         return <AdminModeration />;
+      case 'system':
+        return <AdminSystemMonitoring />;
       case 'analytics':
         return (
           <div className="p-6">

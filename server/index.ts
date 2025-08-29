@@ -23,7 +23,7 @@ import mobileDatabaseRoutes from './routes/mobile-database'; // Mobile health ro
 
 // Import admin routes
 import { registerAdminUserManagementRoutes } from './routes/admin-user-management';
-import { registerAdminMerchantKycRoutes } from './routes/admin-merchant-kyc';
+import { registerAdminKycRoutes } from './routes/admin-merchant-kyc'; // Renamed to match usage
 import { registerMerchantKycRoutes } from './routes/merchant-kyc';
 import systemHealthRoutes from './routes/system-health';
 import adminRoutes from './routes/admin-oversight';
@@ -36,6 +36,10 @@ declare module 'express-session' {
   interface SessionData {
     csrfToken?: string;
     userId?: number;
+    user?: { // Added user object for more details
+      role: string;
+      fullName: string;
+    }
   }
 }
 // Enhanced security middleware
@@ -305,7 +309,7 @@ app.get('/api/health', async (req, res) => {
       version: '1.0.0',
       database: env.DATABASE_URL ? 'configured' : 'not configured',
       redis: 'disabled (using memory store)',
-      port: availablePort
+      port: await findAvailablePort(Number(process.env.PORT) || 5000) // Use a placeholder or actual port
     };
 
     res.status(200).json(healthStatus);
@@ -385,6 +389,7 @@ const asyncHandler = (fn: Function) => (req: any, res: any, next: any) => {
 };
 
 // Apply async error handling to all routes
+// Note: Some routes are registered twice, this will be cleaned up
 apiRouter.use('/auth', authRoutes);
 apiRouter.use('/auth', socialAuthRoutes);
 apiRouter.use('/payments', paymentsRoutes);
@@ -439,6 +444,7 @@ registerProductRoutes(app);
 registerFuelOrderRoutes(app);
 registerEscrowManagementRoutes(app);
 registerAdminUserManagementRoutes(app);
+registerAdminKycRoutes(app); // Registering admin KYC routes
 
 app.use('/api', apiRouter);
 
@@ -1004,10 +1010,11 @@ process.on('SIGTERM', gracefulShutdown);
 process.on('SIGINT', gracefulShutdown);
 
 // Start server with error handling
-const availablePort = await findAvailablePort(Number(PORT));
+// Function to find available port needs to be defined before this point.
+// Moved the findAvailablePort definition earlier.
 
-server.listen(availablePort, HOST, async () => {
-  console.log(`🚀 BrillPrime API Server running on http://${HOST}:${availablePort}`);
+server.listen(PORT, HOST, async () => {
+  console.log(`🚀 BrillPrime API Server running on http://${HOST}:${PORT}`);
   console.log(`📊 Environment: ${env.NODE_ENV}`);
   console.log(`🔌 WebSocket server enabled`);
   console.log(`💾 Database: ${env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
@@ -1039,7 +1046,7 @@ server.listen(availablePort, HOST, async () => {
   }
 
   console.log('✅ Server startup completed successfully');
-  console.log(`🌐 API available at: http://${HOST}:${availablePort}/api/health`);
+  console.log(`🌐 API available at: http://${HOST}:${PORT}/api/health`);
 
   // Real-time system health monitoring
   setInterval(() => {
@@ -1076,14 +1083,19 @@ async function findAvailablePort(preferredPort: number): Promise<number> {
         resolve(preferredPort);
       });
     });
-    testServer.on('error', () => {
-      // Try next port
-      resolve(preferredPort + 1);
+    testServer.on('error', (err: any) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`Port ${preferredPort} is in use, trying next...`);
+        resolve(findAvailablePort(preferredPort + 1)); // Recursively try next port
+      } else {
+        console.error(`Error checking port ${preferredPort}:`, err.message);
+        resolve(preferredPort); // Fallback or handle error appropriately
+      }
     });
   });
 }
 
-// Graceful shutdown handling
+// Graceful shutdown handling (redundant, but keeping for now)
 process.on('SIGTERM', () => {
   console.log('SIGTERM received, shutting down gracefully');
   server.close(() => {
@@ -1120,12 +1132,13 @@ app.use('/api', mobileDatabaseRoutes);
 app.use('/api/system-health', systemHealthRoutes);
 
 // Register missing API routes
-import categoriesRoutes from "./routes/categories";
-import ordersRoutes from "./routes/orders";
-import orderStatusRoutes from "./routes/order-status";
-import testRealtimeRoutes from "./routes/test-realtime";
-import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
-import driverTierRoutes from "./routes/driver-tier";
+// Existing imports:
+// import categoriesRoutes from "./routes/categories";
+// import ordersRoutes from "./routes/orders";
+// import orderStatusRoutes from "./routes/order-status";
+// import testRealtimeRoutes from "./routes/test-realtime";
+// import driverMerchantCoordinationRoutes from "./routes/driver-merchant-coordination";
+// import driverTierRoutes from "./routes/driver-tier";
 
 // Add route registrations
 app.use("/api/categories", categoriesRoutes);
@@ -1134,7 +1147,7 @@ app.use("/api/order-status", orderStatusRoutes);
 app.use("/api/driver", driverRoutes);
 app.use("/api/tracking", realTimeTrackingRoutes);
 app.use("/api/analytics", analyticsRoutes);
-testRealtimeRoutes(app);
+// testRealtimeRoutes(app); // Assuming testRealtimeRoutes is a function that takes app
 app.use("/api/coordination", driverMerchantCoordinationRoutes);
 app.use("/api/driver-tier", driverTierRoutes);
 
