@@ -178,18 +178,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// Serve static files with subdomain awareness
-app.use((req, res, next) => {
-  const isAdmin = req.subdomain === 'admin';
-
-  if (isAdmin) {
-    // Serve admin-specific static files
-    express.static(path.join(__dirname, '../client/dist'))(req, res, next);
-  } else {
-    // Serve regular app static files
-    express.static(path.join(__dirname, '../client/dist'))(req, res, next);
-  }
-});
+// Serve static files from client/dist directory
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {

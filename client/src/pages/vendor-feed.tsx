@@ -24,7 +24,21 @@ import {
   Quote
 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
-import type { VendorPost, InsertVendorPost } from "@shared/schema";
+// Temporary interface until VendorPost is added to schema
+interface VendorPost {
+  id: string;
+  title: string;
+  content: string;
+  postType: string;
+  createdAt: string;
+  likes?: number;
+  shares?: number;
+  isLiked?: boolean;
+  originalPrice?: string;
+  discountPercentage?: string;
+  tags?: string;
+  validUntil?: string;
+}
 
 interface ExtendedVendorPost extends VendorPost {
   vendorName: string;
@@ -32,8 +46,8 @@ interface ExtendedVendorPost extends VendorPost {
   productName?: string;
   productPrice?: string;
   productImage?: string;
-  productId?: string; // Added to ensure it exists for mutations
-  vendorId: string; // Added to ensure it exists for mutations
+  productId?: string;
+  vendorId: string;
 }
 
 const POST_TYPES = [
@@ -76,7 +90,7 @@ export default function VendorFeed() {
 
   // Create post mutation
   const createPostMutation = useMutation({
-    mutationFn: (postData: InsertVendorPost) => apiRequest('POST', '/api/vendor-posts', postData),
+    mutationFn: (postData: any) => apiRequest('POST', '/api/vendor-posts', postData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/vendor-posts'] });
       setIsCreatePostOpen(false);
@@ -93,9 +107,9 @@ export default function VendorFeed() {
     }
   });
 
-  const [posts, setPosts] = useState([]);
+  const [posts, setPosts] = useState<ExtendedVendorPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchVendorPosts = async () => {
@@ -129,7 +143,7 @@ export default function VendorFeed() {
         }
       } catch (error) {
         console.error('Error fetching vendor posts:', error);
-        setError(error.message);
+        setError(error instanceof Error ? error.message : 'An error occurred');
         setPosts([]); // Set empty array on error
       } finally {
         setLoading(false);
@@ -164,7 +178,7 @@ export default function VendorFeed() {
   const handleCreatePost = () => {
     if (!user || !newPost.title || !newPost.content) return;
 
-    const postData: InsertVendorPost = {
+    const postData: any = {
       vendorId: user.id,
       title: newPost.title,
       content: newPost.content,
@@ -237,30 +251,6 @@ export default function VendorFeed() {
     }
   };
 
-  const handleSharePost = async (postId: string) => {
-    try {
-      const response = await fetch(`/api/vendor-posts/${postId}/share`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-          'Content-Type': 'application/json'
-        }
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        setPosts(prevPosts => 
-          prevPosts.map(post => 
-            post.id === postId 
-              ? { ...post, shares: result.shares }
-              : post
-          )
-        );
-      }
-    } catch (error) {
-      console.error('Error sharing post:', error);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-50">
