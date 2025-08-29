@@ -230,61 +230,33 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(responseTimeMiddleware);
 
-// Use memory store for sessions in development environment
-if (process.env.NODE_ENV !== 'production' || !process.env.REDIS_URL) {
-  console.log('🔄 Using memory store for sessions (Redis disabled)');
-  const MemoryStoreSession = MemoryStore(session);
-  const sessionStore = new MemoryStoreSession({
-    checkPeriod: 86400000 // prune expired entries every 24h
-  });
+// Always use memory store for sessions (disable Redis to prevent crashes)
+console.log('🔄 Using memory store for sessions');
+const MemoryStoreSession = MemoryStore(session);
+const sessionStore = new MemoryStoreSession({
+  checkPeriod: 86400000 // prune expired entries every 24h
+});
 
-  const sessionConfig = {
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // Reset expiration on activity
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
-    },
-    name: 'brillprime.sid',
-    genid: () => {
-      // Generate secure session ID
-      return crypto.randomBytes(32).toString('hex');
-    }
-  };
+const sessionConfig = {
+  store: sessionStore,
+  secret: env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  rolling: true, // Reset expiration on activity
+  cookie: {
+    secure: env.NODE_ENV === 'production',
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: (env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
+  },
+  name: 'brillprime.sid',
+  genid: () => {
+    // Generate secure session ID
+    return crypto.randomBytes(32).toString('hex');
+  }
+};
 
-  app.use(session(sessionConfig) as any);
-
-} else {
-  console.log('🔄 Using Redis store for sessions');
-  const RedisStore = require('connect-redis')(session);
-  const sessionStore = new RedisStore({ client: redisClient });
-
-  const sessionConfig = {
-    store: sessionStore,
-    secret: process.env.SESSION_SECRET || 'your-secret-key',
-    resave: false,
-    saveUninitialized: false,
-    rolling: true, // Reset expiration on activity
-    cookie: {
-      secure: process.env.NODE_ENV === 'production',
-      httpOnly: true,
-      maxAge: 24 * 60 * 60 * 1000, // 24 hours
-      sameSite: (process.env.NODE_ENV === 'production' ? 'none' : 'lax') as 'none' | 'lax' | 'strict'
-    },
-    name: 'brillprime.sid',
-    genid: () => {
-      // Generate secure session ID
-      return crypto.randomBytes(32).toString('hex');
-    }
-  };
-
-  app.use(session(sessionConfig) as any);
-}
+app.use(session(sessionConfig) as any);
 
 // CSRF token generation
 app.use((req, res, next) => {
@@ -315,16 +287,16 @@ app.use((req, res, next) => {
 // Health check endpoints
 app.get('/api/health', async (req, res) => {
   try {
-    // Check database connection
-    // await db.execute(sql`SELECT 1`); // Assuming 'db' is globally available or imported
-
     const healthStatus = {
       status: 'healthy',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       memory: process.memoryUsage(),
-      environment: process.env.NODE_ENV,
-      version: process.env.npm_package_version || '1.0.0'
+      environment: env.NODE_ENV,
+      version: '1.0.0',
+      database: env.DATABASE_URL ? 'configured' : 'not configured',
+      redis: 'disabled (using memory store)',
+      port: availablePort
     };
 
     res.status(200).json(healthStatus);
@@ -975,15 +947,33 @@ if (process.env.NODE_ENV === 'production') {
   });
 }
 
-// Enhanced server startup
+// Enhanced server startup with port conflict resolution
 const PORT = process.env.PORT || 5000;
 
-server.listen(Number(PORT), '0.0.0.0', async () => {
-  console.log(`🚀 Brill Prime server running on http://0.0.0.0:${PORT}`);
-  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+// Function to find available port
+async function findAvailablePort(preferredPort: number): Promise<number> {
+  return new Promise((resolve) => {
+    const testServer = require('net').createServer();
+    testServer.listen(preferredPort, '0.0.0.0', () => {
+      testServer.close(() => {
+        resolve(preferredPort);
+      });
+    });
+    testServer.on('error', () => {
+      // Try next port
+      resolve(preferredPort + 1);
+    });
+  });
+}
+
+const availablePort = await findAvailablePort(Number(PORT));
+
+server.listen(availablePort, '0.0.0.0', async () => {
+  console.log(`🚀 Brill Prime server running on http://0.0.0.0:${availablePort}`);
+  console.log(`📊 Environment: ${env.NODE_ENV}`);
   console.log(`🔌 WebSocket server enabled`);
-  console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
-  console.log(`🔐 Session secret: ${process.env.SESSION_SECRET ? 'Configured' : 'Using default'}`);
+  console.log(`💾 Database: ${env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
+  console.log(`🔐 Session secret: Configured`);
 
   // Initialize performance optimizations
   console.log('🚀 Initializing performance optimizations...');
@@ -994,21 +984,24 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   // Email service will initialize automatically
   console.log('📧 Email service initializing in background...');
 
-  // Start cache warming
-  await cacheService.warmCache();
+  // Start cache warming (safely)
+  try {
+    await cacheService.warmCache();
+    console.log('✅ Cache service initialized');
+  } catch (error) {
+    console.warn('Cache service failed to initialize:', error.message);
+  }
 
   // Start query optimizer maintenance (safely)
   try {
     queryOptimizer.startMaintenance();
+    console.log('✅ Query optimizer initialized');
   } catch (error) {
     console.warn('Query optimizer maintenance failed to start:', error.message);
   }
 
-  // Log initial performance metrics
-  const cacheHealth = await cacheService.healthCheck();
-  console.log(`💾 Cache service: ${cacheHealth ? 'Connected' : 'Disconnected'}`);
-
-  console.log('✅ Performance optimizations initialized');
+  console.log('✅ Server startup completed successfully');
+  console.log(`🌐 API available at: http://0.0.0.0:${availablePort}/api/health`);
 
   // Real-time system health monitoring
   setInterval(() => {

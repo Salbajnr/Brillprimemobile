@@ -112,11 +112,29 @@ export function validateEnvironment() {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
         // Return defaults for development
         return {
-          ...envSchema.parse({
-            JWT_SECRET: process.env.JWT_SECRET || 'dev-fallback-jwt-secret-32-chars-min',
-            SESSION_SECRET: process.env.SESSION_SECRET || 'dev-fallback-session-secret-32-chars',
-            ...process.env
-          })
+          NODE_ENV: 'development',
+          PORT: 5000,
+          HOST: '0.0.0.0',
+          DATABASE_URL: process.env.DATABASE_URL || 'postgresql://user:pass@localhost:5432/brillprime',
+          JWT_SECRET: process.env.JWT_SECRET || 'dev-fallback-jwt-secret-32-chars-minimum-length-required',
+          SESSION_SECRET: process.env.SESSION_SECRET || 'dev-fallback-session-secret-32-chars-minimum-length',
+          FRONTEND_URL: 'http://localhost:5173',
+          REDIS_DISABLED: true,
+          RATE_LIMIT_WINDOW_MS: 900000,
+          RATE_LIMIT_MAX_REQUESTS: 100,
+          AUTH_RATE_LIMIT_MAX: 5,
+          PAYMENT_RATE_LIMIT_MAX: 10,
+          HELMET_CSP_ENABLED: true,
+          ENABLE_ANALYTICS: true,
+          ENABLE_PUSH_NOTIFICATIONS: false,
+          ENABLE_SMS_VERIFICATION: false,
+          ENABLE_EMAIL_VERIFICATION: false,
+          ENABLE_BIOMETRIC_AUTH: false,
+          LOG_LEVEL: 'info',
+          METRICS_ENABLED: true,
+          APP_NAME: 'Brill Prime',
+          AWS_REGION: 'us-east-1',
+          ...process.env
         };
       } else {
         console.error('❌ Production environment validation failed. Exiting...');
