@@ -4,7 +4,10 @@ services:
     name: brillprime-backend
     env: node
     plan: starter
-    buildCommand: npm install --legacy-peer-deps
+    buildCommand: |
+      npm install --legacy-peer-deps
+      cd client && npm install --legacy-peer-deps
+      cd client && npm run build
     startCommand: NODE_ENV=production npm run start
     envVars:
       - key: NODE_ENV
@@ -23,3 +26,15 @@ services:
         generateValue: true
       - key: ENCRYPTION_KEY
         generateValue: true
+      - key: FRONTEND_URL
+        value: https://brillprime-backend.onrender.com
+      - key: CLIENT_URL
+        value: https://brillprime-backend.onrender.com
+      - key: BASE_URL
+        value: https://brillprime-backend.onrender.com
+      - key: WEBSOCKET_URL
+        value: wss://brillprime-backend.onrender.com
+      - key: CORS_ORIGIN
+        value: https://brillprime-backend.onrender.com
+      - key: TRUSTED_PROXIES
+        value: render
