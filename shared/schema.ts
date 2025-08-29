@@ -385,6 +385,118 @@ export const fraudAlerts = pgTable("fraud_alerts", {
   updatedAt: timestamp("updated_at").defaultNow()
 });
 
+// Admin Users table
+export const adminUsers = pgTable("admin_users", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  role: text("role").default('ADMIN'),
+  permissions: jsonb("permissions").default('[]'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Compliance Documents table
+export const complianceDocuments = pgTable("compliance_documents", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  documentType: text("document_type").notNull(),
+  documentUrl: text("document_url").notNull(),
+  status: text("status").default('PENDING'),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Content Reports table
+export const contentReports = pgTable("content_reports", {
+  id: serial("id").primaryKey(),
+  contentType: text("content_type").notNull(),
+  contentId: text("content_id").notNull(),
+  reportedBy: integer("reported_by").references(() => users.id),
+  reason: text("reason").notNull(),
+  status: text("status").default('PENDING'),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Moderation Responses table
+export const moderationResponses = pgTable("moderation_responses", {
+  id: serial("id").primaryKey(),
+  reportId: integer("report_id").references(() => contentReports.id).notNull(),
+  adminId: integer("admin_id").references(() => adminUsers.id).notNull(),
+  response: text("response").notNull(),
+  action: text("action").notNull(),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// User Locations table
+export const userLocations = pgTable("user_locations", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  latitude: decimal("latitude", { precision: 10, scale: 8 }).notNull(),
+  longitude: decimal("longitude", { precision: 11, scale: 8 }).notNull(),
+  isActive: boolean("is_active").default(true),
+  updatedAt: timestamp("updated_at").defaultNow()
+});
+
+// Payment Methods table
+export const paymentMethods = pgTable("payment_methods", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  type: text("type").notNull(),
+  details: jsonb("details").notNull(),
+  isDefault: boolean("is_default").default(false),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Admin Payment Actions table
+export const adminPaymentActions = pgTable("admin_payment_actions", {
+  id: serial("id").primaryKey(),
+  adminId: integer("admin_id").references(() => adminUsers.id).notNull(),
+  action: text("action").notNull(),
+  paymentId: text("payment_id").notNull(),
+  details: jsonb("details"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Account Flags table
+export const accountFlags = pgTable("account_flags", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  flagType: text("flag_type").notNull(),
+  severity: text("severity").default('MEDIUM'),
+  reason: text("reason").notNull(),
+  flaggedBy: integer("flagged_by").references(() => adminUsers.id),
+  status: text("status").default('ACTIVE'),
+  resolvedBy: integer("resolved_by").references(() => adminUsers.id),
+  resolvedAt: timestamp("resolved_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Conversations table
+export const conversations = pgTable("conversations", {
+  id: serial("id").primaryKey(),
+  customerId: integer("customer_id").references(() => users.id).notNull(),
+  status: text("status").default('ACTIVE'),
+  lastMessage: text("last_message"),
+  lastMessageAt: timestamp("last_message_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
+// Driver Verifications table
+export const driverVerifications = pgTable("driver_verifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").references(() => users.id).notNull(),
+  documentType: text("document_type").notNull(),
+  documentUrl: text("document_url").notNull(),
+  status: verificationStatusEnum("status").default('PENDING'),
+  reviewedBy: integer("reviewed_by").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").defaultNow()
+});
+
 // Validation schemas for API requests
 import { z } from 'zod';
 

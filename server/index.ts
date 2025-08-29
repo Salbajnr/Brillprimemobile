@@ -1,4 +1,3 @@
-
 import express, { Express, Request, Response } from "express";
 import cors from "cors";
 import morgan from 'morgan';
@@ -8,6 +7,7 @@ import session from 'express-session';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import path from 'path';
+import { fileURLToPath } from 'url';
 
 // Import environment validation
 import './env-validation';
@@ -93,8 +93,8 @@ const port = process.env.PORT || 5000;
 // Initialize Socket.IO
 const io = new Server(server, {
   cors: {
-    origin: process.env.NODE_ENV === 'production' 
-      ? ["https://*.replit.app", "https://*.replit.co"] 
+    origin: process.env.NODE_ENV === 'production'
+      ? ["https://*.replit.app", "https://*.replit.co"]
       : ["http://localhost:3000", "http://localhost:5173"],
     methods: ["GET", "POST"],
     credentials: true
@@ -134,8 +134,8 @@ app.use(limiter);
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production' 
-    ? ["https://*.replit.app", "https://*.replit.co"] 
+  origin: process.env.NODE_ENV === 'production'
+    ? ["https://*.replit.app", "https://*.replit.co"]
     : ["http://localhost:3000", "http://localhost:5173"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -289,7 +289,7 @@ io.on('connection', (socket) => {
   socket.on('authenticate', (data) => {
     if (data.userId) {
       socket.join(`user_${data.userId}`);
-      
+
       // Join role-specific rooms
       if (data.role === 'DRIVER') {
         socket.join('drivers');
@@ -298,7 +298,7 @@ io.on('connection', (socket) => {
       } else if (data.role === 'ADMIN') {
         socket.join('admin_monitoring');
       }
-      
+
       console.log(`User ${data.userId} authenticated with role ${data.role}`);
     }
   });
@@ -366,7 +366,7 @@ app.use(express.static(path.join(__dirname, '../client/dist')));
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
   console.error('Error:', err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     error: 'Something went wrong!',
     message: process.env.NODE_ENV === 'development' ? err.message : undefined
   });
