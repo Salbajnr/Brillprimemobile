@@ -135,25 +135,14 @@ async function checkAPIEndpointsHealth() {
 }
 
 // Basic health check - simplified
-router.get('/', async (req, res) => {
-  try {
-    const healthCheck = {
-      status: 'OK',
-      timestamp: new Date().toISOString(),
-      uptime: process.uptime(),
-      environment: process.env.NODE_ENV || 'development',
-      version: "1.0.0"
-    };
-
-    res.json(healthCheck);
-  } catch (error) {
-    console.error('Health check error:', error);
-    res.status(500).json({
-      status: 'ERROR',
-      timestamp: new Date().toISOString(),
-      error: 'Health check failed'
-    });
-  }
+router.get('/', (req, res) => {
+  res.status(200).json({
+    status: 'OK',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: "1.0.0"
+  });
 });
 
 // Comprehensive system health check

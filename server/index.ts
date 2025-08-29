@@ -347,10 +347,30 @@ app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Error handling middleware
 app.use((err: any, req: Request, res: Response, next: any) => {
-  console.error('Error:', err.stack);
+  console.error('Server Error:', err.stack);
+  
+  // Handle specific error types
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      success: false,
+      error: 'Validation Error',
+      message: err.message
+    });
+  }
+  
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      success: false,
+      error: 'Unauthorized',
+      message: 'Authentication required'
+    });
+  }
+  
+  // Generic error response
   res.status(500).json({
-    error: 'Something went wrong!',
-    message: process.env.NODE_ENV === 'development' ? err.message : undefined
+    success: false,
+    error: 'Internal Server Error',
+    message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
   });
 });
 
