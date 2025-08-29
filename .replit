@@ -448,7 +448,11 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "npm install"
+args = "npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install --legacy-peer-deps"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -456,7 +460,7 @@ args = "cd client && npm run build"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "REDIS_DISABLED=true SKIP_SEEDING=true npm run dev"
+args = "REDIS_DISABLED=true SKIP_SEEDING=false npm run dev"
 
 [agent]
 integrations = ["javascript_database==1.0.0", "javascript_sendgrid==1.0.0"]

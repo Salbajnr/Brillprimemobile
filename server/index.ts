@@ -472,15 +472,22 @@ process.on('SIGTERM', async () => {
 // Database connection and initialization
 (async () => {
   try {
+    console.log('🔄 Connecting to database...');
     await db.execute("SELECT 1");
     console.log('📊 Database: Connected successfully');
 
     // Initialize complete database schema
+    console.log('🔄 Initializing database schema...');
     const { initializeDatabase, seedInitialData } = await import('./complete-db-schema');
     await initializeDatabase();
-    await seedInitialData();
+    
+    // Only seed if not in production or if explicitly requested
+    if (process.env.NODE_ENV !== 'production' && !process.env.SKIP_SEEDING) {
+      console.log('🌱 Seeding initial data...');
+      await seedInitialData();
+    }
 
-    console.log('🚀 Database: Fully initialized with all tables and seed data');
+    console.log('🚀 Database: Fully initialized');
 
     // Start continuous database integration
     console.log('🔄 Starting database integration service...');
@@ -489,10 +496,16 @@ process.on('SIGTERM', async () => {
 
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
+    console.log('⚠️  Server will continue without full database features');
   }
 })();
 
-server.listen(port, "0.0.0.0", () => {
+server.listen(port, "0.0.0.0", (err?: Error) => {
+  if (err) {
+    console.error('❌ Server failed to start:', err);
+    process.exit(1);
+  }
+  
   console.log(`🚀 Server running on port ${port}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💾 Database: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`);
@@ -501,6 +514,7 @@ server.listen(port, "0.0.0.0", () => {
   console.log(`🛡️  Security: Enabled (Helmet, Rate Limiting, CORS)`);
   console.log(`📝 Logging: ${process.env.NODE_ENV !== 'test' ? 'Enabled' : 'Disabled'}`);
   console.log('✅ All API routes registered and functional');
+  console.log(`🌐 Server accessible at: http://0.0.0.0:${port}`);
 });
 
 export { app, io };
