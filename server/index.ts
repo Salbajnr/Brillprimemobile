@@ -12,6 +12,7 @@ import { fileURLToPath } from 'url';
 // Import environment validation
 import './env-validation';
 import { db } from './db';
+import { databaseIntegration } from './services/database-integration';
 
 // Import all routes
 import authRoutes from './routes/auth';
@@ -81,6 +82,7 @@ import mobileDatabaseRoutes from './routes/mobile-database';
 import mobileHealthRoutes from './routes/mobile-health';
 import fileSyncRoutes from './routes/file-sync';
 import debugRoutes from './routes/debug';
+import databaseMonitoringRoutes from './routes/database-monitoring';
 
 // Import middleware
 import { authenticateUser } from './middleware/auth';
@@ -295,6 +297,9 @@ app.use('/api/merchant/inventory', merchantInventoryRoutes);
 // app.use('/api/mobile/health', mobileHealthRoutes); // Temporarily disabled
 // app.use('/api/mobile/sync', fileSyncRoutes); // Temporarily disabled
 
+// Database monitoring routes
+app.use('/api/database', databaseMonitoringRoutes);
+
 // Debug routes (development only)
 if (process.env.NODE_ENV === 'development') {
   // app.use('/api/debug', debugRoutes); // Temporarily disabled
@@ -377,6 +382,33 @@ io.on('connection', (socket) => {
     socket.to('admin_monitoring').emit('system_alert', data);
   });
 
+  // Handle database monitoring requests
+  socket.on('subscribe_database_updates', (data) => {
+    if (data.type === 'all') {
+      socket.join('database_updates');
+    } else if (data.type === 'admin') {
+      socket.join('admin_monitoring');
+    }
+    console.log(`Socket ${socket.id} subscribed to database updates: ${data.type}`);
+  });
+
+  socket.on('unsubscribe_database_updates', (data) => {
+    if (data.type === 'all') {
+      socket.leave('database_updates');
+    } else if (data.type === 'admin') {
+      socket.leave('admin_monitoring');
+    }
+  });
+
+  socket.on('request_database_metrics', async () => {
+    try {
+      const metrics = await databaseIntegration.getDashboardMetrics();
+      socket.emit('database_metrics_response', metrics);
+    } catch (error) {
+      socket.emit('database_metrics_error', { error: error.message });
+    }
+  });
+
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
   });
@@ -449,6 +481,12 @@ process.on('SIGTERM', async () => {
     await seedInitialData();
 
     console.log('🚀 Database: Fully initialized with all tables and seed data');
+
+    // Start continuous database integration
+    console.log('🔄 Starting database integration service...');
+    // Service starts automatically when imported
+    console.log('✅ Database integration service running');
+
   } catch (error) {
     console.error('❌ Database initialization failed:', error);
   }
