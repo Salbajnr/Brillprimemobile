@@ -16,20 +16,16 @@ import { eq, desc, and, gte, sql, isNull, lte, count, sum, inArray, avg } from '
 
 export const storage = {
   // Categories management
-  async getCategories(filters: { includeInactive?: boolean; parentId?: number } = {}) {
+  async getCategories(filters: { includeInactive?: boolean } = {}) {
     const conditions = [];
 
     if (!filters.includeInactive) {
       conditions.push(eq(categories.isActive, true));
     }
 
-    if (filters.parentId) {
-      conditions.push(eq(categories.parentId, filters.parentId));
-    }
-
     return await db.select().from(categories)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(categories.sortOrder, categories.name);
+      .orderBy(categories.name);
   },
 
   async getCategoryById(id: number) {

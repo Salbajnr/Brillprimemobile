@@ -22,11 +22,10 @@ const updateCategorySchema = createCategorySchema.partial().extend({
 // Get all categories
 router.get("/", async (req, res) => {
   try {
-    const { includeInactive = false, parentId } = req.query;
+    const { includeInactive = false } = req.query;
     
     const categories = await storage.getCategories({
-      includeInactive: includeInactive === 'true',
-      parentId: parentId ? parseInt(parentId as string) : undefined
+      includeInactive: includeInactive === 'true'
     });
 
     res.json({
