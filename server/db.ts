@@ -105,9 +105,9 @@ export const errorLogs = pgTable("error_logs", {
 
 export const pool = new Pool({ 
   connectionString: DATABASE_URL,
-  ssl: DATABASE_URL?.includes('render.com') || DATABASE_URL?.includes('railway.app') || DATABASE_URL?.includes('dpg-') ? {
+  ssl: {
     rejectUnauthorized: false
-  } : false
+  }
 });
 export const db = drizzle(pool, { 
   schema: { 

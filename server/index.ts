@@ -18,11 +18,7 @@ import { fileURLToPath } from 'url';
 import './env-validation';
 
 // Ensure system environment variables take precedence for Replit compatibility
-if (process.env.DATABASE_URL && process.env.DATABASE_URL.includes('helium')) {
-  console.log('🔧 Using Replit database configuration');
-} else {
-  console.log('⚠️  Warning: Not using Replit database - this may cause connection issues');
-}
+console.log('🔧 Using Render PostgreSQL database configuration');
 
 import { db } from './db';
 // import { databaseIntegration } from './services/database-integration'; // Temporarily disabled due to connection issues
