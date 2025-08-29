@@ -1,6 +1,6 @@
 import React from 'react'
 import { createRoot } from 'react-dom/client'
-import App from './App-simple'
+import App from './App'
 import './index.css'
 
 // Error boundary for better error handling
