@@ -6,14 +6,12 @@ services:
     plan: free
     buildCommand: |
       npm install --legacy-peer-deps
-      cd client && npm install --legacy-peer-deps
-      cd client && npm run build
     startCommand: NODE_ENV=production npm run start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
-        value: 10000
+        value: 5000
       - key: HOST
         value: 0.0.0.0
       - key: DATABASE_URL
@@ -27,14 +25,14 @@ services:
       - key: ENCRYPTION_KEY
         generateValue: true
       - key: FRONTEND_URL
-        value: https://brillprime-backend.onrender.com
+        value: https://your-frontend-repl.replit.app
       - key: CLIENT_URL
-        value: https://brillprime-backend.onrender.com
+        value: https://your-frontend-repl.replit.app
       - key: BASE_URL
-        value: https://brillprime-backend.onrender.com
+        value: https://your-backend-repl.replit.app
       - key: WEBSOCKET_URL
-        value: wss://brillprime-backend.onrender.com
+        value: wss://your-backend-repl.replit.app
       - key: CORS_ORIGIN
-        value: https://brillprime-backend.onrender.com
+        value: https://your-frontend-repl.replit.app
       - key: TRUSTED_PROXIES
-        value: render
+        value: replit
