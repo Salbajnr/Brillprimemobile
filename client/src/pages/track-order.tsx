@@ -338,6 +338,38 @@ export default function TrackOrder() {
           </CardContent>
         </Card>
 
+        {/* Delivery Feedback - Show only when delivered */}
+        {order.status === 'DELIVERED' && (
+          <Card className="border-green-200 bg-green-50">
+            <CardContent className="p-4">
+              <h3 className="font-semibold text-green-800 mb-2">Rate Your Delivery</h3>
+              <p className="text-sm text-green-700 mb-3">
+                How was your delivery experience with {order.driverName}?
+              </p>
+              <div className="flex space-x-2 mb-3">
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <button
+                    key={star}
+                    className="text-2xl text-yellow-400 hover:text-yellow-500"
+                    onClick={() => {
+                      // Handle rating submission
+                      console.log(`Rated ${star} stars`);
+                    }}
+                  >
+                    ⭐
+                  </button>
+                ))}
+              </div>
+              <Button
+                className="w-full bg-green-600 hover:bg-green-700"
+                onClick={() => setLocation(`/rate-delivery/${order.id}`)}
+              >
+                Submit Feedback
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Emergency Contact */}
         <Card className="border-red-200">
           <CardContent className="p-4">

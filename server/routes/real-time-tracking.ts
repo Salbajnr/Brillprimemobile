@@ -1,8 +1,7 @@
-
 import { Router } from 'express';
 import { db } from '../db';
 import { orders, driverProfiles, userLocations, orderTracking, users } from '../../shared/schema';
-import { eq, and, desc, gte } from 'drizzle-orm';
+import { eq, and, desc, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const router = Router();
@@ -162,7 +161,7 @@ router.get('/order/:orderId', requireAuth, async (req, res) => {
       const [user] = await db.select().from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      
+
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
         return res.status(403).json({
           success: false,
@@ -260,7 +259,7 @@ router.post('/order/:orderId/status', requireAuth, async (req, res) => {
       const [user] = await db.select().from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      
+
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
         return res.status(403).json({
           success: false,
@@ -286,11 +285,53 @@ router.post('/order/:orderId/status', requireAuth, async (req, res) => {
       'FAILED_DELIVERY': 'FAILED'
     };
 
+    const updateData: any = {};
     if (statusUpdateMap[data.status]) {
-      await db.update(orders).set({
-        status: statusUpdateMap[data.status],
-        updatedAt: new Date()
-      }).where(eq(orders.id, order.id));
+      updateData.status = statusUpdateMap[data.status];
+      updateData.updatedAt = new Date();
+    }
+
+    // Handle status-specific updates
+    if (data.status === 'DELIVERED') {
+      updateData.deliveredAt = new Date();
+
+      // Calculate delivery time for performance metrics
+      const deliveryTime = new Date().getTime() - new Date(order.createdAt).getTime();
+      const deliveryTimeMinutes = Math.round(deliveryTime / (1000 * 60));
+
+      // Update driver availability and earnings with performance metrics
+      await Promise.all([
+        db.update(driverProfiles)
+          .set({
+            isAvailable: true,
+            totalDeliveries: sql`${driverProfiles.totalDeliveries} + 1`,
+            totalEarnings: sql`${driverProfiles.totalEarnings} + ${order.driverEarnings}`,
+            averageDeliveryTime: sql`CASE WHEN ${driverProfiles.totalDeliveries} = 0 THEN ${deliveryTimeMinutes} ELSE ((${driverProfiles.averageDeliveryTime} * ${driverProfiles.totalDeliveries}) + ${deliveryTimeMinutes}) / (${driverProfiles.totalDeliveries} + 1) END`,
+            updatedAt: new Date()
+          })
+          .where(eq(driverProfiles.userId, userId)),
+
+        // Record earnings transaction
+        db.insert(transactions).values({
+          userId: userId,
+          orderId: order.id,
+          amount: order.driverEarnings,
+          type: 'DELIVERY_EARNINGS',
+          status: 'COMPLETED',
+          paymentMethod: 'wallet',
+          paymentStatus: 'COMPLETED',
+          transactionRef: `earn_${Date.now()}_${userId}`,
+          description: `Delivery earnings for order ${order.orderNumber}`,
+          createdAt: new Date()
+        }),
+
+        // Auto-assign next available order if driver preferences allow
+        assignNextAvailableOrder(userId)
+      ]);
+    }
+
+    if (Object.keys(updateData).length > 0) {
+      await db.update(orders).set(updateData).where(eq(orders.id, order.id));
     }
 
     // Real-time notifications
@@ -412,7 +453,7 @@ router.post('/orders/batch', requireAuth, async (req, res) => {
           const [user] = await db.select().from(users)
             .where(eq(users.id, userId))
             .limit(1);
-          
+
           if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
             return null;
           }
@@ -476,7 +517,7 @@ router.post('/order/:orderId/join', requireAuth, async (req, res) => {
       const [user] = await db.select().from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      
+
       if (!user || !['ADMIN', 'MERCHANT'].includes(user.role)) {
         return res.status(403).json({
           success: false,
@@ -510,7 +551,7 @@ async function calculateETA(order: any, currentLocation: any): Promise<string | 
 
     // Check if Google Maps API is available for accurate routing
     const googleApiKey = process.env.GOOGLE_MAPS_API_KEY;
-    
+
     if (googleApiKey) {
       try {
         const routeData = await getRouteFromGoogleMaps(
@@ -518,7 +559,7 @@ async function calculateETA(order: any, currentLocation: any): Promise<string | 
           deliveryLocation,
           googleApiKey
         );
-        
+
         if (routeData && routeData.duration) {
           const etaMs = routeData.duration * 1000; // Convert seconds to ms
           return new Date(Date.now() + etaMs).toISOString();
@@ -538,14 +579,14 @@ async function calculateETA(order: any, currentLocation: any): Promise<string | 
 
     // Dynamic speed calculation based on time of day and location
     let averageSpeed = currentLocation.speed || getEstimatedSpeed(currentLocation, new Date());
-    
+
     // Apply traffic factor based on time of day
     const trafficFactor = getTrafficFactor(new Date());
     averageSpeed *= trafficFactor;
-    
+
     // Add buffer time for stops, traffic lights, etc.
     const bufferTimeMinutes = Math.min(distance * 2, 15); // 2 min per km, max 15 min
-    
+
     const estimatedTimeHours = distance / averageSpeed;
     const estimatedTimeMs = (estimatedTimeHours * 60 * 60 * 1000) + (bufferTimeMinutes * 60 * 1000);
 
@@ -563,21 +604,21 @@ async function getRouteFromGoogleMaps(origin: any, destination: any, apiKey: str
       `origin=${origin.latitude},${origin.longitude}&` +
       `destination=${destination.latitude},${destination.longitude}&` +
       `departure_time=now&traffic_model=best_guess&key=${apiKey}`;
-    
+
     const response = await fetch(url);
     const data = await response.json();
-    
+
     if (data.status === 'OK' && data.routes.length > 0) {
       const route = data.routes[0];
       const leg = route.legs[0];
-      
+
       return {
         duration: leg.duration_in_traffic?.value || leg.duration.value,
         distance: leg.distance.value / 1000, // Convert to km
         polyline: route.overview_polyline.points
       };
     }
-    
+
     return null;
   } catch (error) {
     console.error('Google Maps API error:', error);
@@ -588,10 +629,10 @@ async function getRouteFromGoogleMaps(origin: any, destination: any, apiKey: str
 // Estimate speed based on location and time
 function getEstimatedSpeed(location: any, currentTime: Date): number {
   const hour = currentTime.getHours();
-  
+
   // Base speeds for different areas (km/h)
   let baseSpeed = 25; // Urban default
-  
+
   // Lagos-specific speed adjustments
   if (location.latitude >= 6.4 && location.latitude <= 6.5 && 
       location.longitude >= 3.3 && location.longitude <= 3.5) {
@@ -602,7 +643,7 @@ function getEstimatedSpeed(location: any, currentTime: Date): number {
     // Lekki area - faster roads
     baseSpeed = 35;
   }
-  
+
   return baseSpeed;
 }
 
@@ -610,12 +651,12 @@ function getEstimatedSpeed(location: any, currentTime: Date): number {
 function getTrafficFactor(currentTime: Date): number {
   const hour = currentTime.getHours();
   const day = currentTime.getDay(); // 0 = Sunday, 6 = Saturday
-  
+
   // Weekend traffic is generally lighter
   if (day === 0 || day === 6) {
     return 1.2; // 20% faster
   }
-  
+
   // Weekday traffic patterns
   if ((hour >= 7 && hour <= 9) || (hour >= 17 && hour <= 19)) {
     return 0.6; // Rush hour - 40% slower
@@ -624,7 +665,7 @@ function getTrafficFactor(currentTime: Date): number {
   } else if (hour >= 22 || hour <= 6) {
     return 1.3; // Night time - 30% faster
   }
-  
+
   return 1.0; // Normal traffic
 }
 
@@ -633,17 +674,23 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   const R = 6371; // Earth's radius in kilometers
   const dLat = toRadians(lat2 - lat1);
   const dLon = toRadians(lon2 - lon1);
-  
+
   const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
     Math.cos(toRadians(lat1)) * Math.cos(toRadians(lat2)) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  
+
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
 function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
+}
+
+// Dummy function for assigning next available order (replace with actual implementation)
+async function assignNextAvailableOrder(driverId: number): Promise<void> {
+  console.log(`Assigning next available order to driver: ${driverId}`);
+  // TODO: Implement logic to find and assign the next available order to the driver
 }
 
 export default router;
