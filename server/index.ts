@@ -130,7 +130,7 @@ declare global {
 
 const app: Express = express();
 const server = createServer(app);
-const port = process.env.PORT || 10000;
+const port = process.env.PORT || 5000;
 const host = process.env.HOST || '0.0.0.0';
 
 // Initialize Socket.IO
@@ -178,8 +178,14 @@ app.use(limiter);
 // CORS configuration
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
-    ? ["https://*.onrender.com", "https://*.render.com"]
-    : ["http://localhost:3000", "http://localhost:5173"],
+    ? [
+        "https://brillprime-backend.onrender.com",
+        "https://*.onrender.com", 
+        "https://*.render.com",
+        process.env.FRONTEND_URL,
+        process.env.CORS_ORIGIN
+      ].filter(Boolean)
+    : ["http://localhost:3000", "http://localhost:5173", "http://0.0.0.0:5000"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-csrf-token'],

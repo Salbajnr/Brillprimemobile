@@ -64,7 +64,7 @@ stopOnEntry = false
 console = "externalTerminal"
 
 [workflows]
-runButton = "Start BrillPrime Server"
+runButton = "Production Start"
 
 [[workflows.workflow]]
 name = "Start BrillPrime Server"
@@ -91,3 +91,12 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd server && npm install && node create-missing-tables.js && npm run dev"
+
+[[workflows.workflow]]
+name = "Production Start"
+author = 47046750
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=production npm run start"

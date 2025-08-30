@@ -115,7 +115,7 @@ export function validateEnvironment() {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
         console.warn('💡 For production deployment, ensure all required variables are set');
-        
+
         // Only exit in production
         if (process.env.NODE_ENV === 'production') {
           console.error('❌ Missing required environment variables for production deployment');
