@@ -23,6 +23,8 @@ import CartScreen from '../screens/CartScreen';
 import CheckoutScreen from '../screens/CheckoutScreen';
 import QRScannerScreen from '../screens/QRScannerScreen';
 import TrackOrderScreen from '../screens/TrackOrderScreen';
+import RealTimeTrackingScreen from '../screens/RealTimeTrackingScreen';
+import RateDeliveryScreen from '../screens/RateDeliveryScreen';
 import AccountSettingsScreen from '../screens/AccountSettingsScreen';
 import BillPaymentsScreen from '../screens/BillPaymentsScreen';
 import MoneyTransferScreen from '../screens/MoneyTransferScreen';
@@ -65,6 +67,8 @@ export type RootStackParamList = {
   Checkout: undefined;
   QRScanner: { type: string };
   TrackOrder: { orderId: string };
+  RealTimeTracking: undefined;
+  RateDelivery: undefined;
   AccountSettings: undefined;
   BillPayments: undefined;
   MoneyTransfer: undefined;
@@ -132,6 +136,8 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
         <Stack.Screen name="QRScanner" component={QRScannerScreen} />
         <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
+        <Stack.Screen name="RealTimeTracking" component={RealTimeTrackingScreen} />
+        <Stack.Screen name="RateDelivery" component={RateDeliveryScreen} />
         <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         <Stack.Screen name="BillPayments" component={BillPaymentsScreen} />
         <Stack.Screen name="MoneyTransfer" component={MoneyTransferScreen} />

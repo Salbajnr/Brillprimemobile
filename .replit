@@ -76,7 +76,7 @@ mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd server && npm install && node create-missing-tables.js && npm start"
+args = "cd server && npm install && node create-missing-tables.js && npm run dev"
 
 [[workflows.workflow]]
 name = "Start BrillPrime Server"

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, RefreshControl } from 'react-native';
 import { NavigationProps } from '../shared/types';
@@ -34,7 +33,7 @@ const TrackOrderScreen: React.FC<NavigationProps> = ({ navigation, route }) => {
   const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   const orderId = route?.params?.orderId;
 
   useEffect(() => {
@@ -223,7 +222,7 @@ const TrackOrderScreen: React.FC<NavigationProps> = ({ navigation, route }) => {
             <Text style={styles.cancelButtonText}>Cancel Order</Text>
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity 
           style={styles.supportButton}
           onPress={() => navigation.navigate('Support')}
@@ -231,6 +230,39 @@ const TrackOrderScreen: React.FC<NavigationProps> = ({ navigation, route }) => {
           <Text style={styles.supportButtonText}>Contact Support</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Delivery Rating - Show only when delivered */}
+      {trackingData.currentStatus === 'DELIVERED' && (
+        <View style={styles.ratingSection}>
+          <Text style={styles.sectionTitle}>Rate Your Delivery</Text>
+          <Text style={styles.ratingDescription}>
+            How was your delivery experience with {trackingData.driverName}?
+          </Text>
+          <View style={styles.starsPreview}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Text key={star} style={styles.starPreview}>⭐</Text>
+            ))}
+          </View>
+          <TouchableOpacity
+            style={styles.rateButton}
+            onPress={() => navigation.navigate('RateDelivery', { orderId: trackingData.orderId })}
+          >
+            <Text style={styles.rateButtonText}>Rate This Delivery</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Real-time Tracking Button */}
+      {['CONFIRMED', 'PICKED_UP', 'IN_TRANSIT'].includes(trackingData.currentStatus) && (
+        <View style={styles.trackingSection}>
+          <TouchableOpacity
+            style={styles.realTimeButton}
+            onPress={() => navigation.navigate('RealTimeTracking', { orderId: trackingData.orderId })}
+          >
+            <Text style={styles.realTimeButtonText}>📍 Real-Time Tracking</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </ScrollView>
   );
 };
@@ -502,6 +534,55 @@ const styles = StyleSheet.create({
     color: '#4682b4',
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  ratingSection: {
+    backgroundColor: '#F0FDF4',
+    margin: 15,
+    padding: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
+  },
+  ratingDescription: {
+    fontSize: 14,
+    color: '#065F46',
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  starsPreview: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginBottom: 15,
+  },
+  starPreview: {
+    fontSize: 24,
+    marginHorizontal: 2,
+  },
+  rateButton: {
+    backgroundColor: '#059669',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  rateButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  trackingSection: {
+    margin: 15,
+    marginTop: 0,
+  },
+  realTimeButton: {
+    backgroundColor: '#3B82F6',
+    paddingVertical: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  realTimeButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });
 

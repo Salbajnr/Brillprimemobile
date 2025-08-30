@@ -1,8 +1,7 @@
-
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
-import { NavigationProps } from '../shared/types';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert, Switch } from 'react-native';
 import { apiService } from '../services/api';
+import { autoAssignmentService } from '../services/autoAssignment';
 
 interface DriverStats {
   totalEarnings: number;
@@ -12,7 +11,14 @@ interface DriverStats {
   isOnline: boolean;
 }
 
-const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
+interface AvailableOrder {
+  id: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  fare: number;
+}
+
+const DriverDashboardScreen: React.FC<any> = ({ navigation }) => { // Changed NavigationProps to any for now as types might be incomplete
   const [stats, setStats] = useState<DriverStats>({
     totalEarnings: 0,
     completedOrders: 0,
@@ -20,28 +26,38 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
     rating: 0,
     isOnline: false,
   });
-  const [refreshing, setRefreshing] = useState(false);
+  const [availableOrders, setAvailableOrders] = useState<AvailableOrder[]>([]);
+  const [isAvailable, setIsAvailable] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     loadDriverStats();
+    fetchAvailabilityStatus();
   }, []);
 
   const loadDriverStats = async () => {
+    setRefreshing(true); // Set refreshing to true when starting to load stats
     try {
       const response = await apiService.get('/api/driver/dashboard');
       setStats(response.data);
     } catch (error) {
       console.error('Error loading driver stats:', error);
+      Alert.alert('Error', 'Failed to load dashboard stats. Please try again.');
     } finally {
-      setLoading(false);
+      setRefreshing(false); // Set refreshing to false once loading is complete
     }
   };
 
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadDriverStats();
-    setRefreshing(false);
+  const fetchAvailabilityStatus = async () => {
+    try {
+      const response = await autoAssignmentService.getAvailability();
+      if (response.success) {
+        setIsAvailable(response.isAvailable);
+      }
+    } catch (error) {
+      console.error('Error fetching availability status:', error);
+    }
   };
 
   const toggleOnlineStatus = async () => {
@@ -53,6 +69,63 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
       Alert.alert('Status Updated', `You are now ${!stats.isOnline ? 'online' : 'offline'}`);
     } catch (error) {
       Alert.alert('Error', 'Failed to update online status');
+    }
+  };
+
+  const fetchDashboardData = async () => {
+    setLoading(true);
+    try {
+      const ordersResponse = await autoAssignmentService.getAvailableOrders();
+      if (ordersResponse.success) {
+        setAvailableOrders(ordersResponse.orders);
+      }
+    } catch (error) {
+      console.error('Dashboard fetch error:', error);
+      Alert.alert('Error', 'Failed to load available orders. Please try again.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  const toggleAvailability = async (value: boolean) => {
+    try {
+      const response = await autoAssignmentService.updateAvailability(value);
+      if (response.success) {
+        setIsAvailable(value);
+        if (value) {
+          fetchDashboardData(); // Refresh available orders when becoming available
+        } else {
+          setAvailableOrders([]); // Clear available orders when going offline
+        }
+      } else {
+        Alert.alert('Error', response.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to update availability');
+    }
+  };
+
+  const acceptOrder = async (orderId: string) => {
+    try {
+      const response = await autoAssignmentService.acceptOrder(orderId);
+      if (response.success) {
+        Alert.alert('Success', 'Order accepted successfully!');
+        fetchDashboardData(); // Refresh available orders
+        navigation.navigate('TrackOrder', { orderId }); // Navigate to track order
+      } else {
+        Alert.alert('Error', response.message);
+      }
+    } catch (error) {
+      Alert.alert('Error', 'Failed to accept order');
+    }
+  };
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    loadDriverStats(); // Also refresh general stats
+    if (isAvailable) {
+      fetchDashboardData(); // Refresh available orders if driver is available
     }
   };
 
@@ -83,7 +156,7 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
     },
   ];
 
-  if (loading) {
+  if (loading && !refreshing) { // Only show loading indicator when not refreshing
     return (
       <View style={[styles.container, styles.centered]}>
         <Text style={styles.loadingText}>Loading dashboard...</Text>
@@ -96,7 +169,7 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Driver Dashboard</Text>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.profileButton}
           onPress={() => navigation.navigate('Profile')}
         >
@@ -128,6 +201,19 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
+        {/* Availability Toggle for Auto-Assignment */}
+        <View style={styles.availabilityContainer}>
+          <Text style={styles.availabilityLabel}>Auto-Assignment</Text>
+          <Switch
+            trackColor={{ false: "#767577", true: "#81b0ff" }}
+            thumbColor={isAvailable ? "#f5dd4b" : "#f4f3f4"}
+            ios_backgroundColor="#3e3e3e"
+            onValueChange={toggleAvailability}
+            value={isAvailable}
+          />
+        </View>
+
+
         {/* Stats Cards */}
         <View style={styles.statsContainer}>
           <View style={styles.statsRow}>
@@ -151,6 +237,32 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
             </View>
           </View>
         </View>
+
+        {/* Available Orders for Auto-Assignment */}
+        {isAvailable && availableOrders.length > 0 && (
+          <View style={styles.availableOrdersContainer}>
+            <Text style={styles.sectionTitle}>Available Orders</Text>
+            <View style={styles.availableOrdersList}>
+              {availableOrders.map((order) => (
+                <View key={order.id} style={styles.availableOrderItem}>
+                  <View style={styles.orderInfo}>
+                    <Text style={styles.orderTitle}>Order #{order.id.substring(0, 6)}</Text>
+                    <Text style={styles.orderDescription}>From: {order.pickupLocation} to: {order.dropoffLocation}</Text>
+                  </View>
+                  <View style={styles.orderActions}>
+                    <Text style={styles.orderFare}>₦{order.fare.toLocaleString()}</Text>
+                    <TouchableOpacity
+                      style={styles.acceptButton}
+                      onPress={() => acceptOrder(order.id)}
+                    >
+                      <Text style={styles.acceptButtonText}>Accept</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
 
         {/* Quick Actions */}
         <View style={styles.actionsContainer}>
@@ -182,7 +294,7 @@ const DriverDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
               </View>
               <Text style={styles.activityAmount}>+₦2,500</Text>
             </View>
-            
+
             <View style={styles.activityItem}>
               <Text style={styles.activityIcon}>📦</Text>
               <View style={styles.activityContent}>
@@ -431,6 +543,80 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     color: '#666',
+  },
+  availabilityContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    marginHorizontal: 20,
+    marginBottom: 20,
+    padding: 20,
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  availabilityLabel: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#131313',
+  },
+  availableOrdersContainer: {
+    paddingHorizontal: 20,
+    marginBottom: 20,
+  },
+  availableOrdersList: {
+    gap: 12,
+  },
+  availableOrderItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#ffffff',
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  orderInfo: {
+    flex: 1,
+    marginRight: 10,
+  },
+  orderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#131313',
+    marginBottom: 4,
+  },
+  orderDescription: {
+    fontSize: 14,
+    color: '#666',
+  },
+  orderActions: {
+    flexDirection: 'column',
+    alignItems: 'flex-end',
+  },
+  orderFare: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#28a745',
+    marginBottom: 8,
+  },
+  acceptButton: {
+    backgroundColor: '#4682b4',
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  acceptButtonText: {
+    color: '#ffffff',
+    fontWeight: 'bold',
   },
 });
 
