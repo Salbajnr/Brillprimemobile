@@ -8,7 +8,7 @@ import { Badge } from '../components/ui/badge';
 import { Textarea } from '../components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { toast } from '../components/ui/use-toast';
+import { toast } from '../hooks/use-toast';
 
 interface EscrowTransaction {
   id: number;

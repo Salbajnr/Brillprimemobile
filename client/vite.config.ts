@@ -16,9 +16,7 @@ export default defineConfig({
       buffer: 'buffer',
     },
   },
-  define: {
-    global: 'globalThis',
-  },
+  // Duplicate 'define' key removed
   optimizeDeps: {
     include: ['buffer']
   },

@@ -1,22 +1,7 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useAuth } from '../hooks/use-auth';
-// Placeholder AdminLayout component
-function AdminLayout({ currentPage, onPageChange, children }: any) {
-  return (
-    <div>
-      <nav style={{ background: '#eee', padding: 10 }}>
-        <span>Admin Layout - Current: {currentPage}</span>
-        {/* Add navigation UI here */}
-      </nav>
-      <main>{children}</main>
-    </div>
-  );
-}
-
-// Placeholder AdminDashboardMain component
-function AdminDashboardMain() {
-  return <div>Admin Dashboard Main Content (placeholder)</div>;
-}
+import AdminLayout from '../components/admin-layout';
+import AdminDashboardMain from '../components/admin-dashboard-main';
 import { AdminUserManagement } from './admin-user-management';
 import { AdminKYCVerification } from './admin-kyc-verification';
 import { AdminTransactions } from './admin-transactions';
@@ -43,7 +28,7 @@ function AdminDashboard() {
     );
   }
 
-  if (!isAuthenticated() || !(user?.role === 'ADMIN' || user?.role === 'admin')) {
+  if (!isAuthenticated() || user?.role !== 'ADMIN') {
     // Not authenticated or not admin, redirect
     window.location.href = '/admin';
     return null;
