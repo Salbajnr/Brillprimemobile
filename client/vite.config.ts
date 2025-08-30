@@ -10,6 +10,7 @@ export default defineConfig({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  publicDir: 'public',
   server: {
     host: '0.0.0.0',
     port: 5173,
@@ -26,6 +27,8 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    assetsDir: 'assets',
+    copyPublicDir: true,
     rollupOptions: {
       input: {
         main: './index.html'
@@ -33,7 +36,13 @@ export default defineConfig({
       output: {
         entryFileNames: 'assets/[name]-[hash].js',
         chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
+        assetFileNames: (assetInfo) => {
+          // Keep images in their original structure
+          if (assetInfo.name?.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)) {
+            return 'assets/images/[name]-[hash].[ext]';
+          }
+          return 'assets/[name]-[hash].[ext]';
+        },
         manualChunks: {
           vendor: ['react', 'react-dom'],
           router: ['wouter']
