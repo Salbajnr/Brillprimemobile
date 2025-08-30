@@ -30,8 +30,8 @@ const config = {
     websocketUrl: 'ws://0.0.0.0:5000'
   },
   production: {
-    apiBaseUrl: 'https://brillprime-backend.onrender.com/api',
-    websocketUrl: 'wss://brillprime-backend.onrender.com'
+    apiBaseUrl: 'https://your-repl-name.your-username.replit.app/api',
+    websocketUrl: 'wss://your-repl-name.your-username.replit.app'
   }
 };
 
