@@ -39,6 +39,10 @@ export async function initializeDatabase() {
   try {
     console.log('🔄 Initializing database schema...');
 
+    // Import and run the comprehensive table creation
+    const { createAllMissingTables } = await import('./create-missing-tables');
+    await createAllMissingTables();
+
     // Check if tables exist and create if needed
     const tableChecks = [
       { name: 'users', schema: users },
@@ -96,73 +100,9 @@ export async function seedInitialData() {
   try {
     console.log('🌱 Seeding initial data...');
 
-    // Check if tables exist before seeding
-    const tableCheckQuery = `
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name = 'toll_gates'
-    `;
-
-    const tableExists = await db.execute(sql`${tableCheckQuery}`);
-
-    if (tableExists.length === 0) {
-      console.log('⚠️ Toll gates table not found, creating it first...');
-      await initializeDatabase();
-    }
-
-    // Check if categories exist, if not create them
-    const [existingCategories] = await db.select().from(categories).limit(1);
-
-    if (!existingCategories) {
-      const defaultCategories = [
-        { name: 'Electronics', description: 'Electronic devices and accessories', isActive: true },
-        { name: 'Food & Beverages', description: 'Food items and drinks', isActive: true },
-        { name: 'Clothing', description: 'Clothes and fashion accessories', isActive: true },
-        { name: 'Health & Beauty', description: 'Health and beauty products', isActive: true },
-        { name: 'Home & Garden', description: 'Home improvement and garden items', isActive: true },
-        { name: 'Sports & Outdoors', description: 'Sports equipment and outdoor gear', isActive: true },
-        { name: 'Books & Media', description: 'Books, movies, and media content', isActive: true },
-        { name: 'Automotive', description: 'Car parts and automotive accessories', isActive: true }
-      ];
-
-      await db.insert(categories).values(defaultCategories);
-      console.log('✅ Default categories created');
-    }
-
-    // Check if toll gates exist, if not create them
-    const [existingTollGates] = await db.select().from(tollGates).limit(1);
-
-    if (!existingTollGates) {
-      const defaultTollGates = [
-        {
-          name: 'Lagos-Ibadan Expressway Toll',
-          location: 'Lagos-Ibadan Expressway, Ogun State',
-          latitude: '6.6018',
-          longitude: '3.3515',
-          price: '200.00',
-          isActive: true
-        },
-        {
-          name: 'Lekki-Ajah Toll',
-          location: 'Lekki-Epe Expressway, Lagos',
-          latitude: '6.4281',
-          longitude: '3.5595',
-          price: '250.00',
-          isActive: true
-        },
-        {
-          name: 'Abuja-Keffi Toll',
-          location: 'Abuja-Keffi Expressway, FCT',
-          latitude: '9.0579',
-          longitude: '7.4951',
-          price: '150.00',
-          isActive: true
-        }
-      ];
-
-      await db.insert(tollGates).values(defaultTollGates);
-      console.log('✅ Default toll gates created');
-    }
+    // Import and run the comprehensive seeding
+    const { seedDefaultData } = await import('./create-missing-tables');
+    await seedDefaultData();
 
     console.log('✅ Data seeding completed successfully');
   } catch (error) {
