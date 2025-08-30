@@ -80,7 +80,10 @@ export function validateProductionEnvironment(): boolean {
     },
     {
       name: 'Cloud Frontend URL',
-      test: () => process.env.FRONTEND_URL?.includes('replit.app') || process.env.FRONTEND_URL?.includes('vercel.app'),
+      test: () => process.env.FRONTEND_URL?.includes('onrender.com') || 
+                  process.env.FRONTEND_URL?.includes('replit.app') || 
+                  process.env.FRONTEND_URL?.includes('vercel.app') ||
+                  process.env.FRONTEND_URL?.includes('render.com'),
       required: true
     },
     {
