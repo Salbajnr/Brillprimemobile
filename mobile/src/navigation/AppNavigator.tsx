@@ -1,6 +1,7 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import { NavigationContainer } from '@react-navigation/native';
+import lazy from 'react-lazy-import';
 
 // Import all screens
 import SplashScreen from '../screens/SplashScreen';
@@ -69,6 +70,7 @@ export type RootStackParamList = {
   TrackOrder: { orderId: string };
   RealTimeTracking: undefined;
   RateDelivery: undefined;
+  MerchantRatings: undefined;
   AccountSettings: undefined;
   BillPayments: undefined;
   MoneyTransfer: undefined;
@@ -136,8 +138,21 @@ const AppNavigator: React.FC = () => {
         <Stack.Screen name="Checkout" component={CheckoutScreen} />
         <Stack.Screen name="QRScanner" component={QRScannerScreen} />
         <Stack.Screen name="TrackOrder" component={TrackOrderScreen} />
-        <Stack.Screen name="RealTimeTracking" component={RealTimeTrackingScreen} />
-        <Stack.Screen name="RateDelivery" component={RateDeliveryScreen} />
+        <Stack.Screen
+          name="RateDelivery"
+          component={RateDeliveryScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="RealTimeTracking"
+          component={RealTimeTrackingScreen}
+          options={{ headerShown: false }}
+        />
+        <Stack.Screen
+          name="MerchantRatings"
+          component={lazy(() => import('../screens/MerchantRatingsScreen'))}
+          options={{ headerShown: false }}
+        />
         <Stack.Screen name="AccountSettings" component={AccountSettingsScreen} />
         <Stack.Screen name="BillPayments" component={BillPaymentsScreen} />
         <Stack.Screen name="MoneyTransfer" component={MoneyTransferScreen} />

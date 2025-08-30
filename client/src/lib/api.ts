@@ -990,34 +990,31 @@ const apiClient = {
 };
 
 export { apiClient };
-// Enhanced Delivery Feedback APIs
-export const deliveryFeedbackApi = {
-  submitFeedback: (data: {
-    orderId: string;
-    rating: number;
-    comment?: string;
-    categories?: {
-      punctuality?: number;
-      professionalism?: number;
-      communication?: number;
-      vehicle_condition?: number;
-      overall: number;
-    };
-  }) =>
-    apiRequest('/delivery-feedback', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    }),
+// Delivery feedback
+  submitDeliveryRating: async (data: any) => {
+    const response = await api.post('/delivery-feedback', data);
+    return response.data;
+  },
 
-  getOrderFeedback: (orderId: string) =>
-    apiRequest(`/delivery-feedback/order/${orderId}`),
+  getDeliveryFeedback: async (orderId: string) => {
+    const response = await api.get(`/delivery-feedback/${orderId}`);
+    return response.data;
+  },
 
-  getDriverFeedbackSummary: (driverId: string) =>
-    apiRequest(`/delivery-feedback/driver/${driverId}/summary`),
+  // Merchant ratings
+  getMerchantRatings: async (merchantId: string) => {
+    const response = await api.get(`/ratings/merchant/${merchantId}/summary`);
+    return response.data;
+  },
 
-  // Real-time feedback updates
-  subscribeToFeedbackUpdates: (callback: Function) => {
-    wsManager.on('delivery_feedback_received', callback);
+  submitMerchantRating: async (data: any) => {
+    const response = await api.post('/ratings', data);
+    return response.data;
+  },
+
+  getAllRatings: async (params: any) => {
+    const response = await api.get('/ratings', { params });
+    return response.data;
   },
 };
 

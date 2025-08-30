@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, RefreshControl, Alert } from 'react-native';
 import { NavigationProps } from '../shared/types';
@@ -176,7 +175,7 @@ const MerchantDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
               <Text style={styles.viewAllText}>View All</Text>
             </TouchableOpacity>
           </View>
-          
+
           <View style={styles.ordersList}>
             {recentOrders.map((order) => (
               <View key={order.id} style={styles.orderCard}>
@@ -186,12 +185,12 @@ const MerchantDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
                     <Text style={styles.statusText}>{order.status.toUpperCase()}</Text>
                   </View>
                 </View>
-                
+
                 <Text style={styles.customerName}>{order.customerName}</Text>
                 <Text style={styles.orderItems}>
                   {order.items.join(', ')}
                 </Text>
-                
+
                 <View style={styles.orderFooter}>
                   <Text style={styles.orderAmount}>₦{order.amount.toLocaleString()}</Text>
                   <Text style={styles.orderTime}>{order.time}</Text>
@@ -204,7 +203,7 @@ const MerchantDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
         {/* Performance Insights */}
         <View style={styles.insightsContainer}>
           <Text style={styles.sectionTitle}>Business Insights</Text>
-          
+
           <View style={styles.insightCard}>
             <Text style={styles.insightIcon}>📈</Text>
             <View style={styles.insightContent}>
@@ -214,7 +213,7 @@ const MerchantDashboardScreen: React.FC<NavigationProps> = ({ navigation }) => {
               </Text>
             </View>
           </View>
-          
+
           <View style={styles.insightCard}>
             <Text style={styles.insightIcon}>⭐</Text>
             <View style={styles.insightContent}>

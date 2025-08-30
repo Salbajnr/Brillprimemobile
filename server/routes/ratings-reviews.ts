@@ -263,6 +263,62 @@ router.delete("/:id", requireAuth, async (req, res) => {
   }
 });
 
+// Get merchant ratings summary
+router.get("/merchant/:merchantId/summary", async (req, res) => {
+  try {
+    const { merchantId } = req.params;
+
+    const [summary] = await db
+      .select({
+        averageRating: avg(ratings.rating),
+        totalRatings: count(),
+        fiveStars: sql`COUNT(CASE WHEN rating = 5 THEN 1 END)`,
+        fourStars: sql`COUNT(CASE WHEN rating = 4 THEN 1 END)`,
+        threeStars: sql`COUNT(CASE WHEN rating = 3 THEN 1 END)`,
+        twoStars: sql`COUNT(CASE WHEN rating = 2 THEN 1 END)`,
+        oneStar: sql`COUNT(CASE WHEN rating = 1 THEN 1 END)`
+      })
+      .from(ratings)
+      .where(eq(ratings.merchantId, parseInt(merchantId)));
+
+    const recentRatings = await db
+      .select({
+        id: ratings.id,
+        rating: ratings.rating,
+        comment: ratings.comment,
+        createdAt: ratings.createdAt,
+        customerName: users.fullName,
+        orderId: ratings.orderId
+      })
+      .from(ratings)
+      .leftJoin(users, eq(ratings.customerId, users.id))
+      .where(eq(ratings.merchantId, parseInt(merchantId)))
+      .orderBy(desc(ratings.createdAt))
+      .limit(10);
+
+    res.json({
+      success: true,
+      data: {
+        summary: {
+          averageRating: parseFloat(summary.averageRating || '0'),
+          totalRatings: summary.totalRatings,
+          breakdown: {
+            5: summary.fiveStars,
+            4: summary.fourStars,
+            3: summary.threeStars,
+            2: summary.twoStars,
+            1: summary.oneStar
+          }
+        },
+        recentRatings
+      }
+    });
+  } catch (error) {
+    console.error('Merchant ratings summary error:', error);
+    res.status(500).json({ success: false, error: 'Failed to fetch merchant ratings' });
+  }
+});
+
 // Helper functions to update average ratings
 async function updateDriverRating(driverId: number) {
   const [avgRating] = await db
@@ -273,13 +329,18 @@ async function updateDriverRating(driverId: number) {
     .from(ratings)
     .where(eq(ratings.driverId, driverId));
 
-  await db
-    .update(users)
-    .set({
-      // Assuming we add rating field to users table for drivers
-      updatedAt: new Date()
-    })
-    .where(eq(users.id, driverId));
+  // Update merchant_profiles table if it exists, otherwise users table
+  try {
+    await db.execute(sql`
+      UPDATE users 
+      SET average_rating = ${avgRating.average || 0}, 
+          total_ratings = ${avgRating.total},
+          updated_at = NOW() 
+      WHERE id = ${driverId} AND role = 'DRIVER'
+    `);
+  } catch (error) {
+    console.error('Error updating driver rating:', error);
+  }
 }
 
 async function updateMerchantRating(merchantId: number) {
@@ -291,13 +352,29 @@ async function updateMerchantRating(merchantId: number) {
     .from(ratings)
     .where(eq(ratings.merchantId, merchantId));
 
-  await db
-    .update(users)
-    .set({
-      // Assuming we add rating field to users table for merchants
-      updatedAt: new Date()
-    })
-    .where(eq(users.id, merchantId));
+  // Update merchant_profiles table if it exists, otherwise users table
+  try {
+    await db.execute(sql`
+      UPDATE users 
+      SET average_rating = ${avgRating.average || 0}, 
+          total_ratings = ${avgRating.total},
+          updated_at = NOW() 
+      WHERE id = ${merchantId} AND role = 'MERCHANT'
+    `);
+    
+    // Also update merchant_profiles if the table exists
+    await db.execute(sql`
+      UPDATE merchant_profiles 
+      SET average_rating = ${avgRating.average || 0}, 
+          total_ratings = ${avgRating.total},
+          updated_at = NOW() 
+      WHERE user_id = ${merchantId}
+    `).catch(() => {
+      // Table might not exist, ignore error
+    });
+  } catch (error) {
+    console.error('Error updating merchant rating:', error);
+  }
 }
 
 async function updateProductRating(productId: string) {

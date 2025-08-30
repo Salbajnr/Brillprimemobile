@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum, varchar } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum, varchar, numeric, json } from "drizzle-orm/pg-core";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -30,6 +30,8 @@ export const users = pgTable("users", {
   lastLoginAt: timestamp("last_login_at"),
   loginAttempts: integer("login_attempts").default(0),
   accountLockedUntil: timestamp("account_locked_until"),
+  averageRating: numeric("average_rating", { precision: 3, scale: 2 }).default('0'),
+  totalRatings: integer("total_ratings").default(0),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
@@ -608,7 +610,7 @@ export const insertFuelOrderSchema = z.object({
 export const insertTransactionSchema = z.object({
   userId: z.number(),
   amount: z.number().positive(),
-  type: z.enum(['WALLET_FUNDING', 'PAYMENT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT', 'DELIVERY_EARNINGS', 'REFUND']),
+  type: z.enum(['Wallet_FUNDING', 'PAYMENT', 'WITHDRAWAL', 'TRANSFER_IN', 'TRANSFER_OUT', 'DELIVERY_EARNINGS', 'REFUND']),
   paymentMethod: z.string(),
   description: z.string().optional()
 });

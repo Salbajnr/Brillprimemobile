@@ -1,4 +1,3 @@
-
 import { Route, Switch, Redirect } from 'wouter';
 import Splash from '../pages/splash';
 import Onboarding from '../pages/onboarding';
@@ -24,14 +23,17 @@ export function Routes() {
       <Route path="/role-selection" component={RoleSelection} />
       <Route path="/signin" component={Signin} />
       <Route path="/signup" component={Signup} />
-      
+
       {user && (
         <>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/profile" component={Profile} />
+          <Route path="/rate-delivery/:orderId" element={<RateDeliveryPage />} />
+          <Route path="/real-time-tracking/:orderId" element={<RealTimeTrackingPage />} />
+          <Route path="/merchant-ratings/:merchantId" element={<MerchantRatingsPage />} />
         </>
       )}
-      
+
       <Route path="/404" component={NotFound} />
       <Route path="*" component={NotFound} />
     </Switch>
