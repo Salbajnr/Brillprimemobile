@@ -1,519 +1,67 @@
-modules = ["nodejs-20", "web", "bash", "java-graalvm22.3"]
-run = "npm run dev"
-hidden = [".config", ".git", "generated-icon.png", "node_modules", "dist"]
+
+# BrillPrime - Separate Frontend/Backend Deployment Configuration
+entrypoint = "server/index.ts"
+modules = ["nodejs-20", "postgresql-15"]
 
 [nix]
-channel = "stable-25_05"
-packages = ["postgresql", "dotenv-cli"]
+channel = "stable-24_05"
 
+[unitTest]
+language = "nodejs"
+
+[gitHubImport]
+requiredFiles = [".replit", "replit.nix", "package.json"]
+
+# Backend deployment configuration (runs on Replit)
 [deployment]
-deploymentTarget = "autoscale"
-run = ["sh", "-c", "npm run dev"]
+run = ["npm", "run", "dev"]
+build = ["npm", "install", "--legacy-peer-deps"]
+deploymentTarget = "cloudrun"
+ignorePorts = false
 
-[[ports]]
-localPort = 3000
-externalPort = 3000
+# Environment configuration
+[env]
+NODE_ENV = "production"
+PORT = "5000"
+REDIS_DISABLED = "true"
 
+# Package management
+[packager]
+language = "nodejs"
+
+[packager.features]
+packageSearch = true
+guessImports = true
+enabledForHosting = true
+
+# Networking - Backend API server
 [[ports]]
 localPort = 5000
 externalPort = 80
 
-[[ports]]
-localPort = 5001
-externalPort = 3001
-
-[[ports]]
-localPort = 5173
-externalPort = 5173
-
-[env]
-PORT = "5000"
-
-[workflows]
-runButton = "Project"
-
-[[workflows.workflow]]
-name = "Project"
-mode = "parallel"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "workflow.run"
-args = "Start application"
-
-[[workflows.workflow]]
-name = "Start application"
-author = "agent"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-waitForPort = 5000
-
-[[workflows.workflow]]
-name = "Full Stack Dev"
-author = 46213780
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev:web"
-
-[[workflows.workflow]]
-name = "Development Server"
-author = 46213780
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd server && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Development Server - Fixed"
-author = 46229611
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd server && npm install && npm run dev"
-
-[[workflows.workflow]]
-name = "Full Stack Development"
-author = 46231928
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd server && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd server && npm run dev"
-
-[[workflows.workflow]]
-name = "Start Development Server"
-author = 46238096
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "BrillPrime Development"
-author = 46241994
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Start BrillPrime App"
-author = 46248893
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "BrillPrime Development Server"
-author = 46255093
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Clean Development Server"
-author = 46281729
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Full Stack Mobile Development"
-author = 46281729
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npm start"
-
-[[workflows.workflow]]
-name = "Mobile Development Setup"
-author = 46281729
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Run E2E Tests"
-author = 46281729
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run test:e2e"
-
-[[workflows.workflow]]
-name = "Clean Development"
-author = 46546110
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Build and Start"
-author = 46637176
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Mobile Android Development"
-author = 46646176
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npx react-native start"
-
-[[workflows.workflow]]
-name = "Fixed Development Server"
-author = 46719998
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Start BrillPrime Server"
-author = 46836043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Mobile Development Complete"
-author = 46836043
-mode = "parallel"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd mobile && npm start"
-
-[[workflows.workflow]]
-name = "Start BrillPrime Development"
-author = 46836043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Production Ready Server"
-author = 47011552
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd server && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Production Ready Backend"
-author = 47011552
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node test-complete-system.js"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true NODE_ENV=development npm run dev"
-
-[[workflows.workflow]]
-name = "Complete Backend Server"
-author = 47011552
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "node test-complete-api-coverage.js"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true NODE_ENV=development npm run dev"
-
-[[workflows.workflow]]
-name = "Clean Development Start"
-author = 47014043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Debug Build Fix"
-author = 47014043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && rm -rf node_modules dist .vite"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Simple Development Server"
-author = 47014043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true npm run dev"
-
-[[workflows.workflow]]
-name = "Complete Development Server"
-author = 47014043
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true NODE_ENV=development npm run dev"
-
-[[workflows.workflow]]
-name = "Fixed Production Server"
-author = 47032696
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "REDIS_DISABLED=true SKIP_SEEDING=false npm run dev"
-
-[[workflows.workflow]]
-name = "Production Server"
-author = 47036857
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client && npm run build"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "NODE_ENV=production npm run start"
-
-[[workflows.workflow]]
-name = "Frontend Development"
-author = 47043383
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run dev"
-
-[[workflows.workflow]]
-name = "Frontend Build & Deploy"
-author = 47043383
-mode = "sequential"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "cd client"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm install"
-
-[[workflows.workflow.tasks]]
-task = "shell.exec"
-args = "npm run build"
-
-[agent]
+# Language server configuration
+[languages]
+
+[languages.javascript]
+pattern = "**/{*.js,*.jsx,*.ts,*.tsx,*.mjs,*.cjs}"
+[languages.javascript.languageServer]
+start = "typescript-language-server --stdio"
+
+# Debugger configuration
+[debugger]
+support = true
+
+[debugger.interactive]
+transport = "localhost:0"
+startCommand = ["dap-node"]
+
+[debugger.interactive.initializeMessage]
+command = "initialize"
+type = "request"
+
+[debugger.interactive.launchMessage]
+command = "launch"
+type = "request"
+program = "./server/index.ts"
+stopOnEntry = false
+console = "externalTerminal"

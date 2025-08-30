@@ -9,6 +9,12 @@ BrillPrime is a full-stack delivery and financial services platform that connect
 
 ## 🏗️ Architecture
 
+### Separate Deployment Strategy
+- **Backend**: Deployed on Replit (API server with real-time features)
+- **Frontend**: Deployed separately as Static Deployment on Replit
+- **Database**: Render PostgreSQL (shared between deployments)
+- **Communication**: Frontend connects to backend via HTTPS API calls
+
 ### Frontend
 - **React 18** with TypeScript and Tailwind CSS
 - **Vite** for fast development and building
@@ -19,7 +25,7 @@ BrillPrime is a full-stack delivery and financial services platform that connect
 ### Backend
 - **Node.js** with Express and TypeScript
 - **PostgreSQL** database with Drizzle ORM
-- **Redis** for caching and session management
+- **Redis** for caching and session management (optional)
 - **Socket.io** for real-time communication
 - **Paystack** integration for payments
 
@@ -34,7 +40,7 @@ BrillPrime is a full-stack delivery and financial services platform that connect
 ### 👥 Multi-Role System
 - **Consumer**: Order commodities, fuel delivery, toll payments, money transfers
 - **Merchant**: Manage inventory, process orders, business analytics
-- - **Driver**: Accept deliveries, real-time tracking, earnings management
+- **Driver**: Accept deliveries, real-time tracking, earnings management
 - **Admin**: Platform oversight, user management, fraud detection
 
 ### 🔐 Security & Compliance
@@ -80,7 +86,7 @@ BrillPrime is a full-stack delivery and financial services platform that connect
 Frontend:    React 18, TypeScript, Tailwind CSS, Vite
 Backend:     Node.js, Express, TypeScript
 Database:    PostgreSQL with Drizzle ORM
-Cache:       Redis
+Cache:       Redis (optional)
 Real-time:   Socket.io WebSockets
 Mobile:      React Native (iOS/Android)
 ```
@@ -168,6 +174,14 @@ npm run dev
 
 The application will be available at `http://localhost:5000`
 
+### Frontend Development (Separate)
+```bash
+cd client
+npm install
+npm run dev  # Development server
+npm run build  # Production build
+```
+
 ### Mobile Development
 ```bash
 cd mobile
@@ -198,6 +212,43 @@ SESSION_SECRET=your-session-secret-key
 # API Configuration
 API_BASE_URL=http://localhost:5000
 ```
+
+## 🚀 Deployment
+
+### Separate Deployment Strategy
+
+#### Backend Deployment (Replit)
+1. Configure production environment variables
+2. Set up PostgreSQL database connection
+3. Configure Redis (optional)
+4. Deploy backend using Replit's deployment system
+5. Backend will be accessible at your Replit deployment URL
+
+#### Frontend Deployment (Replit Static)
+1. Build the React application: `cd client && npm run build`
+2. Create a separate Replit for frontend
+3. Configure Static Deployment:
+   - **Build command**: `cd client && npm run build`
+   - **Public directory**: `client/dist`
+   - **Index page**: `index.html`
+4. Set API_BASE_URL to point to your backend deployment
+
+#### Mobile App Deployment
+```bash
+# Android
+cd mobile
+npm run build:android
+
+# iOS (requires macOS and Xcode)
+npm run build:ios
+```
+
+### Benefits of Separate Deployment
+1. **Independent scaling**: Scale frontend and backend separately
+2. **Faster deployments**: Deploy frontend changes without backend rebuild
+3. **Resource optimization**: Static frontend uses fewer resources
+4. **Better caching**: CDN can cache static assets effectively
+5. **Easier maintenance**: Separate concerns and repositories
 
 ## 📊 Database Schema
 
@@ -319,24 +370,6 @@ npm run test:e2e             # Mobile E2E tests
 - Order management
 - Real-time features
 - Security scenarios
-
-## 🚀 Deployment
-
-### Production Deployment on Replit
-1. Configure production environment variables
-2. Set up PostgreSQL database
-3. Configure Redis (optional)
-4. Deploy using Replit's deployment system
-
-### Mobile App Deployment
-```bash
-# Android
-cd mobile
-npm run build:android
-
-# iOS (requires macOS and Xcode)
-npm run build:ios
-```
 
 ## 📚 API Documentation
 
