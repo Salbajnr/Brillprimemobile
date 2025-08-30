@@ -17,20 +17,23 @@ import { fileURLToPath } from 'url';
 // Import environment validation
 import './env-validation';
 
-// Import cloud configuration enforcers
-import { preventLocalDatabaseCreation } from './database-config-override';
-import { enforceCloudConfiguration, validateProductionEnvironment } from './cloud-config-enforcer';
-
-// Enforce cloud-only configuration
-enforceCloudConfiguration();
-
-// Prevent local database usage - Always use cloud database
-preventLocalDatabaseCreation();
-
-// Validate production environment
-if (!validateProductionEnvironment()) {
-  console.error('❌ Production environment validation failed. Exiting...');
-  process.exit(1);
+// Import cloud configuration enforcers - but make them optional for development
+try {
+  const { preventLocalDatabaseCreation } = await import('./database-config-override');
+  const { enforceCloudConfiguration, validateProductionEnvironment } = await import('./cloud-config-enforcer');
+  
+  // Only enforce cloud configuration in production
+  if (process.env.NODE_ENV === 'production') {
+    enforceCloudConfiguration();
+    preventLocalDatabaseCreation();
+    
+    if (!validateProductionEnvironment()) {
+      console.error('❌ Production environment validation failed. Exiting...');
+      process.exit(1);
+    }
+  }
+} catch (error) {
+  console.log('⚠️  Cloud configuration modules not available, continuing with basic setup');
 }
 
 // Ensure system environment variables take precedence for Replit compatibility

@@ -1,60 +1,43 @@
+import dotenv from 'dotenv';
+dotenv.config();
+
 import express from 'express';
 import cors from 'cors';
-import { createServer } from 'http';
-import { Server as SocketIOServer } from 'socket.io';
 import path from 'path';
 
 const app = express();
-const server = createServer(app);
+const port = process.env.PORT || 5000;
+const host = process.env.HOST || '0.0.0.0';
 
 // Basic middleware
-app.use(cors({
-  origin: ["http://localhost:5173", "http://localhost:3000"],
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../client/dist')));
 
-// Initialize Socket.IO
-const io = new SocketIOServer(server, {
-  cors: {
-    origin: ["http://localhost:5173", "http://localhost:3000"],
-    credentials: true
-  }
-});
-
-// Basic health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'OK', message: 'Brill Prime server is running', timestamp: new Date().toISOString() });
-});
-
-// Basic auth endpoints (simplified)
-app.post('/api/auth/signin', (req, res) => {
-  res.json({ success: true, message: 'Sign in endpoint ready' });
-});
-
-app.post('/api/auth/signup', (req, res) => {
-  res.json({ success: true, message: 'Sign up endpoint ready' });
-});
-
-app.get('/api/auth/session', (req, res) => {
-  res.json({ user: null, authenticated: false });
-});
-
-// Socket.IO connection handling
-io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
-  
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
   });
 });
 
-const PORT = process.env.PORT || 5000;
-
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Brill Prime server running on port ${PORT}`);
-  console.log(`📡 Socket.IO server ready for real-time connections`);
+// Basic routes
+app.get('/api/test', (req, res) => {
+  res.json({ message: 'Backend is working!' });
 });
 
-export default app;
+// Serve React app
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+  res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+});
+
+app.listen(parseInt(port.toString()), host, () => {
+  console.log(`🚀 Simple server running on ${host}:${port}`);
+  console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`💾 Database URL: ${process.env.DATABASE_URL ? 'Configured' : 'Not configured'}`);
+});

@@ -113,11 +113,14 @@ export function validateEnvironment() {
       // In development, provide helpful message but don't exit
       if (process.env.NODE_ENV !== 'production') {
         console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
-        // Force production cloud configuration - no local fallbacks
-        console.error('❌ Missing required environment variables for production deployment');
-        console.error('🚀 This app is configured for cloud/production deployment only');
-        console.error('💡 Please configure all required environment variables');
-        process.exit(1);
+        console.warn('⚠️  Some environment variables are missing. Using defaults where possible.');
+        console.warn('💡 For production deployment, ensure all required variables are set');
+        
+        // Only exit in production
+        if (process.env.NODE_ENV === 'production') {
+          console.error('❌ Missing required environment variables for production deployment');
+          process.exit(1);
+        }
       } else {
         console.error('❌ Production environment validation failed. Exiting...');
         process.exit(1);
