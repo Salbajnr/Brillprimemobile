@@ -27,12 +27,18 @@ import { registerMerchantKycRoutes } from './routes/merchant-kyc';
 import systemHealthRoutes from './routes/system-health';
 
 
+
 // Extend express-session types
 declare module 'express-session' {
   interface SessionData {
     csrfToken?: string;
+    userId?: number;
+    userRole?: string;
+    userFullName?: string;
   }
 }
+// Import db and pool from db.ts
+import { db, pool } from './db';
 import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
 import { xssProtection, csrfProtection } from './middleware/validation';
 import { responseTimeMiddleware, realTimeAnalytics } from './services/realtimeAnalytics';
@@ -301,7 +307,7 @@ app.use((req, res, next) => {
 app.get('/api/health', async (req, res) => {
   try {
     // Check database connection
-    await db.execute(sql`SELECT 1`);
+  await pool.query("SELECT 1");
 
     const healthStatus = {
       status: 'healthy',
@@ -494,115 +500,18 @@ app.use((error: any, req: any, res: any, next: any) => {
   });
 });
 
-// Serve static files and handle SPA routing
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+// Serve static files from client/dist
+const clientDistPath = path.join(process.cwd(), 'client/dist');
+app.use(express.static(clientDistPath));
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(staticAssetsMiddleware());
-
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  });
-} else {
-  // Development mode: serve the client assets if available
-  const clientDistPath = path.join(process.cwd(), 'client/dist');
-  const clientPublicPath = path.join(process.cwd(), 'client/public');
-
-  // Serve static assets with proper MIME types and no CSP restrictions
-  app.use(express.static(clientDistPath, {
-    setHeaders: (res, path) => {
-      // Remove any CSP headers for static assets
-      res.removeHeader('Content-Security-Policy');
-
-      if (path.endsWith('.js')) {
-        res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
-      } else if (path.endsWith('.css')) {
-        res.setHeader('Content-Type', 'text/css; charset=utf-8');
-      } else if (path.endsWith('.html')) {
-        res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      }
-
-      // Allow all sources for development
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Headers', '*');
-      res.setHeader('Access-Control-Allow-Methods', '*');
-    }
-  }));
-
-  app.use(express.static(clientPublicPath));
-
-  // Also serve client src files for development
-  const clientSrcPath = path.join(process.cwd(), 'client/src');
-  app.use('/src', express.static(clientSrcPath));
-
-  // For development, serve the built React app
-  app.get('*', (req, res) => {
-    // Don't intercept API routes
-    if (req.path.startsWith('/api')) {
-      return res.status(404).json({ error: 'API endpoint not found' });
-    }
-
-    // Try to serve the built index.html first
-    const indexPath = path.join(process.cwd(), 'client/dist/index.html');
-
-    console.log('Trying to serve index.html from:', indexPath);
-
-    // Check if built assets exist and serve them
-    if (fs.existsSync(indexPath)) {
-      // Read the file and inject debug script
-      let indexContent = fs.readFileSync(indexPath, 'utf8');
-
-      // Add debug script to monitor script loading and execution
-      const debugScript = `
-      <script>
-        console.log('Debug: HTML loaded, DOM ready');
-        window.addEventListener('load', () => {
-          console.log('Debug: Window loaded');
-          setTimeout(() => {
-            const root = document.getElementById('root');
-            console.log('Debug: Root element check:', root, 'innerHTML:', root ? root.innerHTML : 'not found');
-            if (root && root.innerHTML === '') {
-              console.error('Debug: React app failed to mount - root is still empty');
-              root.innerHTML = '<div style="padding: 20px; background: red; color: white; text-align: center;">React App Failed to Load</div>';
-            }
-          }, 3000);
-        });
-
-        // Monitor script errors
-        window.addEventListener('error', (e) => {
-          console.error('Debug: Script error:', e.error, e.filename, e.lineno);
-        });
-
-        // Monitor module errors
-        window.addEventListener('unhandledrejection', (e) => {
-          console.error('Debug: Module error:', e.reason);
-        });
-      </script>`;
-
-      // Insert debug script before closing head tag
-      indexContent = indexContent.replace('</head>', debugScript + '</head>');
-
-      return res.send(indexContent);
-    } else {
-      console.log('Built index.html not found, serving development fallback');
-      // Simple fallback that will load your React app
-      res.send(`<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>BrillPrime</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-  </head>
-  <body>
-    <div id="root">Fallback Mode</div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
-</html>`);
-    }
-  });
-}
+// For all non-API routes, serve index.html (SPA routing)
+app.get('*', (req, res) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({ error: 'API endpoint not found' });
+  }
+  const indexPath = path.join(clientDistPath, 'index.html');
+  res.sendFile(indexPath);
+});
 
 // Enhanced server startup
 const PORT = process.env.PORT || 5000;

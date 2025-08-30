@@ -2,10 +2,10 @@
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, desc } from 'drizzle-orm';
 
 // Use placeholder URL for migration, actual database can be provisioned later
-const DATABASE_URL = process.env.DATABASE_URL || "postgres://test:test@localhost:5432/test";
+process.env.DATABASE_URL = "postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a/brillprimemobiledb";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);

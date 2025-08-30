@@ -1,7 +1,7 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useLocation } from "wouter";
-import { ArrowLeft, Search, Plus, MessageCircle, User, Clock } from "lucide-react";
+import { ArrowLeft, Search, Plus, MessageCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import accountCircle from "../assets/images/account_circle.svg";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 // Color constants
 const COLORS = {
@@ -40,7 +41,7 @@ export default function Messages() {
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'UNREAD' | 'MERCHANTS' | 'DRIVERS'>('ALL');
 
   // Get conversations for the current user
-  const { data: conversations = [], isLoading } = useQuery({
+  const { isLoading } = useQuery({
     queryKey: ['/api/conversations', user?.id, user?.role],
     enabled: !!user?.id
   });
@@ -156,13 +157,12 @@ export default function Messages() {
     }
   };
 
-  const { socket, isConnected } = useWebSocket(true);
-  const [conversations, setConversations] = useState([]);
-  const [selectedConversation, setSelectedConversation] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  useWebSocket();
+  // const [selectedConversation, setSelectedConversation] = useState(null);
+  // const [messages, setMessages] = useState([]);
+  // const [newMessage, setNewMessage] = useState('');
+  // const [loading, setLoading] = useState(true);
+  // const [error, setError] = useState(null);
 
   return (
     <div className="min-h-screen bg-gray-50 w-full max-w-sm sm:max-w-md md:max-w-lg lg:max-w-xl xl:max-w-2xl mx-auto px-2 sm:px-4">{/*Responsive container*/}

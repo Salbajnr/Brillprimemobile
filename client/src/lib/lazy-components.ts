@@ -64,7 +64,7 @@ export const preloadCriticalComponents = () => {
       setTimeout(() => {
         const lastVisited = JSON.parse(localStorage.getItem('lastVisitedPages') || '[]')
         lastVisited.slice(0, 3).forEach((page: string) => {
-          import(`../pages/${page}`)
+          import(`../pages/${page}.tsx`)
         })
       }, 3000)
     })
@@ -94,7 +94,7 @@ export const prefetchLikelyPages = (currentRoute: string) => {
   requestIdleCallback(() => {
     pagesToPrefetch.forEach((page, index) => {
       setTimeout(() => {
-        import(`../pages/${page}`).catch(() => {
+        import(`../pages/${page}.tsx`).catch(() => {
           // Silently fail for non-existent pages
         })
       }, index * 200)

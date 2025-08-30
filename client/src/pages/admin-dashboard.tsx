@@ -1,20 +1,35 @@
 import React, { useState } from 'react';
-import { useAdmin } from '../lib/admin-auth';
-import { AdminLayout } from '../components/admin-layout';
-import { AdminDashboardMain } from '../components/admin-dashboard-main';
+import { useAuth } from '../hooks/use-auth';
+// Placeholder AdminLayout component
+function AdminLayout({ currentPage, onPageChange, children }: any) {
+  return (
+    <div>
+      <nav style={{ background: '#eee', padding: 10 }}>
+        <span>Admin Layout - Current: {currentPage}</span>
+        {/* Add navigation UI here */}
+      </nav>
+      <main>{children}</main>
+    </div>
+  );
+}
+
+// Placeholder AdminDashboardMain component
+function AdminDashboardMain() {
+  return <div>Admin Dashboard Main Content (placeholder)</div>;
+}
 import { AdminUserManagement } from './admin-user-management';
 import { AdminKYCVerification } from './admin-kyc-verification';
 import { AdminTransactions } from './admin-transactions';
 import { AdminMonitoring } from './admin-monitoring';
 import { AdminFraud } from './admin-fraud';
-import { AdminSupport } from './admin-support';
-import { AdminEscrowManagement } from './admin-escrow-management';
+import AdminSupport from './admin-support';
+import AdminEscrowManagement from './admin-escrow-management';
 import { AdminModeration } from './admin-moderation';
 
 type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation';
 
 function AdminDashboard() {
-  const { user, isAuthenticated, isLoading } = useAdmin();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [currentPage, setCurrentPage] = useState<AdminPageType>('dashboard');
 
   if (isLoading) {
@@ -28,8 +43,8 @@ function AdminDashboard() {
     );
   }
 
-  if (!isAuthenticated) {
-    // This should not happen as the route is protected, but just in case
+  if (!isAuthenticated() || !(user?.role === 'ADMIN' || user?.role === 'admin')) {
+    // Not authenticated or not admin, redirect
     window.location.href = '/admin';
     return null;
   }
