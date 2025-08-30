@@ -1,4 +1,3 @@
-
 import { Router } from "express";
 import { z } from "zod";
 import { storage } from "../storage";
@@ -43,7 +42,7 @@ router.post("/", requireAuth, async (req, res) => {
     const validatedData = createOrderSchema.parse(req.body);
 
     let totalAmount = 0;
-    
+
     // Calculate total for product orders
     if (validatedData.orderType === 'PRODUCT' && validatedData.items) {
       for (const item of validatedData.items) {
@@ -114,7 +113,7 @@ router.get("/", requireAuth, async (req, res) => {
   try {
     const userId = req.session!.userId!;
     const user = await storage.getUserById(userId);
-    
+
     const {
       status,
       orderType,
@@ -135,7 +134,7 @@ router.get("/", requireAuth, async (req, res) => {
     };
 
     let orders;
-    
+
     // Filter based on user role
     switch (role) {
       case 'customer':
@@ -455,6 +454,86 @@ router.get("/active/list", requireAuth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Failed to fetch active orders"
+    });
+  }
+});
+
+// --- Delivery Feedback System ---
+// Endpoint to submit feedback for a completed delivery
+router.post("/:orderId/feedback", requireAuth, async (req, res) => {
+  try {
+    const userId = req.session!.userId!;
+    const { orderId } = req.params;
+    const { rating, comment } = req.body;
+
+    // Validate input
+    const feedbackSchema = z.object({
+      rating: z.number().int().min(1).max(5),
+      comment: z.string().optional(),
+    });
+    const validatedFeedback = feedbackSchema.parse({ rating, comment });
+
+    const order = await storage.getOrderById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    // Ensure only the customer can provide feedback
+    if (order.customerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. Only the customer can provide feedback."
+      });
+    }
+
+    // Ensure the order is completed
+    if (order.status !== 'DELIVERED') {
+      return res.status(400).json({
+        success: false,
+        message: "Feedback can only be provided for delivered orders."
+      });
+    }
+
+    await storage.addDeliveryFeedback(orderId, {
+      customerId: userId,
+      driverId: order.driverId!,
+      rating: validatedFeedback.rating,
+      comment: validatedFeedback.comment,
+      feedbackDate: new Date()
+    });
+
+    // Optionally, update driver's average rating
+    await storage.updateDriverAverageRating(order.driverId!);
+
+    // Emit real-time notification for feedback received
+    if ((global as any).io) {
+      (global as any).io.to(`user_${order.driverId}`).emit('delivery_feedback_received', {
+        orderId,
+        customerId: userId,
+        rating: validatedFeedback.rating,
+        timestamp: Date.now()
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      message: "Delivery feedback submitted successfully."
+    });
+  } catch (error: any) {
+    console.error("Submit delivery feedback error:", error);
+    if (error.name === 'ZodError') {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid feedback data",
+        errors: error.errors
+      });
+    }
+    res.status(500).json({
+      success: false,
+      message: "Failed to submit delivery feedback."
     });
   }
 });

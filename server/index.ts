@@ -108,6 +108,7 @@ import mobileHealthRoutes from './routes/mobile-health';
 import fileSyncRoutes from './routes/file-sync';
 import debugRoutes from './routes/debug';
 import databaseMonitoringRoutes from './routes/database-monitoring';
+import deliveryFeedbackRoutes from './routes/delivery-feedback';
 
 // Import middleware
 import { authenticateUser } from './middleware/auth';
@@ -324,6 +325,9 @@ if (process.env.NODE_ENV === 'development') {
 
 // Register fuel order routes
 registerFuelOrderRoutes(app);
+
+// Register delivery feedback routes
+app.use('/api/feedback', deliveryFeedbackRoutes);
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

@@ -687,10 +687,20 @@ function toRadians(degrees: number): number {
   return degrees * (Math.PI / 180);
 }
 
-// Dummy function for assigning next available order (replace with actual implementation)
+// Auto-assign next available order to driver
 async function assignNextAvailableOrder(driverId: number): Promise<void> {
-  console.log(`Assigning next available order to driver: ${driverId}`);
-  // TODO: Implement logic to find and assign the next available order to the driver
+  try {
+    const { AutoAssignmentService } = await import('../services/auto-assignment');
+    const result = await AutoAssignmentService.assignNextOrder(driverId);
+    
+    if (result) {
+      console.log(`Auto-assigned order ${result.assignedOrder.id} to driver ${driverId}`);
+    } else {
+      console.log(`No suitable orders found for driver ${driverId}`);
+    }
+  } catch (error) {
+    console.error(`Auto-assignment failed for driver ${driverId}:`, error);
+  }
 }
 
 export default router;

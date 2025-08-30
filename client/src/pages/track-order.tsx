@@ -346,25 +346,16 @@ export default function TrackOrder() {
               <p className="text-sm text-green-700 mb-3">
                 How was your delivery experience with {order.driverName}?
               </p>
-              <div className="flex space-x-2 mb-3">
+              <div className="flex items-center justify-center space-x-1 mb-3">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <button
-                    key={star}
-                    className="text-2xl text-yellow-400 hover:text-yellow-500"
-                    onClick={() => {
-                      // Handle rating submission
-                      console.log(`Rated ${star} stars`);
-                    }}
-                  >
-                    ⭐
-                  </button>
+                  <span key={star} className="text-2xl text-yellow-400">⭐</span>
                 ))}
               </div>
               <Button
                 className="w-full bg-green-600 hover:bg-green-700"
                 onClick={() => setLocation(`/rate-delivery/${order.id}`)}
               >
-                Submit Feedback
+                Rate This Delivery
               </Button>
             </CardContent>
           </Card>

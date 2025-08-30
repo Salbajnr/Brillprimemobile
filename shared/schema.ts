@@ -1,4 +1,4 @@
-import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
+import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum, varchar } from "drizzle-orm/pg-core";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
@@ -127,9 +127,9 @@ export const transactions = pgTable("transactions", {
 export const driverProfiles = pgTable("driver_profiles", {
   id: serial("id").primaryKey(),
   userId: integer("user_id").references(() => users.id).notNull().unique(),
-  vehicleType: text("vehicle_type"),
-  vehiclePlate: text("vehicle_plate"),
-  vehicleModel: text("vehicle_model"),
+  vehicleType: varchar("vehicle_type", { length: 50 }),
+  vehiclePlate: varchar("vehicle_plate", { length: 20 }),
+  vehicleModel: varchar("vehicle_model", { length: 100 }),
   vehicleColor: text("vehicle_color"),
   licenseNumber: text("license_number"),
   vehicleRegistration: text("vehicle_registration"),
@@ -139,8 +139,10 @@ export const driverProfiles = pgTable("driver_profiles", {
   isAvailable: boolean("is_available").default(true),
   currentLocation: text("current_location"),
   rating: decimal("rating", { precision: 3, scale: 2 }).default('0.00'),
+  totalRatings: integer("total_ratings").default(0),
   totalDeliveries: integer("total_deliveries").default(0),
   totalEarnings: decimal("total_earnings", { precision: 15, scale: 2 }).default('0.00'),
+  averageDeliveryTime: integer("average_delivery_time"), // in minutes
   verificationStatus: verificationStatusEnum("verification_status").default('PENDING'),
   tier: driverTierEnum("tier").default('STANDARD'),
   kycData: jsonb("kyc_data"),
@@ -205,14 +207,41 @@ export const fuelOrders = pgTable("fuel_orders", {
 // Ratings table
 export const ratings = pgTable("ratings", {
   id: serial("id").primaryKey(),
-  customerId: integer("customer_id").references(() => users.id).notNull(),
-  orderId: integer("order_id").references(() => orders.id).notNull(),
+  customerId: integer("customer_id").references(() => users.id),
+  orderId: integer("order_id").references(() => orders.id),
   driverId: integer("driver_id").references(() => users.id),
   merchantId: integer("merchant_id").references(() => users.id),
-  productId: text("product_id"),
+  productId: integer("product_id").references(() => products.id),
   rating: integer("rating").notNull(),
   comment: text("comment"),
-  createdAt: timestamp("created_at").defaultNow()
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
+export const deliveryFeedback = pgTable("delivery_feedback", {
+  id: serial("id").primaryKey(),
+  orderId: integer("order_id").references(() => orders.id).notNull(),
+  customerId: integer("customer_id").references(() => users.id).notNull(),
+  driverId: integer("driver_id").references(() => users.id).notNull(),
+  feedbackType: varchar("feedback_type", { length: 50 }).notNull(), // CUSTOMER_TO_DRIVER, DRIVER_TO_CUSTOMER
+
+  // Customer ratings
+  driverRating: integer("driver_rating"),
+  serviceRating: integer("service_rating"),
+  deliveryTimeRating: integer("delivery_time_rating"),
+  deliveryQuality: varchar("delivery_quality", { length: 20 }), // EXCELLENT, GOOD, AVERAGE, POOR
+  wouldRecommend: boolean("would_recommend"),
+  issuesReported: text("issues_reported"),
+
+  // Driver feedback
+  customerRating: integer("customer_rating"),
+  deliveryComplexity: varchar("delivery_complexity", { length: 20 }), // EASY, MODERATE, DIFFICULT
+  customerCooperation: varchar("customer_cooperation", { length: 20 }), // EXCELLENT, GOOD, AVERAGE, POOR
+  paymentIssues: boolean("payment_issues"),
+
+  // Common fields
+  comment: text("comment"),
+  additionalFeedback: text("additional_feedback"),
+  createdAt: timestamp("created_at").defaultNow(),
 });
 
 // Notifications table
@@ -600,6 +629,8 @@ export type FuelOrder = typeof fuelOrders.$inferSelect;
 export type NewFuelOrder = typeof fuelOrders.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
+export type DeliveryFeedback = typeof deliveryFeedback.$inferSelect;
+export type NewDeliveryFeedback = typeof deliveryFeedback.$inferInsert;
 export type SupportTicket = typeof supportTickets.$inferSelect;
 export type NewSupportTicket = typeof supportTickets.$inferInsert;
 export type ChatMessage = typeof chatMessages.$inferSelect;
