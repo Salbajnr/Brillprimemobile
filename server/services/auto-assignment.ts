@@ -1,6 +1,6 @@
 
 import { db } from '../db';
-import { orders, driverProfiles, users } from '../../shared/schema';
+import { orders, driverProfiles, users, transactions, userLocations } from '../../shared/schema';
 import { eq, and, isNull, sql, desc, gte } from 'drizzle-orm';
 
 interface DriverScore {
@@ -100,20 +100,51 @@ export class AutoAssignmentService {
           })
           .where(eq(driverProfiles.userId, bestDriver.driverId));
 
-        // Send real-time notification
+        // Get driver and customer details for notifications
+        const [driverDetails] = await db.select({
+          name: users.fullName,
+          phone: users.phone
+        })
+        .from(users)
+        .where(eq(users.id, bestDriver.driverId))
+        .limit(1);
+
+        const [customerDetails] = await db.select({
+          name: users.fullName,
+          phone: users.phone
+        })
+        .from(users)
+        .where(eq(users.id, assignedOrder.customerId))
+        .limit(1);
+
+        // Send real-time notifications
         if (global.io) {
           global.io.to(`user_${bestDriver.driverId}`).emit('order_assigned', {
             orderId: assignedOrder.id,
             orderNumber: assignedOrder.orderNumber,
-            customerLocation: orderLocation,
+            customerName: customerDetails?.name || 'Customer',
+            customerPhone: customerDetails?.phone,
+            deliveryLocation: orderLocation,
             estimatedDistance: bestDriver.distance,
+            estimatedEarnings: assignedOrder.driverEarnings || 0,
             timestamp: Date.now()
           });
 
           global.io.to(`user_${assignedOrder.customerId}`).emit('driver_assigned', {
             orderId: assignedOrder.id,
             driverId: bestDriver.driverId,
+            driverName: driverDetails?.name || 'Driver',
+            driverPhone: driverDetails?.phone,
             estimatedArrival: this.calculateETA(bestDriver.distance),
+            timestamp: Date.now()
+          });
+
+          // Notify admin dashboard
+          global.io.to('admin_orders').emit('order_auto_assigned', {
+            orderId: assignedOrder.id,
+            driverId: bestDriver.driverId,
+            distance: bestDriver.distance,
+            score: bestDriver.score,
             timestamp: Date.now()
           });
         }

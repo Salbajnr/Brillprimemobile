@@ -87,6 +87,31 @@ router.post("/", requireAuth, async (req, res) => {
       });
     }
 
+    // Auto-assign driver if delivery coordinates are provided
+    if (validatedData.deliveryLatitude && validatedData.deliveryLongitude) {
+      // Import and use auto-assignment service
+      const { AutoAssignmentService } = await import('../services/auto-assignment');
+      
+      // Attempt auto-assignment in background
+      setTimeout(async () => {
+        try {
+          const assignmentResult = await AutoAssignmentService.assignBestDriver(
+            order.id,
+            {
+              latitude: validatedData.deliveryLatitude!,
+              longitude: validatedData.deliveryLongitude!
+            }
+          );
+          
+          if (assignmentResult) {
+            console.log(`Auto-assigned order ${order.id} to driver ${assignmentResult.driverId}`);
+          }
+        } catch (error) {
+          console.error('Auto-assignment failed:', error);
+        }
+      }, 2000); // 2 second delay to allow order processing
+    }
+
     res.status(201).json({
       success: true,
       message: "Order created successfully",

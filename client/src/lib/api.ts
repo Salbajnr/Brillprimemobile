@@ -990,4 +990,60 @@ const apiClient = {
 };
 
 export { apiClient };
-export default apiClient;
+// Enhanced Delivery Feedback APIs
+export const deliveryFeedbackApi = {
+  submitFeedback: (data: {
+    orderId: string;
+    rating: number;
+    comment?: string;
+    categories?: {
+      punctuality?: number;
+      professionalism?: number;
+      communication?: number;
+      vehicle_condition?: number;
+      overall: number;
+    };
+  }) =>
+    apiRequest('/delivery-feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  getOrderFeedback: (orderId: string) =>
+    apiRequest(`/delivery-feedback/order/${orderId}`),
+
+  getDriverFeedbackSummary: (driverId: string) =>
+    apiRequest(`/delivery-feedback/driver/${driverId}/summary`),
+
+  // Real-time feedback updates
+  subscribeToFeedbackUpdates: (callback: Function) => {
+    wsManager.on('delivery_feedback_received', callback);
+  },
+};
+
+// Auto-assignment APIs
+export const autoAssignmentApi = {
+  requestDriverAssignment: (orderId: string) =>
+    apiRequest(`/orders/${orderId}/request-assignment`, {
+      method: 'POST',
+    }),
+
+  getAssignmentStatus: (orderId: string) =>
+    apiRequest(`/orders/${orderId}/assignment-status`),
+
+  // Real-time assignment updates
+  subscribeToAssignmentUpdates: (callback: Function) => {
+    wsManager.on('order_assigned', callback);
+    wsManager.on('driver_assigned', callback);
+  },
+};
+
+// Add to main client
+const enhancedApiClient = {
+  ...apiClient,
+  deliveryFeedback: deliveryFeedbackApi,
+  autoAssignment: autoAssignmentApi
+};
+
+export { enhancedApiClient };
+export default enhancedApiClient;

@@ -1,63 +1,69 @@
-
 import { Router } from 'express';
-import { z } from 'zod';
-import { requireAuth } from '../middleware/auth';
 import { db } from '../db';
-import { ratings, orders, users, driverProfiles, deliveryFeedback } from '../../shared/schema';
-import { eq, and, desc, avg, count, gte, sql } from 'drizzle-orm';
+import { orders, ratings, driverProfiles, users, transactions } from '../../shared/schema';
+import { eq, and, desc, avg, count, sql } from 'drizzle-orm';
+import { z } from 'zod';
 
 const router = Router();
 
 // Validation schemas
-const deliveryRatingSchema = z.object({
+const feedbackSchema = z.object({
   orderId: z.string(),
-  driverRating: z.number().min(1).max(5),
-  serviceRating: z.number().min(1).max(5),
-  deliveryTimeRating: z.number().min(1).max(5),
+  rating: z.number().int().min(1).max(5),
   comment: z.string().optional(),
-  deliveryQuality: z.enum(['EXCELLENT', 'GOOD', 'AVERAGE', 'POOR']),
-  wouldRecommend: z.boolean(),
-  issuesReported: z.array(z.string()).optional(),
-  additionalFeedback: z.string().optional()
+  categories: z.object({
+    punctuality: z.number().int().min(1).max(5).optional(),
+    professionalism: z.number().int().min(1).max(5).optional(),
+    communication: z.number().int().min(1).max(5).optional(),
+    vehicle_condition: z.number().int().min(1).max(5).optional(),
+    overall: z.number().int().min(1).max(5)
+  }).optional()
 });
 
-const driverFeedbackSchema = z.object({
-  orderId: z.string(),
-  customerRating: z.number().min(1).max(5),
-  comment: z.string().optional(),
-  deliveryComplexity: z.enum(['EASY', 'MODERATE', 'DIFFICULT']),
-  customerCooperation: z.enum(['EXCELLENT', 'GOOD', 'AVERAGE', 'POOR']),
-  paymentIssues: z.boolean().optional(),
-  additionalNotes: z.string().optional()
-});
+const requireAuth = (req: any, res: any, next: any) => {
+  if (!req.session?.userId) {
+    return res.status(401).json({ success: false, message: 'Authentication required' });
+  }
+  next();
+};
 
-// Submit delivery rating by customer
-router.post('/rate-delivery', requireAuth, async (req, res) => {
+// Submit delivery feedback
+router.post('/', requireAuth, async (req, res) => {
   try {
-    const userId = req.user?.id;
-    const validatedData = deliveryRatingSchema.parse(req.body);
+    const userId = req.session!.userId!;
+    const validatedData = feedbackSchema.parse(req.body);
 
-    // Verify order ownership and completion
-    const [order] = await db
-      .select()
+    // Get order details
+    const [order] = await db.select()
       .from(orders)
-      .where(and(
-        eq(orders.id, parseInt(validatedData.orderId)),
-        eq(orders.customerId, userId),
-        eq(orders.status, 'DELIVERED')
-      ))
+      .where(eq(orders.id, parseInt(validatedData.orderId)))
       .limit(1);
 
     if (!order) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found or not eligible for rating'
+        message: 'Order not found'
       });
     }
 
-    // Check if already rated
-    const [existingRating] = await db
-      .select()
+    // Verify user is the customer
+    if (order.customerId !== userId) {
+      return res.status(403).json({
+        success: false,
+        message: 'Only the customer can provide feedback'
+      });
+    }
+
+    // Verify order is delivered
+    if (order.status !== 'DELIVERED') {
+      return res.status(400).json({
+        success: false,
+        message: 'Feedback can only be provided for delivered orders'
+      });
+    }
+
+    // Check if feedback already exists
+    const [existingFeedback] = await db.select()
       .from(ratings)
       .where(and(
         eq(ratings.orderId, order.id),
@@ -65,132 +71,101 @@ router.post('/rate-delivery', requireAuth, async (req, res) => {
       ))
       .limit(1);
 
-    if (existingRating) {
+    if (existingFeedback) {
       return res.status(400).json({
         success: false,
-        message: 'Order already rated'
+        message: 'Feedback already submitted for this order'
       });
     }
 
-    // Calculate overall rating
-    const overallRating = Math.round(
-      (validatedData.driverRating + validatedData.serviceRating + validatedData.deliveryTimeRating) / 3
-    );
-
-    // Create rating record
-    const [newRating] = await db.insert(ratings).values({
-      customerId: userId,
+    // Create feedback record
+    const [feedback] = await db.insert(ratings).values({
       orderId: order.id,
-      driverId: order.driverId,
-      merchantId: order.merchantId,
-      rating: overallRating,
+      customerId: userId,
+      driverId: order.driverId!,
+      rating: validatedData.rating,
       comment: validatedData.comment,
+      categories: validatedData.categories ? JSON.stringify(validatedData.categories) : null,
       createdAt: new Date()
     }).returning();
 
-    // Create detailed feedback record
-    await db.insert(deliveryFeedback).values({
-      orderId: order.id,
-      customerId: userId,
-      driverId: order.driverId,
-      driverRating: validatedData.driverRating,
-      serviceRating: validatedData.serviceRating,
-      deliveryTimeRating: validatedData.deliveryTimeRating,
-      deliveryQuality: validatedData.deliveryQuality,
-      wouldRecommend: validatedData.wouldRecommend,
-      issuesReported: validatedData.issuesReported ? JSON.stringify(validatedData.issuesReported) : null,
-      additionalFeedback: validatedData.additionalFeedback,
-      feedbackType: 'CUSTOMER_TO_DRIVER',
-      createdAt: new Date()
-    });
-
     // Update driver's average rating
-    await updateDriverAverageRating(order.driverId);
+    const [driverStats] = await db.select({
+      avgRating: avg(ratings.rating),
+      totalRatings: count(ratings.id)
+    })
+    .from(ratings)
+    .where(eq(ratings.driverId, order.driverId!));
 
-    // Send real-time notification to driver
-    if (global.io) {
-      global.io.to(`user_${order.driverId}`).emit('delivery_rated', {
+    await db.update(driverProfiles)
+      .set({
+        rating: Number(driverStats.avgRating || 0),
+        totalRatings: driverStats.totalRatings || 0,
+        updatedAt: new Date()
+      })
+      .where(eq(driverProfiles.userId, order.driverId!));
+
+    // Award bonus for high ratings (4+ stars)
+    if (validatedData.rating >= 4) {
+      const bonusAmount = validatedData.rating === 5 ? 100 : 50; // ₦100 for 5 stars, ₦50 for 4 stars
+
+      await db.insert(transactions).values({
+        userId: order.driverId!,
         orderId: order.id,
-        rating: overallRating,
-        driverRating: validatedData.driverRating,
-        serviceRating: validatedData.serviceRating,
-        deliveryTimeRating: validatedData.deliveryTimeRating,
+        amount: bonusAmount.toString(),
+        type: 'RATING_BONUS',
+        status: 'COMPLETED',
+        paymentMethod: 'wallet',
+        paymentStatus: 'COMPLETED',
+        transactionRef: `bonus_${Date.now()}_${order.driverId}`,
+        description: `Rating bonus for ${validatedData.rating}-star delivery`,
+        createdAt: new Date()
+      });
+
+      // Update driver earnings
+      await db.update(driverProfiles)
+        .set({
+          totalEarnings: sql`${driverProfiles.totalEarnings} + ${bonusAmount}`,
+          updatedAt: new Date()
+        })
+        .where(eq(driverProfiles.userId, order.driverId!));
+    }
+
+    // Real-time notifications
+    if (global.io) {
+      // Notify driver
+      global.io.to(`user_${order.driverId}`).emit('delivery_feedback_received', {
+        orderId: order.id,
+        customerId: userId,
+        rating: validatedData.rating,
         comment: validatedData.comment,
-        timestamp: Date.now()
+        bonus: validatedData.rating >= 4 ? (validatedData.rating === 5 ? 100 : 50) : 0,
+        timestamp: new Date().toISOString()
+      });
+
+      // Update admin dashboard
+      global.io.to('admin_feedback').emit('new_feedback', {
+        feedbackId: feedback.id,
+        orderId: order.id,
+        driverId: order.driverId,
+        rating: validatedData.rating,
+        timestamp: new Date().toISOString()
       });
     }
 
-    res.json({
+    res.status(201).json({
       success: true,
-      data: {
-        rating: newRating,
-        overallRating,
-        message: 'Thank you for your feedback!'
+      message: 'Delivery feedback submitted successfully',
+      feedback: {
+        id: feedback.id,
+        rating: feedback.rating,
+        comment: feedback.comment,
+        bonus: validatedData.rating >= 4 ? (validatedData.rating === 5 ? 100 : 50) : 0
       }
     });
 
   } catch (error: any) {
-    console.error('Delivery rating error:', error);
-    if (error.name === 'ZodError') {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid feedback data',
-        errors: error.errors
-      });
-    }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to submit rating'
-    });
-  }
-});
-
-// Submit feedback by driver about customer
-router.post('/driver-feedback', requireAuth, async (req, res) => {
-  try {
-    const userId = req.user?.id;
-    const validatedData = driverFeedbackSchema.parse(req.body);
-
-    // Verify driver ownership of order
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(and(
-        eq(orders.id, parseInt(validatedData.orderId)),
-        eq(orders.driverId, userId),
-        eq(orders.status, 'DELIVERED')
-      ))
-      .limit(1);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found or not accessible'
-      });
-    }
-
-    // Create driver feedback record
-    await db.insert(deliveryFeedback).values({
-      orderId: order.id,
-      customerId: order.customerId,
-      driverId: userId,
-      customerRating: validatedData.customerRating,
-      comment: validatedData.comment,
-      deliveryComplexity: validatedData.deliveryComplexity,
-      customerCooperation: validatedData.customerCooperation,
-      paymentIssues: validatedData.paymentIssues || false,
-      additionalFeedback: validatedData.additionalNotes,
-      feedbackType: 'DRIVER_TO_CUSTOMER',
-      createdAt: new Date()
-    });
-
-    res.json({
-      success: true,
-      message: 'Feedback submitted successfully'
-    });
-
-  } catch (error: any) {
-    console.error('Driver feedback error:', error);
+    console.error('Submit feedback error:', error);
     if (error.name === 'ZodError') {
       return res.status(400).json({
         success: false,
@@ -205,62 +180,41 @@ router.post('/driver-feedback', requireAuth, async (req, res) => {
   }
 });
 
-// Get delivery feedback for an order
+// Get feedback for an order
 router.get('/order/:orderId', requireAuth, async (req, res) => {
   try {
     const { orderId } = req.params;
-    const userId = req.user?.id;
+    const userId = req.session!.userId!;
 
-    // Get order to verify access
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(eq(orders.id, parseInt(orderId)))
-      .limit(1);
+    const [feedback] = await db.select({
+      id: ratings.id,
+      rating: ratings.rating,
+      comment: ratings.comment,
+      categories: ratings.categories,
+      createdAt: ratings.createdAt,
+      customerName: users.fullName
+    })
+    .from(ratings)
+    .leftJoin(users, eq(ratings.customerId, users.id))
+    .where(eq(ratings.orderId, parseInt(orderId)))
+    .limit(1);
 
-    if (!order) {
+    if (!feedback) {
       return res.status(404).json({
         success: false,
-        message: 'Order not found'
+        message: 'No feedback found for this order'
       });
     }
-
-    // Verify access
-    if (order.customerId !== userId && order.driverId !== userId) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    // Get all feedback for this order
-    const feedback = await db
-      .select({
-        id: deliveryFeedback.id,
-        driverRating: deliveryFeedback.driverRating,
-        serviceRating: deliveryFeedback.serviceRating,
-        deliveryTimeRating: deliveryFeedback.deliveryTimeRating,
-        customerRating: deliveryFeedback.customerRating,
-        comment: deliveryFeedback.comment,
-        deliveryQuality: deliveryFeedback.deliveryQuality,
-        wouldRecommend: deliveryFeedback.wouldRecommend,
-        deliveryComplexity: deliveryFeedback.deliveryComplexity,
-        customerCooperation: deliveryFeedback.customerCooperation,
-        feedbackType: deliveryFeedback.feedbackType,
-        createdAt: deliveryFeedback.createdAt,
-        customerName: users.fullName
-      })
-      .from(deliveryFeedback)
-      .leftJoin(users, eq(deliveryFeedback.customerId, users.id))
-      .where(eq(deliveryFeedback.orderId, order.id))
-      .orderBy(desc(deliveryFeedback.createdAt));
 
     res.json({
       success: true,
-      data: feedback
+      feedback: {
+        ...feedback,
+        categories: feedback.categories ? JSON.parse(feedback.categories) : null
+      }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Get feedback error:', error);
     res.status(500).json({
       success: false,
@@ -269,187 +223,59 @@ router.get('/order/:orderId', requireAuth, async (req, res) => {
   }
 });
 
-// Get driver's rating summary
-router.get('/driver/:driverId/summary', async (req, res) => {
+// Get driver's feedback summary
+router.get('/driver/:driverId/summary', requireAuth, async (req, res) => {
   try {
     const { driverId } = req.params;
 
-    // Get rating statistics
-    const [ratingStats] = await db
-      .select({
-        averageRating: avg(deliveryFeedback.driverRating),
-        totalRatings: count(),
-        fiveStars: count(sql`case when ${deliveryFeedback.driverRating} = 5 then 1 end`),
-        fourStars: count(sql`case when ${deliveryFeedback.driverRating} = 4 then 1 end`),
-        threeStars: count(sql`case when ${deliveryFeedback.driverRating} = 3 then 1 end`),
-        twoStars: count(sql`case when ${deliveryFeedback.driverRating} = 2 then 1 end`),
-        oneStar: count(sql`case when ${deliveryFeedback.driverRating} = 1 then 1 end`)
-      })
-      .from(deliveryFeedback)
-      .where(and(
-        eq(deliveryFeedback.driverId, parseInt(driverId)),
-        eq(deliveryFeedback.feedbackType, 'CUSTOMER_TO_DRIVER')
-      ));
+    const [summary] = await db.select({
+      averageRating: avg(ratings.rating),
+      totalRatings: count(ratings.id),
+      fiveStars: sql<number>`COUNT(CASE WHEN ${ratings.rating} = 5 THEN 1 END)`,
+      fourStars: sql<number>`COUNT(CASE WHEN ${ratings.rating} = 4 THEN 1 END)`,
+      threeStars: sql<number>`COUNT(CASE WHEN ${ratings.rating} = 3 THEN 1 END)`,
+      twoStars: sql<number>`COUNT(CASE WHEN ${ratings.rating} = 2 THEN 1 END)`,
+      oneStar: sql<number>`COUNT(CASE WHEN ${ratings.rating} = 1 THEN 1 END)`
+    })
+    .from(ratings)
+    .where(eq(ratings.driverId, parseInt(driverId)));
 
-    // Get service quality statistics
-    const [serviceStats] = await db
-      .select({
-        averageServiceRating: avg(deliveryFeedback.serviceRating),
-        averageTimeRating: avg(deliveryFeedback.deliveryTimeRating),
-        recommendationRate: sql<number>`
-          ROUND(
-            (COUNT(CASE WHEN ${deliveryFeedback.wouldRecommend} = true THEN 1 END) * 100.0 / COUNT(*)),
-            1
-          )
-        `
-      })
-      .from(deliveryFeedback)
-      .where(and(
-        eq(deliveryFeedback.driverId, parseInt(driverId)),
-        eq(deliveryFeedback.feedbackType, 'CUSTOMER_TO_DRIVER')
-      ));
-
-    // Get recent reviews
-    const recentReviews = await db
-      .select({
-        rating: deliveryFeedback.driverRating,
-        comment: deliveryFeedback.comment,
-        deliveryQuality: deliveryFeedback.deliveryQuality,
-        createdAt: deliveryFeedback.createdAt,
-        customerName: users.fullName
-      })
-      .from(deliveryFeedback)
-      .leftJoin(users, eq(deliveryFeedback.customerId, users.id))
-      .where(and(
-        eq(deliveryFeedback.driverId, parseInt(driverId)),
-        eq(deliveryFeedback.feedbackType, 'CUSTOMER_TO_DRIVER')
-      ))
-      .orderBy(desc(deliveryFeedback.createdAt))
-      .limit(10);
+    // Get recent feedback
+    const recentFeedback = await db.select({
+      rating: ratings.rating,
+      comment: ratings.comment,
+      createdAt: ratings.createdAt,
+      orderNumber: orders.orderNumber
+    })
+    .from(ratings)
+    .leftJoin(orders, eq(ratings.orderId, orders.id))
+    .where(eq(ratings.driverId, parseInt(driverId)))
+    .orderBy(desc(ratings.createdAt))
+    .limit(10);
 
     res.json({
       success: true,
-      data: {
-        ratings: {
-          average: Number(ratingStats?.averageRating || 0),
-          total: Number(ratingStats?.totalRatings || 0),
-          distribution: {
-            5: Number(ratingStats?.fiveStars || 0),
-            4: Number(ratingStats?.fourStars || 0),
-            3: Number(ratingStats?.threeStars || 0),
-            2: Number(ratingStats?.twoStars || 0),
-            1: Number(ratingStats?.oneStar || 0)
-          }
-        },
-        service: {
-          averageServiceRating: Number(serviceStats?.averageServiceRating || 0),
-          averageTimeRating: Number(serviceStats?.averageTimeRating || 0),
-          recommendationRate: Number(serviceStats?.recommendationRate || 0)
-        },
-        recentReviews
-      }
+      summary: {
+        averageRating: Number(summary.averageRating || 0),
+        totalRatings: summary.totalRatings || 0,
+        distribution: {
+          5: summary.fiveStars || 0,
+          4: summary.fourStars || 0,
+          3: summary.threeStars || 0,
+          2: summary.twoStars || 0,
+          1: summary.oneStar || 0
+        }
+      },
+      recentFeedback
     });
 
-  } catch (error) {
-    console.error('Get driver summary error:', error);
+  } catch (error: any) {
+    console.error('Get driver feedback summary error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to get driver rating summary'
+      message: 'Failed to get feedback summary'
     });
   }
 });
-
-// Request rating reminder
-router.post('/remind-rating/:orderId', requireAuth, async (req, res) => {
-  try {
-    const { orderId } = req.params;
-    const userId = req.user?.id;
-
-    const [order] = await db
-      .select()
-      .from(orders)
-      .where(and(
-        eq(orders.id, parseInt(orderId)),
-        eq(orders.status, 'DELIVERED')
-      ))
-      .limit(1);
-
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
-      });
-    }
-
-    // Check if already rated
-    const [existingRating] = await db
-      .select()
-      .from(ratings)
-      .where(and(
-        eq(ratings.orderId, order.id),
-        eq(ratings.customerId, order.customerId)
-      ))
-      .limit(1);
-
-    if (existingRating) {
-      return res.status(400).json({
-        success: false,
-        message: 'Order already rated'
-      });
-    }
-
-    // Send rating reminder
-    if (global.io) {
-      global.io.to(`user_${order.customerId}`).emit('rating_reminder', {
-        orderId: order.id,
-        orderNumber: order.orderNumber,
-        driverId: order.driverId,
-        deliveredAt: order.deliveredAt,
-        message: 'Please rate your recent delivery experience',
-        timestamp: Date.now()
-      });
-    }
-
-    res.json({
-      success: true,
-      message: 'Rating reminder sent'
-    });
-
-  } catch (error) {
-    console.error('Rating reminder error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to send reminder'
-    });
-  }
-});
-
-// Helper function to update driver's average rating
-async function updateDriverAverageRating(driverId: number) {
-  try {
-    const [avgRating] = await db
-      .select({
-        average: avg(deliveryFeedback.driverRating),
-        total: count()
-      })
-      .from(deliveryFeedback)
-      .where(and(
-        eq(deliveryFeedback.driverId, driverId),
-        eq(deliveryFeedback.feedbackType, 'CUSTOMER_TO_DRIVER')
-      ));
-
-    await db
-      .update(driverProfiles)
-      .set({
-        rating: Number(avgRating?.average || 0),
-        totalRatings: Number(avgRating?.total || 0),
-        updatedAt: new Date()
-      })
-      .where(eq(driverProfiles.userId, driverId));
-
-  } catch (error) {
-    console.error('Update driver rating error:', error);
-  }
-}
 
 export default router;

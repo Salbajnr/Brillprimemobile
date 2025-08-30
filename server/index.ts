@@ -39,7 +39,7 @@ console.log('🔧 Using Render PostgreSQL database configuration');
 import { db } from './db';
 // import { databaseIntegration } from './services/database-integration'; // Temporarily disabled due to connection issues
 
-// Import all routes
+// Import routes
 import authRoutes from './routes/auth';
 import consumerRoutes from './routes/consumer';
 import merchantRoutes from './routes/merchant';
@@ -109,6 +109,7 @@ import fileSyncRoutes from './routes/file-sync';
 import debugRoutes from './routes/debug';
 import databaseMonitoringRoutes from './routes/database-monitoring';
 import deliveryFeedbackRoutes from './routes/delivery-feedback';
+import autoAssignmentRoutes from './routes/auto-assignment';
 
 // Import middleware
 import { authenticateUser } from './middleware/auth';
@@ -327,7 +328,11 @@ if (process.env.NODE_ENV === 'development') {
 registerFuelOrderRoutes(app);
 
 // Register delivery feedback routes
-app.use('/api/feedback', deliveryFeedbackRoutes);
+app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
+
+// Register auto-assignment routes
+app.use('/api/auto-assignment', autoAssignmentRoutes);
+
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {

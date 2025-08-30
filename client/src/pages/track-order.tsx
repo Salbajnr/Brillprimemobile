@@ -76,10 +76,22 @@ export default function TrackOrder() {
     fetchOrderTracking();
   }, [orderId]);
 
-  // Subscribe to real-time driver tracking
+  // Subscribe to real-time driver tracking and assignment updates
   useEffect(() => {
     if (trackingConnected && orderId) {
       subscribeToDriverTracking(orderId);
+      
+      // Subscribe to auto-assignment updates
+      apiClient.autoAssignment.subscribeToAssignmentUpdates((data: any) => {
+        if (data.orderId === orderId) {
+          setOrder(prev => prev ? {
+            ...prev,
+            driverName: data.driverName,
+            driverPhone: data.driverPhone,
+            estimatedArrival: data.estimatedArrival
+          } : null);
+        }
+      });
     }
   }, [trackingConnected, orderId, subscribeToDriverTracking]);
 
