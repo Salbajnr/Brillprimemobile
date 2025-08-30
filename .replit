@@ -1,10 +1,8 @@
-
-# BrillPrime - Separate Frontend/Backend Deployment Configuration
-entrypoint = "server/index.ts"
-modules = ["nodejs-20", "postgresql-15"]
+modules = ["nodejs-20", "web", "bash", "java-graalvm22.3"]
+run = "npm run dev"
 
 [nix]
-channel = "stable-24_05"
+channel = "stable-25_05"
 
 [unitTest]
 language = "nodejs"
@@ -14,8 +12,7 @@ requiredFiles = [".replit", "replit.nix", "package.json"]
 
 # Backend deployment configuration (runs on Replit)
 [deployment]
-run = ["npm", "run", "dev"]
-build = ["npm", "install", "--legacy-peer-deps"]
+run = ["sh", "-c", "npm run dev"]
 deploymentTarget = "cloudrun"
 ignorePorts = false
 
