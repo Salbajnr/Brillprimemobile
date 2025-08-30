@@ -21,12 +21,12 @@ import './env-validation';
 try {
   const { preventLocalDatabaseCreation } = await import('./database-config-override');
   const { enforceCloudConfiguration, validateProductionEnvironment } = await import('./cloud-config-enforcer');
-  
+
   // Only enforce cloud configuration in production
   if (process.env.NODE_ENV === 'production') {
     enforceCloudConfiguration();
     preventLocalDatabaseCreation();
-    
+
     if (!validateProductionEnvironment()) {
       console.error('❌ Production environment validation failed. Exiting...');
       process.exit(1);
@@ -182,7 +182,7 @@ app.use(cors({
         "https://www.brillprime.com",
         "https://brillprime.com",
         "https://brillprime-backend.onrender.com",
-        "https://*.onrender.com", 
+        "https://*.onrender.com",
         "https://*.render.com",
         process.env.FRONTEND_URL,
         process.env.CORS_ORIGIN
@@ -206,9 +206,6 @@ app.use((req, res, next) => {
   req.subdomain = subdomain;
   next();
 });
-
-// Serve static files from client/dist directory
-app.use(express.static(path.join(__dirname, '../client/dist')));
 
 // Logging
 if (process.env.NODE_ENV !== 'test') {
@@ -344,6 +341,34 @@ app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
 // Register auto-assignment routes
 app.use('/api/auto-assignment', autoAssignmentRoutes);
 
+
+// Serve static files in production
+if (process.env.NODE_ENV === 'production') {
+  const staticPath = path.join(__dirname, '../client/dist');
+  console.log('Serving static files from:', staticPath);
+
+  app.use(express.static(staticPath, {
+    index: false,
+    maxAge: '1d'
+  }));
+
+  // API routes first
+  app.use('/api', (req, res, next) => {
+    next();
+  });
+
+  // SPA fallback for all non-API routes
+  app.get('*', (req, res) => {
+    const indexPath = path.join(staticPath, 'index.html');
+    console.log('Serving SPA fallback:', indexPath);
+    res.sendFile(indexPath, (err) => {
+      if (err) {
+        console.error('Error serving index.html:', err);
+        res.status(500).send('Error loading application');
+      }
+    });
+  });
+}
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -482,22 +507,25 @@ app.use((err: any, req: Request, res: Response, next: any) => {
 });
 
 // Handle React routing - serve appropriate HTML based on subdomain
-app.get('*', (req: Request, res: Response) => {
-  // Skip API routes
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API route not found' });
-  }
+// This catch-all route should be the last one
+if (process.env.NODE_ENV !== 'production') {
+  app.get('*', (req: Request, res: Response) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/')) {
+      return res.status(404).json({ error: 'API route not found' });
+    }
 
-  const isAdmin = req.subdomain === 'admin';
+    const isAdmin = req.subdomain === 'admin';
 
-  if (isAdmin) {
-    // Serve admin.html for admin subdomain
-    res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
-  } else {
-    // Serve regular index.html for main domain
-    res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-  }
-});
+    if (isAdmin) {
+      // Serve admin.html for admin subdomain
+      res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
+    } else {
+      // Serve regular index.html for main domain
+      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
+    }
+  });
+}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
