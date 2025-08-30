@@ -23,13 +23,27 @@ export interface DashboardData {
   notifications?: any[];
 }
 
+// Configuration for different environments
+const config = {
+  development: {
+    apiBaseUrl: 'http://0.0.0.0:5000/api',
+    websocketUrl: 'ws://0.0.0.0:5000'
+  },
+  production: {
+    apiBaseUrl: 'https://brillprime-backend.onrender.com/api',
+    websocketUrl: 'wss://brillprime-backend.onrender.com'
+  }
+};
+
 // Generic API request helper with enhanced error handling
 async function apiRequest<T = any>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
+    // Use API_BASE determined by environment
+    const currentApiBase = process.env.NODE_ENV === 'production' ? config.production.apiBaseUrl : config.development.apiBaseUrl;
+    const response = await fetch(`${currentApiBase}${endpoint}`, {
       credentials: 'include',
       headers: {
         'Content-Type': 'application/json',
@@ -41,7 +55,7 @@ async function apiRequest<T = any>(
     // Handle different content types
     let data;
     const contentType = response.headers.get('content-type');
-    
+
     if (contentType && contentType.includes('application/json')) {
       data = await response.json();
     } else {
@@ -101,8 +115,8 @@ class WebSocketManager {
   private listeners: Map<string, Function[]> = new Map();
 
   connect() {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
+    // Use websocketUrl determined by environment
+    const wsUrl = process.env.NODE_ENV === 'production' ? config.production.websocketUrl : config.development.websocketUrl;
 
     this.ws = new WebSocket(wsUrl);
 
@@ -292,23 +306,23 @@ export const handleMobileApiError = (error: any): string => {
   if (error.name === 'TypeError' && error.message === 'Network request failed') {
     return 'No internet connection. Please check your connection and try again.';
   }
-  
+
   if (error.name === 'AbortError') {
     return 'Request timed out. Please try again.';
   }
-  
+
   if (error.status === 401) {
     return 'Your session has expired. Please sign in again.';
   }
-  
+
   if (error.status === 403) {
     return 'You do not have permission to perform this action.';
   }
-  
+
   if (error.status >= 500) {
     return 'Server error. Please try again later.';
   }
-  
+
   return error.message || 'An unexpected error occurred.';
 };
 
@@ -319,25 +333,25 @@ export const apiRequestWithRetry = async (
   maxRetries: number = 3
 ): Promise<ApiResponse<any>> => {
   let lastError;
-  
+
   for (let i = 0; i < maxRetries; i++) {
     try {
       return await apiRequest(endpoint, options);
     } catch (error) {
       lastError = error;
-      
+
       // Don't retry on client errors (4xx)
       if (error.status >= 400 && error.status < 500) {
         throw error;
       }
-      
+
       // Wait before retry with exponential backoff
       if (i < maxRetries - 1) {
         await new Promise(resolve => setTimeout(resolve, Math.pow(2, i) * 1000));
       }
     }
   }
-  
+
   throw lastError;
 };
 
