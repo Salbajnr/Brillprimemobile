@@ -64,7 +64,7 @@ stopOnEntry = false
 console = "externalTerminal"
 
 [workflows]
-runButton = "Build and Start"
+runButton = "Build with Images"
 
 [[workflows.workflow]]
 name = "Start BrillPrime Server"
@@ -138,6 +138,31 @@ args = "cd client && npm install --legacy-peer-deps"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=production npm run start"
+
+[[workflows.workflow]]
+name = "Build with Images"
+author = 47052405
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && ls -la dist/assets/"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"

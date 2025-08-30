@@ -34,11 +34,11 @@ export function enforceCloudConfiguration(): void {
   const productionOverrides = {
     NODE_ENV: 'production',
     HOST: '0.0.0.0',
-    FRONTEND_URL: isRender ? 'https://brillprime-backend.onrender.com' : 'https://brillprime-frontend.replit.app',
-    CLIENT_URL: isRender ? 'https://brillprime-backend.onrender.com' : 'https://brillprime-backend.replit.app',
-    BASE_URL: isRender ? 'https://brillprime-backend.onrender.com' : 'https://brillprime-backend.replit.app',
-    WEBSOCKET_URL: isRender ? 'wss://brillprime-backend.onrender.com' : 'wss://brillprime-backend.replit.app',
-    CORS_ORIGIN: isRender ? 'https://brillprime-backend.onrender.com' : 'https://brillprime-frontend.replit.app,https://brillprime.replit.app',
+    FRONTEND_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-frontend.replit.app',
+    CLIENT_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-backend.replit.app',
+    BASE_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-backend.replit.app',
+    WEBSOCKET_URL: isRender ? 'wss://www.brillprime.com' : 'wss://brillprime-backend.replit.app',
+    CORS_ORIGIN: isRender ? 'https://www.brillprime.com,https://brillprime.com' : 'https://brillprime-frontend.replit.app,https://brillprime.replit.app',
     TRUSTED_PROXIES: isRender ? 'render' : 'replit,cloudflare'
   };
   

@@ -347,9 +347,23 @@ if (process.env.NODE_ENV === 'production') {
   const staticPath = path.join(__dirname, '../client/dist');
   console.log('Serving static files from:', staticPath);
 
+  // Serve static assets with proper caching
+  app.use('/assets', express.static(path.join(staticPath, 'assets'), {
+    maxAge: '1y',
+    immutable: true,
+    setHeaders: (res, filePath) => {
+      // Set proper MIME types for images
+      if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    }
+  }));
+
+  // Serve root static files (favicon, etc.)
   app.use(express.static(staticPath, {
     index: false,
-    maxAge: '1d'
+    maxAge: '1d',
+    dotfiles: 'ignore'
   }));
 
   // API routes first
@@ -359,6 +373,11 @@ if (process.env.NODE_ENV === 'production') {
 
   // SPA fallback for all non-API routes
   app.get('*', (req, res) => {
+    // Skip if it's an asset request
+    if (req.path.startsWith('/assets/') || req.path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2|ttf|eot)$/)) {
+      return res.status(404).send('Asset not found');
+    }
+
     const indexPath = path.join(staticPath, 'index.html');
     console.log('Serving SPA fallback:', indexPath);
     res.sendFile(indexPath, (err) => {
