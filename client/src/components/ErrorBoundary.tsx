@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ErrorBoundaryState {
@@ -8,7 +9,7 @@ interface ErrorBoundaryState {
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
-  fallback?: React.ComponentType<{error?: Error}>;
+  fallback?: React.ComponentType<{ error?: Error }>;
 }
 
 class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoundaryState> {
