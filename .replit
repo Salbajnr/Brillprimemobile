@@ -100,3 +100,24 @@ mode = "sequential"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "NODE_ENV=production npm run start"
+
+[[workflows.workflow]]
+name = "Debug Build"
+author = 47052405
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build -- --mode development"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && ls -la dist/"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && cat dist/index.html"
