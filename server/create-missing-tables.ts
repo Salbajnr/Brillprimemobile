@@ -1,10 +1,9 @@
-
 import { db } from "./db";
 import { sql } from "drizzle-orm";
 
 export async function createAllMissingTables() {
   console.log('🔧 Creating all missing database tables...');
-  
+
   try {
     // First, ensure all required enums exist
     await db.execute(sql`
@@ -485,7 +484,7 @@ export async function createAllMissingTables() {
 
     console.log('✅ All missing database tables created successfully!');
     return true;
-    
+
   } catch (error) {
     console.error('❌ Error creating missing tables:', error);
     throw error;
@@ -498,7 +497,7 @@ export async function seedDefaultData() {
 
     // Check if categories exist, if not create them
     const [existingCategories] = await db.execute(sql`SELECT COUNT(*) as count FROM categories`);
-    
+
     if (existingCategories.count === 0) {
       await db.execute(sql`
         INSERT INTO categories (name, description, is_active) VALUES 
@@ -516,7 +515,7 @@ export async function seedDefaultData() {
 
     // Check if toll gates exist, if not create them
     const [existingTollGates] = await db.execute(sql`SELECT COUNT(*) as count FROM toll_gates`);
-    
+
     if (existingTollGates.count === 0) {
       await db.execute(sql`
         INSERT INTO toll_gates (name, location, latitude, longitude, price, is_active) VALUES 
@@ -528,7 +527,7 @@ export async function seedDefaultData() {
     }
 
     console.log('✅ Default data seeding completed');
-    
+
   } catch (error) {
     console.log('⚠️ Data seeding encountered an issue:', error.message);
   }

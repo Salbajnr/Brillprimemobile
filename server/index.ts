@@ -179,6 +179,8 @@ app.use(limiter);
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? [
+        "https://www.brillprime.com",
+        "https://brillprime.com",
         "https://brillprime-backend.onrender.com",
         "https://*.onrender.com", 
         "https://*.render.com",
