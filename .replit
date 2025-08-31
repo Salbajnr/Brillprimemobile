@@ -275,3 +275,32 @@ args = "cd client && ls -la dist/"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "NODE_ENV=production npm run start"
+
+[[workflows.workflow]]
+name = "Build Both Frontends"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd ../admin && npm install --legacy-peer-deps"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd admin && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "NODE_ENV=production npm run start"

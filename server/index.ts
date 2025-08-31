@@ -344,42 +344,30 @@ app.use('/api/auto-assignment', autoAssignmentRoutes);
 
 // Serve static files in production
 if (process.env.NODE_ENV === 'production') {
-  const staticPath = path.join(__dirname, '../client/dist');
-  console.log('Serving static files from:', staticPath);
+  // Serve admin static files
+  app.use('/admin', express.static(path.join(__dirname, '../admin/dist')));
 
-  // Serve static assets with proper caching
-  app.use('/assets', express.static(path.join(staticPath, 'assets'), {
-    maxAge: '1y',
-    immutable: true,
-    setHeaders: (res, filePath) => {
-      // Set proper MIME types for images
-      if (filePath.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)) {
-        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+  // Serve client static files
+  app.use(express.static(path.join(__dirname, '../client/dist')));
+
+  // Admin SPA fallback
+  app.get('/admin/*', (req, res) => {
+    const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
+    console.log('Serving admin SPA fallback:', adminIndexPath);
+
+    res.sendFile(adminIndexPath, (err) => {
+      if (err) {
+        console.error('Error serving admin index.html:', err);
+        res.status(500).send('Error loading admin application');
       }
-    }
-  }));
-
-  // Serve root static files (favicon, etc.)
-  app.use(express.static(staticPath, {
-    index: false,
-    maxAge: '1d',
-    dotfiles: 'ignore'
-  }));
-
-  // API routes first
-  app.use('/api', (req, res, next) => {
-    next();
+    });
   });
 
-  // SPA fallback for all non-API routes
+  // Client SPA fallback for non-admin routes
   app.get('*', (req, res) => {
-    // Skip if it's an asset request
-    if (req.path.startsWith('/assets/') || req.path.match(/\.(png|jpg|jpeg|gif|svg|ico|webp|css|js|woff|woff2|ttf|eot)$/)) {
-      return res.status(404).send('Asset not found');
-    }
+    const indexPath = path.join(__dirname, '../client/dist/index.html');
+    console.log('Serving client SPA fallback:', indexPath);
 
-    const indexPath = path.join(staticPath, 'index.html');
-    console.log('Serving SPA fallback:', indexPath);
     res.sendFile(indexPath, (err) => {
       if (err) {
         console.error('Error serving index.html:', err);
