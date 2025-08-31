@@ -186,7 +186,7 @@ app.use(cors({
         "https://*.replit.dev",
         process.env.FRONTEND_URL,
         process.env.CORS_ORIGIN
-      ].filter(Boolean)
+      ].filter((url): url is string => Boolean(url))
     : ["http://localhost:3000", "http://localhost:5173", "http://0.0.0.0:5000"],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
