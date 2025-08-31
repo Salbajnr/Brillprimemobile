@@ -31,15 +31,24 @@ export function useAdminAuth() {
   const login = async (credentials: { email: string; password: string }) => {
     setIsLoading(true);
     setError(null);
-    const res = await apiClient.auth.login(credentials);
-    if (res.success && res.data?.role === 'ADMIN') {
-      setAdmin(res.data);
-    } else {
-      setError('Not an admin account');
+    try {
+      const res = await apiClient.auth.login(credentials);
+      if (res.success && res.data?.role === 'ADMIN') {
+        setAdmin(res.data);
+        return res;
+      } else {
+        const errMsg = res?.message || 'Not an admin account';
+        setError(errMsg);
+        setAdmin(null);
+        return res;
+      }
+    } catch (err: any) {
+      setError(err?.message || 'Login failed');
       setAdmin(null);
+      return { success: false, message: err?.message || 'Login failed' };
+    } finally {
+      setIsLoading(false);
     }
-    setIsLoading(false);
-    return res;
   };
 
   const logout = async () => {
