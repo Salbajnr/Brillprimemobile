@@ -28,15 +28,26 @@ import systemHealthRoutes from './routes/system-health';
 
 
 
-// Extend express-session types
-declare module 'express-session' {
-  interface SessionData {
-    csrfToken?: string;
-    userId?: number;
-    userRole?: string;
-    userFullName?: string;
-  }
-}
+import session from 'express-session';
+import MemoryStore from 'memorystore';
+
+const MemStore = MemoryStore(session);
+
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || 'change-me',
+    resave: false,
+    saveUninitialized: false,
+    store: new MemStore({ checkPeriod: 86400000 }),
+    cookie: {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
+      maxAge: 1000 * 60 * 60 * 24, // 1 day
+    },
+    name: 'sid',
+  })
+);
 // Import db and pool from db.ts
 import { db, pool } from './db';
 import { generalLimiter, authLimiter, paymentLimiter } from './middleware/rateLimiter';
