@@ -1,4 +1,4 @@
-import { Route, Switch, Redirect } from 'wouter';
+import { Route, Switch } from 'wouter';
 import Splash from '../pages/splash';
 import Onboarding from '../pages/onboarding';
 import RoleSelection from '../pages/role-selection';
@@ -7,6 +7,9 @@ import Signup from '../pages/signup';
 import Dashboard from '../pages/dashboard';
 import Profile from '../pages/profile';
 import NotFound from '../pages/not-found';
+import RateDelivery from '../pages/rate-delivery';
+import RealTimeTracking from '../pages/real-time-tracking';
+import MerchantRatings from '../pages/merchant-ratings';
 import { useAuth } from '../hooks/use-auth';
 
 export function Routes() {
@@ -28,9 +31,9 @@ export function Routes() {
         <>
           <Route path="/dashboard" component={Dashboard} />
           <Route path="/profile" component={Profile} />
-          <Route path="/rate-delivery/:orderId" element={<RateDeliveryPage />} />
-          <Route path="/real-time-tracking/:orderId" element={<RealTimeTrackingPage />} />
-          <Route path="/merchant-ratings/:merchantId" element={<MerchantRatingsPage />} />
+          <Route path="/rate-delivery/:orderId" component={RateDelivery} />
+          <Route path="/real-time-tracking/:orderId" component={RealTimeTracking} />
+          <Route path="/merchant-ratings/:merchantId" component={MerchantRatings} />
         </>
       )}
 

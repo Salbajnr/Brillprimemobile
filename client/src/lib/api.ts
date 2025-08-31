@@ -989,8 +989,8 @@ const apiClient = {
   getDashboardData: () => apiRequest('/dashboard'),
 };
 
-export { apiClient };
-// Delivery feedback
+// Delivery feedback API
+export const deliveryFeedbackApi = {
   submitDeliveryRating: async (data: any) => {
     const response = await api.post('/delivery-feedback', data);
     return response.data;
@@ -1018,6 +1018,8 @@ export { apiClient };
   },
 };
 
+export { apiClient };
+
 // Auto-assignment APIs
 export const autoAssignmentApi = {
   requestDriverAssignment: (orderId: string) =>
@@ -1044,3 +1046,11 @@ const enhancedApiClient = {
 
 export { enhancedApiClient };
 export default enhancedApiClient;
+
+// Default api export for backward compatibility
+export const api = {
+  get: (url: string) => apiRequest(url),
+  post: (url: string, data: any) => apiRequest(url, { method: 'POST', body: JSON.stringify(data) }),
+  put: (url: string, data: any) => apiRequest(url, { method: 'PUT', body: JSON.stringify(data) }),
+  delete: (url: string) => apiRequest(url, { method: 'DELETE' }),
+};

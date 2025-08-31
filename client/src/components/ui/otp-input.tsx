@@ -1,6 +1,6 @@
 
 import React, { useRef, useEffect } from 'react';
-import { cn } from '@/lib/utils';
+import { cn } from '../../lib/utils';
 
 interface OtpInputProps {
   length: number;
