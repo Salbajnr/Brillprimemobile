@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useAuth } from "../hooks/use-auth";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Badge } from "../components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { 
   Search, 
   Eye,
@@ -23,11 +23,11 @@ import {
   Phone
 } from "lucide-react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { NotificationModal } from "@/components/ui/notification-modal";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { pushNotificationService } from "@/lib/push-notifications";
-import { useWebSocketOrders, useWebSocketDriverTracking } from "@/hooks/use-websocket";
-import LiveMap from "@/components/ui/live-map";
+import { NotificationModal } from "../components/ui/notification-modal";
+import { LoadingButton } from "../components/ui/loading-button";
+import { pushNotificationService } from "../lib/push-notifications";
+import { useWebSocketOrders, useWebSocketDriverTracking } from "../hooks/use-websocket";
+import LiveMap from "../components/ui/live-map";
 
 interface Order {
   id: string;

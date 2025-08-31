@@ -1,18 +1,18 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, CreditCard, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 
 // Import payment method icons
-import masterCardLogo from "@/assets/images/master_card_logo.png";
-import visaCardLogo from "@/assets/images/visa_card_logo.png";
-import applePayLogo from "@/assets/images/apple_pay_logo.png";
-import googleIcon from "@/assets/images/google_icon.png";
+import masterCardLogo from "../assets/images/master_card_logo.png";
+import visaCardLogo from "../assets/images/visa_card_logo.png";
+import applePayLogo from "../assets/images/apple_pay_logo.png";
+import googleIcon from "../assets/images/google_icon.png";
 
 export default function AddPaymentMethod() {
   const [, setLocation] = useLocation();

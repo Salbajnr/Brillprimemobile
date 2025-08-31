@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Badge } from "../components/ui/badge";
 import { 
   ArrowLeft, 
   MapPin, 
@@ -15,9 +15,9 @@ import {
   Wifi,
   WifiOff
 } from "lucide-react";
-import { useWebSocketOrders, useWebSocketNotifications } from "@/hooks/use-websocket";
+import { useWebSocketOrders, useWebSocketNotifications } from "../hooks/use-websocket";
 import { ClientRole, MessageType } from "../../../server/websocket";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "../hooks/use-auth";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 
 // Color constants

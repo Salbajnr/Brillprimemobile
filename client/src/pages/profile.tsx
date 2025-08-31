@@ -1,6 +1,6 @@
 import { ArrowLeft, Edit, Shield, Bell, HelpCircle, LogOut, RefreshCw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useAuth } from "@/hooks/use-auth";
+import { Button } from "../components/ui/button";
+import { useAuth } from "../hooks/use-auth";
 import { useLocation } from "wouter";
 import cameraIcon from "../assets/images/camera_icon.png";
 import accountCircleIcon from "../assets/images/account_circle.svg";

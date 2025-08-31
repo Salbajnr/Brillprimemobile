@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { useLocation, Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { NotificationProvider, useNotifications } from "@/components/ui/notification-system";
-import { useWebSocketDeliveryStatus } from "@/hooks/use-websocket";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { NotificationProvider, useNotifications } from "../components/ui/notification-system";
+import { useWebSocketDeliveryStatus } from "../hooks/use-websocket";
 import { ClientRole, MessageType } from "../../../server/websocket";
 import { 
   ArrowLeft,

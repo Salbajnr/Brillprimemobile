@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { BiometricAuth } from "@/components/ui/biometric-auth";
-import { NotificationModal } from "@/components/ui/notification-modal";
+import { Button } from "../components/ui/button";
+import { BiometricAuth } from "../components/ui/biometric-auth";
+import { NotificationModal } from "../components/ui/notification-modal";
 import congratulationsIcon from "../assets/images/congratulations_icon.png";
 import confirmationFailImg from "../assets/images/confirmation_fail_img.png";
 

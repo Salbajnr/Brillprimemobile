@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { QrCode, Eye, Download, Calendar, CreditCard, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "../hooks/use-toast";
 
 interface Receipt {
   id: number;

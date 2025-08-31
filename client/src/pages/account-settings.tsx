@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { ArrowLeft, Shield, Bell, Lock, Eye, EyeOff, Globe, ChevronRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { useAuth } from "@/hooks/use-auth";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Switch } from "../components/ui/switch";
+import { useAuth } from "../hooks/use-auth";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { NotificationModal } from "@/components/ui/notification-modal";
-import { LoadingButton } from "@/components/ui/loading-button";
+import { NotificationModal } from "../components/ui/notification-modal";
+import { LoadingButton } from "../components/ui/loading-button";
 
 interface NotificationSettings {
   pushNotifications: boolean;

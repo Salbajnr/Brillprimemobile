@@ -1,14 +1,14 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Mail } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
 import { useMutation } from "@tanstack/react-query";
-import { authAPI } from "@/lib/auth";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { NotificationModal } from "@/components/ui/notification-modal";
+import { authAPI } from "../lib/auth";
+import { LoadingButton } from "../components/ui/loading-button";
+import { NotificationModal } from "../components/ui/notification-modal";
 import logo from "../assets/images/logo.png";
 
 export default function ForgotPasswordPage() {

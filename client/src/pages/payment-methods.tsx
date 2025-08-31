@@ -1,17 +1,17 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, CreditCard, Building2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { useAuth } from "@/hooks/use-auth";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { useAuth } from "../hooks/use-auth";
 
 // Import payment method icons
-import masterCardLogo from "@/assets/images/master_card_logo.png";
-import visaCardLogo from "@/assets/images/visa_card_logo.png";
-import applePayLogo from "@/assets/images/apple_pay_logo.png";
-import googleIcon from "@/assets/images/google_icon.png";
-import deleteIconWhite from "@/assets/images/delete_icon_white.png";
-import plusIcon from "@/assets/images/plus_icon.svg";
+import masterCardLogo from "../assets/images/master_card_logo.png";
+import visaCardLogo from "../assets/images/visa_card_logo.png";
+import applePayLogo from "../assets/images/apple_pay_logo.png";
+import googleIcon from "../assets/images/google_icon.png";
+import deleteIconWhite from "../assets/images/delete_icon_white.png";
+import plusIcon from "../assets/images/plus_icon.svg";
 
 interface PaymentMethod {
   id: string;

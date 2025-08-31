@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Plus, CreditCard } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import masterCardLogo from "../assets/images/master_card_logo.png";
 import visaCardLogo from "../assets/images/visa_card_logo.png";
 

@@ -2,13 +2,13 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Search, Filter, ShoppingCart, Plus, Minus, Star, MapPin, Shirt, Palette, Sparkles, GraduationCap, Calendar, DollarSign, ShoppingBasket, Building2, Heart, Users, Fuel, UtensilsCrossed, Store, Ticket, Car, Briefcase } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { useAuth } from "@/hooks/use-auth";
-import LiveMap from "@/components/ui/live-map";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { Input } from "../components/ui/input";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { useAuth } from "../hooks/use-auth";
+import LiveMap from "../components/ui/live-map";
 import type { Category, Product } from "@shared/schema";
 
 interface ExtendedProduct extends Product {

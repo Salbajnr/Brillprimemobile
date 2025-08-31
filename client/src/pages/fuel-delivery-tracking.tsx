@@ -15,12 +15,12 @@ import {
   AlertCircle,
   Truck
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
-import { useWebSocketOrders } from "@/hooks/use-websocket";
-import LiveMap from "@/components/ui/live-map";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { useAuth } from "../hooks/use-auth";
+import { useWebSocketOrders } from "../hooks/use-websocket";
+import LiveMap from "../components/ui/live-map";
 
 
 

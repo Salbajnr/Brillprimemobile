@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle, MapPin, Clock, Fuel, Phone, MessageSquare, Navigation } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
-import { useWebSocketOrders, useWebSocketPayments } from "@/hooks/use-websocket";
-import LiveMap from "@/components/ui/live-map";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { useAuth } from "../hooks/use-auth";
+import { useWebSocketOrders, useWebSocketPayments } from "../hooks/use-websocket";
+import LiveMap from "../components/ui/live-map";
 
 interface Order {
   id: string;

@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { MapPin, Navigation, ArrowLeft } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import logo from "../assets/images/logo.png";
 import globeIcon from "../assets/images/globe_img.png";
 import mapBackground from "../assets/images/map_background.png";

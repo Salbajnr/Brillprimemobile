@@ -2,8 +2,8 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { CheckCircle, XCircle, Loader2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
 
 export default function WalletFundCallback() {
   const [, setLocation] = useLocation();

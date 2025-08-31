@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link } from "wouter";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Switch } from "@/components/ui/switch";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { Switch } from "../components/ui/switch";
 import { 
   ArrowLeft, 
   CreditCard, 
@@ -14,7 +14,7 @@ import {
   Check,
   Plus
 } from "lucide-react";
-import { NotificationModal } from "@/components/ui/notification-modal";
+import { NotificationModal } from "../components/ui/notification-modal";
 
 // Color constants
 const COLORS = {

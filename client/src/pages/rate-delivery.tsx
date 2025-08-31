@@ -2,13 +2,13 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, Star, Send, CheckCircle, Heart, ThumbsUp, MessageSquare, Award } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
-import apiClient from "@/lib/api";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Textarea } from "../components/ui/textarea";
+import { Badge } from "../components/ui/badge";
+import { Label } from "../components/ui/label";
+import { useToast } from "../hooks/use-toast";
+import apiClient from "../lib/api";
 
 interface OrderDetails {
   id: string;

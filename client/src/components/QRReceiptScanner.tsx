@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Camera, QrCode, Scan, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import { useToast } from "../hooks/use-toast";
 
 interface QRReceiptScannerProps {
   onScanResult?: (result: any) => void;

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { ArrowLeft, MapPin, Clock, Phone, MessageSquare, Fuel, CheckCircle, Truck, Navigation } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useWebSocketDriverTracking, useWebSocketOrders } from "@/hooks/use-websocket";
-import LiveMap from "@/components/ui/live-map";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { useWebSocketDriverTracking, useWebSocketOrders } from "../hooks/use-websocket";
+import LiveMap from "../components/ui/live-map";
 
 interface OrderTracking {
   id: string;

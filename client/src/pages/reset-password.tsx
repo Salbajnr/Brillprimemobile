@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
 import { useLocation, useRoute } from "wouter";
 import { ArrowLeft, Lock, Eye, EyeOff } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
 import { useMutation } from "@tanstack/react-query";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { NotificationModal } from "@/components/ui/notification-modal";
-import { authAPI } from "@/lib/auth";
+import { LoadingButton } from "../components/ui/loading-button";
+import { NotificationModal } from "../components/ui/notification-modal";
+import { authAPI } from "../lib/auth";
 import logo from "../assets/images/logo.png";
 
 export default function ResetPasswordPage() {

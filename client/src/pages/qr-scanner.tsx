@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Camera, ArrowLeft, Check, X, Flashlight, FlashlightOff, RotateCcw } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import { useLocation } from "wouter";
-import { NotificationModal } from "@/components/ui/notification-modal";
-import { toast } from "@/hooks/use-toast"; // Assuming toast is available here
+import { NotificationModal } from "../components/ui/notification-modal";
+import { toast } from "../hooks/use-toast"; // Assuming toast is available here
 
 // Import QR scanner assets
 import qrScannerFrame from "../assets/images/qr_scanner_frame.svg";

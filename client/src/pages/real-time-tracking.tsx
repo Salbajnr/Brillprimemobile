@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { MapPin, MessageSquare, Package, Truck, ArrowLeft, Phone, Navigation, Clock } from 'lucide-react';
 import { useLocation } from 'wouter';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
+import { Badge } from "../components/ui/badge";
 import RealTimeOrderTracking from '../components/RealTimeOrderTracking';
 import RealTimeLocationTracking from '../components/RealTimeLocationTracking';
 import RealTimeChatSystem from '../components/RealTimeChatSystem';
 import LiveMap from '../components/ui/live-map';
 import { NotificationModal } from '../components/ui/notification-modal';
-import { useAuth } from '@/hooks/use-auth';
-import { useWebSocket, useOrderUpdates, useDriverTracking, useNotifications } from '@/hooks/use-websocket';
+import { useAuth } from "../hooks/use-auth";
+import { useWebSocket, useOrderUpdates, useDriverTracking, useNotifications } from "../hooks/use-websocket";
 
 export default function RealTimeTrackingPage() {
   const [, setLocation] = useLocation();

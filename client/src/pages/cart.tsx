@@ -4,11 +4,11 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Trash2, ShoppingBag, CreditCard } from "lucide-react";
 import plusIcon from "../assets/images/plus_icon.svg";
 import minusIcon from "../assets/images/minus_icon.svg";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { useAuth } from "@/hooks/use-auth";
-import { apiRequest } from "@/lib/queryClient";
+import { Button } from "../components/ui/button";
+import { Card, CardContent } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
+import { useAuth } from "../hooks/use-auth";
+import { apiRequest } from "../lib/queryClient";
 
 interface CartItem {
   id?: number;

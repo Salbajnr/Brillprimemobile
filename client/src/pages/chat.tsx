@@ -1,12 +1,12 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "../hooks/use-auth";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useWebSocketChat } from "@/hooks/use-websocket";
+import { useWebSocketChat } from "../hooks/use-websocket";
 import { ClientRole, MessageType } from "../../../server/websocket";
-import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "../components/ui/avatar";
+import { Badge } from "../components/ui/badge";
 import { 
   ArrowLeft, 
   MessageCircle, 

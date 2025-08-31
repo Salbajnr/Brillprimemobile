@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { Shield, Users, ChevronRight, Star, Lock, Unlock } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import { Badge } from "../components/ui/badge";
 import { useLocation } from "wouter";
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "../hooks/use-auth";
 
 export default function DriverTierSelectionPage() {
   const [selectedTier, setSelectedTier] = useState<"RESTRICTED" | "OPEN" | null>(null);

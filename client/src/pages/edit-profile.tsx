@@ -1,16 +1,16 @@
 import { useState } from "react";
 import { ArrowLeft, Save, MapPin, Phone, Mail, User } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useAuth } from "@/hooks/use-auth";
+import { Button } from "../components/ui/button";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { Textarea } from "../components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
+import { useAuth } from "../hooks/use-auth";
 import { useLocation } from "wouter";
 import { useMutation } from "@tanstack/react-query";
-import { NotificationModal } from "@/components/ui/notification-modal";
-import { LoadingButton } from "@/components/ui/loading-button";
-import { ImagePicker } from "@/components/ui/image-picker";
+import { NotificationModal } from "../components/ui/notification-modal";
+import { LoadingButton } from "../components/ui/loading-button";
+import { ImagePicker } from "../components/ui/image-picker";
 import accountCircleIcon from "../assets/images/account_circle.svg";
 import cameraIcon from "../assets/images/camera_icon.png";
 
