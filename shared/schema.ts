@@ -46,25 +46,18 @@ export const categories = pgTable("categories", {
   createdAt: timestamp("created_at").defaultNow()
 });
 
-// Products table
+// Products table  
 export const products = pgTable("products", {
   id: serial("id").primaryKey(),
-  merchantId: integer("merchant_id").references(() => users.id).notNull(),
   sellerId: integer("seller_id").references(() => users.id).notNull(),
+  categoryId: integer("category_id").references(() => categories.id).notNull(),
   name: text("name").notNull(),
   description: text("description"),
   price: decimal("price", { precision: 10, scale: 2 }).notNull(),
-  category: text("category").notNull(),
-  categoryName: text("category_name"),
   unit: text("unit").notNull(),
-  stockQuantity: integer("stock_quantity").default(0),
-  stockLevel: integer("stock_level").default(0),
-  imageUrl: text("image_url"),
-  images: jsonb("images").default('[]'),
-  isAvailable: boolean("is_available").default(true),
-  isActive: boolean("is_active").default(true),
-  rating: decimal("rating", { precision: 3, scale: 2 }).default('0.00'),
-  totalReviews: integer("total_reviews").default(0),
+  image: text("image"),
+  inStock: boolean("in_stock").default(true),
+  minimumOrder: integer("minimum_order").default(1),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });

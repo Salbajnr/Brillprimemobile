@@ -569,7 +569,7 @@ process.on('SIGTERM', async () => {
     // Initialize complete database schema
     console.log('🔄 Initializing database schema...');
     const { initializeDatabase, seedInitialData } = await import('./complete-db-schema');
-    await initializeDatabase();
+    // await initializeDatabase(); // Temporarily commented out to resolve schema conflicts
 
     // Only seed if not in production or if explicitly requested
     if (process.env.NODE_ENV !== 'production' && !process.env.SKIP_SEEDING) {
