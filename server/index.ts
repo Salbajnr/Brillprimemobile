@@ -173,7 +173,7 @@ const limiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
 });
-app.use(limiter);
+app.use('/', limiter);
 
 // CORS configuration
 app.use(cors({
@@ -213,7 +213,7 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // Session configuration
-app.use(session({
+app.use('/', session({
   secret: process.env.SESSION_SECRET || 'fallback-secret-key',
   resave: false,
   saveUninitialized: false,
@@ -342,14 +342,15 @@ app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
 app.use('/api/auto-assignment', autoAssignmentRoutes);
 
 
-// Serve static files 
-// Serve client static files from both dist (production) and src (development)
-app.use('/assets', express.static(path.join(__dirname, '../client/src/assets')));
-app.use('/public', express.static(path.join(__dirname, '../client/public')));
-
+// Serve static files based on environment
 if (process.env.NODE_ENV === 'production') {
-  // Serve built files if they exist
+  // Serve built files in production
   app.use(express.static(path.join(__dirname, '../client/dist')));
+  console.log('✅ Serving built client files from dist/');
+} else {
+  // In development, serve source files directly
+  app.use(express.static(path.join(__dirname, '../client')));
+  console.log('✅ Serving client source files for development');
 }
 
 // Admin SPA fallback
@@ -527,25 +528,6 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   });
 });
 
-// Serve TypeScript modules directly in development
-if (process.env.NODE_ENV !== 'production') {
-  // Serve TypeScript files as JS modules
-  app.get('/src/*', (req, res) => {
-    const filePath = path.join(__dirname, '../client', req.path);
-    console.log('Serving development file:', filePath);
-    
-    if (filePath.endsWith('.tsx') || filePath.endsWith('.ts')) {
-      res.type('application/javascript');
-    }
-    
-    res.sendFile(filePath, (err) => {
-      if (err) {
-        console.error('Error serving development file:', err);
-        res.status(404).send('File not found');
-      }
-    });
-  });
-}
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
