@@ -1,0 +1,62 @@
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import path from 'path'
+
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  resolve: {
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+    },
+  },
+  publicDir: 'public',
+  server: {
+    host: '0.0.0.0',
+    port: 5173,
+    strictPort: false,
+    hmr: {
+      port: 5173
+    },
+    proxy: {
+      '/api': {
+        target: process.env.VITE_API_BASE_URL || 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
+  },
+  build: {
+    sourcemap: true,
+    assetsDir: 'assets',
+    copyPublicDir: true,
+    rollupOptions: {
+      input: {
+        main: './index.html'
+      },
+      output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          // Keep images in their original structure
+          if (assetInfo.name?.match(/\.(png|jpg|jpeg|gif|svg|ico|webp)$/)) {
+            return 'assets/images/[name]-[hash].[ext]';
+          }
+          return 'assets/[name]-[hash].[ext]';
+        },
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          router: ['wouter']
+        }
+      }
+    },
+    target: 'esnext',
+    minify: false // Disable minification to see actual errors
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'wouter'],
+    exclude: ['lucide-react'],
+  },
+  define: {
+    global: 'globalThis'
+  }
+})
