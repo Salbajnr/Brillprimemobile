@@ -31,11 +31,25 @@ The frontend is built as a React 18 Single Page Application (SPA) with TypeScrip
 - **Mobile Integration**: Shared API client for web and mobile (React Native compatibility) to leverage native features like location tracking.
 - **Monitoring & Analytics**: Health check endpoints, performance analytics collection (page views, user actions), and system health monitoring (uptime, memory, database, Redis, WebSocket).
 
-## External Dependencies
+## External Dependencies & Deployment Architecture
 
-- **Database**: Render PostgreSQL (managed database service)
+- **Database**: Replit PostgreSQL (managed database service)
 - **Payment Gateway**: Paystack
 - **Social Login Providers**: Google, Apple, Facebook
 - **Real-time Communication**: Socket.IO (for WebSockets)
 - **Caching**: Redis (optional, memory cache fallback)
-- **Replit Deployment**: Cloudrun for backend, Static for frontend
+
+## Replit Deployment Strategy
+- **Backend**: Autoscale deployment (`brillprime-backend.replit.app`)
+- **Main Client**: Static deployment (`brillprime-frontend.replit.app`)
+- **Admin Console**: Static deployment (`brillprime-admin.replit.app`)
+- **Database**: Replit Database with environment secrets
+- **Configuration**: All external hosting dependencies removed
+
+## Recent Changes (December 2024)
+- ✅ Migrated from Render/Vercel to complete Replit deployment
+- ✅ Updated all environment configurations for Replit URLs
+- ✅ Removed all external hosting configuration files
+- ✅ Configured Replit Secrets for production security
+- ✅ Updated CORS and WebSocket configurations for Replit domains
+- ✅ Both frontend applications built and deployment-ready

@@ -2,8 +2,8 @@
 /**
  * Database Configuration Override
  * 
- * This file ensures that BrillPrime ALWAYS connects to the production
- * Render PostgreSQL database, regardless of environment or fork status.
+ * This file ensures that BrillPrime uses the configured production
+ * database from environment variables, supporting Replit deployment.
  * 
  * This prevents:
  * - Local database creation when forked
@@ -11,35 +11,36 @@
  * - Data fragmentation across different database instances
  */
 
-// Production Render PostgreSQL Database (Read-Only Configuration)
+// Production Database Configuration (from environment)
 export const PRODUCTION_DATABASE_CONFIG = {
-  connectionString: 'postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com:5432/brillprimemobiledb',
-  host: 'dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com',
-  port: 5432,
-  user: 'brillprimemobiledb_user',
-  password: 'ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89',
-  database: 'brillprimemobiledb',
+  connectionString: process.env.DATABASE_URL,
   ssl: {
     rejectUnauthorized: false
   }
 } as const;
 
-// Function to get the database URL (always returns Render database)
+// Function to get the database URL (always returns configured production database)
 export function getDatabaseUrl(): string {
-  return PRODUCTION_DATABASE_CONFIG.connectionString;
+  return PRODUCTION_DATABASE_CONFIG.connectionString || process.env.DATABASE_URL;
 }
 
-// Function to validate database connection is to Render
+// Function to validate database connection is production-ready
 export function validateDatabaseConnection(connectionString: string): boolean {
-  const isRenderDatabase = connectionString.includes('dpg-d2npgb6r433s73ah5qqg-a.oregon-postgres.render.com');
-  
-  if (!isRenderDatabase) {
-    console.error('❌ SECURITY: Attempted connection to non-Render database blocked!');
-    console.error('🔒 This app is configured to only use the production Render database');
+  if (!connectionString) {
+    console.error('❌ SECURITY: No database connection string provided!');
+    console.error('🔒 DATABASE_URL environment variable is required');
     return false;
   }
   
-  console.log('✅ Database connection validated: Using Render PostgreSQL');
+  const isPostgreSQL = connectionString.includes('postgresql://') || connectionString.includes('postgres://');
+  
+  if (!isPostgreSQL) {
+    console.error('❌ SECURITY: Invalid database connection type!');
+    console.error('🔒 This app requires a PostgreSQL database');
+    return false;
+  }
+  
+  console.log('✅ Database connection validated: Using PostgreSQL');
   return true;
 }
 

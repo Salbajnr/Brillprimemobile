@@ -31,7 +31,7 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().min(32, 'Encryption key must be at least 32 characters').optional(),
 
   // URLs and Origins
-  FRONTEND_URL: z.string().url().default('https://brillprime-backend.onrender.com'),
+  FRONTEND_URL: z.string().url().default('https://brillprime-frontend.replit.app'),
   WEBSOCKET_URL: z.string().optional(),
   CORS_ORIGIN: z.string().optional(),
   TRUSTED_PROXIES: z.string().optional(),

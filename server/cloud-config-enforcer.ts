@@ -28,18 +28,17 @@ export function enforceCloudConfiguration(): void {
     }
   });
   
-  // Force production URLs - Auto-detect platform
-  const isRender = process.env.RENDER || process.env.RENDER_SERVICE_NAME;
-  
+  // Force production URLs for Replit deployment
   const productionOverrides = {
     NODE_ENV: 'production',
     HOST: '0.0.0.0',
-    FRONTEND_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-frontend.replit.app',
-    CLIENT_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-backend.replit.app',
-    BASE_URL: isRender ? 'https://www.brillprime.com' : 'https://brillprime-backend.replit.app',
-    WEBSOCKET_URL: isRender ? 'wss://www.brillprime.com' : 'wss://brillprime-backend.replit.app',
-    CORS_ORIGIN: isRender ? 'https://www.brillprime.com,https://brillprime.com' : 'https://brillprime-frontend.replit.app,https://brillprime.replit.app',
-    TRUSTED_PROXIES: isRender ? 'render' : 'replit,cloudflare'
+    PORT: process.env.PORT || '5000',
+    FRONTEND_URL: 'https://brillprime-frontend.replit.app',
+    CLIENT_URL: 'https://brillprime-backend.replit.app', 
+    BASE_URL: 'https://brillprime-backend.replit.app',
+    WEBSOCKET_URL: 'wss://brillprime-backend.replit.app',
+    CORS_ORIGIN: 'https://brillprime-frontend.replit.app,https://brillprime-admin.replit.app',
+    TRUSTED_PROXIES: 'replit,cloudflare'
   };
   
   Object.entries(productionOverrides).forEach(([key, value]) => {

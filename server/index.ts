@@ -137,7 +137,7 @@ const host = process.env.HOST || '0.0.0.0';
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production'
-      ? ["https://*.onrender.com", "https://*.render.com"]
+      ? ["https://*.replit.app", "https://*.replit.dev"]
       : ["http://localhost:3000", "http://localhost:5173"],
     methods: ["GET", "POST"],
     credentials: true
@@ -181,9 +181,9 @@ app.use(cors({
     ? [
         "https://www.brillprime.com",
         "https://brillprime.com",
-        "https://brillprime-backend.onrender.com",
-        "https://*.onrender.com",
-        "https://*.render.com",
+        "https://brillprime-backend.replit.app",
+        "https://*.replit.app",
+        "https://*.replit.dev",
         process.env.FRONTEND_URL,
         process.env.CORS_ORIGIN
       ].filter(Boolean)
