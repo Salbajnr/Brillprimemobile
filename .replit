@@ -64,7 +64,7 @@ stopOnEntry = false
 console = "externalTerminal"
 
 [workflows]
-runButton = "Build and Run"
+runButton = "Debug and Build"
 
 [[workflows.workflow]]
 name = "Start BrillPrime Server"
@@ -281,9 +281,13 @@ task = "shell.exec"
 args = "NODE_ENV=production npm run start"
 
 [[workflows.workflow]]
-name = "Build and Run"
+name = "Debug and Build"
 author = 46793445
 mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🔍 Starting diagnostic build process...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
@@ -291,7 +295,23 @@ args = "cd client && npm install --legacy-peer-deps"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
+args = "echo \"📦 Dependencies installed, starting build...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
 args = "cd client && npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"✅ Build completed, checking output...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && ls -la dist/"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting production server...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
