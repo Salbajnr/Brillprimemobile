@@ -5,7 +5,7 @@ import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgE
 import { eq, desc } from 'drizzle-orm';
 
 // Use placeholder URL for migration, actual database can be provisioned later
-process.env.DATABASE_URL = "postgresql://brillprimemobiledb_user:ymhSFdyAdL7cRbCzJwUgjXwEufSsTh89@dpg-d2npgb6r433s73ah5qqg-a/brillprimemobiledb";
+const DATABASE_URL = process.env.DATABASE_URL || "postgres://test:test@localhost:5432/test";
 
 // Define enums
 export const roleEnum = pgEnum('role', ['CONSUMER', 'MERCHANT', 'DRIVER', 'ADMIN']);
