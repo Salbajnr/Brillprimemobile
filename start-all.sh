@@ -28,7 +28,7 @@ print_success "Root dependencies installed"
 print_step "Building client application..."
 cd client
 npm install
-npx vite build
+npm run build
 print_success "Client application built successfully"
 cd ..
 
@@ -36,7 +36,7 @@ cd ..
 print_step "Building admin application..."
 cd admin
 npm install  
-npx vite build
+npm run build
 print_success "Admin application built successfully"
 cd ..
 
