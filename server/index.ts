@@ -342,40 +342,54 @@ app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
 app.use('/api/auto-assignment', autoAssignmentRoutes);
 
 
-// Serve static files in production
+// Serve static files 
+// Serve client static files from both dist (production) and src (development)
+app.use('/assets', express.static(path.join(__dirname, '../client/src/assets')));
+app.use('/public', express.static(path.join(__dirname, '../client/public')));
+
 if (process.env.NODE_ENV === 'production') {
-  // Serve admin static files
-  app.use('/admin', express.static(path.join(__dirname, '../admin/dist')));
-
-  // Serve client static files
+  // Serve built files if they exist
   app.use(express.static(path.join(__dirname, '../client/dist')));
-
-  // Admin SPA fallback
-  app.get('/admin/*', (req, res) => {
-    const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
-    console.log('Serving admin SPA fallback:', adminIndexPath);
-
-    res.sendFile(adminIndexPath, (err) => {
-      if (err) {
-        console.error('Error serving admin index.html:', err);
-        res.status(500).send('Error loading admin application');
-      }
-    });
-  });
-
-  // Client SPA fallback for non-admin routes
-  app.get('*', (req, res) => {
-    const indexPath = path.join(__dirname, '../client/dist/index.html');
-    console.log('Serving client SPA fallback:', indexPath);
-
-    res.sendFile(indexPath, (err) => {
-      if (err) {
-        console.error('Error serving index.html:', err);
-        res.status(500).send('Error loading application');
-      }
-    });
-  });
 }
+
+// Admin SPA fallback
+app.get('/admin/*', (req, res) => {
+  const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
+  console.log('Serving admin SPA fallback:', adminIndexPath);
+
+  res.sendFile(adminIndexPath, (err) => {
+    if (err) {
+      console.error('Error serving admin index.html:', err);
+      res.status(500).send('Error loading admin application');
+    }
+  });
+});
+
+// Client SPA fallback for non-admin routes
+app.get('*', (req, res) => {
+  // Skip API routes
+  if (req.path.startsWith('/api/')) {
+    return res.status(404).json({ error: 'API route not found' });
+  }
+
+  // Try serving built index.html first, fallback to development index.html
+  const distIndexPath = path.join(__dirname, '../client/dist/index.html');
+  const devIndexPath = path.join(__dirname, '../client/index.html');
+  
+  console.log('Attempting to serve client SPA:', distIndexPath);
+
+  res.sendFile(distIndexPath, (err) => {
+    if (err) {
+      console.log('Built file not found, serving development index.html:', devIndexPath);
+      res.sendFile(devIndexPath, (err2) => {
+        if (err2) {
+          console.error('Error serving both index.html files:', err2);
+          res.status(500).send('Error loading application');
+        }
+      });
+    }
+  });
+});
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -513,24 +527,23 @@ app.use((err: any, req: Request, res: Response, next: any) => {
   });
 });
 
-// Handle React routing - serve appropriate HTML based on subdomain
-// This catch-all route should be the last one
+// Serve TypeScript modules directly in development
 if (process.env.NODE_ENV !== 'production') {
-  app.get('*', (req: Request, res: Response) => {
-    // Skip API routes
-    if (req.path.startsWith('/api/')) {
-      return res.status(404).json({ error: 'API route not found' });
+  // Serve TypeScript files as JS modules
+  app.get('/src/*', (req, res) => {
+    const filePath = path.join(__dirname, '../client', req.path);
+    console.log('Serving development file:', filePath);
+    
+    if (filePath.endsWith('.tsx') || filePath.endsWith('.ts')) {
+      res.type('application/javascript');
     }
-
-    const isAdmin = req.subdomain === 'admin';
-
-    if (isAdmin) {
-      // Serve admin.html for admin subdomain
-      res.sendFile(path.join(__dirname, '../client/dist/admin.html'));
-    } else {
-      // Serve regular index.html for main domain
-      res.sendFile(path.join(__dirname, '../client/dist/index.html'));
-    }
+    
+    res.sendFile(filePath, (err) => {
+      if (err) {
+        console.error('Error serving development file:', err);
+        res.status(404).send('File not found');
+      }
+    });
   });
 }
 
