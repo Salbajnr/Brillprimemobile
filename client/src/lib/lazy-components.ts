@@ -5,7 +5,6 @@ import { lazy } from 'react'
 export const LazyDashboard = lazy(() => import('../pages/dashboard'))
 export const LazyMerchantDashboard = lazy(() => import('../pages/merchant-dashboard'))
 export const LazyDriverDashboard = lazy(() => import('../pages/driver-dashboard'))
-export const LazyAdminDashboard = lazy(() => import('../pages/admin-dashboard'))
 export const LazyChat = lazy(() => import('../pages/chat'))
 export const LazyMap = lazy(() => import('../pages/map-home'))
 export const LazyAnalytics = lazy(() => import('../pages/merchant-analytics'))
@@ -27,11 +26,6 @@ export const preloadCriticalComponents = () => {
         () => import('../pages/driver-dashboard'),
         () => import('../pages/real-time-tracking'),
         () => import('../pages/driver-withdrawal')
-      ],
-      admin: [
-        () => import('../pages/admin-dashboard'),
-        () => import('../pages/admin-user-management'),
-        () => import('../pages/admin-monitoring')
       ],
       consumer: [
         () => import('../pages/dashboard'),
@@ -86,7 +80,6 @@ export const prefetchLikelyPages = (currentRoute: string) => {
     '/cart': ['checkout', 'payment-methods', 'commodities'],
     '/merchant-dashboard': ['order-management', 'merchant-analytics', 'products'],
     '/driver-dashboard': ['real-time-tracking', 'driver-withdrawal', 'order-history'],
-    '/admin-dashboard': ['admin-user-management', 'admin-monitoring', 'admin-support']
   }
   
   const pagesToPrefetch = prefetchMap[currentRoute] || []

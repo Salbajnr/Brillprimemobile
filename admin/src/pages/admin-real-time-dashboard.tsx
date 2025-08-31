@@ -2,12 +2,12 @@ import React from 'react';
 import { ArrowLeft, Shield } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
-import RealTimeAdminDashboard from '../components/RealTimeAdminDashboard';
-import { useAuth } from '@/hooks/use-auth';
+import RealTimeAdminDashboard from '../components/real-time/RealTimeAdminDashboard';
+import { useAdminAuth } from '../lib/admin-auth';
 
 export default function AdminRealTimeDashboardPage() {
   const [, setLocation] = useLocation();
-  const { user } = useAuth();
+  const { admin: user } = useAdminAuth();
 
   // Redirect if not admin
   if (user?.role !== 'ADMIN') {

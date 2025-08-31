@@ -11,7 +11,6 @@ import SignUp from './pages/signup';
 import SignIn from './pages/signin';
 import Dashboard from './pages/dashboard';
 import NotFound from './pages/not-found';
-import AdminSupport from './pages/admin-support';
 import Support from './pages/support';
 import SystemHealthDashboard from './pages/system-health-dashboard';
 
@@ -38,7 +37,6 @@ function App() {
               <Route path="/signup" component={SignUp} />
               <Route path="/signin" component={SignIn} />
               <Route path="/dashboard" component={Dashboard} />
-              <Route path="/admin-support" element={<AdminSupport />} />
           <Route path="/support" element={<Support />} />
           <Route path="/system-health-dashboard" element={<SystemHealthDashboard />} />
               <Route component={NotFound} />

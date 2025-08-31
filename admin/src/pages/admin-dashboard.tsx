@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useAuth } from '../hooks/use-auth';
+import { useAdminAuth } from '../lib/admin-auth';
 import AdminLayout from '../components/admin-layout';
 import AdminDashboardMain from '../components/admin-dashboard-main';
 import { AdminUserManagement } from './admin-user-management';
@@ -14,7 +14,7 @@ import { AdminModeration } from './admin-moderation';
 type AdminPageType = 'dashboard' | 'users' | 'kyc' | 'escrow' | 'transactions' | 'support' | 'analytics' | 'security' | 'monitoring' | 'fraud' | 'moderation';
 
 function AdminDashboard() {
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { admin: user, isAuthenticated, isLoading } = useAdminAuth();
   const [currentPage, setCurrentPage] = useState<AdminPageType>('dashboard');
 
   if (isLoading) {
@@ -28,7 +28,7 @@ function AdminDashboard() {
     );
   }
 
-  if (!isAuthenticated() || user?.role !== 'ADMIN') {
+  if (!isAuthenticated || user?.role !== 'ADMIN') {
     // Not authenticated or not admin, redirect
     window.location.href = '/admin';
     return null;

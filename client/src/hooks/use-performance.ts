@@ -62,7 +62,6 @@ export const usePerformance = () => {
       consumer: ['/src/pages/dashboard.tsx', '/src/pages/commodities.tsx'],
       merchant: ['/src/pages/merchant-dashboard.tsx', '/src/pages/order-management.tsx'],
       driver: ['/src/pages/driver-dashboard.tsx', '/src/pages/real-time-tracking.tsx'],
-      admin: ['/src/pages/admin-dashboard.tsx', '/src/pages/admin-user-management.tsx']
     }
 
     const routesToPreload = preloadMap[userRole as keyof typeof preloadMap] || preloadMap.consumer
