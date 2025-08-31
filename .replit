@@ -64,7 +64,7 @@ stopOnEntry = false
 console = "externalTerminal"
 
 [workflows]
-runButton = "Fresh Build"
+runButton = "Simple Build Fix"
 
 [[workflows.workflow]]
 name = "Start BrillPrime Server"
@@ -281,21 +281,45 @@ task = "shell.exec"
 args = "NODE_ENV=production npm run start"
 
 [[workflows.workflow]]
-name = "Fresh Build"
+name = "Simple Build Fix"
 author = 46793445
 mode = "sequential"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm install --legacy-peer-deps"
+args = "echo \"🔧 Starting simple build process...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && npm run build"
+args = "cd client && npm install --force"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd client && ls -la dist/"
+args = "echo \"📦 Installing Vite dependencies...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm install vite @vitejs/plugin-react --save-dev"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🏗️ Running build with verbose output...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && npm run build -- --logLevel info"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"📂 Checking build output...\""
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "cd client && ls -la dist/ && ls -la dist/assets/"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "echo \"🚀 Starting server...\""
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
