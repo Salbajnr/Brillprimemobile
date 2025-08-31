@@ -17,33 +17,43 @@ export const users = pgTable("users", {
   password: text("password"),
   fullName: text("full_name").notNull(),
   phone: text("phone"),
-  profilePicture: text("profile_picture"),
   role: roleEnum("role").default('CONSUMER'),
   isVerified: boolean("is_verified").default(false),
   isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+  passwordHash: text("password_hash"),
+  profilePicture: text("profile_picture"),
+  emailVerified: boolean("email_verified").default(false),
+  phoneVerified: boolean("phone_verified").default(false),
+  dateOfBirth: timestamp("date_of_birth"),
+  address: text("address"),
+  city: varchar("city"),
+  state: varchar("state"),
+  country: varchar("country"),
+  referralCode: varchar("referral_code"),
+  referredBy: integer("referred_by"),
   mfaEnabled: boolean("mfa_enabled").default(false),
-  mfaMethod: text("mfa_method"),
+  mfaMethod: varchar("mfa_method"),
   mfaSecret: text("mfa_secret"),
   mfaBackupCodes: jsonb("mfa_backup_codes"),
   biometricHash: text("biometric_hash"),
-  biometricType: text("biometric_type"),
+  biometricType: varchar("biometric_type"),
   lastLoginAt: timestamp("last_login_at"),
   loginAttempts: integer("login_attempts").default(0),
-  accountLockedUntil: timestamp("account_locked_until"),
-  averageRating: numeric("average_rating", { precision: 3, scale: 2 }).default('0'),
-  totalRatings: integer("total_ratings").default(0),
-  createdAt: timestamp("created_at").defaultNow(),
-  updatedAt: timestamp("updated_at").defaultNow()
+  accountLockedUntil: timestamp("account_locked_until")
 });
 
 // Categories table
 export const categories = pgTable("categories", {
   id: serial("id").primaryKey(),
-  name: text("name").notNull().unique(),
+  name: text("name").notNull(),
   description: text("description"),
-  imageUrl: text("image_url"),
+  parentId: integer("parent_id"),
+  sortOrder: integer("sort_order"),
   isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").defaultNow()
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow()
 });
 
 // Products table  
@@ -72,15 +82,8 @@ export const orders = pgTable("orders", {
   orderType: text("order_type").notNull(),
   status: orderStatusEnum("status").default('PENDING'),
   totalAmount: decimal("total_amount", { precision: 10, scale: 2 }).notNull(),
-  driverEarnings: decimal("driver_earnings", { precision: 10, scale: 2 }),
   deliveryAddress: text("delivery_address"),
-  pickupAddress: text("pickup_address"),
-  deliveryLatitude: decimal("delivery_latitude", { precision: 10, scale: 8 }),
-  deliveryLongitude: decimal("delivery_longitude", { precision: 11, scale: 8 }),
   orderData: jsonb("order_data"),
-  acceptedAt: timestamp("accepted_at"),
-  pickedUpAt: timestamp("picked_up_at"),
-  deliveredAt: timestamp("delivered_at"),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow()
 });
