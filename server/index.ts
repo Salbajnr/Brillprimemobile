@@ -28,6 +28,7 @@ import systemHealthRoutes from './routes/system-health';
 
 
 
+// Keep a single session setup near the top of the file, after `const app = express();`
 import session from 'express-session';
 import MemoryStore from 'memorystore';
 
@@ -42,8 +43,8 @@ app.use(
     cookie: {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'lax' : 'lax',
-      maxAge: 1000 * 60 * 60 * 24, // 1 day
+      sameSite: 'lax',
+      maxAge: 1000 * 60 * 60 * 24,
     },
     name: 'sid',
   })
