@@ -74,32 +74,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// Simple fetch wrapper for API calls
-const apiRequest = async (endpoint: string, options: RequestInit = {}) => {
-  const response = await fetch(`/api${endpoint}`, {
-    credentials: 'include',
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    ...options,
-  });
-
-  // Handle cases where response might not be JSON (e.g., 204 No Content)
-  if (response.status === 204) {
-    return { success: response.ok, data: null, error: null, user: null };
-  }
-
-  const data = await response.json();
-
-  // Generalize error handling: if response is not OK, return error from JSON body
-  return {
-    success: response.ok,
-    data: response.ok ? data : null,
-    error: response.ok ? null : data.message || data.error || 'Request failed',
-    user: data.user, // Assuming user object might be returned on success
-  };
-};
+// apiRequest is imported from '../lib/queryClient' at the top
 
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {

@@ -21,24 +21,24 @@ export function Routes() {
 
   return (
     <Switch>
-      <Route path="/" component={Splash} />
-      <Route path="/onboarding" component={Onboarding} />
-      <Route path="/role-selection" component={RoleSelection} />
-      <Route path="/signin" component={Signin} />
-      <Route path="/signup" component={Signup} />
+      <Route path="/">{() => <Splash />}</Route>
+      <Route path="/onboarding">{() => <Onboarding />}</Route>
+      <Route path="/role-selection">{() => <RoleSelection />}</Route>
+      <Route path="/signin">{() => <Signin />}</Route>
+      <Route path="/signup">{() => <Signup />}</Route>
 
       {user && (
         <>
-          <Route path="/dashboard" component={Dashboard} />
-          <Route path="/profile" component={Profile} />
-          <Route path="/rate-delivery/:orderId" component={RateDelivery} />
-          <Route path="/real-time-tracking/:orderId" component={RealTimeTracking} />
-          <Route path="/merchant-ratings/:merchantId" component={MerchantRatings} />
+          <Route path="/dashboard">{() => <Dashboard />}</Route>
+          <Route path="/profile">{() => <Profile />}</Route>
+          <Route path="/rate-delivery/:orderId">{() => <RateDelivery />}</Route>
+          <Route path="/real-time-tracking/:orderId">{() => <RealTimeTracking />}</Route>
+          <Route path="/merchant-ratings/:merchantId">{() => <MerchantRatings />}</Route>
         </>
       )}
 
-      <Route path="/404" component={NotFound} />
-      <Route path="*" component={NotFound} />
+      <Route path="/404">{() => <NotFound />}</Route>
+      <Route path="*">{() => <NotFound />}</Route>
     </Switch>
   );
 }
