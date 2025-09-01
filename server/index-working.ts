@@ -39,6 +39,17 @@ try {
 // Ensure system environment variables take precedence for Replit compatibility
 console.log('🔧 Using Render PostgreSQL database configuration');
 
+// Import working routes only
+import healthCheckRoutes from './routes/health-check';
+import authRoutes from './routes/auth';
+import systemHealthRoutes from './routes/system-health';
+import mfaAuthenticationRoutes from './routes/mfa-authentication';
+import enhancedVerificationRoutes from './routes/enhanced-verification';
+import databaseMonitoringRoutes from './routes/database-monitoring';
+import autoAssignmentRoutes from './routes/auto-assignment';
+import deliveryFeedbackRoutes from './routes/delivery-feedback';
+import adminRoutes from './admin/routes';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -146,64 +157,29 @@ app.use('/', session({
   }
 }));
 
-// Dynamic route loading to avoid static import issues
-async function loadRoutes() {
-  console.log('📦 Loading API routes dynamically...');
-  
-  try {
-    // Load and register essential routes using dynamic imports
-    const { default: healthCheckRoutes } = await import('./routes/health-check');
-    app.use('/api/health', healthCheckRoutes);
-    console.log('✅ Health check routes loaded');
+// Health check route (must be first)
+app.use('/api/health', healthCheckRoutes);
 
-    const { default: authRoutes } = await import('./routes/auth');
-    app.use('/api/auth', authRoutes);
-    console.log('✅ Auth routes loaded');
-
-    const { default: systemHealthRoutes } = await import('./routes/system-health');
-    app.use('/api/system-health', systemHealthRoutes);
-    console.log('✅ System health routes loaded');
-
-    const { default: mfaAuthenticationRoutes } = await import('./routes/mfa-authentication');
-    app.use('/api/mfa', mfaAuthenticationRoutes);
-    console.log('✅ MFA routes loaded');
-
-    const { default: databaseMonitoringRoutes } = await import('./routes/database-monitoring');
-    app.use('/api/database', databaseMonitoringRoutes);
-    console.log('✅ Database monitoring routes loaded');
-
-    const { default: autoAssignmentRoutes } = await import('./routes/auto-assignment');
-    app.use('/api/auto-assignment', autoAssignmentRoutes);
-    console.log('✅ Auto assignment routes loaded');
-
-    const { default: deliveryFeedbackRoutes } = await import('./routes/delivery-feedback');
-    app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
-    console.log('✅ Delivery feedback routes loaded');
-
-    // Load admin routes with subdomain protection
-    const { default: adminRoutes } = await import('./admin/routes');
-    app.use('/api/admin', (req, res, next) => {
-      if (req.subdomain !== 'admin') {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      next();
-    }, adminRoutes);
-    console.log('✅ Admin routes loaded');
-
-    console.log('🎉 All essential routes loaded successfully!');
-  } catch (error) {
-    console.error('❌ Error loading routes:', error);
+// Admin API routes (only accessible on admin subdomain)
+app.use('/api/admin', (req, res, next) => {
+  if (req.subdomain !== 'admin') {
+    return res.status(404).json({ error: 'Not found' });
   }
-}
+  next();
+}, adminRoutes);
 
-// Simple test route (available immediately)
+// Core API routes - Start with working ones
+app.use('/api/auth', authRoutes);
+app.use('/api/system-health', systemHealthRoutes);
+app.use('/api/mfa', mfaAuthenticationRoutes);
+app.use('/api/enhanced-verification', enhancedVerificationRoutes);
+app.use('/api/database', databaseMonitoringRoutes);
+app.use('/api/auto-assignment', autoAssignmentRoutes);
+app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
+
+// Simple test route
 app.get('/api/test', (req, res) => {
-  res.json({ 
-    message: 'BrillPrime API working!', 
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
-  });
+  res.json({ message: 'BrillPrime API working!' });
 });
 
 // Serve static files based on environment
@@ -217,30 +193,29 @@ if (process.env.NODE_ENV === 'production') {
   console.log('✅ Serving client source files for development');
 }
 
-// SPA fallback middleware - Fixed to avoid path-to-regexp issues
-app.use((req, res, next) => {
-  // Handle API routes not found
+// Admin SPA fallback
+app.get('/admin/*', (req, res) => {
+  const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
+  console.log('Serving admin SPA fallback:', adminIndexPath);
+
+  res.sendFile(adminIndexPath, (err) => {
+    if (err) {
+      console.error('Error serving admin index.html:', err);
+      res.status(500).send('Error loading admin application');
+    }
+  });
+});
+
+// Client SPA fallback for non-admin routes
+app.get('*', (req, res) => {
+  // Skip API routes
   if (req.path.startsWith('/api/')) {
     return res.status(404).json({ error: 'API route not found' });
   }
-  
-  // Handle admin routes
-  if (req.path.startsWith('/admin/')) {
-    const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
-    console.log('Serving admin SPA fallback:', adminIndexPath);
-    
-    return res.sendFile(adminIndexPath, (err) => {
-      if (err) {
-        console.error('Error serving admin index.html:', err);
-        res.status(500).send('Error loading admin application');
-      }
-    });
-  }
-  
-  // Serve main client SPA for all other requests
+
   const clientIndexPath = path.join(__dirname, '../client/dist/index.html');
   console.log('Serving client SPA fallback:', clientIndexPath);
-  
+
   res.sendFile(clientIndexPath, (err) => {
     if (err) {
       console.error('Error serving client index.html:', err);
@@ -249,16 +224,11 @@ app.use((req, res, next) => {
   });
 });
 
-// Start server and load routes
-server.listen(PORT, '0.0.0.0', async () => {
-  console.log(`🚀 BrillPrime server starting on port ${PORT}`);
+// Start server
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 BrillPrime server running on port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`📡 Server ready to accept connections!`);
-  
-  // Load routes after server starts
-  await loadRoutes();
-  
-  console.log(`✅ BrillPrime platform fully operational!`);
+  console.log(`✅ Server ready to serve requests!`);
 });
 
 // Graceful shutdown
