@@ -250,7 +250,7 @@ app.use((req, res, next) => {
 });
 
 // Start server and load routes
-server.listen(PORT, '0.0.0.0', async () => {
+server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`🚀 BrillPrime server starting on port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Server ready to accept connections!`);
