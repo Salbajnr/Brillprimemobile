@@ -206,46 +206,30 @@ app.get('/api/test', (req, res) => {
   });
 });
 
-// Serve static files based on environment
-if (process.env.NODE_ENV === 'production') {
-  // Serve built files in production
-  app.use(express.static(path.join(__dirname, '../client/dist')));
-  console.log('✅ Serving built client files from dist/');
-} else {
-  // In development, serve source files directly
-  app.use(express.static(path.join(__dirname, '../client')));
-  console.log('✅ Serving client source files for development');
-}
+// API-only backend server - no frontend serving
+console.log('✅ Running as API-only backend server');
 
-// SPA fallback middleware - Fixed to avoid path-to-regexp issues
+// Handle non-API routes - return 404 for all non-API requests
 app.use((req, res, next) => {
-  // Handle API routes not found
+  // Handle API routes not found (after all API routes are checked)
   if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'API route not found' });
+    return res.status(404).json({ error: 'API endpoint not found' });
   }
   
-  // Handle admin routes
-  if (req.path.startsWith('/admin/')) {
-    const adminIndexPath = path.join(__dirname, '../admin/dist/index.html');
-    console.log('Serving admin SPA fallback:', adminIndexPath);
-    
-    return res.sendFile(adminIndexPath, (err) => {
-      if (err) {
-        console.error('Error serving admin index.html:', err);
-        res.status(500).send('Error loading admin application');
-      }
-    });
-  }
-  
-  // Serve main client SPA for all other requests
-  const clientIndexPath = path.join(__dirname, '../client/dist/index.html');
-  console.log('Serving client SPA fallback:', clientIndexPath);
-  
-  res.sendFile(clientIndexPath, (err) => {
-    if (err) {
-      console.error('Error serving client index.html:', err);
-      res.status(500).send('Error loading client application');
-    }
+  // Return API info for all non-API requests
+  res.status(404).json({ 
+    error: 'This is a backend API server',
+    message: 'Please use /api/ endpoints for all requests',
+    availableEndpoints: [
+      'POST /api/auth/register - User registration',
+      'POST /api/auth/login - User login', 
+      'POST /api/auth/oauth - OAuth login (Google/Apple/Facebook)',
+      'POST /api/auth/verify-otp - OTP verification',
+      'POST /api/auth/forgot-password - Password reset',
+      'POST /api/auth/refresh - Token refresh',
+      'GET /api/health - Health check',
+      'GET /api/test - Test endpoint'
+    ]
   });
 });
 
