@@ -69,7 +69,7 @@ export function validateProductionEnvironment(): boolean {
   const checks = [
     {
       name: 'Database Cloud Connection',
-      test: () => process.env.DATABASE_URL?.includes('render.com') || process.env.DATABASE_URL?.includes('cloud'),
+      test: () => process.env.DATABASE_URL?.includes('postgres') || process.env.DATABASE_URL?.includes('cloud') || process.env.DATABASE_URL?.includes('replit'),
       required: true
     },
     {
@@ -79,10 +79,9 @@ export function validateProductionEnvironment(): boolean {
     },
     {
       name: 'Cloud Frontend URL',
-      test: () => process.env.FRONTEND_URL?.includes('onrender.com') || 
-                  process.env.FRONTEND_URL?.includes('replit.app') || 
+      test: () => process.env.FRONTEND_URL?.includes('replit.app') || 
                   process.env.FRONTEND_URL?.includes('vercel.app') ||
-                  process.env.FRONTEND_URL?.includes('render.com'),
+                  process.env.FRONTEND_URL?.includes('netlify.app'),
       required: true
     },
     {

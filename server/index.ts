@@ -38,7 +38,7 @@ async function initializeCloudConfig() {
 }
 
 // Ensure system environment variables take precedence for Replit compatibility
-console.log('🔧 Using Render PostgreSQL database configuration');
+console.log('🔧 Using Replit PostgreSQL database');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

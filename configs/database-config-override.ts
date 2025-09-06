@@ -58,7 +58,7 @@ export function preventLocalDatabaseCreation(): void {
   process.env.DISABLE_LOCAL_POSTGRES = 'true';
   process.env.DISABLE_LOCAL_MYSQL = 'true';
   process.env.DISABLE_LOCAL_SQLITE = 'true';
-  process.env.FORCE_RENDER_DATABASE = 'true';
+  process.env.FORCE_REPLIT_DATABASE = 'true';
   process.env.FORCE_CLOUD_SERVICES = 'true';
   
   // Remove any localhost references
