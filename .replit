@@ -9,3 +9,50 @@ externalPort = 80
 
 [agent]
 integrations = ["javascript_database==1.0.0"]
+
+[workflows]
+runButton = "Development Server"
+
+[[workflows.workflow]]
+name = "Development Server"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run dev"
+
+[[workflows.workflow]]
+name = "Production Server"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start"
+
+[[workflows.workflow]]
+name = "Build and Start"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run build"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start:prod"
+
+[[workflows.workflow]]
+name = "Test API"
+author = 46793445
+mode = "sequential"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run test-api"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run validate"
