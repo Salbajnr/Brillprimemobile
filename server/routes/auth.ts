@@ -5,7 +5,40 @@ import { db } from '../db';
 import { users, mfaTokens } from '../../shared/schema';
 import { eq, and, desc, gte, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import jwt from 'jsonwebtoken'; // Import JWT for admin authentication
+import jwt from 'jsonwebtoken';
+
+// JWT utility functions
+const JWT_SECRET = process.env.JWT_SECRET || 'fallback-jwt-secret';
+const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fallback-refresh-secret';
+
+function generateTokens(user: any) {
+  const payload = {
+    id: user.id,
+    email: user.email,
+    role: user.role
+  };
+  
+  const token = jwt.sign(payload, JWT_SECRET, { expiresIn: '1h' });
+  const refreshToken = jwt.sign({ id: user.id }, JWT_REFRESH_SECRET, { expiresIn: '7d' });
+  
+  return { token, refreshToken };
+}
+
+function standardAuthResponse(user: any) {
+  const { token, refreshToken } = generateTokens(user);
+  
+  return {
+    success: true,
+    token,
+    refreshToken,
+    user: {
+      id: user.id,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role.toLowerCase()
+    }
+  };
+}
 
 // Extend the session interface to include userId and user properties
 declare module 'express-session' {
@@ -40,7 +73,27 @@ const registerSchema = z.object({
   password: z.string().min(6),
   fullName: z.string().min(2),
   phone: z.string().optional(),
-  role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT', 'ADMIN']).default('CONSUMER') // Added ADMIN role
+  role: z.enum(['CONSUMER', 'DRIVER', 'MERCHANT', 'ADMIN']).default('CONSUMER')
+});
+
+const refreshSchema = z.object({
+  refreshToken: z.string()
+});
+
+const oauthSchema = z.object({
+  provider: z.enum(['google', 'apple', 'facebook']),
+  token: z.string(),
+  email: z.string().email().optional(),
+  fullName: z.string().optional()
+});
+
+const otpSchema = z.object({
+  email: z.string().email(),
+  otp: z.string().length(5)
+});
+
+const forgotPasswordSchema = z.object({
+  email: z.string().email()
 });
 
 // Session validation endpoint
@@ -106,31 +159,8 @@ router.post('/login', async (req, res) => {
       });
     }
 
-    // Create session
-    req.session.userId = user.id;
-    req.session.user = {
-      id: user.id,
-      userId: user.id.toString(),
-      email: user.email,
-      fullName: user.fullName,
-      role: user.role,
-      isVerified: user.isVerified || false,
-      profilePicture: user.profilePicture
-    };
-    req.session.lastActivity = Date.now();
-    req.session.ipAddress = req.ip;
-    req.session.userAgent = req.get('User-Agent');
-
-    res.json({
-      success: true,
-      user: {
-        id: user.id,
-        email: user.email,
-        fullName: user.fullName,
-        role: user.role,
-        isVerified: user.isVerified || false
-      }
-    });
+    // Return JWT response
+    res.json(standardAuthResponse(user));
   } catch (error: any) {
     console.error('Login error:', error);
     res.status(500).json({ 
@@ -205,34 +235,218 @@ router.post('/register', async (req, res) => {
       console.error('Email service error:', emailError);
     }
 
-    // Create session but mark as unverified
-    req.session.userId = newUser.id;
-    req.session.user = {
-      id: newUser.id,
-      userId: newUser.id.toString(),
-      email: newUser.email,
-      fullName: newUser.fullName,
-      role: newUser.role,
-      isVerified: newUser.isVerified || false,
-      profilePicture: newUser.profilePicture
-    };
-
-    res.json({
-      success: true,
-      requiresEmailVerification: true,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        fullName: newUser.fullName,
-        role: newUser.role,
-        isVerified: false
-      }
-    });
+    // Return JWT response with email verification requirement
+    const response = standardAuthResponse(newUser);
+    response.requiresEmailVerification = true;
+    response.user.isVerified = false;
+    
+    res.json(response);
   } catch (error: any) {
     console.error('Registration error:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Registration failed' 
+    });
+  }
+});
+
+// Refresh token endpoint
+router.post('/refresh', async (req, res) => {
+  try {
+    const { refreshToken } = refreshSchema.parse(req.body);
+    
+    const decoded = jwt.verify(refreshToken, JWT_REFRESH_SECRET) as any;
+    
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, decoded.id))
+      .limit(1);
+    
+    if (!user) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid refresh token' 
+      });
+    }
+    
+    res.json(standardAuthResponse(user));
+  } catch (error) {
+    res.status(401).json({ 
+      success: false, 
+      message: 'Invalid refresh token' 
+    });
+  }
+});
+
+// OAuth login endpoint  
+router.post('/oauth', async (req, res) => {
+  try {
+    const { provider, token, email, fullName } = oauthSchema.parse(req.body);
+    
+    // In a real implementation, verify the OAuth token with the provider
+    // For now, create/login user based on email
+    if (!email || !fullName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and fullName required for OAuth login'
+      });
+    }
+    
+    let [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    
+    if (!user) {
+      // Create new user from OAuth
+      const newUsers = await db
+        .insert(users)
+        .values({
+          email,
+          fullName,
+          role: 'CONSUMER',
+          passwordHash: '', // OAuth users don't have passwords
+          isVerified: true, // OAuth users are pre-verified
+          createdAt: new Date()
+        })
+        .returning();
+      user = newUsers[0];
+    }
+    
+    res.json(standardAuthResponse(user));
+  } catch (error: any) {
+    console.error('OAuth error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'OAuth login failed' 
+    });
+  }
+});
+
+// Verify OTP endpoint
+router.post('/verify-otp', async (req, res) => {
+  try {
+    const { email, otp } = otpSchema.parse(req.body);
+    
+    // Find user
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Hash provided OTP and check against stored hash
+    const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
+    
+    const [token] = await db
+      .select()
+      .from(mfaTokens)
+      .where(
+        and(
+          eq(mfaTokens.userId, user.id),
+          eq(mfaTokens.token, hashedOtp),
+          eq(mfaTokens.isUsed, false),
+          gte(mfaTokens.expiresAt, new Date())
+        )
+      )
+      .limit(1);
+    
+    if (!token) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid or expired OTP'
+      });
+    }
+    
+    // Mark token as used
+    await db
+      .update(mfaTokens)
+      .set({ isUsed: true })
+      .where(eq(mfaTokens.id, token.id));
+    
+    // Mark user as verified
+    await db
+      .update(users)
+      .set({ isVerified: true })
+      .where(eq(users.id, user.id));
+    
+    // Get updated user
+    const [updatedUser] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+    
+    res.json(standardAuthResponse(updatedUser));
+  } catch (error: any) {
+    console.error('OTP verification error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'OTP verification failed' 
+    });
+  }
+});
+
+// Forgot password endpoint
+router.post('/forgot-password', async (req, res) => {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email))
+      .limit(1);
+    
+    if (!user) {
+      // Don't reveal if user exists or not
+      return res.json({
+        success: true,
+        message: 'If the email exists, a password reset link has been sent'
+      });
+    }
+    
+    // Generate password reset token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
+    
+    await db
+      .insert(mfaTokens)
+      .values({
+        userId: user.id,
+        token: hashedToken,
+        method: 'PASSWORD_RESET',
+        expiresAt,
+        isUsed: false
+      });
+    
+    // Send password reset email
+    try {
+      const { emailService } = await import('../services/email');
+      await emailService.sendPasswordReset(email, resetToken, user.fullName);
+    } catch (emailError) {
+      console.error('Password reset email error:', emailError);
+    }
+    
+    res.json({
+      success: true,
+      message: 'If the email exists, a password reset link has been sent'
+    });
+  } catch (error: any) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Password reset failed' 
     });
   }
 });
