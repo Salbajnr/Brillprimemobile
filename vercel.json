@@ -1,0 +1,30 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server/production.ts",
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["server/**", "configs/**"]
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "server/production.ts"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "server/production.ts"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  },
+  "functions": {
+    "server/index.ts": {
+      "maxDuration": 30
+    }
+  }
+}

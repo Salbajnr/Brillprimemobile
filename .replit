@@ -9,9 +9,10 @@ externalPort = 80
 
 [agent]
 integrations = ["javascript_database==1.0.0"]
+expertMode = true
 
 [workflows]
-runButton = "Development Server"
+runButton = "Project"
 
 [[workflows.workflow]]
 name = "Development Server"
@@ -56,3 +57,23 @@ args = "npm run test-api"
 [[workflows.workflow.tasks]]
 task = "shell.exec"
 args = "npm run validate"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend Server"
+
+[[workflows.workflow]]
+name = "Backend Server"
+author = "agent"
+
+[workflows.workflow.metadata]
+outputType = "console"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "node simple-server-test.js"
