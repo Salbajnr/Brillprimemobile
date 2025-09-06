@@ -148,10 +148,10 @@ app.use('/', session({
 
 // Dynamic route loading to avoid static import issues
 async function loadRoutes() {
-  console.log('📦 Loading API routes dynamically...');
+  console.log('📦 Loading all API routes dynamically...');
   
   try {
-    // Load and register essential routes using dynamic imports
+    // Core routes
     const { default: healthCheckRoutes } = await import('./routes/health-check');
     app.use('/api/health', healthCheckRoutes);
     console.log('✅ Health check routes loaded');
@@ -160,37 +160,85 @@ async function loadRoutes() {
     app.use('/api/auth', authRoutes);
     console.log('✅ Auth routes loaded');
 
+    // Business core routes
+    const { default: ordersRoutes } = await import('./routes/orders');
+    app.use('/api/orders', ordersRoutes);
+    console.log('✅ Orders routes loaded');
+
+    const { default: paymentsRoutes } = await import('./routes/payments');
+    app.use('/api/payments', paymentsRoutes);
+    console.log('✅ Payments routes loaded');
+
+    const { default: productsRoutes } = await import('./routes/products');
+    app.use('/api/products', productsRoutes);
+    console.log('✅ Products routes loaded');
+
+    // User roles
+    const { default: consumerRoutes } = await import('./routes/consumer');
+    app.use('/api/consumer', consumerRoutes);
+    console.log('✅ Consumer routes loaded');
+
+    const { default: driverRoutes } = await import('./routes/driver');
+    app.use('/api/driver', driverRoutes);
+    console.log('✅ Driver routes loaded');
+
+    const { default: merchantRoutes } = await import('./routes/merchant');
+    app.use('/api/merchant', merchantRoutes);
+    console.log('✅ Merchant routes loaded');
+
+    // Feature routes
+    const { default: walletRoutes } = await import('./routes/wallet');
+    app.use('/api/wallet', walletRoutes);
+    console.log('✅ Wallet routes loaded');
+
+    const { default: trackingRoutes } = await import('./routes/real-time-tracking');
+    app.use('/api/tracking', trackingRoutes);
+    console.log('✅ Real-time tracking routes loaded');
+
+    const { default: ratingsRoutes } = await import('./routes/ratings-reviews');
+    app.use('/api/ratings', ratingsRoutes);
+    console.log('✅ Ratings & reviews routes loaded');
+
+    const { default: supportRoutes } = await import('./routes/support');
+    app.use('/api/support', supportRoutes);
+    console.log('✅ Support routes loaded');
+
+    const { default: qrPaymentsRoutes } = await import('./routes/qr-payments');
+    app.use('/api/qr', qrPaymentsRoutes);
+    console.log('✅ QR payments routes loaded');
+
+    const { default: escrowRoutes } = await import('./routes/escrow');
+    app.use('/api/escrow', escrowRoutes);
+    console.log('✅ Escrow routes loaded');
+
+    // Advanced features
+    const { default: analyticsRoutes } = await import('./routes/analytics');
+    app.use('/api/analytics', analyticsRoutes);
+    console.log('✅ Analytics routes loaded');
+
+    const { default: verificationRoutes } = await import('./routes/verification');
+    app.use('/api/verification', verificationRoutes);
+    console.log('✅ Verification routes loaded');
+
+    const { default: liveChatRoutes } = await import('./routes/live-chat');
+    app.use('/api/chat', liveChatRoutes);
+    console.log('✅ Live chat routes loaded');
+
+    // System routes
     const { default: systemHealthRoutes } = await import('./routes/system-health');
     app.use('/api/system-health', systemHealthRoutes);
     console.log('✅ System health routes loaded');
 
-    const { default: mfaAuthenticationRoutes } = await import('./routes/mfa-authentication');
-    app.use('/api/mfa', mfaAuthenticationRoutes);
+    const { default: mfaRoutes } = await import('./routes/mfa-authentication');
+    app.use('/api/mfa', mfaRoutes);
     console.log('✅ MFA routes loaded');
 
-    const { default: databaseMonitoringRoutes } = await import('./routes/database-monitoring');
-    app.use('/api/database', databaseMonitoringRoutes);
-    console.log('✅ Database monitoring routes loaded');
-
-    const { default: autoAssignmentRoutes } = await import('./routes/auto-assignment');
-    app.use('/api/auto-assignment', autoAssignmentRoutes);
-    console.log('✅ Auto assignment routes loaded');
-
-    const { default: deliveryFeedbackRoutes } = await import('./routes/delivery-feedback');
-    app.use('/api/delivery-feedback', deliveryFeedbackRoutes);
-    console.log('✅ Delivery feedback routes loaded');
-
-    // Load admin routes with subdomain protection
+    // Admin routes
     const { default: adminRoutes } = await import('./admin/routes');
-    app.use('/api/admin', (req, res, next) => {
-      if (req.subdomain !== 'admin') {
-        return res.status(404).json({ error: 'Not found' });
-      }
-      next();
-    }, adminRoutes);
+    app.use('/api/admin', adminRoutes);
     console.log('✅ Admin routes loaded');
 
-    console.log('🎉 All essential routes loaded successfully!');
+    console.log('🎉 All API routes loaded successfully!');
   } catch (error) {
     console.error('❌ Error loading routes:', error);
   }
