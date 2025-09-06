@@ -16,9 +16,7 @@ app.use(cors({
     ? [
         process.env.FRONTEND_URL,
         process.env.CLIENT_URL,
-        "https://*.vercel.app",
-        "https://*.render.com",
-        "https://*.onrender.com"
+        "https://*.vercel.app"
       ].filter(Boolean)
     : ["http://localhost:3000", "http://localhost:5173"],
   credentials: true
@@ -76,7 +74,7 @@ app.get('/api/test', (req, res) => {
     status: 'healthy',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV || 'development',
-    platform: process.env.VERCEL ? 'Vercel' : process.env.RENDER ? 'Render' : 'Unknown'
+    platform: process.env.VERCEL ? 'Vercel' : 'Development'
   });
 });
 
@@ -97,8 +95,8 @@ app.get('/', (req, res) => {
 // For Vercel serverless functions
 export default app;
 
-// For traditional hosting (Render, Railway, etc.)
-if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+// For local development only
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') {
   app.listen(Number(PORT), '0.0.0.0', () => {
     console.log(`🚀 BrillPrime server running on port ${PORT}`);
     console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);

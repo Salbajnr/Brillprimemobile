@@ -2,12 +2,11 @@
   "name": "workspace",
   "version": "1.0.0",
   "description": "A comprehensive financial services and delivery platform built for the Nigerian market, featuring real-time tracking, secure payments, multi-factor authentication, and advanced verification systems.",
-  "main": "ecosystem.config.js",
+  "main": "server/production.ts",
   "scripts": {
-    "dev": "node --loader tsx/esm server/index.ts",
+    "dev": "node --loader tsx/esm server/production.ts",
     "start": "node --loader tsx/esm server/production.ts",
     "build": "npm install",
-    "vercel-build": "npm install",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

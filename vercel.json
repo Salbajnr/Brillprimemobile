@@ -23,7 +23,7 @@
     "NODE_ENV": "production"
   },
   "functions": {
-    "server/index.ts": {
+    "server/production.ts": {
       "maxDuration": 30
     }
   }
