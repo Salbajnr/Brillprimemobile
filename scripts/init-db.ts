@@ -3,12 +3,12 @@ import { Pool } from 'pg';
 import { verifyAndCreateMissingTables } from './verify-database-tables';
 import { PRODUCTION_DATABASE_CONFIG, validateDatabaseConnection } from './database-config-override';
 
-// Always use Render database configuration
+// Always use Replit database configuration
 const DATABASE_CONNECTION_STRING = PRODUCTION_DATABASE_CONFIG.connectionString;
 
 // Validate connection before proceeding
 if (!validateDatabaseConnection(DATABASE_CONNECTION_STRING)) {
-  throw new Error('Invalid database configuration - only Render database allowed');
+  throw new Error('Invalid database configuration - only Replit database allowed');
 }
 
 const pool = new Pool({ 
