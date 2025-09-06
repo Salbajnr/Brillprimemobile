@@ -15,25 +15,26 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 // Import environment validation
-import './env-validation';
+import '../configs/env-validation';
 
 // Import cloud configuration enforcers - but make them optional for development
-try {
-  const { preventLocalDatabaseCreation } = await import('./database-config-override');
-  const { enforceCloudConfiguration, validateProductionEnvironment } = await import('./cloud-config-enforcer');
+async function initializeCloudConfig() {
+  try {
+    const cloudConfigModule = await import('../configs/cloud-config-enforcer');
+    const { enforceCloudConfiguration, validateProductionEnvironment } = cloudConfigModule;
 
-  // Only enforce cloud configuration in production
-  if (process.env.NODE_ENV === 'production') {
-    enforceCloudConfiguration();
-    preventLocalDatabaseCreation();
+    // Only enforce cloud configuration in production
+    if (process.env.NODE_ENV === 'production') {
+      enforceCloudConfiguration();
 
-    if (!validateProductionEnvironment()) {
-      console.error('❌ Production environment validation failed. Exiting...');
-      process.exit(1);
+      if (!validateProductionEnvironment()) {
+        console.error('❌ Production environment validation failed. Exiting...');
+        process.exit(1);
+      }
     }
+  } catch (error) {
+    console.log('⚠️  Cloud configuration modules not available, continuing with basic setup');
   }
-} catch (error) {
-  console.log('⚠️  Cloud configuration modules not available, continuing with basic setup');
 }
 
 // Ensure system environment variables take precedence for Replit compatibility
@@ -286,6 +287,9 @@ server.listen(Number(PORT), '0.0.0.0', async () => {
   console.log(`🚀 BrillPrime server starting on port ${PORT}`);
   console.log(`🌐 Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📡 Server ready to accept connections!`);
+  
+  // Initialize cloud configuration
+  await initializeCloudConfig();
   
   // Load routes after server starts
   await loadRoutes();
