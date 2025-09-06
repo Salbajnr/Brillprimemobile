@@ -9,29 +9,14 @@ import { Pool } from 'pg';
 import { pgTable, serial, text, integer, timestamp, jsonb, boolean, decimal, pgEnum } from "drizzle-orm/pg-core";
 import { eq, and, desc } from 'drizzle-orm';
 
-// Try to import database configuration override, fallback to environment variable
-let DATABASE_URL = process.env.DATABASE_URL;
+// Use Replit PostgreSQL database
+const DATABASE_URL = process.env.DATABASE_URL;
 
-try {
-  const { getDatabaseUrl, validateDatabaseConnection, preventLocalDatabaseCreation } = await import('./database-config-override');
-  
-  if (process.env.NODE_ENV === 'production') {
-    preventLocalDatabaseCreation();
-    DATABASE_URL = getDatabaseUrl();
-    
-    if (!validateDatabaseConnection(DATABASE_URL)) {
-      throw new Error('Database connection validation failed - only Render database is allowed');
-    }
-  }
-} catch (error) {
-  console.log('⚠️  Using fallback database configuration');
-  if (!DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is required');
-  }
+if (!DATABASE_URL) {
+  throw new Error('DATABASE_URL environment variable is required. Please ensure PostgreSQL database is configured.');
 }
 
-console.log('🔧 Using Render PostgreSQL database exclusively');
-console.log('🔒 Local database creation disabled - Forked repls will use same database');
+console.log('🔧 Using Replit PostgreSQL database');
 console.log('🔗 Database:', DATABASE_URL.replace(/:[^:@]*@/, ':***@')); // Hide password in logs
 
 // Define enums
