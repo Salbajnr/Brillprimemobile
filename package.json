@@ -76,7 +76,7 @@
     "memorystore": "^1.6.7",
     "morgan": "^1.10.1",
     "multer": "^2.0.2",
-    "nodemailer": "^7.0.6",
+    "nodemailer": "^8.0.4",
     "passport": "^0.7.0",
     "passport-local": "^1.0.0",
     "paystack": "^2.0.1",
